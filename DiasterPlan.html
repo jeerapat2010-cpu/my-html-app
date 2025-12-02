@@ -1,0 +1,630 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import { 
+  Users, Calendar, AlertTriangle, 
+  Droplets, Utensils, Shield, HeartPulse, 
+  BatteryCharging, Radio, Anchor, Dog, 
+  FileText, PenTool, Info, Plus, Minus,
+  ChevronDown, ChevronUp, Printer, FileDown,
+  PhoneCall, Globe, X, ExternalLink, MapPin,
+  Save, PlusCircle, Navigation, Crosshair,
+  ClipboardCheck, PieChart, BarChart3, CheckCircle2,
+  Loader2, Square, CheckSquare, Eye
+} from 'lucide-react';
+
+// --- Data Types ---
+type Category = 
+  | 'docs' | 'meds' | 'food' | 'clothes' | 'hygiene' 
+  | 'pets' | 'comms' | 'power' | 'vehicle' | 'weapon' 
+  | 'survival' | 'misc';
+
+interface Item {
+  id: string;
+  name: string;
+  category: Category;
+  baseQty: number;
+  unit: string;
+  isPerPerson: boolean;
+  isPerDay: boolean;
+  priority: 'high' | 'medium' | 'low';
+  disasterTags: string[];
+  advice: string;
+  isChecked?: boolean;
+}
+
+// --- Constants & Data ---
+const APP_INFO = {
+  author: "Jeerapat Plai",
+  version: "1.7", // Update version
+  createdDate: "02/12/2025"
+};
+
+const DISASTER_TYPES = [
+  { id: 'flood', label: 'อุทกภัย (น้ำท่วม)', icon: '🌊', color: 'text-blue-500' },
+  { id: 'earthquake', label: 'แผ่นดินไหว/ตึกถล่ม', icon: '🏚️', color: 'text-orange-600' },
+  { id: 'civil_unrest', label: 'จลาจล/สงคราม', icon: '🛡️', color: 'text-red-600' },
+  { id: 'pandemic', label: 'โรคระบาด/กักตัว', icon: '😷', color: 'text-emerald-500' },
+  { id: 'general', label: 'ทั่วไป/เตรียมพร้อม', icon: '🎒', color: 'text-slate-600' },
+];
+
+const CATEGORY_MAP: Record<Category, { label: string; icon: React.ReactNode; fromColor: string; toColor: string; textColor: string }> = {
+  docs: { label: 'เอกสาร & ทรัพย์สิน', icon: <FileText className="w-5 h-5" />, fromColor: 'from-blue-500', toColor: 'to-blue-600', textColor: 'text-blue-700' },
+  meds: { label: 'ยา & ปฐมพยาบาล', icon: <HeartPulse className="w-5 h-5" />, fromColor: 'from-red-500', toColor: 'to-red-600', textColor: 'text-red-700' },
+  food: { label: 'อาหาร & น้ำ', icon: <Utensils className="w-5 h-5" />, fromColor: 'from-orange-400', toColor: 'to-orange-500', textColor: 'text-orange-700' },
+  clothes: { label: 'เครื่องนุ่งห่ม', icon: <Users className="w-5 h-5" />, fromColor: 'from-indigo-500', toColor: 'to-indigo-600', textColor: 'text-indigo-700' },
+  hygiene: { label: 'สุขอนามัย', icon: <Droplets className="w-5 h-5" />, fromColor: 'from-cyan-400', toColor: 'to-cyan-500', textColor: 'text-cyan-700' },
+  pets: { label: 'สัตว์เลี้ยง', icon: <Dog className="w-5 h-5" />, fromColor: 'from-yellow-400', toColor: 'to-yellow-500', textColor: 'text-yellow-700' },
+  comms: { label: 'การสื่อสาร', icon: <Radio className="w-5 h-5" />, fromColor: 'from-purple-500', toColor: 'to-purple-600', textColor: 'text-purple-700' },
+  power: { label: 'พลังงาน', icon: <BatteryCharging className="w-5 h-5" />, fromColor: 'from-green-500', toColor: 'to-green-600', textColor: 'text-green-700' },
+  vehicle: { label: 'พาหนะ', icon: <Anchor className="w-5 h-5" />, fromColor: 'from-teal-500', toColor: 'to-teal-600', textColor: 'text-teal-700' },
+  weapon: { label: 'อาวุธ', icon: <Shield className="w-5 h-5" />, fromColor: 'from-stone-500', toColor: 'to-stone-600', textColor: 'text-stone-700' },
+  survival: { label: 'กู้ภัย & ยังชีพ', icon: <AlertTriangle className="w-5 h-5" />, fromColor: 'from-rose-500', toColor: 'to-rose-600', textColor: 'text-rose-700' },
+  misc: { label: 'อื่นๆ', icon: <PenTool className="w-5 h-5" />, fromColor: 'from-slate-400', toColor: 'to-slate-500', textColor: 'text-slate-700' },
+};
+
+// Expanded Database
+const INITIAL_DB: Item[] = [
+  // 1. เอกสาร ทรัพย์สิน
+  { id: 'd1', name: 'บัตรประชาชน', category: 'docs', baseQty: 1, unit: 'ใบ', isPerPerson: true, isPerDay: false, priority: 'high', disasterTags: ['all'], advice: 'ถ่ายสำเนาเคลือบพลาสติกแยกเก็บไว้ และสแกนเก็บใน Cloud' },
+  { id: 'd2', name: 'Passport', category: 'docs', baseQty: 1, unit: 'เล่ม', isPerPerson: true, isPerDay: false, priority: 'high', disasterTags: ['all'], advice: 'ตรวจสอบวันหมดอายุ ต้องเหลือมากกว่า 6 เดือน' },
+  { id: 'd3', name: 'ทะเบียนบ้าน/โฉนด', category: 'docs', baseQty: 1, unit: 'ชุด', isPerPerson: false, isPerDay: false, priority: 'high', disasterTags: ['flood', 'civil_unrest'], advice: 'เก็บตัวจริงในที่ปลอดภัย พกสำเนาเคลือบกันน้ำ' },
+  { id: 'd4', name: 'เอกสารการเงิน/สมุดบัญชี', category: 'docs', baseQty: 1, unit: 'ชุด', isPerPerson: false, isPerDay: false, priority: 'medium', disasterTags: ['all'], advice: 'จดเลขที่บัญชีและเบอร์ Call Center ธนาคารไว้' },
+  { id: 'd5', name: 'เงินสด', category: 'docs', baseQty: 3000, unit: 'บาท', isPerPerson: true, isPerDay: false, priority: 'high', disasterTags: ['all'], advice: 'เตรียมแบงค์ย่อย 20, 50, 100 ไว้มากๆ เพื่อซื้อง่าย' },
+  { id: 'd6', name: 'ทองคำ/เครื่องประดับ', category: 'docs', baseQty: 1, unit: 'ชุด', isPerPerson: false, isPerDay: false, priority: 'high', disasterTags: ['civil_unrest', 'general'], advice: 'ใช้แลกเปลี่ยนเมื่อเงินตราหมดค่า เก็บมิดชิดที่สุด' },
+
+  // 2. ยาและชุดปฐมบาล
+  { id: 'm1', name: 'ยาส่วนตัว (ป๋า/ปัน)', category: 'meds', baseQty: 1, unit: 'ชุด', isPerPerson: true, isPerDay: true, priority: 'high', disasterTags: ['all'], advice: 'ยาโรคประจำตัวสำคัญที่สุด เตรียมเผื่อ 14 วัน' },
+  { id: 'm2', name: 'กระเป๋ายาแดง (First Aid)', category: 'meds', baseQty: 1, unit: 'ใบ', isPerPerson: false, isPerDay: false, priority: 'high', disasterTags: ['all'], advice: 'ควรมีเบตาดีน ผ้าก๊อซ เทปทำแผล กรรไกร' },
+  { id: 'm3', name: 'เกลือแร่ (ORS)', category: 'meds', baseQty: 2, unit: 'ซอง', isPerPerson: true, isPerDay: false, priority: 'medium', disasterTags: ['flood', 'pandemic'], advice: 'ชดเชยการเสียน้ำจากท้องเสียได้ดี' },
+  { id: 'm4', name: 'คาร์บอน/ยาแก้ท้องเสีย', category: 'meds', baseQty: 1, unit: 'แผง', isPerPerson: true, isPerDay: false, priority: 'medium', disasterTags: ['flood'], advice: 'อาหารเป็นพิษเกิดขึ้นได้ง่ายในภาวะภัยพิบัติ' },
+  { id: 'm5', name: 'ยาปฏิชีวนะ', category: 'meds', baseQty: 1, unit: 'แผง', isPerPerson: true, isPerDay: false, priority: 'low', disasterTags: ['general'], advice: 'ใช้เมื่อติดเชื้อแบคทีเรียรุนแรง ปรึกษาเภสัชก่อนใช้' },
+  { id: 'm6', name: 'ยาแก้แพ้', category: 'meds', baseQty: 1, unit: 'แผง', isPerPerson: true, isPerDay: false, priority: 'medium', disasterTags: ['all'], advice: 'ลดน้ำมูกและอาการแพ้อากาศ/แมลงกัดต่อย' },
+  { id: 'm7', name: 'พาราเซตามอล', category: 'meds', baseQty: 1, unit: 'แผง', isPerPerson: true, isPerDay: false, priority: 'high', disasterTags: ['all'], advice: 'ลดไข้ บรรเทาปวด' },
+  { id: 'm8', name: 'ยานวด/Counterpain', category: 'meds', baseQty: 1, unit: 'หลอด', isPerPerson: false, isPerDay: false, priority: 'low', disasterTags: ['earthquake', 'flood'], advice: 'บรรเทาปวดกล้ามเนื้อจากการขนของหรือเดินทางไกล' },
+
+  // 3. อาหารแห้ง น้ำ
+  { id: 'f1', name: 'อาหารฉุกเฉิน (MRE)', category: 'food', baseQty: 3, unit: 'มื้อ', isPerPerson: true, isPerDay: true, priority: 'high', disasterTags: ['all'], advice: 'เลือกแบบให้พลังงานสูงและไม่ต้องใช้น้ำร้อนปรุง' },
+  { id: 'f2', name: 'อาหารกระป๋อง', category: 'food', baseQty: 2, unit: 'กระป๋อง', isPerPerson: true, isPerDay: true, priority: 'medium', disasterTags: ['flood', 'general'], advice: 'ต้องมีหูเปิดง่าย (Easy open) หรือเตรียมที่เปิดกระป๋องไว้' },
+  { id: 'f3', name: 'น้ำดื่ม (ขวด/ถุง)', category: 'food', baseQty: 3, unit: 'ลิตร', isPerPerson: true, isPerDay: true, priority: 'high', disasterTags: ['all'], advice: 'ขั้นต่ำ 3 ลิตร/คน/วัน สำคัญกว่าอาหาร' },
+  { id: 'f4', name: 'ถุงใส่น้ำ 10 ลิตร', category: 'food', baseQty: 1, unit: 'ใบ', isPerPerson: false, isPerDay: false, priority: 'medium', disasterTags: ['general'], advice: 'ใช้กรอกน้ำจากแหล่งน้ำกลางมากักตุน' },
+  { id: 'f5', name: 'เตาแก๊สปิคนิค + แก๊ส', category: 'food', baseQty: 1, unit: 'ชุด', isPerPerson: false, isPerDay: false, priority: 'medium', disasterTags: ['flood', 'civil_unrest'], advice: 'ใช้ต้มน้ำฆ่าเชื้อและทำอาหารร้อน' },
+  { id: 'f6', name: 'จาน/ช้อน/ส้อม (พลาสติก)', category: 'food', baseQty: 1, unit: 'ชุด', isPerPerson: true, isPerDay: false, priority: 'low', disasterTags: ['general'], advice: 'แบบใช้แล้วทิ้งช่วยประหยัดน้ำล้างจาน' },
+  { id: 'f7', name: 'หม้อสนาม', category: 'food', baseQty: 1, unit: 'ใบ', isPerPerson: false, isPerDay: false, priority: 'medium', disasterTags: ['civil_unrest'], advice: 'ทนทาน ใช้ต้มน้ำได้ดี พกพาง่าย' },
+
+  // 4. เครื่องนุ่งห่ม
+  { id: 'c1', name: 'เสื้อชูชีพ', category: 'clothes', baseQty: 1, unit: 'ตัว', isPerPerson: true, isPerDay: false, priority: 'high', disasterTags: ['flood'], advice: 'ติดนกหวีดที่เสื้อชูชีพทุกตัว' },
+  { id: 'c2', name: 'เสื้อกันฝน', category: 'clothes', baseQty: 1, unit: 'ตัว', isPerPerson: true, isPerDay: false, priority: 'high', disasterTags: ['flood', 'general'], advice: 'กันเปียกและกันลมหนาวได้ดี' },
+  { id: 'c3', name: 'เสื้อกันหนาว', category: 'clothes', baseQty: 1, unit: 'ตัว', isPerPerson: true, isPerDay: false, priority: 'medium', disasterTags: ['general'], advice: 'ร่างกายที่อบอุ่นลดความเสี่ยงการป่วย' },
+  { id: 'c4', name: 'รองเท้าบูท/รองเท้ายาง', category: 'clothes', baseQty: 1, unit: 'คู่', isPerPerson: true, isPerDay: false, priority: 'high', disasterTags: ['flood'], advice: 'ป้องกันโรคน้ำกัดเท้าและสัตว์มีพิษในน้ำ' },
+  { id: 'c5', name: 'ชุดลำลอง (ป๋า/แม่/ปัน)', category: 'clothes', baseQty: 3, unit: 'ชุด', isPerPerson: true, isPerDay: false, priority: 'medium', disasterTags: ['all'], advice: 'เลือกผ้าแห้งไว ระบายอากาศดี' },
+
+  // 5. สุขอนามัย
+  { id: 'h1', name: 'ทิชชู่/เปียก/แห้ง', category: 'hygiene', baseQty: 1, unit: 'แพ็ค', isPerPerson: true, isPerDay: true, priority: 'high', disasterTags: ['all'], advice: 'อเนกประสงค์ ใช้เช็ดตัว เช็ดก้น เช็ดจาน' },
+  { id: 'h2', name: 'สบู่/แชมพู/ยาสีฟัน', category: 'hygiene', baseQty: 1, unit: 'ชุด', isPerPerson: false, isPerDay: false, priority: 'medium', disasterTags: ['general'], advice: 'ใช้ขนาดพกพา หรือสบู่ก้อนตัดแบ่ง' },
+  { id: 'h3', name: 'หน้ากากอนามัย', category: 'hygiene', baseQty: 1, unit: 'ชิ้น', isPerPerson: true, isPerDay: true, priority: 'high', disasterTags: ['pandemic', 'civil_unrest'], advice: 'กันโรค กันฝุ่นควัน' },
+  { id: 'h4', name: 'ถุงดำ', category: 'hygiene', baseQty: 2, unit: 'ใบ', isPerPerson: true, isPerDay: true, priority: 'high', disasterTags: ['flood', 'general'], advice: 'สำคัญมากสำหรับจัดการขยะและขับถ่าย' },
+  { id: 'h5', name: 'แอลกอฮอล์/น้ำยาล้างจาน', category: 'hygiene', baseQty: 1, unit: 'ขวด', isPerPerson: false, isPerDay: false, priority: 'medium', disasterTags: ['pandemic', 'general'], advice: 'รักษาความสะอาดอุปกรณ์กินข้าว' },
+
+  // 6. สัตว์เลี้ยง
+  { id: 'p1', name: 'อาหารสุนัข', category: 'pets', baseQty: 1, unit: 'ถุง', isPerPerson: false, isPerDay: true, priority: 'high', disasterTags: ['all'], advice: 'เตรียมให้พอดีวัน + เผื่อ 3 วัน' },
+  { id: 'p2', name: 'เสื้อชูชีพสุนัข', category: 'pets', baseQty: 1, unit: 'ตัว', isPerPerson: false, isPerDay: false, priority: 'high', disasterTags: ['flood'], advice: 'ช่วยพยุงสุนัขเวลาขึ้นลงเรือ' },
+  { id: 'p3', name: 'แผ่นรองฉี่', category: 'pets', baseQty: 2, unit: 'แผ่น', isPerPerson: false, isPerDay: true, priority: 'medium', disasterTags: ['flood', 'general'], advice: 'ใช้เมื่อพาสุนัขไปขับถ่ายข้างนอกไม่ได้' },
+
+  // 7. การสื่อสาร
+  { id: 'cm1', name: 'มือถือ + สายชาร์จ', category: 'comms', baseQty: 1, unit: 'เครื่อง', isPerPerson: true, isPerDay: false, priority: 'high', disasterTags: ['all'], advice: 'โหลดแอป Offline map และบันทึกเบอร์ฉุกเฉิน' },
+  { id: 'cm2', name: 'วิทยุสื่อสาร (Walkie Talkie)', category: 'comms', baseQty: 1, unit: 'คู่', isPerPerson: false, isPerDay: false, priority: 'high', disasterTags: ['flood', 'civil_unrest'], advice: 'ใช้สื่อสารระยะใกล้เมื่อสัญญาณมือถือล่ม' },
+  { id: 'cm3', name: 'iPad/Tablet', category: 'comms', baseQty: 1, unit: 'เครื่อง', isPerPerson: false, isPerDay: false, priority: 'low', disasterTags: ['general'], advice: 'ใช้ดูข่าวสารหรือแผนที่จอใหญ่' },
+
+  // 8. พลังงาน
+  { id: 'pw1', name: 'Power Bank', category: 'power', baseQty: 1, unit: 'อัน', isPerPerson: true, isPerDay: false, priority: 'high', disasterTags: ['all'], advice: 'ควรมีความจุ 20,000 mAh ขึ้นไป' },
+  { id: 'pw2', name: 'เครื่องปั่นไฟ/Power Station', category: 'power', baseQty: 1, unit: 'เครื่อง', isPerPerson: false, isPerDay: false, priority: 'medium', disasterTags: ['flood', 'general'], advice: 'ใช้เสียบพัดลมหรือชาร์จไฟอุปกรณ์ใหญ่' },
+  { id: 'pw3', name: 'ไฟฉาย/ไฟส้ม', category: 'power', baseQty: 2, unit: 'ดวง', isPerPerson: false, isPerDay: false, priority: 'high', disasterTags: ['all'], advice: 'ไฟส้มไล่แมลงได้ดีกว่าไฟขาว' },
+  { id: 'pw4', name: 'ปลั๊กพ่วง', category: 'power', baseQty: 1, unit: 'อัน', isPerPerson: false, isPerDay: false, priority: 'medium', disasterTags: ['general'], advice: 'สำหรับจุดชาร์จรวม' },
+
+  // 9. พาหนะ
+  { id: 'v1', name: 'เรือไฟเบอร์/เรือยาง', category: 'vehicle', baseQty: 1, unit: 'ลำ', isPerPerson: false, isPerDay: false, priority: 'high', disasterTags: ['flood'], advice: 'ตรวจสอบรอยรั่วและที่สูบลม' },
+
+  // 10. อาวุธ
+  { id: 'w1', name: 'มีดพับ/มีดสปริง', category: 'weapon', baseQty: 1, unit: 'เล่ม', isPerPerson: true, isPerDay: false, priority: 'medium', disasterTags: ['civil_unrest', 'survival'], advice: 'ใช้ป้องกันตัวและตัดเชือก' },
+  { id: 'w2', name: 'ปืนอัดลม/ประทัด', category: 'weapon', baseQty: 1, unit: 'ชุด', isPerPerson: false, isPerDay: false, priority: 'low', disasterTags: ['civil_unrest'], advice: 'ใช้ส่งเสียงสัญญาณขอความช่วยเหลือหรือไล่สัตว์ร้าย' },
+
+  // 11. อื่นๆ
+  { id: 'mi1', name: 'เทปกาว (Duct Tape)', category: 'misc', baseQty: 1, unit: 'ม้วน', isPerPerson: false, isPerDay: false, priority: 'medium', disasterTags: ['all'], advice: 'ซ่อมแซมฉุกเฉินได้ทุกอย่าง' },
+  { id: 'mi2', name: 'ปากกาเมจิก', category: 'misc', baseQty: 1, unit: 'ด้าม', isPerPerson: false, isPerDay: false, priority: 'low', disasterTags: ['general'], advice: 'ใช้เขียนป้ายขอความช่วยเหลือ' },
+
+  // 12. อุปกรณ์กู้ภัย (Survival)
+  { id: 's1', name: 'ถุงนอน/เต็นท์/ผ้าห่มฟอยล์', category: 'survival', baseQty: 1, unit: 'ชุด', isPerPerson: true, isPerDay: false, priority: 'medium', disasterTags: ['general'], advice: 'รักษาอุณหภูมิร่างกายขณะนอนหลับ' },
+  { id: 's2', name: 'นกหวีด', category: 'survival', baseQty: 1, unit: 'อัน', isPerPerson: true, isPerDay: false, priority: 'high', disasterTags: ['flood', 'earthquake'], advice: 'เป่า 3 ครั้งสั้นๆ เป็นสัญญาณ SOS' },
+  { id: 's3', name: 'เชือก/Paracord', category: 'survival', baseQty: 1, unit: 'เส้น', isPerPerson: false, isPerDay: false, priority: 'medium', disasterTags: ['flood'], advice: 'ใช้ผูกเรือ ตากผ้า หรือลากของ' },
+  { id: 's4', name: 'อุปกรณ์เอนกประสงค์ (Multi-tool)', category: 'survival', baseQty: 1, unit: 'อัน', isPerPerson: false, isPerDay: false, priority: 'medium', disasterTags: ['all'], advice: 'มีคีม ไขควง ที่เปิดขวด ในตัวเดียว' },
+  { id: 's5', name: 'สเปรย์กันแมลง', category: 'survival', baseQty: 1, unit: 'ขวด', isPerPerson: false, isPerDay: false, priority: 'medium', disasterTags: ['flood'], advice: 'ป้องกันยุงพาหะโรค' },
+];
+
+declare global {
+  interface Window {
+    html2pdf: any;
+  }
+}
+
+// --- Shared Document Component (Used in Modal & Hidden Print Div) ---
+const PrintableDocument = ({ 
+  inventory, people, days, disaster, date, author 
+}: { 
+  inventory: Item[], people: number, days: number, disaster: any, date: string, author: string 
+}) => {
+  const totalItems = inventory.reduce((acc, cur) => acc + cur.calculatedQty, 0);
+  const highPriorityItems = inventory.filter(i => i.priority === 'high' && i.calculatedQty > 0).length;
+
+  return (
+    <div className="bg-white text-black p-8 max-w-[210mm] mx-auto" style={{ width: '100%' }}>
+      {/* Header */}
+      <div className="border-b-2 border-black pb-4 mb-4">
+        <div className="flex justify-between items-end">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">แผนเตรียมพร้อมรับมือภัยพิบัติ</h1>
+            <p className="text-sm text-gray-600 font-semibold uppercase tracking-wider">Disaster Survival Checklist</p>
+          </div>
+          <div className="text-right text-sm">
+            <p>วันที่พิมพ์: {date}</p>
+            <p>จัดทำโดย: {author}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Summary Section */}
+      <div className="mb-8 border border-gray-300 rounded-lg overflow-hidden">
+        <div className="bg-gray-100 p-2 border-b border-gray-300 font-bold text-center text-gray-700 uppercase text-xs tracking-wide">
+          สรุปข้อมูลสำคัญ (Summary)
+        </div>
+        <div className="flex text-sm flex-wrap">
+            <div className="flex-1 p-3 border-r border-gray-300 min-w-[100px]">
+              <div className="text-xs text-gray-500 mb-1">สถานการณ์</div>
+              <div className="font-bold text-lg">{disaster?.label}</div>
+              <div className="mt-1 text-slate-600 font-medium">{people} คน / {days} วัน</div>
+            </div>
+            <div className="flex-1 p-3 border-r border-gray-300 bg-orange-50 min-w-[100px]">
+              <div className="text-xs text-orange-500 mb-1">เสบียงพื้นฐาน</div>
+              <div className="font-bold text-orange-800">💧 น้ำดื่ม ~{people * 3 * days} ลิตร</div>
+              <div className="font-bold text-orange-800">🍲 อาหาร ~{people * 3 * days} มื้อ</div>
+            </div>
+            <div className="flex-1 p-3 bg-red-50 min-w-[100px]">
+              <div className="text-xs text-red-500 mb-1">ความพร้อม</div>
+              <div className="font-bold text-red-800">รวมทั้งหมด: {totalItems} ชิ้น</div>
+              <div className="text-xs font-bold text-red-600">จำเป็นมาก: {highPriorityItems} รายการ</div>
+            </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="space-y-6">
+        {(Object.keys(CATEGORY_MAP) as Category[]).map((cat) => {
+          const itemsInCategory = inventory.filter(i => i.category === cat);
+          if (itemsInCategory.length === 0) return null;
+          return (
+            <div key={cat} className="break-inside-avoid">
+              <h3 className={`font-bold text-lg mb-2 border-b pb-1 flex items-center gap-2 ${CATEGORY_MAP[cat].textColor}`}>{CATEGORY_MAP[cat].label}</h3>
+              <table className="w-full text-sm text-left">
+                <thead><tr className="text-gray-500 text-xs border-b"><th className="w-8 py-1">Check</th><th className="py-1">รายการ</th><th className="w-16 py-1 text-center">จำนวน</th><th className="w-32 py-1">เก็บไว้ที่</th></tr></thead>
+                <tbody>
+                  {itemsInCategory.map(item => (
+                    <tr key={item.id} className="border-b border-gray-100">
+                      <td className="py-2 align-top">
+                          {item.isChecked 
+                            ? <div className="w-5 h-5 border border-black rounded-sm flex items-center justify-center bg-green-100 text-green-800 text-xs">✓</div>
+                            : <div className="w-5 h-5 border border-gray-400 rounded-sm"></div>
+                          }
+                      </td>
+                      <td className="py-2 pr-2 align-top">
+                        <div className={`font-bold ${item.isChecked ? 'line-through text-gray-400' : 'text-gray-800'}`}>{item.name}</div>
+                        {item.advice && <div className="text-[10px] text-gray-500 mt-0.5 leading-tight">{item.advice}</div>}
+                      </td>
+                      <td className="py-2 text-center font-bold align-top pt-2">{item.calculatedQty} <span className="text-[10px] font-normal text-gray-400 block">{item.unit}</span></td>
+                      <td className="py-2 align-top"><div className="border-b border-gray-300 h-6 w-full mt-1"></div></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-8 pt-4 border-t-2 border-gray-300 text-center text-xs text-gray-400">Created by {author} | Generated on {date}</div>
+    </div>
+  );
+};
+
+// --- Helper Components ---
+const EmergencyModal = ({ onClose }: { onClose: () => void }) => (
+  <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="p-6 border-b sticky top-0 bg-white z-10 flex justify-between items-center">
+        <h2 className="text-2xl font-bold flex items-center gap-2 text-slate-800"><PhoneCall className="text-red-600" /> เบอร์ฉุกเฉิน & เว็บไซต์สำคัญ</h2>
+        <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition"><X /></button>
+      </div>
+      <div className="p-6 space-y-6">
+        <div>
+          <h3 className="text-lg font-bold text-blue-800 mb-3 flex items-center gap-2"><MapPin className="w-5 h-5" /> จังหวัดสมุทรปราการ</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <ContactCard title="แจ้งเหตุสาธารณภัย (ปภ.)" number="02-382-6040" />
+            <ContactCard title="มูลนิธิร่วมกตัญญู (บางพลี)" number="02-751-0951" />
+            <ContactCard title="สสจ. สมุทรปราการ" number="02-389-5980" />
+            <ContactCard title="ตำรวจภูธรจังหวัด" number="02-390-2216" />
+          </div>
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-slate-700 mb-3">📞 สายด่วนส่วนกลาง</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <ContactCard title="เจ็บป่วยฉุกเฉิน" number="1669" simple />
+            <ContactCard title="เหตุด่วนเหตุร้าย" number="191" simple />
+            <ContactCard title="ดับเพลิง/กู้ภัย" number="199" simple />
+            <ContactCard title="ตำรวจท่องเที่ยว" number="1155" simple />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const MapModal = ({ onClose }: { onClose: () => void }) => {
+  const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const getLocation = () => {
+    setLoading(true); setError('');
+    if (!navigator.geolocation) { setError('Browser ไม่รองรับ Geolocation'); setLoading(false); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setLoading(false); },
+      (err) => { setError('ไม่สามารถระบุพิกัดได้: ' + err.message); setLoading(false); }
+    );
+  };
+  const openGoogleMaps = () => {
+    if (coords) window.open(`https://www.google.com/maps/search/rescue+unit/@${coords.lat},${coords.lng},13z`, '_blank');
+    else window.open(`https://www.google.com/maps/search/rescue+unit+near+me`, '_blank');
+  };
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm text-center p-6">
+        <div className="flex justify-end"><button onClick={onClose}><X className="text-gray-400 hover:text-gray-800" /></button></div>
+        <div className="mb-4 flex justify-center"><div className="bg-red-100 p-4 rounded-full"><Crosshair className="w-8 h-8 text-red-600" /></div></div>
+        <h3 className="text-xl font-bold text-slate-800 mb-2">พิกัดของคุณ & กู้ภัยใกล้เคียง</h3>
+        {coords && <div className="bg-slate-100 p-3 rounded-lg mb-4 text-sm font-mono text-slate-600">Lat: {coords.lat.toFixed(5)} <br/> Long: {coords.lng.toFixed(5)}</div>}
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+        <div className="space-y-3">
+          {!coords && <button onClick={getLocation} disabled={loading} className="w-full bg-slate-800 text-white py-3 rounded-xl font-bold hover:bg-slate-900 transition flex items-center justify-center gap-2">{loading ? 'กำลังค้นหา...' : <><Navigation className="w-4 h-4" /> กดเพื่อระบุพิกัดฉัน</>}</button>}
+          <button onClick={openGoogleMaps} className={`w-full py-3 rounded-xl font-bold border-2 flex items-center justify-center gap-2 transition ${coords ? 'bg-red-600 text-white border-red-600 hover:bg-red-700' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}><MapPin className="w-4 h-4" /> เปิดแผนที่ค้นหากู้ภัย</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AddItemModal = ({ onClose, onAdd }: { onClose: () => void, onAdd: (item: Item) => void }) => {
+  const [formData, setFormData] = useState<Partial<Item>>({ name: '', category: 'misc', baseQty: 1, unit: 'ชิ้น', isPerPerson: true, isPerDay: false, advice: '', priority: 'medium', disasterTags: ['all'], isChecked: false });
+  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if (!formData.name) return; onAdd({ ...formData as Item, id: `custom_${Date.now()}` }); onClose(); };
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+        <div className="p-6 border-b flex justify-between items-center bg-slate-50 rounded-t-2xl"><h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><PlusCircle className="text-green-600" /> เพิ่มรายการใหม่</h2><button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition"><X /></button></div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div><label className="block text-sm font-semibold text-slate-700 mb-1">ชื่อรายการ</label><input required autoFocus className="w-full p-2 border border-slate-300 rounded-lg outline-none" placeholder="เช่น ยาฆ่าเชื้อ..." value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className="block text-sm font-semibold text-slate-700 mb-1">หมวดหมู่</label><select className="w-full p-2 border border-slate-300 rounded-lg outline-none" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as Category})}>{(Object.keys(CATEGORY_MAP) as Category[]).map(cat => (<option key={cat} value={cat}>{CATEGORY_MAP[cat].label}</option>))}</select></div>
+            <div><label className="block text-sm font-semibold text-slate-700 mb-1">ความสำคัญ</label><select className="w-full p-2 border border-slate-300 rounded-lg outline-none" value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value as any})}><option value="high">จำเป็นมาก</option><option value="medium">ปานกลาง</option><option value="low">เผื่อไว้</option></select></div>
+          </div>
+          <button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl shadow-lg transition active:scale-95">บันทึกรายการ</button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// --- PREVIEW MODAL (NEW) ---
+const PreviewModal = ({ 
+  onClose, 
+  onSave, 
+  isSaving,
+  inventory, 
+  people, 
+  days,
+  disaster,
+  date,
+  author
+}: any) => {
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="bg-slate-100 rounded-2xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="bg-slate-900 text-white p-4 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <Eye className="w-5 h-5 text-blue-400" />
+            <h2 className="font-bold text-lg">ตัวอย่างเอกสาร (Document Preview)</h2>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition"><X /></button>
+        </div>
+
+        {/* Preview Content Area (Scrollable) */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-200 flex justify-center">
+          <div className="shadow-xl">
+             {/* Re-use the PrintableDocument component for visual consistency */}
+             <PrintableDocument 
+               inventory={inventory}
+               people={people}
+               days={days}
+               disaster={disaster}
+               date={date}
+               author={author}
+             />
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="bg-white border-t p-4 flex justify-end gap-3 items-center">
+          <span className="text-xs text-gray-400 mr-auto hidden md:inline">ตรวจสอบความถูกต้องก่อนบันทึก</span>
+          <button onClick={onClose} className="px-6 py-2.5 rounded-lg font-bold text-slate-600 hover:bg-slate-100 transition border border-slate-200">
+            กลับไปแก้ไข
+          </button>
+          <button 
+            onClick={onSave} 
+            disabled={isSaving}
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-lg font-bold shadow-lg shadow-green-200 flex items-center gap-2 transition active:scale-95 disabled:opacity-50"
+          >
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+            Download PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ContactCard = ({ title, number, simple }: { title: string, number: string, simple?: boolean }) => (
+  <div className={`p-3 rounded-lg border border-slate-200 flex flex-col justify-center ${simple ? 'bg-slate-50 text-center' : 'bg-white'}`}>
+    <div className="text-sm text-slate-500 mb-1">{title}</div>
+    <a href={`tel:${number}`} className="text-xl font-bold text-slate-800 hover:text-red-600 transition">{number}</a>
+  </div>
+);
+
+// --- Main Component ---
+export default function SurvivalAppV9() {
+  const [people, setPeople] = useState(3);
+  const [days, setDays] = useState(3);
+  const [disaster, setDisaster] = useState('flood');
+  const [activeTab, setActiveTab] = useState<Category | 'all'>('all');
+  const [inventory, setInventory] = useState<Item[]>(INITIAL_DB);
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
+  
+  // States
+  const [showEmergency, setShowEmergency] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false); // New state for preview
+  const [currentDate, setCurrentDate] = useState('');
+  const [isPrinting, setIsPrinting] = useState(false);
+
+  useEffect(() => {
+    setCurrentDate(new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }));
+    const script = document.createElement('script');
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+    script.async = true;
+    document.body.appendChild(script);
+    return () => { document.body.removeChild(script); }
+  }, []);
+
+  const calculatedInventory = useMemo(() => {
+    return inventory.map(item => {
+      let qty = item.baseQty;
+      if (item.isPerPerson) qty *= people;
+      if (item.isPerDay) qty *= days;
+      let relevanceScore = 1;
+      if (item.disasterTags.includes('all')) relevanceScore = 2;
+      if (item.disasterTags.includes(disaster)) relevanceScore = 3;
+      return { ...item, calculatedQty: Math.ceil(qty), relevanceScore };
+    }).sort((a, b) => b.relevanceScore - a.relevanceScore);
+  }, [people, days, disaster, inventory]);
+
+  const filteredInventory = useMemo(() => {
+    if (activeTab === 'all') return calculatedInventory;
+    return calculatedInventory.filter(i => i.category === activeTab);
+  }, [activeTab, calculatedInventory]);
+
+  const updateQuantity = (id: string, delta: number) => {
+    setInventory(prev => prev.map(item => item.id === id ? { ...item, baseQty: Math.max(0, item.baseQty + delta) } : item));
+  };
+
+  const toggleCheck = (id: string) => {
+    setInventory(prev => prev.map(item => item.id === id ? { ...item, isChecked: !item.isChecked } : item));
+  };
+
+  const handleAddItem = (newItem: Item) => setInventory(prev => [newItem, ...prev]);
+  
+  // Revised Save Logic (triggered from Preview Modal)
+  const handleSavePDF = async () => {
+    setIsPrinting(true);
+    // Use a small timeout to allow UI update
+    setTimeout(async () => {
+      // We can grab the content from the modal itself or the hidden print div
+      // Using the hidden print div is safer for layout consistency
+      const element = document.getElementById('print-content');
+      
+      if (typeof window.html2pdf !== 'undefined' && element) {
+        try {
+          const opt = {
+            margin: 0.2,
+            filename: `Survival_Plan_${new Date().toISOString().split('T')[0]}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, logging: false },
+            jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+          };
+          await window.html2pdf().set(opt).from(element).save();
+          setIsPrinting(false);
+          setShowPreviewModal(false); // Close modal after save
+        } catch (e) {
+          console.error("PDF generation failed", e);
+          window.print();
+          setIsPrinting(false);
+        }
+      } else {
+        window.print();
+        setIsPrinting(false);
+      }
+    }, 500);
+  };
+
+  const selectedDisaster = DISASTER_TYPES.find(d => d.id === disaster);
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-gray-800 font-sans">
+      <style>{`
+        @media print { 
+          @page { margin: 0.5cm; size: A4; } 
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } 
+          .no-print { display: none !important; }
+          .print-only { display: block !important; }
+        }
+      `}</style>
+
+      {/* --- Modals --- */}
+      {showEmergency && <EmergencyModal onClose={() => setShowEmergency(false)} />}
+      {showAddModal && <AddItemModal onClose={() => setShowAddModal(false)} onAdd={handleAddItem} />}
+      {showMapModal && <MapModal onClose={() => setShowMapModal(false)} />}
+      
+      {/* PREVIEW MODAL */}
+      {showPreviewModal && (
+        <PreviewModal 
+          onClose={() => setShowPreviewModal(false)}
+          onSave={handleSavePDF}
+          isSaving={isPrinting}
+          inventory={calculatedInventory}
+          people={people}
+          days={days}
+          disaster={selectedDisaster}
+          date={currentDate}
+          author={APP_INFO.author}
+        />
+      )}
+
+      {/* --- SCREEN VIEW --- */}
+      <div className="no-print">
+        {/* Top Bar */}
+        <div className="bg-slate-900 text-slate-300 py-2 px-6 text-xs flex justify-between items-center">
+          <span>{currentDate} - วางแผนความปลอดภัยสำหรับครอบครัว</span>
+          <div className="flex gap-4"><span>สมุทรปราการ, ประเทศไทย</span></div>
+        </div>
+
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+          <div className="max-w-5xl mx-auto p-4 md:p-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+              <div>
+                <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
+                  <div className="bg-red-600 text-white p-2 rounded-lg"><Shield className="w-6 h-6" /></div>
+                  Disaster Planner
+                </h1>
+                <p className="text-slate-500 mt-1 text-xs md:text-sm">Created by <span className="font-bold text-slate-700">{APP_INFO.author}</span> (v{APP_INFO.version})</p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                 <button onClick={() => setShowMapModal(true)} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-lg font-bold shadow-lg shadow-orange-200 flex items-center gap-2 transition active:scale-95 text-sm md:text-base"><Navigation className="w-4 h-4" /> <span className="hidden md:inline">พิกัด &</span> กู้ภัย</button>
+                 <button onClick={() => setShowEmergency(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-bold shadow-lg shadow-blue-200 flex items-center gap-2 transition active:scale-95 text-sm md:text-base"><PhoneCall className="w-4 h-4" /> ฉุกเฉิน</button>
+                 <button onClick={() => setShowAddModal(true)} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg font-bold shadow-lg shadow-green-200 flex items-center gap-2 transition active:scale-95 text-sm md:text-base"><PlusCircle className="w-4 h-4" /> <span className="hidden md:inline">เพิ่มรายการ</span></button>
+                <button 
+                  onClick={() => setShowPreviewModal(true)} 
+                  className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-lg font-bold shadow-lg shadow-slate-300 flex items-center gap-2 transition active:scale-95 text-sm md:text-base"
+                >
+                  <Eye className="w-4 h-4" /> สรุป & พิมพ์
+                </button>
+              </div>
+            </div>
+
+            {/* Controls Panel */}
+            <div className="bg-slate-100 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-3 gap-4 border border-slate-200">
+              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">จำนวนสมาชิก</label>
+                <div className="flex items-center gap-3"><div className="bg-blue-100 p-2 rounded-lg text-blue-600"><Users className="w-5 h-5" /></div><input type="number" min="1" value={people} onChange={(e) => setPeople(parseInt(e.target.value) || 1)} className="w-full font-bold text-xl text-slate-700 outline-none" /><span className="text-sm text-slate-400 font-medium">คน</span></div>
+              </div>
+              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">ระยะเวลา</label>
+                <div className="flex items-center gap-3"><div className="bg-orange-100 p-2 rounded-lg text-orange-600"><Calendar className="w-5 h-5" /></div><input type="number" min="1" value={days} onChange={(e) => setDays(parseInt(e.target.value) || 1)} className="w-full font-bold text-xl text-slate-700 outline-none" /><span className="text-sm text-slate-400 font-medium">วัน</span></div>
+              </div>
+              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm relative group">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">สถานการณ์</label>
+                <div className="flex items-center gap-2"><div className="bg-red-100 p-2 rounded-lg text-red-600"><AlertTriangle className="w-5 h-5" /></div><select value={disaster} onChange={(e) => setDisaster(e.target.value)} className="w-full font-bold text-slate-700 outline-none bg-transparent appearance-none cursor-pointer z-10">{DISASTER_TYPES.map(d => (<option key={d.id} value={d.id}>{d.label}</option>))}</select><ChevronDown className="absolute right-4 text-slate-400 pointer-events-none" /></div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-5xl mx-auto p-4 md:p-6 pb-24">
+          <div className="flex flex-wrap gap-2 mb-6 justify-center md:justify-start">
+            <button onClick={() => setActiveTab('all')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 shadow-sm ${activeTab === 'all' ? 'bg-slate-800 text-white shadow-lg scale-105' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'}`}>ทั้งหมด</button>
+            {(Object.keys(CATEGORY_MAP) as Category[]).map((cat) => {
+              const isActive = activeTab === cat;
+              const style = CATEGORY_MAP[cat];
+              return (
+                <button key={cat} onClick={() => setActiveTab(cat)} className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 flex items-center gap-2 border ${isActive ? `bg-gradient-to-r ${style.fromColor} ${style.toColor} text-white shadow-lg scale-105 border-transparent` : 'bg-white text-slate-600 hover:bg-slate-50 border-slate-200 grayscale hover:grayscale-0'}`}>
+                  {style.icon} <span className="hidden md:inline">{style.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="space-y-3">
+            {filteredInventory.map((item) => {
+              const isRelevant = item.disasterTags.includes(disaster) || item.disasterTags.includes('all');
+              const isExpanded = expandedItem === item.id;
+              const categoryStyle = CATEGORY_MAP[item.category];
+
+              return (
+                <div key={item.id} className={`bg-white rounded-2xl shadow-sm border transition-all duration-200 overflow-hidden ${isRelevant ? 'border-l-8 border-l-red-500 ring-1 ring-red-100' : 'border-slate-100 opacity-90 hover:opacity-100'} ${item.isChecked ? 'bg-green-50 ring-1 ring-green-200' : ''}`}>
+                  <div className="p-4 flex items-center gap-4">
+                    <button onClick={() => toggleCheck(item.id)} className="shrink-0 text-gray-400 hover:text-green-500 transition">
+                      {item.isChecked ? <CheckCircle2 className="w-6 h-6 text-green-500" /> : <Square className="w-6 h-6" />}
+                    </button>
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 bg-gradient-to-br ${categoryStyle.fromColor} ${categoryStyle.toColor} text-white shadow-md`}>{categoryStyle.icon}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className={`font-bold text-lg truncate ${item.isChecked ? 'text-green-800 line-through decoration-slate-400' : 'text-slate-800'}`}>{item.name}</h3>
+                        {isRelevant && !item.isChecked && <span className="px-2 py-0.5 bg-red-50 text-red-600 text-[10px] rounded-full font-bold border border-red-100 tracking-wide uppercase">Priority</span>}
+                      </div>
+                      <p className="text-xs md:text-sm text-slate-500 font-medium">{item.isPerPerson ? 'ต่อคน' : 'ส่วนกลาง'} {item.isPerDay && ' • ต่อวัน'} {' '}| ฐาน: {item.baseQty} {item.unit}</p>
+                    </div>
+                    <div className="flex items-center gap-1 md:gap-3 bg-slate-50 rounded-xl p-1.5 border border-slate-100">
+                      <button onClick={() => updateQuantity(item.id, -0.5)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white shadow-sm hover:bg-red-50 text-slate-600 hover:text-red-500 transition active:scale-90"><Minus className="w-4 h-4" /></button>
+                      <div className="text-center min-w-[3rem]"><span className="block font-black text-xl text-slate-800 leading-none">{item.calculatedQty}</span><span className="text-[10px] text-slate-400 font-bold">{item.unit}</span></div>
+                      <button onClick={() => updateQuantity(item.id, 0.5)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white shadow-sm hover:bg-green-50 text-slate-600 hover:text-green-500 transition active:scale-90"><Plus className="w-4 h-4" /></button>
+                    </div>
+                    <button onClick={() => setExpandedItem(isExpanded ? null : item.id)} className={`p-2 rounded-full transition ${isExpanded ? 'bg-slate-100 text-slate-800' : 'text-slate-300 hover:text-slate-500'}`}>{isExpanded ? <ChevronUp /> : <ChevronDown />}</button>
+                  </div>
+                  {isExpanded && (
+                    <div className="bg-slate-50 p-4 border-t border-slate-100 animate-in slide-in-from-top-1">
+                      <div className="flex gap-3">
+                        <div className="mt-1"><Info className="w-5 h-5 text-blue-500" /></div>
+                        <div><h4 className="font-bold text-slate-700 text-sm mb-1">คำแนะนำผู้เชี่ยวชาญ:</h4><p className="text-slate-600 text-sm leading-relaxed">{item.advice}</p></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-8 text-center text-slate-400 text-sm">Created by <span className="font-bold">{APP_INFO.author}</span> (v{APP_INFO.version}) | {APP_INFO.createdDate}</div>
+        </main>
+      </div>
+
+      {/* --- PRINT CONTENT (Hidden, used by html2pdf) --- */}
+      {/* We keep this hidden block as the source of truth for PDF generation to ensure clean styling regardless of screen state */}
+      <div 
+        id="print-content" 
+        className="fixed top-0 left-0 z-[-1] pointer-events-none opacity-0"
+        style={{ width: '210mm', minHeight: '297mm' }}
+      >
+         <PrintableDocument 
+           inventory={calculatedInventory}
+           people={people}
+           days={days}
+           disaster={selectedDisaster}
+           date={currentDate}
+           author={APP_INFO.author}
+         />
+      </div>
+    </div>
+  );
+}
