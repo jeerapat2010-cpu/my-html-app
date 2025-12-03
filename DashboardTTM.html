@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KPI Dashboard 69 - Interactive</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 1. Load React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    
+    <!-- 2. Load Prop-Types (Required for Recharts UMD) -->
+    <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+
+    <!-- 3. Load Recharts -->
+    <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+    
+    <!-- 4. Babel for JSX parsing -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f8fafc;
+        }
+        
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+        const { 
+            Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, 
+            ResponsiveContainer, Tooltip: RechartsTooltip, Legend 
+        } = window.Recharts;
+
+        // --- INTERNAL ICON COMPONENTS (To ensure stability on GitHub Pages) ---
+        const IconBase = ({ children, size = 24, className = "" }) => (
+            <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width={size} 
+                height={size} 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className={className}
+            >
+                {children}
+            </svg>
+        );
+
+        const Activity = (props) => (
+            <IconBase {...props}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></IconBase>
+        );
+        const Users = (props) => (
+            <IconBase {...props}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></IconBase>
+        );
+        const FileText = (props) => (
+            <IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></IconBase>
+        );
+        const Calendar = (props) => (
+            <IconBase {...props}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></IconBase>
+        );
+        const Target = (props) => (
+            <IconBase {...props}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></IconBase>
+        );
+        const Save = (props) => (
+            <IconBase {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></IconBase>
+        );
+        const Edit2 = (props) => (
+            <IconBase {...props}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></IconBase>
+        );
+        const Plus = (props) => (
+            <IconBase {...props}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></IconBase>
+        );
+        const ChevronDown = (props) => (
+            <IconBase {...props}><polyline points="6 9 12 15 18 9"/></IconBase>
+        );
+        const ChevronUp = (props) => (
+            <IconBase {...props}><polyline points="18 15 12 9 6 15"/></IconBase>
+        );
+        const TrendingUp = (props) => (
+            <IconBase {...props}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></IconBase>
+        );
+        const BarChart3 = (props) => (
+            <IconBase {...props}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></IconBase>
+        );
+        const CheckCircle2 = (props) => (
+            <IconBase {...props}><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></IconBase>
+        );
+        const AlertCircle = (props) => (
+            <IconBase {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></IconBase>
+        );
+        const Clock = (props) => (
+            <IconBase {...props}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></IconBase>
+        );
+        const MapPin = (props) => (
+            <IconBase {...props}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></IconBase>
+        );
+        const User = (props) => (
+            <IconBase {...props}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconBase>
+        );
+        const LayoutGrid = (props) => (
+            <IconBase {...props}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></IconBase>
+        );
+        const Layers = (props) => (
+            <IconBase {...props}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></IconBase>
+        );
+        const PieChart = (props) => (
+            <IconBase {...props}><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></IconBase>
+        );
+
+        // --- Data Configuration ---
+        const DISTRICTS = [
+            { id: 'muang', name: 'เมืองฯ', full: 'อ.เมืองสมุทรปราการ', color: '#3b82f6' },
+            { id: 'bangbo', name: 'บางบ่อ', full: 'อ.บางบ่อ', color: '#ec4899' },
+            { id: 'bangphli', name: 'บางพลี', full: 'อ.บางพลี', color: '#8b5cf6' },
+            { id: 'phrapradaeng', name: 'พระประแดง', full: 'อ.พระประแดง', color: '#f97316' },
+            { id: 'phrasamut', name: 'พระสมุทรฯ', full: 'อ.พระสมุทรเจดีย์', color: '#10b981' },
+            { id: 'bangsaothong', name: 'บางเสาธง', full: 'อ.บางเสาธง', color: '#06b6d4' }
+        ];
+
+        const INITIAL_DATA = [
+            {
+                id: 1,
+                category: "Flagship",
+                title: "นวด 7 ด้าน",
+                detail: "การเก็บข้อมูลเอง จำนวนผู้เข้ารับการอบรม / สอบข้อเขียน/สอบปฏิบัติ/เก็บเคส 20",
+                target_desc: "เสร็จสิ้นก่อน 30 ธ.ค. 68",
+                provincial_owner: "มัทนา",
+                district_owners: { muang: "", bangphli: "", bangbo: "", phrapradaeng: "", phrasamut: "", bangsaothong: "" },
+                cycle: "ทุกสัปดาห์",
+                districts_data: { muang: 0, bangphli: 0, bangbo: 0, phrapradaeng: 0, phrasamut: 0, bangsaothong: 0 },
+                target_value: 20, 
+                progress_history: []
+            },
+            {
+                id: 2,
+                category: "KPI กระทรวง/กรม",
+                title: "ร้อยละผู้รับบริการแพทย์แผนไทย (ปฐมภูมิ)",
+                detail: "ตัวชี้วัดที่ 14 ร้อยละของประชาชนที่มารับบริการในระดับปฐมภูมิได้รับการรักษาด้วยการแพทย์แผนไทยฯ",
+                target_desc: "เกณฑ์ร้อยละ 50",
+                provincial_owner: "ขจีวรรณ",
+                district_owners: { muang: "", bangphli: "", bangbo: "", phrapradaeng: "", phrasamut: "", bangsaothong: "" },
+                cycle: "ทุกเดือน/ไตรมาส",
+                districts_data: { muang: 0, bangphli: 0, bangbo: 0, phrapradaeng: 0, phrasamut: 0, bangsaothong: 0 },
+                target_value: 50,
+                progress_history: []
+            },
+            {
+                id: 3,
+                category: "KPI กระทรวง/กรม",
+                title: "มูลค่าการใช้ยาแผนไทย (UC)",
+                detail: "มูลค่าการใช้ยาแผนไทย ในผู้ป่วย UC (บาท)",
+                target_desc: "ไม่ต่ำกว่าร้อยละ 5",
+                provincial_owner: "ขจีวรรณ",
+                district_owners: { muang: "", bangphli: "", bangbo: "", phrapradaeng: "", phrasamut: "", bangsaothong: "" },
+                cycle: "ทุกเดือน/ไตรมาส",
+                districts_data: { muang: 0, bangphli: 0, bangbo: 0, phrapradaeng: 0, phrasamut: 0, bangsaothong: 0 },
+                target_value: 5,
+                progress_history: []
+            },
+            {
+                id: 4,
+                category: "KPI กระทรวง/กรม",
+                title: "Service Plan กัญชา",
+                detail: "PC ใช้กัญชาไม่ต่ำกว่าร้อยละ 5",
+                target_desc: "ร้อยละ 5",
+                provincial_owner: "จีรภัทร",
+                district_owners: { muang: "", bangphli: "", bangbo: "", phrapradaeng: "", phrasamut: "", bangsaothong: "" },
+                cycle: "ทุกเดือน/ไตรมาส",
+                districts_data: { muang: 0, bangphli: 0, bangbo: 0, phrapradaeng: 0, phrasamut: 0, bangsaothong: 0 },
+                target_value: 5,
+                progress_history: []
+            },
+            {
+                id: 5,
+                category: "งบประมาณ/ผลงาน",
+                title: "การเบิกจ่าย / สปสช.",
+                detail: "ติดตามข้อมูลจากงานประกัน",
+                target_desc: "ตามเป้าหมายงวดงาน",
+                provincial_owner: "ขจีวรรณ/พัชรา",
+                district_owners: { muang: "", bangphli: "", bangbo: "", phrapradaeng: "", phrasamut: "", bangsaothong: "" },
+                cycle: "รายเดือน/ไตรมาส",
+                districts_data: { muang: 0, bangphli: 0, bangbo: 0, phrapradaeng: 0, phrasamut: 0, bangsaothong: 0 },
+                target_value: 100,
+                progress_history: []
+            },
+            {
+                id: 6,
+                category: "งบประมาณ/ผลงาน",
+                title: "การตรวจสอบยอด OP PP",
+                detail: "OP/PP Individual Records",
+                target_desc: "ตรวจสอบความถูกต้อง",
+                provincial_owner: "ขจีวรรณ/พัชรา",
+                district_owners: { muang: "", bangphli: "", bangbo: "", phrapradaeng: "", phrasamut: "", bangsaothong: "" },
+                cycle: "รายเดือน/ไตรมาส",
+                districts_data: { muang: 0, bangphli: 0, bangbo: 0, phrapradaeng: 0, phrasamut: 0, bangsaothong: 0 },
+                target_value: 100,
+                progress_history: []
+            },
+            {
+                id: 7,
+                category: "งบประมาณ/ผลงาน",
+                title: "E-Claim",
+                detail: "ข้อมูลจากโรงพยาบาล",
+                target_desc: "ส่งเบิกทันเวลา",
+                provincial_owner: "ขจีวรรณ/พัชรา",
+                district_owners: { muang: "", bangphli: "", bangbo: "", phrapradaeng: "", phrasamut: "", bangsaothong: "" },
+                cycle: "รายเดือน/ไตรมาส",
+                districts_data: { muang: 0, bangphli: 0, bangbo: 0, phrapradaeng: 0, phrasamut: 0, bangsaothong: 0 },
+                target_value: 100,
+                progress_history: []
+            },
+            {
+                id: 8,
+                category: "งานอื่นๆ",
+                title: "เตรียมรับการประเมิน รพ สส พท",
+                detail: "เตรียมความพร้อมมาตรฐาน",
+                target_desc: "ผ่านเกณฑ์ประเมิน",
+                provincial_owner: "กานต์รวี",
+                district_owners: { muang: "", bangphli: "", bangbo: "", phrapradaeng: "", phrasamut: "", bangsaothong: "" },
+                cycle: "รอบประเมิน",
+                districts_data: { muang: 0, bangphli: 0, bangbo: 0, phrapradaeng: 0, phrasamut: 0, bangsaothong: 0 },
+                target_value: 100,
+                progress_history: []
+            },
+            {
+                id: 9,
+                category: "งานอื่นๆ",
+                title: "ผลงานนวัตกรรม",
+                detail: "การพัฒนาและสร้างสรรค์นวัตกรรม",
+                target_desc: "มีผลงานนำเสนอ",
+                provincial_owner: "กานต์รวี",
+                district_owners: { muang: "", bangphli: "", bangbo: "", phrapradaeng: "", phrasamut: "", bangsaothong: "" },
+                cycle: "รอบประเมิน",
+                districts_data: { muang: 0, bangphli: 0, bangbo: 0, phrapradaeng: 0, phrasamut: 0, bangsaothong: 0 },
+                target_value: 1,
+                progress_history: []
+            },
+            {
+                id: 10,
+                category: "งานอื่นๆ",
+                title: "พื้นที่ต้นแบบ",
+                detail: "การพัฒนาพื้นที่ต้นแบบด้านสมุนไพร/แพทย์แผนไทย",
+                target_desc: "ผ่านเกณฑ์คัดเลือก",
+                provincial_owner: "เบญ",
+                district_owners: { muang: "", bangphli: "", bangbo: "", phrapradaeng: "", phrasamut: "", bangsaothong: "" },
+                cycle: "รอบประกวด",
+                districts_data: { muang: 0, bangphli: 0, bangbo: 0, phrapradaeng: 0, phrasamut: 0, bangsaothong: 0 },
+                target_value: 1,
+                progress_history: []
+            }
+        ];
+
+        // --- Main Component ---
+        const KPIDashboard = () => {
+            const [items, setItems] = useState(INITIAL_DATA);
+            const [expandedId, setExpandedId] = useState(null);
+            const [chartView, setChartView] = useState('summary'); // 'summary', 'category', 'items'
+
+            // --- Handlers ---
+            const toggleExpand = (id) => {
+                setExpandedId(expandedId === id ? null : id);
+            };
+
+            const updateDistrictOwner = (itemId, districtKey, newName) => {
+                setItems(items.map(item => {
+                    if (item.id === itemId) {
+                        return {
+                            ...item,
+                            district_owners: {
+                                ...item.district_owners,
+                                [districtKey]: newName
+                            }
+                        };
+                    }
+                    return item;
+                }));
+            };
+
+            const updateDistrictData = (id, districtKey, value) => {
+                setItems(items.map(item => {
+                    if (item.id === id) {
+                        return {
+                            ...item,
+                            districts_data: {
+                                ...item.districts_data,
+                                [districtKey]: Number(value)
+                            }
+                        };
+                    }
+                    return item;
+                }));
+            };
+
+            const addProgress = (id, month, note) => {
+                if (!note.trim()) return;
+                setItems(items.map(item => {
+                    if (item.id === id) {
+                        return {
+                            ...item,
+                            progress_history: [
+                                ...item.progress_history,
+                                { date: new Date().toISOString(), month, note }
+                            ]
+                        };
+                    }
+                    return item;
+                }));
+            };
+
+            // --- Dashboard Calculation ---
+            const dashboardStats = useMemo(() => {
+                let districtTotal = { muang: 0, bangphli: 0, bangbo: 0, phrapradaeng: 0, phrasamut: 0, bangsaothong: 0 };
+                let categories = ["Flagship", "KPI กระทรวง/กรม", "งบประมาณ/ผลงาน", "งานอื่นๆ"];
+                let districtCategoryScores = {};
+                categories.forEach(cat => {
+                    districtCategoryScores[cat] = { muang: 0, bangphli: 0, bangbo: 0, phrapradaeng: 0, phrasamut: 0, bangsaothong: 0 };
+                });
+
+                items.forEach(item => {
+                    Object.keys(districtTotal).forEach(key => {
+                        const val = item.districts_data[key];
+                        districtTotal[key] += val;
+                        
+                        const catKey = categories.find(c => item.category.includes(c.split(' ')[0])) || "งานอื่นๆ";
+                        if(districtCategoryScores[catKey]) {
+                            let score = val;
+                            if (item.target_value > 0 && item.target_value < 1000) { 
+                                score = (val / item.target_value) * 10; 
+                            }
+                            districtCategoryScores[catKey][key] += score;
+                        }
+                    });
+                });
+
+                const summaryChartData = DISTRICTS.map(d => ({
+                    subject: d.name,
+                    A: districtTotal[d.id],
+                    fullMark: 1000 
+                }));
+
+                const categoryChartData = DISTRICTS.map(d => {
+                    let obj = { subject: d.name, fullMark: 100 };
+                    categories.forEach(cat => {
+                        obj[cat] = districtCategoryScores[cat][d.id];
+                    });
+                    return obj;
+                });
+
+                return { 
+                    totalItems: items.length, 
+                    summaryChartData, 
+                    categoryChartData,
+                    categories 
+                };
+            }, [items]);
+
+            return (
+                <div className="min-h-screen bg-slate-50 font-sans pb-20">
+                
+                    {/* 1. Header & Dashboard */}
+                    <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white pb-16 pt-8 px-4 shadow-xl">
+                        <div className="max-w-6xl mx-auto">
+                            {/* Top Bar */}
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+                                <div>
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="p-2 bg-blue-500/20 rounded-lg backdrop-blur-sm border border-blue-400/30">
+                                            <Activity size={24} className="text-blue-400" />
+                                        </div>
+                                        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-200 to-white">
+                                            Dashboard 69
+                                        </h1>
+                                    </div>
+                                    <p className="text-slate-400 text-sm pl-1">ระบบติดตามงานสาธารณสุขอำเภอ ปีงบประมาณ 2569</p>
+                                </div>
+                            </div>
+
+                            {/* Chart Controls */}
+                            <div className="flex flex-wrap gap-2 mb-6">
+                                <button 
+                                    onClick={() => setChartView('summary')}
+                                    className={`px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 transition-all ${chartView === 'summary' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'bg-white/10 text-slate-300 hover:bg-white/20'}`}
+                                >
+                                    <PieChart size={16} /> ภาพรวม (Total)
+                                </button>
+                                <button 
+                                    onClick={() => setChartView('category')}
+                                    className={`px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 transition-all ${chartView === 'category' ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30' : 'bg-white/10 text-slate-300 hover:bg-white/20'}`}
+                                >
+                                    <Layers size={16} /> เปรียบเทียบรายด้าน (Category)
+                                </button>
+                                <button 
+                                    onClick={() => setChartView('items')}
+                                    className={`px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 transition-all ${chartView === 'items' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-white/10 text-slate-300 hover:bg-white/20'}`}
+                                >
+                                    <LayoutGrid size={16} /> แยกรายตัวชี้วัด (Gallery)
+                                </button>
+                            </div>
+
+                            {/* Diagram Area */}
+                            <div className="bg-white/5 rounded-2xl p-6 border border-white/10 backdrop-blur-sm min-h-[400px] relative overflow-hidden transition-all duration-500">
+                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+                                
+                                {/* VIEW 1: SUMMARY */}
+                                {chartView === 'summary' && (
+                                    <div className="animate-in fade-in zoom-in duration-300 h-[300px] w-full">
+                                        <h3 className="text-center text-slate-300 mb-2">สรุปผลการดำเนินงานรวม (Total Performance)</h3>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={dashboardStats.summaryChartData}>
+                                                <PolarGrid stroke="#475569" />
+                                                <PolarAngleAxis dataKey="subject" tick={{ fill: '#e2e8f0', fontSize: 12 }} />
+                                                <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} axisLine={false} />
+                                                <Radar name="Total Score" dataKey="A" stroke="#3b82f6" strokeWidth={3} fill="#3b82f6" fillOpacity={0.4} />
+                                                <RechartsTooltip contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', borderRadius: '8px', color: '#fff' }} />
+                                            </RadarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                )}
+
+                                {/* VIEW 2: CATEGORY OVERLAY */}
+                                {chartView === 'category' && (
+                                    <div className="animate-in fade-in zoom-in duration-300 h-[300px] w-full">
+                                        <h3 className="text-center text-slate-300 mb-2">เปรียบเทียบผลงานแยกรายด้าน (Category Breakdown)</h3>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={dashboardStats.categoryChartData}>
+                                                <PolarGrid stroke="#475569" />
+                                                <PolarAngleAxis dataKey="subject" tick={{ fill: '#e2e8f0', fontSize: 12 }} />
+                                                <PolarRadiusAxis angle={30} tick={false} axisLine={false} />
+                                                {dashboardStats.categories.map((cat, idx) => {
+                                                    const colors = ["#f97316", "#8b5cf6", "#10b981", "#06b6d4"];
+                                                    return (
+                                                        <Radar key={cat} name={cat} dataKey={cat} stroke={colors[idx % colors.length]} strokeWidth={2} fill={colors[idx % colors.length]} fillOpacity={0.1} />
+                                                    );
+                                                })}
+                                                <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                                <RechartsTooltip contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', borderRadius: '8px', color: '#fff' }} />
+                                            </RadarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                )}
+
+                                {/* VIEW 3: ITEM GALLERY (IMPROVED with Labels) */}
+                                {chartView === 'items' && (
+                                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                        <h3 className="text-center text-slate-300 mb-6">รายละเอียดรายตัวชี้วัด (Individual KPIs)</h3>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                                            {items.map((item) => {
+                                                // Prepare mini chart data
+                                                const miniData = DISTRICTS.map(d => ({
+                                                    subject: d.name,
+                                                    displayLabel: `${d.name} ${item.districts_data[d.id]}`, 
+                                                    score: item.districts_data[d.id],
+                                                    fullMark: Math.max(item.target_value, 100)
+                                                }));
+                                                
+                                                return (
+                                                    <div key={item.id} className="bg-white/5 rounded-lg p-3 border border-white/10 hover:bg-white/10 transition-colors">
+                                                        <div className="h-[180px] w-full"> 
+                                                            <ResponsiveContainer width="100%" height="100%">
+                                                                <RadarChart cx="50%" cy="50%" outerRadius="65%" data={miniData}>
+                                                                    <PolarGrid stroke="#475569" strokeWidth={0.5} />
+                                                                    <PolarAngleAxis 
+                                                                        dataKey="displayLabel" 
+                                                                        tick={{ fill: '#cbd5e1', fontSize: 9 }} 
+                                                                    />
+                                                                    <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} axisLine={false} />
+                                                                    <Radar dataKey="score" stroke="#38bdf8" strokeWidth={1} fill="#38bdf8" fillOpacity={0.5} />
+                                                                    <RechartsTooltip contentStyle={{ backgroundColor: '#0f172a', fontSize: '10px', padding: '5px' }} />
+                                                                </RadarChart>
+                                                            </ResponsiveContainer>
+                                                        </div>
+                                                        <p className="text-[10px] text-center text-slate-300 mt-1 truncate font-medium border-t border-slate-700 pt-2">{item.title}</p>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 2. Main List Area */}
+                    <div className="max-w-6xl mx-auto px-4 -mt-8 relative z-10 space-y-6">
+                        
+                        {items.map((item) => (
+                            <div key={item.id} className={`bg-white rounded-xl shadow-lg border transition-all duration-300 ${expandedId === item.id ? 'border-blue-300 ring-2 ring-blue-100 shadow-xl' : 'border-slate-100 hover:border-blue-200'}`}>
+                                
+                                {/* Item Header */}
+                                <div 
+                                    className="p-5 flex flex-col md:flex-row gap-4 justify-between items-start md:items-center cursor-pointer"
+                                    onClick={() => toggleExpand(item.id)}
+                                >
+                                    <div className="flex items-start gap-4 flex-1">
+                                        <div className={`mt-1 p-3 rounded-xl shrink-0 shadow-sm ${
+                                            item.category.includes('Flagship') ? 'bg-gradient-to-br from-orange-100 to-red-100 text-orange-600' : 
+                                            item.category.includes('งบประมาณ') ? 'bg-gradient-to-br from-green-100 to-emerald-100 text-green-600' : 'bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-600'
+                                        }`}>
+                                            {item.category.includes('Flagship') ? <Target size={24} /> : <FileText size={24} />}
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 uppercase tracking-wide border border-slate-200">
+                                                    {item.category}
+                                                </span>
+                                                <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                                                    <Clock size={10} /> {item.cycle}
+                                                </span>
+                                            </div>
+                                            <h3 className="text-lg font-bold text-slate-800 mb-1">{item.title}</h3>
+                                            <p className="text-sm text-slate-500 line-clamp-1">{item.detail}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-100 pt-4 md:pt-0 mt-2 md:mt-0">
+                                        <div className="text-right hidden md:block">
+                                            <p className="text-xs text-slate-400">เป้าหมาย</p>
+                                            <span className="inline-block px-2 py-1 bg-slate-50 rounded text-sm font-semibold text-slate-700 border border-slate-100">
+                                                {item.target_desc}
+                                            </span>
+                                        </div>
+                                        <div className={`p-2 rounded-full transition-colors ${expandedId === item.id ? 'bg-blue-50 text-blue-600' : 'text-slate-300'}`}>
+                                            {expandedId === item.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Expanded Details */}
+                                {expandedId === item.id && (
+                                    <div className="border-t border-slate-100 bg-slate-50/50 p-6 animate-in slide-in-from-top-2 duration-300 ease-out">
+                                        
+                                        {/* Section A: Details & Responsibility Grid */}
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                                            <div className="lg:col-span-1">
+                                                <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                                                    <FileText size={16} /> รายละเอียดและเกณฑ์
+                                                </h4>
+                                                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                                                    <p className="text-slate-600 text-sm leading-relaxed">{item.detail}</p>
+                                                    <div className="pt-3 border-t border-slate-100">
+                                                        <p className="text-xs text-slate-400 mb-1">ผู้รับผิดชอบ (จังหวัด)</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs">
+                                                                <User size={12} />
+                                                            </div>
+                                                            <p className="font-semibold text-slate-700 text-sm">{item.provincial_owner}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="lg:col-span-2">
+                                                <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                                                    <Users size={16} /> ผู้รับผิดชอบรายอำเภอ (แก้ไขได้)
+                                                </h4>
+                                                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                                        {DISTRICTS.map((dist) => (
+                                                            <div key={dist.id} className="relative group">
+                                                                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block pl-1">
+                                                                    {dist.name}
+                                                                </label>
+                                                                <input 
+                                                                    type="text"
+                                                                    className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all"
+                                                                    placeholder={`ผู้รับผิดชอบ ${dist.name}`}
+                                                                    value={item.district_owners[dist.id]}
+                                                                    onChange={(e) => updateDistrictOwner(item.id, dist.id, e.target.value)}
+                                                                />
+                                                                <div className="absolute right-2 top-[26px] pointer-events-none opacity-50">
+                                                                    <Edit2 size={10} className="text-slate-400" />
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Section B: District Performance Input */}
+                                        <div className="mb-8">
+                                            <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                                                <Target size={16} /> ผลการดำเนินงานรายอำเภอ (เป้าหมาย: <span className="text-blue-600">{item.target_desc}</span>)
+                                            </h4>
+                                            <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+                                                <table className="w-full text-sm text-left">
+                                                    <thead className="text-xs text-slate-500 uppercase bg-slate-100/80">
+                                                        <tr>
+                                                            {DISTRICTS.map(d => (
+                                                                <th key={d.id} className="px-4 py-3 min-w-[100px] text-center font-semibold">{d.name}</th>
+                                                            ))}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="bg-white divide-x divide-slate-100">
+                                                        <tr>
+                                                            {DISTRICTS.map(d => (
+                                                                <td key={d.id} className="p-3 text-center align-top">
+                                                                    <div className="flex flex-col items-center gap-2">
+                                                                        <input 
+                                                                            type="number" 
+                                                                            className={`w-full text-center p-2 rounded-lg border focus:ring-2 outline-none transition-all font-medium ${
+                                                                                item.districts_data[d.id] >= item.target_value && item.target_value > 0
+                                                                                ? 'border-green-300 bg-green-50 text-green-700 ring-green-100' 
+                                                                                : 'border-slate-200 bg-white focus:border-blue-400 focus:ring-blue-100'
+                                                                            }`}
+                                                                            value={item.districts_data[d.id] || ''}
+                                                                            placeholder="0"
+                                                                            onChange={(e) => updateDistrictData(item.id, d.id, e.target.value)}
+                                                                        />
+                                                                        {item.target_value > 0 && item.districts_data[d.id] >= item.target_value && (
+                                                                            <div className="flex items-center gap-1 px-2 py-0.5 bg-green-100 rounded-full">
+                                                                                <CheckCircle2 size={10} className="text-green-600" />
+                                                                                <span className="text-[10px] text-green-700 font-bold">ผ่านเกณฑ์</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                            ))}
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        {/* Section C: Monthly Progress Timeline */}
+                                        <div>
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                                    <TrendingUp size={16} /> ความก้าวหน้าประจำเดือน
+                                                </h4>
+                                            </div>
+
+                                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                                {/* Add New Progress Form */}
+                                                <div className="flex gap-2 mb-6 p-1 bg-slate-50 rounded-lg border border-slate-100">
+                                                    <select id={`month-${item.id}`} className="text-sm border-r border-slate-200 rounded-l-md px-3 py-2 bg-white outline-none">
+                                                        <option>ตุลาคม</option> <option>พฤศจิกายน</option> <option>ธันวาคม</option>
+                                                        <option>มกราคม</option> <option>กุมภาพันธ์</option> <option>มีนาคม</option>
+                                                        <option>เมษายน</option> <option>พฤษภาคม</option> <option>มิถุนายน</option>
+                                                        <option>กรกฎาคม</option> <option>สิงหาคม</option> <option>กันยายน</option>
+                                                    </select>
+                                                    <input 
+                                                        id={`note-${item.id}`}
+                                                        type="text" 
+                                                        placeholder="ระบุรายละเอียดความก้าวหน้า..." 
+                                                        className="flex-1 text-sm bg-transparent px-3 py-2 outline-none"
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                                const monthEl = document.getElementById(`month-${item.id}`);
+                                                                addProgress(item.id, monthEl.value, e.currentTarget.value);
+                                                                e.currentTarget.value = '';
+                                                            }
+                                                        }}
+                                                    />
+                                                    <button 
+                                                        onClick={() => {
+                                                            const noteEl = document.getElementById(`note-${item.id}`);
+                                                            const monthEl = document.getElementById(`month-${item.id}`);
+                                                            addProgress(item.id, monthEl.value, noteEl.value);
+                                                            noteEl.value = '';
+                                                        }}
+                                                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md m-1 shadow-sm text-sm transition-colors"
+                                                    >
+                                                        บันทึก
+                                                    </button>
+                                                </div>
+
+                                                {/* Timeline Display */}
+                                                <div className="space-y-4 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                                                    {item.progress_history.length === 0 ? (
+                                                        <div className="flex flex-col items-center justify-center py-6 text-slate-300">
+                                                            <Clock size={24} className="mb-2 opacity-50" />
+                                                            <p className="text-sm">ยังไม่มีข้อมูลความก้าวหน้า</p>
+                                                        </div>
+                                                    ) : (
+                                                        [...item.progress_history].reverse().map((log, idx) => (
+                                                            <div key={idx} className="flex gap-3 relative pb-4 last:pb-0 group">
+                                                                {/* Timeline connector line */}
+                                                                {idx !== item.progress_history.length - 1 && (
+                                                                    <div className="absolute left-[15px] top-8 bottom-0 w-0.5 bg-slate-100 group-hover:bg-blue-100 transition-colors"></div>
+                                                                )}
+                                                                <div className="w-8 h-8 rounded-full bg-white text-blue-500 flex items-center justify-center shrink-0 border-2 border-blue-50 shadow-sm z-10 group-hover:border-blue-200 group-hover:scale-110 transition-all">
+                                                                    <Activity size={14} />
+                                                                </div>
+                                                                <div className="flex-1 bg-slate-50 p-3 rounded-lg border border-slate-100 group-hover:bg-white group-hover:shadow-md transition-all">
+                                                                    <div className="flex justify-between items-start mb-1">
+                                                                        <span className="font-bold text-sm text-slate-800">{log.month}</span>
+                                                                        <span className="text-[10px] text-slate-400 bg-white px-2 py-0.5 rounded-full border border-slate-100">
+                                                                            {new Date(log.date).toLocaleDateString('th-TH')}
+                                                                        </span>
+                                                                    </div>
+                                                                    <p className="text-sm text-slate-600">{log.note}</p>
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                    
+                    {/* Footer */}
+                    <div className="text-center text-slate-400 text-xs py-12">
+                        <p>ระบบติดตามตัวชี้วัดสาธารณสุขอำเภอ © 2569</p>
+                        <p className="mt-1 opacity-50">พัฒนาเพื่อการใช้งานภายในองค์กร</p>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<KPIDashboard />);
+    </script>
+</body>
+</html>
