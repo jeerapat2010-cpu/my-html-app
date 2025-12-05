@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบค้นหาข้อมูลสถานประกอบการนวดเพื่อสุขภาพและสปา</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- SheetJS for Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+    <!-- Font & Styles -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Sarabun', sans-serif; }
+        
+        @keyframes slide-up {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-slide-up {
+            animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Print Styles */
+        @media print {
+            body * { visibility: hidden; }
+            #print-section, #print-section * { visibility: visible; }
+            #print-section { position: absolute; left: 0; top: 0; width: 100%; }
+            #print-section table { width: 100%; border-collapse: collapse; }
+            #print-section th, #print-section td { border: 1px solid #ccc; padding: 4px; font-size: 12px; color: black; }
+            #print-section th { background-color: #f0f0f0; font-weight: bold; text-align: center; }
+            @page { size: landscape; margin: 10mm; }
+            .no-print { display: none !important; }
+        }
+        .print-only { display: none; }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+
+        // --- ICONS COMPONENT (SVG Paths) ---
+        const Icon = ({ name, size = 24, className = "" }) => {
+            const icons = {
+                Search: <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />,
+                MapPin: <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z M12 10a3 3 0 100-6 3 3 0 000 6z" />,
+                Phone: <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" />,
+                Upload: <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4 M17 8l-5-5-5 5 M12 3v12" />,
+                RefreshCw: <path d="M23 4v6h-6 M1 20v-6h6 M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />,
+                Filter: <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />,
+                FileSpreadsheet: <path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z M14 2v6h6 M8 13h2 M8 17h2 M14 13h2 M14 17h2" />,
+                Map: <path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z M8 2v16 M16 6v16" />,
+                CheckSquare: <path d="M9 11l3 3L22 4 M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />,
+                Square: <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />,
+                X: <path d="M18 6L6 18 M6 6l12 12" />,
+                Navigation: <path d="M3 11l19-9-9 19-2-8-8-2z" />,
+                AlertTriangle: <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z M12 9v4 M12 17h.01" />,
+                Leaf: <path d="M11 20A7 7 0 019.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.5 1.4 10.2A7 7 0 0111 20z M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />,
+                CheckCircle2: <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M9 12l2 2 4-4" />,
+                ListChecks: <path d="M10 6h11 M10 12h11 M10 18h11 M4 6h1 M4 12h1 M4 18h1" />,
+                Sprout: <path d="M7 20h10 M10 20c5.5-2.5.8-6.4 3-10 M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.2.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z M14.1 6a7 7 0 00-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1.7-1.3 2.9-4 3.1-6.2-2 .1-4.1.6-6.3 3.6z" />,
+                Printer: <path d="M6 9V2h12v7 M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2 M6 14h12v8H6z" />
+            };
+
+            return (
+                <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    width={size} 
+                    height={size} 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    className={className}
+                >
+                    {icons[name] || null}
+                </svg>
+            );
+        };
+
+        // --- CONSTANTS ---
+        const VALID_AMPHOES = [
+            "เมืองสมุทรปราการ",
+            "บางบ่อ",
+            "บางพลี",
+            "พระประแดง",
+            "พระสมุทรเจดีย์",
+            "บางเสาธง"
+        ];
+
+        const SAMPLE_DATA = [
+            { id: 1, name: "ปราณณ์สปา", type: "สปา", amphoe: "บางเสาธง", tambon: "ศีรษะจรเข้น้อย", phone: "-", addressNo: "54", moo: "3", soi: "-", road: "ศรีวารีน้อย", province: "สมุทรปราการ", zipcode: "10540" },
+            { id: 2, name: "หัตถ์ทัย นวดเพื่อสุขภาพ", type: "นวดเพื่อสุขภาพ", amphoe: "บางเสาธง", tambon: "บางเสาธง", phone: "-", addressNo: "48/1", moo: "-", soi: "นัมเบอร์วัน", road: "-", province: "สมุทรปราการ", zipcode: "10540" },
+            { id: 3, name: "กิ่งแก้ว นวดเพื่อสุขภาพ", type: "นวดเพื่อสุขภาพ", amphoe: "บางพลี", tambon: "ราชาเทวะ", phone: "-", addressNo: "88/1-2", moo: "15", soi: "43", road: "กิ่งแก้ว", province: "สมุทรปราการ", zipcode: "10540" },
+            { id: 328, name: "ซอยูน นวดเพื่อสุขภาพ", type: "นวดเพื่อสุขภาพ", amphoe: "เมืองสมุทรปราการ", tambon: "แพรกษา", phone: "08-3980-3974", addressNo: "359/29", moo: "5", soi: "พุฒสี", road: "พุทธรักษา", province: "สมุทรปราการ", zipcode: "10280" }
+        ];
+
+        // --- APP COMPONENT ---
+        const App = () => {
+            const [data, setData] = useState(SAMPLE_DATA);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [selectedAmphoe, setSelectedAmphoe] = useState('All');
+            const [selectedTambon, setSelectedTambon] = useState('All');
+            const [isFullDataLoaded, setIsFullDataLoaded] = useState(false);
+            const [selectedIds, setSelectedIds] = useState(new Set());
+
+            const amphoeList = useMemo(() => ['All', ...VALID_AMPHOES], []);
+
+            const tambonList = useMemo(() => {
+                let filteredData = data;
+                if (selectedAmphoe !== 'All') {
+                    filteredData = data.filter(item => item.amphoe === selectedAmphoe);
+                }
+                const tambonsRaw = filteredData.map(item => item.tambon).filter(Boolean);
+                const uniqueTambons = new Set(tambonsRaw);
+                return ['All', ...Array.from(uniqueTambons).sort((a, b) => a.localeCompare(b, 'th'))];
+            }, [data, selectedAmphoe]);
+
+            const cleanStr = (val) => {
+                if (!val) return '';
+                return String(val).replace(/^"|"$/g, '').trim().replace(/\s+/g, ' ');
+            };
+
+            const normalizeAmphoe = (raw) => {
+                let clean = cleanStr(raw).replace(/^(อำเภอ|อ\.|อ )/, '').trim();
+                if (clean === 'เมือง' || clean.includes('เมืองสมุทร')) return 'เมืองสมุทรปราการ';
+                const match = VALID_AMPHOES.find(valid => valid === clean || valid.includes(clean));
+                return match || clean;
+            };
+
+            const normalizeTambon = (raw) => cleanStr(raw).replace(/^(ตำบล|ต\.|ต )/, '').trim();
+
+            const getFullAddress = (item) => {
+                return [
+                    item.addressNo && `เลขที่ ${item.addressNo}`,
+                    item.moo && `หมู่ ${item.moo}`,
+                    item.soi && `ซอย ${item.soi}`,
+                    item.road && `ถนน ${item.road}`,
+                    item.tambon && `ต.${item.tambon}`,
+                    item.amphoe && `อ.${item.amphoe}`,
+                    item.province && `จ.${item.province}`,
+                    item.zipcode
+                ].filter(Boolean).join(' ');
+            };
+
+            const getDialablePhone = (phoneStr) => {
+                if (!phoneStr || phoneStr === '-') return null;
+                return phoneStr.split(/[,/]/)[0].replace(/[^0-9]/g, '');
+            };
+
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.readAsArrayBuffer(file);
+                reader.onload = (e) => {
+                    const workbook = XLSX.read(e.target.result, { type: 'array' });
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    const parsedData = [];
+                    for (let i = 1; i < jsonData.length; i++) {
+                        const row = jsonData[i];
+                        if (row[4]) {
+                            parsedData.push({
+                                id: i,
+                                type: cleanStr(row[1]),
+                                name: cleanStr(row[4]),
+                                addressNo: cleanStr(row[5]),
+                                moo: cleanStr(row[6]),
+                                soi: cleanStr(row[7]),
+                                road: cleanStr(row[8]),
+                                tambon: normalizeTambon(row[9]),
+                                amphoe: normalizeAmphoe(row[10]),
+                                province: cleanStr(row[11]),
+                                zipcode: cleanStr(row[12]),
+                                phone: cleanStr(row[13]) || '-'
+                            });
+                        }
+                    }
+                    setData(parsedData);
+                    setIsFullDataLoaded(true);
+                    setSelectedIds(new Set());
+                    setSelectedAmphoe('All');
+                    setSelectedTambon('All');
+                };
+            };
+
+            const filteredData = data.filter(item => {
+                const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesAmphoe = selectedAmphoe === 'All' || item.amphoe === selectedAmphoe;
+                const matchesTambon = selectedTambon === 'All' || item.tambon === selectedTambon;
+                return matchesSearch && matchesAmphoe && matchesTambon;
+            });
+
+            const toggleSelection = (id) => {
+                const newSelected = new Set(selectedIds);
+                if (newSelected.has(id)) newSelected.delete(id);
+                else newSelected.add(id);
+                setSelectedIds(newSelected);
+            };
+
+            const handleSelectAll = () => {
+                const newSelected = new Set(selectedIds);
+                filteredData.forEach(item => newSelected.add(item.id));
+                setSelectedIds(newSelected);
+            };
+
+            const clearSelection = () => setSelectedIds(new Set());
+
+            const openMultiRouteMap = () => {
+                if (selectedIds.size === 0) return;
+                const items = data.filter(item => selectedIds.has(item.id));
+                let url = "https://www.google.com/maps/dir/";
+                items.forEach(item => url += `${encodeURIComponent(item.name + ' ' + getFullAddress(item))}/`);
+                window.open(url, '_blank');
+            };
+
+            const handlePrint = () => {
+                window.print();
+            };
+
+            const printData = selectedIds.size > 0 ? data.filter(item => selectedIds.has(item.id)) : filteredData;
+
+            return (
+                <div className="min-h-screen pb-32 print:pb-0 print:bg-white">
+                    {/* Print Section */}
+                    <div id="print-section" className="hidden print-only">
+                        <div className="text-center mb-4">
+                            <h1 className="text-2xl font-bold">รายการสถานประกอบการนวดเพื่อสุขภาพและสปา</h1>
+                            <p className="text-sm">จังหวัดสมุทรปราการ (ข้อมูล ณ วันที่ {new Date().toLocaleDateString('th-TH')})</p>
+                            <p className="text-sm mt-1">จำนวนรายการ: {printData.length} แห่ง</p>
+                        </div>
+                        <table className="w-full text-xs text-left border-collapse border border-gray-400">
+                            <thead>
+                                <tr className="bg-gray-200">
+                                    <th className="border p-1 w-8 text-center">#</th>
+                                    <th className="border p-1">ชื่อสถานประกอบการ</th>
+                                    <th className="border p-1 w-16">ประเภท</th>
+                                    <th className="border p-1">ที่อยู่</th>
+                                    <th className="border p-1 w-20">ตำบล</th>
+                                    <th className="border p-1 w-20">อำเภอ</th>
+                                    <th className="border p-1 w-20">เบอร์โทร</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {printData.map((item, index) => (
+                                    <tr key={item.id} className="border-b border-gray-300">
+                                        <td className="border p-1 text-center">{index + 1}</td>
+                                        <td className="border p-1 font-semibold">{item.name}</td>
+                                        <td className="border p-1">{item.type}</td>
+                                        <td className="border p-1">{getFullAddress(item)}</td>
+                                        <td className="border p-1">{item.tambon}</td>
+                                        <td className="border p-1">{item.amphoe}</td>
+                                        <td className="border p-1">{item.phone}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Screen Section */}
+                    <div className="no-print">
+                        <header className="bg-gradient-to-r from-emerald-700 to-teal-600 text-white shadow-xl relative overflow-hidden">
+                            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-80 h-80 rounded-full bg-white/10 blur-3xl"></div>
+                            <div className="max-w-6xl mx-auto px-6 py-8 relative z-10">
+                                <div className="flex flex-col md:flex-row justify-between items-end gap-6">
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="bg-white/20 p-2 rounded-xl"><Icon name="Leaf" className="text-lime-300" /></div>
+                                            <h1 className="text-3xl font-bold">ระบบสำรวจ<span className="text-lime-300">สถานประกอบการ</span></h1>
+                                        </div>
+                                        <p className="text-emerald-100 ml-1">นวดเพื่อสุขภาพและสปา จังหวัดสมุทรปราการ</p>
+                                        <div className="mt-4 text-sm text-emerald-100/90">
+                                            <p>จัดทำโดย <span className="font-semibold text-white">ภก.จีรภัทร พลายงาม</span></p>
+                                            <p>กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สสจ.สมุทรปราการ</p>
+                                        </div>
+                                    </div>
+                                    <div className="bg-emerald-900/30 px-3 py-1 rounded-full text-xs font-mono text-emerald-50 border border-emerald-500/50">v1.0 • Updated 05/12/2568</div>
+                                </div>
+                            </div>
+                        </header>
+
+                        <main className="max-w-6xl mx-auto px-4 -mt-6 relative z-20">
+                            <div className="bg-amber-50 border-l-4 border-amber-500 rounded-r-lg shadow-md p-4 mb-6 flex gap-4 ring-1 ring-amber-100">
+                                <div className="bg-amber-100 p-2 rounded-full h-fit"><Icon name="AlertTriangle" className="text-amber-700" /></div>
+                                <div>
+                                    <h3 className="font-bold text-amber-800 text-sm">คำแนะนำก่อนเดินทาง</h3>
+                                    <p className="text-sm text-amber-900/80">ข้อมูลพิกัดอาจไม่ตรงตามที่ตั้งจริงเนื่องจากไม่อิง GPS แต่ค้นหาตาม "ที่อยู่" <span className="font-semibold underline">โปรดตรวจสอบเส้นทางก่อนออกเดินทาง</span></p>
+                                </div>
+                            </div>
+
+                            {/* Info Graphic */}
+                            <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-stone-100 relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-400 to-lime-500"></div>
+                                <h2 className="text-2xl font-bold text-stone-800 flex items-center gap-3 mb-8 relative z-10">
+                                    <div className="bg-emerald-100 p-2 rounded-lg"><Icon name="Map" className="text-emerald-700" /></div>
+                                    ขั้นตอนการวางแผนเส้นทาง
+                                </h2>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
+                                    {[
+                                        { i: 1, title: 'เลือกสถานที่', desc: 'กดปุ่มเลือกหน้าชื่อร้าน', icon: 'CheckSquare', color: 'emerald' },
+                                        { i: 2, title: 'ตรวจสอบรายการ', desc: 'ดูสรุปจำนวนร้านด้านล่าง', icon: 'ListChecks', color: 'teal' },
+                                        { i: 3, title: 'เปิดแผนที่/พิมพ์', desc: 'กดปุ่มเริ่มนำทาง หรือ ส่งออก PDF', icon: 'Navigation', color: 'lime' }
+                                    ].map((step) => (
+                                        <div key={step.i} className="flex flex-col items-center text-center group">
+                                            <div className={`w-16 h-16 rounded-full bg-white border-4 border-${step.color}-100 flex items-center justify-center mb-4 shadow-sm relative z-10 group-hover:scale-110 transition-transform`}>
+                                                <div className={`w-12 h-12 rounded-full bg-${step.color}-500 text-white flex items-center justify-center shadow-inner`}>
+                                                    <Icon name={step.icon} />
+                                                </div>
+                                                <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-stone-800 text-white text-xs font-bold flex items-center justify-center border-2 border-white shadow-md">{step.i}</div>
+                                            </div>
+                                            <h3 className={`text-lg font-bold text-stone-800 mb-1 group-hover:text-${step.color}-700`}>{step.title}</h3>
+                                            <p className="text-sm text-stone-500">{step.desc}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Upload & Filters */}
+                            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+                                <div className="bg-white p-5 rounded-xl shadow-sm border border-stone-200 text-center flex flex-col items-center justify-center">
+                                    <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 ${isFullDataLoaded ? 'bg-emerald-100 text-emerald-600' : 'bg-stone-100 text-stone-400'}`}>
+                                        <Icon name={isFullDataLoaded ? 'CheckCircle2' : 'Upload'} size={28} />
+                                    </div>
+                                    <h3 className="font-bold text-stone-700">ฐานข้อมูลร้านค้า</h3>
+                                    <p className="text-xs text-stone-400 mb-4">{isFullDataLoaded ? `พร้อมใช้งาน (${data.length} รายการ)` : 'รองรับไฟล์ .xlsx / .xls'}</p>
+                                    <label className={`w-full py-2 px-4 rounded-lg font-medium text-sm cursor-pointer flex items-center justify-center gap-2 text-white shadow-md transition-all ${isFullDataLoaded ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-stone-400'}`}>
+                                        <Icon name="FileSpreadsheet" size={16} />
+                                        {isFullDataLoaded ? 'อัปโหลดใหม่' : 'นำเข้าไฟล์ Excel'}
+                                        <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} className="hidden" />
+                                    </label>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200 lg:col-span-3">
+                                    <div className="flex items-center gap-2 mb-4 pb-2 border-b border-stone-100">
+                                        <Icon name="Filter" className="text-emerald-600" size={20} />
+                                        <h3 className="font-bold text-stone-700">ตัวกรองค้นหา</h3>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-stone-500 uppercase">ค้นหาชื่อร้าน</label>
+                                            <div className="relative">
+                                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"><Icon name="Search" size={18} /></div>
+                                                <input type="text" placeholder="เช่น สบายกาย..." className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-stone-500 uppercase">อำเภอ</label>
+                                            <div className="relative">
+                                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"><Icon name="MapPin" size={18} /></div>
+                                                <select className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer" value={selectedAmphoe} onChange={(e) => { setSelectedAmphoe(e.target.value); setSelectedTambon('All'); }}>
+                                                    {amphoeList.map(a => <option key={a} value={a}>{a}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-stone-500 uppercase">ตำบล</label>
+                                            <div className="relative">
+                                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"><Icon name="MapPin" size={18} /></div>
+                                                <select className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer" value={selectedTambon} onChange={(e) => setSelectedTambon(e.target.value)}>
+                                                    {tambonList.map(t => <option key={t} value={t}>{t}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 pt-4 border-t border-stone-50 flex justify-between items-center">
+                                        <div className="flex gap-2 items-center">
+                                            <span className="text-sm text-stone-500">ผลการค้นหา: <strong className="text-emerald-600">{filteredData.length}</strong> รายการ</span>
+                                            <button onClick={handleSelectAll} className="text-xs flex items-center gap-1 bg-stone-100 text-stone-600 px-2 py-1 rounded hover:bg-emerald-100 hover:text-emerald-700 border border-stone-200 ml-2">
+                                                <Icon name="ListChecks" size={14} /> เลือกทั้งหมด
+                                            </button>
+                                        </div>
+                                        {(searchTerm || selectedAmphoe !== 'All' || selectedTambon !== 'All') && (
+                                            <button onClick={() => { setSearchTerm(''); setSelectedAmphoe('All'); setSelectedTambon('All'); }} className="text-xs flex items-center gap-1 text-stone-400 hover:text-red-500">
+                                                <Icon name="RefreshCw" size={12} /> ล้างค่าค้นหา
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* List */}
+                            <div className="space-y-4">
+                                {filteredData.length > 0 ? (
+                                    filteredData.map((item) => {
+                                        const isSelected = selectedIds.has(item.id);
+                                        const dialable = getDialablePhone(item.phone);
+                                        return (
+                                            <div key={item.id} className={`relative bg-white rounded-xl border transition-all duration-200 overflow-hidden flex flex-col md:flex-row ${isSelected ? 'border-emerald-500 shadow-lg ring-1 ring-emerald-500' : 'border-stone-200 shadow-sm hover:shadow-md'}`}>
+                                                <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isSelected ? 'bg-emerald-500' : 'bg-stone-200'}`}></div>
+                                                <div className="flex-1 p-5 pl-7 flex gap-4">
+                                                    <div className="flex flex-col items-center gap-1 cursor-pointer group" onClick={() => toggleSelection(item.id)}>
+                                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center border-2 transition-all ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-stone-50 border-stone-200 text-stone-300 group-hover:border-emerald-400'}`}>
+                                                            <Icon name="CheckSquare" size={24} />
+                                                        </div>
+                                                        <span className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'text-emerald-600' : 'text-stone-300'}`}>{isSelected ? 'SELECTED' : 'SELECT'}</span>
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${item.type.includes('นวด') ? 'bg-amber-100 text-amber-800' : 'bg-teal-100 text-teal-800'}`}>{item.type}</span>
+                                                        </div>
+                                                        <h3 className="text-xl font-bold text-stone-800 mb-2 cursor-pointer hover:text-emerald-700" onClick={() => toggleSelection(item.id)}>{item.name}</h3>
+                                                        <div className="text-sm text-stone-600 flex items-start gap-2 mb-1">
+                                                            <div className="mt-1 shrink-0 text-emerald-600"><Icon name="MapPin" size={16} /></div>
+                                                            <span>{getFullAddress(item)}</span>
+                                                        </div>
+                                                        <div className="text-sm text-stone-600 flex items-center gap-2">
+                                                            <div className="shrink-0 text-teal-600"><Icon name="Phone" size={16} /></div>
+                                                            <span className="font-mono font-medium">{item.phone && item.phone !== '-' ? item.phone : <span className="text-stone-400 italic">ไม่ระบุเบอร์โทร</span>}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-stone-50 p-4 border-t md:border-t-0 md:border-l border-stone-100 flex flex-row md:flex-col justify-center gap-3 w-full md:w-48">
+                                                    <a href={dialable ? `tel:${dialable}` : '#'} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${dialable ? 'bg-white border border-stone-200 text-stone-700 hover:border-emerald-400 hover:text-emerald-700 shadow-sm' : 'bg-stone-100 text-stone-400 cursor-not-allowed'}`} onClick={(e) => !dialable && e.preventDefault()}>
+                                                        <Icon name="Phone" size={16} /> {dialable ? item.phone.split(',')[0] : 'ไม่มีเบอร์'}
+                                                    </a>
+                                                    <button onClick={() => openSingleMap(item)} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md hover:shadow-lg transition-all">
+                                                        <Icon name="Map" size={16} /> ดูแผนที่
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border-2 border-dashed border-stone-200">
+                                        <div className="bg-stone-50 p-4 rounded-full mb-4"><Icon name="Search" className="text-stone-400" /></div>
+                                        <h3 className="text-lg font-bold text-stone-600">ไม่พบข้อมูลร้านค้า</h3>
+                                        <p className="text-stone-400 text-sm">ลองเปลี่ยนคำค้นหา หรือเลือกพื้นที่ใหม่</p>
+                                    </div>
+                                )}
+                            </div>
+                        </main>
+
+                        {(selectedIds.size > 0 || filteredData.length > 0) && (
+                            <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-emerald-100 shadow-lg p-4 z-50 animate-slide-up no-print">
+                                <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className="relative">
+                                            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-lime-500 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg transform rotate-3 border-2 border-white">
+                                                {selectedIds.size > 0 ? selectedIds.size : filteredData.length}
+                                            </div>
+                                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full border-2 border-white"></div>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-stone-800 text-lg">{selectedIds.size > 0 ? 'รายการที่เลือก' : 'รายการที่แสดงผล'}</h4>
+                                            <p className="text-sm text-stone-500">{selectedIds.size > 0 ? 'พร้อมนำทางหรือส่งออกข้อมูล' : 'เลือกรายการเพื่อจัดการข้อมูล'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-3">
+                                        {selectedIds.size > 0 && (
+                                            <button onClick={clearSelection} className="px-4 py-3 rounded-xl border-2 border-stone-200 text-stone-600 font-bold hover:bg-stone-50 flex items-center gap-2"><Icon name="X" size={20} /> ล้างค่า</button>
+                                        )}
+                                        <button onClick={handlePrint} className="px-4 py-3 rounded-xl border-2 border-teal-200 bg-teal-50 text-teal-700 font-bold hover:bg-teal-100 flex items-center gap-2"><Icon name="Printer" size={20} /> ส่งออก PDF</button>
+                                        {selectedIds.size > 0 && (
+                                            <button onClick={openMultiRouteMap} className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center gap-2"><Icon name="Navigation" size={20} /> เริ่มนำทาง</button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
