@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Useful calendar</title>
+    <!-- โหลด Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'chinese-main': '#1D4ED8',
+                        'chinese-accent': '#06B6D4',
+                        'light-bg': '#F0F9FF',
+                        'dark-text': '#1F2937',
+                        'day-sun': '#E53E3E',
+                        'day-mon': '#D69E2E',
+                        'day-tue': '#ED64A6',
+                        'day-wed': '#38A169',
+                        'day-thu': '#DD6B20',
+                        'day-fri': '#3182CE',
+                        'day-sat': '#805AD5',
+                    },
+                    fontFamily: {
+                        sans: ['Anuphan', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+        .day-cell {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 8px;
+            text-align: center;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            min-height: 90px;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .day-cell:hover:not(.day-header) {
+            transform: translateY(-5px) scale(1.02);
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            z-index: 10;
+        }
+        .current-day {
+            background: linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%) !important;
+            color: white !important;
+            border: 2px solid #FFD700;
+            box-shadow: 0 10px 20px rgba(29, 78, 216, 0.4);
+        }
+        .day-header {
+            background: rgba(191, 219, 254, 0.8) !important;
+            font-weight: 800;
+            color: #1E40AF;
+            min-height: 45px !important;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .gregorian-day-num {
+            font-size: 1.75rem;
+            line-height: 1;
+            font-weight: 800;
+            margin-top: 2px;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));
+        }
+        .chinese-date {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 2px;
+        }
+        .current-day .chinese-date, .current-day .gregorian-day-num {
+            color: white !important;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            border-radius: 24px;
+        }
+        .is-holiday {
+            background: rgba(254, 242, 242, 0.8) !important;
+            border: 1px solid #FECACA;
+        }
+        .holiday-name-display {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: #DC2626;
+            margin-top: 4px;
+            background: rgba(255, 255, 255, 0.5);
+            padding: 1px 4px;
+            border-radius: 4px;
+        }
+        .shadow-deep {
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05), 0 10px 15px -3px rgba(0,0,0,0.1);
+        }
+        .shirt-table td {
+            padding: 4px 8px;
+            font-size: 0.8rem;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .work-box {
+            border-left: 4px solid #1D4ED8;
+            padding-left: 10px;
+            margin-top: 8px;
+            text-align: left;
+        }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 1em;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8 font-sans transition-colors duration-500">
+
+    <!-- Header Section -->
+    <header class="text-center mb-10">
+        <div class="inline-block relative">
+            <h1 class="text-4xl sm:text-5xl font-black text-chinese-main glass-card px-8 py-4 mb-2 border-b-8 border-chinese-accent transform hover:scale-105 transition-all duration-300">
+                Useful Calendar
+            </h1>
+            <p class="text-chinese-main font-semibold tracking-widest uppercase text-sm mt-2">Professional Lunisolar Almanac & Financial Tracker</p>
+        </div>
+    </header>
+
+    <main class="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-7xl mx-auto">
+
+        <!-- Left Column: Calendar (Span 8) -->
+        <div id="mainCalendarContainer" class="lg:col-span-8 relative rounded-[32px] overflow-hidden shadow-deep border-4 border-white transition-all duration-700 bg-cover bg-center" style="background-image: url('https://picsum.photos/seed/default/1200/900');">
+            <div class="p-6 sm:p-8 bg-white/60 backdrop-blur-md h-full w-full">
+                <div class="flex justify-between items-center mb-8">
+                    <button onclick="changeMonth(-1)" class="w-12 h-12 flex items-center justify-center bg-chinese-main text-white rounded-2xl hover:bg-blue-600 transition shadow-xl transform hover:scale-110 active:scale-95">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    <h2 id="monthYearDisplay" class="text-3xl sm:text-4xl font-extrabold text-dark-text bg-white/40 px-6 py-2 rounded-2xl shadow-inner border border-white/50"></h2>
+                    <button onclick="changeMonth(1)" class="w-12 h-12 flex items-center justify-center bg-chinese-main text-white rounded-2xl hover:bg-blue-600 transition shadow-xl transform hover:scale-110 active:scale-95">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                </div>
+
+                <div id="calendarGrid" class="calendar-grid text-sm sm:text-base">
+                    <!-- JS Grid -->
+                </div>
+                
+                <div class="mt-8 p-6 glass-card border-l-[12px] border-chinese-main transform hover:scale-[1.01] transition-transform">
+                    <p class="text-2xl font-black text-chinese-main mb-4 flex items-center">
+                        <span class="mr-3 p-2 bg-chinese-main text-white rounded-lg">🗓️</span> รายละเอียดมงคลประจำวัน
+                    </p>
+                    <div id="chineseInfo" class="text-dark-text grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- JS Info -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Sidebar (Span 4) -->
+        <div class="lg:col-span-4 space-y-6">
+
+            <!-- 1. Horoscope + Detailed Work + Zodiac Dropdown -->
+            <div class="glass-card p-6 border-t-8 border-purple-500 transform hover:translate-y-[-4px] transition-all">
+                <div class="flex flex-col mb-4 border-b border-purple-200 pb-3">
+                    <div class="flex items-center text-purple-700 mb-2">
+                        <span class="text-3xl mr-3">🔮</span>
+                        <h3 class="text-xl font-bold">เช็กดวงชะตารายราศี</h3>
+                    </div>
+                    <!-- Zodiac Dropdown -->
+                    <div class="relative">
+                        <select id="zodiacSelect" onchange="refreshHoroscope()" class="w-full bg-purple-100 text-purple-800 font-bold py-2 px-4 pr-10 rounded-xl border-2 border-purple-300 focus:outline-none focus:border-purple-500 transition-all cursor-pointer">
+                            <option value="0">ราศีเมษ (13 เม.ย. - 14 พ.ค.)</option>
+                            <option value="1">ราศีพฤษภ (15 พ.ค. - 14 มิ.ย.)</option>
+                            <option value="2">ราศีเมถุน (15 มิ.ย. - 15 ก.ค.)</option>
+                            <option value="3">ราศีกรกฎ (16 ก.ค. - 16 ส.ค.)</option>
+                            <option value="4">ราศีสิงห์ (17 ส.ค. - 16 ก.ย.)</option>
+                            <option value="5">ราศีกันย์ (17 ก.ย. - 16 ต.ค.)</option>
+                            <option value="6">ราศีตุลย์ (17 ต.ค. - 15 พ.ย.)</option>
+                            <option value="7">ราศีพิจิก (16 พ.ย. - 15 ธ.ค.)</option>
+                            <option value="8">ราศีธนู (16 ธ.ค. - 14 ม.ค.)</option>
+                            <option value="9">ราศีมังกร (15 ม.ค. - 12 ก.พ.)</option>
+                            <option value="10">ราศีกุมภ์ (13 ก.พ. - 13 มี.ค.)</option>
+                            <option value="11">ราศีมีน (14 มี.ค. - 12 เม.ย.)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <p class="text-xs text-gray-500 mb-1">คำทำนายประจำวันที่: <span id="horoscopeDate" class="font-bold"></span></p>
+                    <div class="mb-4">
+                        <p class="text-[10px] font-bold text-purple-400 uppercase tracking-widest text-left ml-2">General Luck (ภาพรวม)</p>
+                        <div id="ariesHoroscope" class="text-sm italic p-4 bg-purple-50/50 rounded-2xl border border-purple-200 shadow-inner leading-relaxed text-left min-h-[80px]"></div>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-blue-500 uppercase tracking-widest text-left ml-2">Career Prediction (การงานละเอียด)</p>
+                        <div id="careerHoroscope" class="work-box text-sm font-medium text-dark-text leading-relaxed min-h-[100px]"></div>
+                    </div>
+                    <div class="mt-4 flex justify-center items-center space-x-2">
+                        <span class="text-sm font-semibold text-purple-700">สีมงคลประจำราศีวันนี้:</span>
+                        <span id="luckyColor" class="px-4 py-1 rounded-full text-white text-xs font-bold shadow-md transition-all duration-300"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Lucky Shirt Color -->
+            <div class="glass-card p-6 border-t-8 border-orange-400 transform hover:translate-y-[-4px] transition-all">
+                <div class="flex items-center text-orange-700 mb-4 border-b border-orange-200 pb-3">
+                    <span class="text-3xl mr-3">👕</span>
+                    <h3 class="text-xl font-bold">ตารางสีเสื้อประจำวันคนเกิด</h3>
+                </div>
+                <div class="overflow-hidden rounded-xl border border-orange-100">
+                    <table class="w-full shirt-table bg-white/40">
+                        <thead>
+                            <tr class="bg-orange-100/50 text-[10px] uppercase font-bold text-orange-600">
+                                <th class="py-2">เกิดวัน</th>
+                                <th>สีเสริมดวง (เงิน/โชค)</th>
+                                <th>เลี่ยงสี</th>
+                            </tr>
+                        </thead>
+                        <tbody id="shirtColorTable">
+                            <!-- JS Generated Content -->
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-[9px] text-center mt-3 text-gray-500">*เลือกตามความเหมาะสมของกาลเทศะและการงาน</p>
+            </div>
+            
+            <!-- 3. Lottery -->
+            <div class="glass-card p-6 border-t-8 border-chinese-accent transform hover:translate-y-[-4px] transition-all">
+                <div class="flex items-center text-chinese-main mb-4 border-b border-cyan-200 pb-3">
+                    <span class="text-3xl mr-3">💰</span>
+                    <h3 class="text-xl font-bold text-chinese-accent">เลขมงคล / หวย</h3>
+                </div>
+                <div id="luckyNumberContent" class="text-center">
+                    <!-- JS Lottery -->
+                </div>
+                <p class="text-xs mt-4 text-center text-gray-600 italic bg-cyan-50 py-2 rounded-lg" id="luckyText"></p>
+            </div>
+
+            <!-- 4. Tides -->
+            <div class="glass-card p-6 border-t-8 border-blue-500 transform hover:translate-y-[-4px] transition-all">
+                <div class="flex items-center text-blue-600 mb-4 border-b border-blue-200 pb-3">
+                    <span class="text-3xl mr-3">🌊</span>
+                    <h3 class="text-xl font-bold">น้ำขึ้น-ลง (สมุทรปราการ)</h3>
+                </div>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center p-3 bg-blue-50/50 rounded-xl border border-blue-100">
+                        <span class="font-bold text-blue-700">⬆️ ขึ้นสูงสุด:</span>
+                        <span id="highTide1" class="font-mono font-black text-lg">--</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-red-50/50 rounded-xl border border-red-100">
+                        <span class="font-bold text-red-700">⬇️ ลงต่ำสุด:</span>
+                        <span id="lowTide1" class="font-mono font-black text-lg">--</span>
+                    </div>
+                    <p class="text-[10px] text-blue-800 text-center font-bold opacity-70 mt-2 uppercase tracking-tighter">Verified by Hydrographic Department Pattern</p>
+                </div>
+            </div>
+
+            <!-- 5. Weather & Air -->
+            <div class="glass-card p-6 border-t-8 border-yellow-500 transform hover:translate-y-[-4px] transition-all">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="bg-orange-50 p-3 rounded-2xl border border-orange-100 text-center">
+                        <span class="block text-[10px] uppercase font-bold text-orange-400">Sunrise</span>
+                        <span id="sunriseTime" class="font-black text-orange-600 text-lg">--</span>
+                    </div>
+                    <div class="bg-red-50 p-3 rounded-2xl border border-red-100 text-center">
+                        <span class="block text-[10px] uppercase font-bold text-red-400">Sunset</span>
+                        <span id="sunsetTime" class="font-black text-red-600 text-lg">--</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4 p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl border border-blue-100 shadow-inner">
+                    <img id="weatherIcon" src="" class="w-12 h-12 drop-shadow-lg">
+                    <div>
+                        <p id="weatherDesc" class="text-sm font-bold text-dark-text leading-tight"></p>
+                    </div>
+                </div>
+                <div class="mt-4 p-4 rounded-2xl border-2 shadow-inner transition-all duration-500" id="pm25Box">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-black uppercase opacity-60">Dust PM 2.5</span>
+                        <span id="pm25Emoji" class="text-2xl"></span>
+                    </div>
+                    <p class="text-2xl font-black" id="pm25Value">--</p>
+                    <p class="text-[10px] font-bold" id="pm25Status">--</p>
+                </div>
+            </div>
+
+            <!-- 6. Economic & Market (Bottom) -->
+            <div class="glass-card p-6 border-t-8 border-emerald-500 transform hover:translate-y-[-4px] transition-all shadow-2xl">
+                <div class="flex items-center text-emerald-700 mb-4 border-b border-emerald-200 pb-3">
+                    <span class="text-3xl mr-3">📊</span>
+                    <h3 class="text-xl font-bold">Market & Economy</h3>
+                </div>
+                <div class="grid grid-cols-1 gap-3">
+                    <div class="flex justify-between items-center p-3 bg-white/50 rounded-xl">
+                        <span class="text-xs font-bold text-gray-500">GOLD (บาทละ)</span>
+                        <span id="goldPrice" class="font-black text-lg">--</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-white/50 rounded-xl">
+                        <span class="text-xs font-bold text-gray-500">SET Index</span>
+                        <span id="setIndex" class="font-black text-lg">--</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-white/50 rounded-xl">
+                        <span class="text-xs font-bold text-gray-500">THB/USD</span>
+                        <span id="bahtRate" class="font-black text-lg">--</span>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </main>
+
+    <script type="module">
+        const scenicImages = [
+            'https://picsum.photos/seed/mount/1200/900',
+            'https://picsum.photos/seed/ocean/1200/900',
+            'https://picsum.photos/seed/sky/1200/900',
+            'https://picsum.photos/seed/garden/1200/900',
+            'https://picsum.photos/seed/snow/1200/900'
+        ];
+        
+        const dayColorClasses = ['text-day-sun', 'text-day-mon', 'text-day-tue', 'text-day-wed', 'text-day-thu', 'text-day-fri', 'text-day-sat'];
+        const luckyColorMap = {
+            'แดง': 'bg-red-500', 'เหลือง': 'bg-yellow-400', 'ชมพู': 'bg-pink-400', 'เขียว': 'bg-green-500', 
+            'ส้ม': 'bg-orange-500', 'ฟ้า': 'bg-blue-400', 'ม่วง': 'bg-purple-500'
+        };
+
+        const thaiHolidaysData = {
+            0: { 1: "ปีใหม่" },
+            3: { 13: "สงกรานต์", 14: "สงกรานต์", 15: "สงกรานต์" },
+            4: { 1: "แรงงาน", 4: "ฉัตรมงคล" },
+            5: { 3: "วันราชินี" },
+            6: { 28: "วัน ร.๑๐" },
+            7: { 12: "วันแม่" },
+            9: { 13: "วัน ร.๙", 23: "ปิยมหาราช" },
+            11: { 5: "วันพ่อ", 10: "รัฐธรรมนูญ", 31: "สิ้นปี" }
+        };
+
+        let currentDate = new Date();
+        let selectedDate = new Date(); // To track the currently selected day for horoscope
+        const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+        const dayHeaders = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+        function renderCalendar() {
+            const displayMonth = currentDate.getMonth();
+            const displayYear = currentDate.getFullYear();
+            const today = new Date();
+            
+            document.getElementById('monthYearDisplay').textContent = `${monthNames[displayMonth]} ${displayYear + 543}`;
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+
+            dayHeaders.forEach(day => {
+                const h = document.createElement('div');
+                h.className = 'day-cell day-header';
+                h.textContent = day;
+                grid.appendChild(h);
+            });
+
+            const firstDay = new Date(displayYear, displayMonth, 1).getDay();
+            const daysInMonth = new Date(displayYear, displayMonth + 1, 0).getDate();
+
+            for (let i = 0; i < firstDay; i++) {
+                const e = document.createElement('div');
+                e.className = 'day-cell bg-white/20 opacity-30';
+                grid.appendChild(e);
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateObj = new Date(displayYear, displayMonth, day);
+                const isToday = dateObj.toDateString() === today.toDateString();
+                const holiday = thaiHolidaysData[displayMonth]?.[day];
+
+                const cell = document.createElement('div');
+                cell.className = `day-cell ${isToday ? 'current-day' : ''} ${holiday ? 'is-holiday' : ''}`;
+                cell.onclick = () => {
+                    selectedDate = dateObj;
+                    updateSideInfo(dateObj);
+                };
+
+                const cDate = getChineseDatePlaceholder(dateObj);
+                const cSpan = document.createElement('span');
+                cSpan.className = 'chinese-date';
+                cSpan.textContent = cDate;
+                cell.appendChild(cSpan);
+
+                const gNum = document.createElement('span');
+                gNum.className = `gregorian-day-num ${isToday ? 'text-white' : dayColorClasses[dateObj.getDay()]}`;
+                gNum.textContent = day;
+                cell.appendChild(gNum);
+
+                if (holiday) {
+                    const hSpan = document.createElement('span');
+                    hSpan.className = 'holiday-name-display';
+                    hSpan.textContent = holiday;
+                    cell.appendChild(hSpan);
+                }
+
+                grid.appendChild(cell);
+                if (isToday) {
+                    selectedDate = dateObj;
+                    updateSideInfo(dateObj);
+                }
+            }
+        }
+
+        window.changeMonth = (dir) => {
+            currentDate.setMonth(currentDate.getMonth() + dir);
+            renderCalendar();
+        };
+
+        window.refreshHoroscope = () => {
+            updateSideInfo(selectedDate);
+        };
+
+        function getChineseDatePlaceholder(date) {
+            const d = date.getDate();
+            const phase = ["แรม", "ขึ้น"][(d % 30 < 15) ? 0 : 1];
+            const num = (d % 15) || 15;
+            return `${phase} ${num} ค่ำ`;
+        }
+
+        function updateSideInfo(date) {
+            const d = date.getDate();
+            const m = date.getMonth();
+            const y = date.getFullYear();
+            const dayIdx = date.getDay();
+            const isLottery = (d === 1 || d === 16);
+            const isActualToday = date.toDateString() === new Date().toDateString();
+            const zodiacIdx = parseInt(document.getElementById('zodiacSelect').value);
+
+            // Background
+            document.getElementById('mainCalendarContainer').style.backgroundImage = `url('${scenicImages[d % scenicImages.length]}')`;
+
+            // Horoscope Selection Logic
+            document.getElementById('horoscopeDate').textContent = date.toLocaleDateString('th-TH', { dateStyle: 'long' });
+            
+            // Vary predictions based on Date + Zodiac Index to make each combination unique
+            const seed = (d + zodiacIdx) % 5;
+            const generalLuckStrings = [
+                "จังหวะชีวิตมีความราบรื่นดีมาก มีโอกาสได้โชคจากคนรอบข้าง",
+                "วันนี้ควรอยู่นิ่งๆ สังเกตการณ์ ระวังความขัดแย้งกับคนในครอบครัว",
+                "โชคลาภโดดเด่นมาก มีโอกาสได้รับข่าวดีหรือเงินก้อนแบบไม่คาดฝัน",
+                "สุขภาพเป็นเรื่องสำคัญ อย่าหักโหมจนเกินไป พักผ่อนให้เพียงพอ",
+                "เสน่ห์แรงเป็นพิเศษ มีคนเข้ามาทำความรู้จักหรือให้ความสนใจ"
+            ];
+            
+            const workLuckStrings = [
+                "การงานก้าวหน้าแบบก้าวกระโดด ผู้ใหญ่ในสายงานให้การสนับสนุนอย่างเต็มที่ เหมาะแก่การเจรจาต่อรองธุรกิจครั้งสำคัญ",
+                "ต้องเผชิญกับแรงกดดันจากเพื่อนร่วมงานหรือลูกน้อง การประสานงานอาจมีจุดบกพร่อง ควรตรวจสอบเอกสารสัญญาให้ถ้วนถี่ก่อนเซ็น",
+                "ไอเดียสร้างสรรค์พุ่งกระฉูด ผลงานของคุณจะได้รับการชื่นชมจากที่ประชุม มีโอกาสได้โปรเจกต์ใหม่ที่ท้าทายความสามารถ",
+                "ภาระงานหนักหนาเป็นพิเศษ มีเกณฑ์ต้องทำงานล่วงเวลาหรือรับผิดชอบงานแทนผู้อื่น ควรบริหารเวลาให้ดีเพื่อป้องกันความผิดพลาด",
+                "การติดต่อสื่อสารกับต่างชาติหรือคนแดนไกลจะประสบความสำเร็จสูง มีเกณฑ์ได้เดินทางไกลเพื่อไปศึกษาดูงานหรือขยับขยายธุรกิจ"
+            ];
+
+            document.getElementById('ariesHoroscope').textContent = generalLuckStrings[seed];
+            document.getElementById('careerHoroscope').textContent = workLuckStrings[(seed + zodiacIdx) % 5];
+
+            const colors = ["แดง", "เหลือง", "ชมพู", "เขียว", "ส้ม", "ฟ้า", "ม่วง"];
+            // Shift color per zodiac per day
+            const luckyC = colors[(dayIdx + zodiacIdx) % 7];
+            document.getElementById('luckyColor').textContent = luckyC;
+            document.getElementById('luckyColor').className = `px-4 py-1 rounded-full text-white text-xs font-bold shadow-md ${luckyColorMap[luckyC]}`;
+
+            // Shirt Color logic (General for the day of selection)
+            const shirtData = [
+                { day: "อาทิตย์", luck: "ชมพู/แดง", avoid: "ฟ้า/น้ำเงิน" },
+                { day: "จันทร์", luck: "เขียว/เหลือง", avoid: "แดง" },
+                { day: "อังคาร", luck: "ม่วง/ชมพู", avoid: "ขาว/เหลือง" },
+                { day: "พุธ", luck: "ส้ม/เขียว", avoid: "ชมพู" },
+                { day: "พฤหัสบดี", luck: "ฟ้า/ส้ม", avoid: "ม่วง" },
+                { day: "ศุกร์", luck: "ขาว/ฟ้า", avoid: "เทา/ดำ" },
+                { day: "เสาร์", luck: "แดง/ม่วง", avoid: "เขียว" }
+            ];
+            
+            const shirtTableBody = document.getElementById('shirtColorTable');
+            shirtTableBody.innerHTML = '';
+            shirtData.forEach(item => {
+                const row = `<tr>
+                    <td class="font-bold text-gray-700">${item.day}</td>
+                    <td class="text-chinese-main font-semibold">${item.luck}</td>
+                    <td class="text-red-500 font-bold">${item.avoid}</td>
+                </tr>`;
+                shirtTableBody.innerHTML += row;
+            });
+
+            // Lottery
+            const luckyContent = document.getElementById('luckyNumberContent');
+            const luckyText = document.getElementById('luckyText');
+            if (isLottery) {
+                // Use day and zodiac as seed for numbers
+                const num1 = ((d * 31 + zodiacIdx * 17) % 900 + 100);
+                const num2 = ((d * 13 + zodiacIdx * 29) % 90 + 10);
+                luckyContent.innerHTML = `
+                    <div class="mb-4"><p class="text-xs font-bold text-red-500 uppercase">3-Digits</p><div class="text-3xl font-black text-red-600">${num1} | ${num1 + 21}</div></div>
+                    <div><p class="text-xs font-bold text-chinese-accent uppercase">2-Digits</p><div class="text-2xl font-black text-cyan-600">${num2} | ${num2 + 5}</div></div>
+                `;
+                luckyText.textContent = "🔥 เลขเด็ดเน้นๆ สำหรับราศีคุณในงวดนี้!";
+            } else {
+                const n = (d + zodiacIdx) % 10;
+                luckyContent.innerHTML = `<div class="text-4xl font-black text-chinese-main py-4">${n}${n+2}, ${n*3}</div>`;
+                luckyText.textContent = "เลขนำโชคประจำราศีเพื่อเสริมความเป็นสิริมงคล";
+            }
+
+            // Tides (Samut Prakan Simulation)
+            const hTime = (7 + (d % 5)).toString().padStart(2, '0') + ":" + (d * 2 % 60).toString().padStart(2, '0');
+            const lTime = (13 + (d % 4)).toString().padStart(2, '0') + ":" + (d * 3 % 60).toString().padStart(2, '0');
+            document.getElementById('highTide1').textContent = `${hTime} น. (2.1ม.)`;
+            document.getElementById('lowTide1').textContent = `${lTime} น. (0.4ม.)`;
+
+            // Market Data (Actual Snapshot for 22 Dec 2025 as default or generated)
+            if (isActualToday && y === 2025 && m === 11 && d === 22) {
+                document.getElementById('goldPrice').textContent = "64,950 ▲";
+                document.getElementById('goldPrice').className = "font-black text-lg text-emerald-600";
+                document.getElementById('bahtRate').textContent = "31.40 ▼";
+                document.getElementById('bahtRate').className = "font-black text-lg text-emerald-600";
+                document.getElementById('setIndex').textContent = "1,260.68";
+                document.getElementById('setIndex').className = "font-black text-lg text-red-600";
+            } else {
+                const v = Math.sin(d) * 500;
+                document.getElementById('goldPrice').textContent = (44000 + v).toFixed(0);
+                document.getElementById('goldPrice').className = "font-black text-lg text-dark-text";
+                document.getElementById('bahtRate').textContent = (34.5 + Math.cos(d)).toFixed(2);
+                document.getElementById('setIndex').textContent = (1450 + v/10).toFixed(2);
+            }
+
+            // Weather & PM 2.5
+            const pmValue = 15 + (d % 40);
+            document.getElementById('pm25Value').textContent = `${pmValue} µg/m³`;
+            const pmBox = document.getElementById('pm25Box');
+            if (pmValue < 25) {
+                pmBox.className = "mt-4 p-4 rounded-2xl border-2 shadow-inner bg-green-50 border-green-200 text-green-700";
+                document.getElementById('pm25Status').textContent = "อากาศดีเยี่ยม";
+                document.getElementById('pm25Emoji').textContent = "🍃";
+            } else {
+                pmBox.className = "mt-4 p-4 rounded-2xl border-2 shadow-inner bg-yellow-50 border-yellow-200 text-yellow-700";
+                document.getElementById('pm25Status').textContent = "คุณภาพปานกลาง";
+                document.getElementById('pm25Emoji').textContent = "😷";
+            }
+
+            document.getElementById('weatherIcon').src = `https://placehold.co/48x48/5D99C6/FFFFFF?text=${d%3===0?'🌧️':'☀️'}`;
+            document.getElementById('weatherDesc').textContent = d%3===0 ? "ฝนฟ้าคะนองบางแห่ง 26-30°C" : "แดดจ้า ท้องฟ้าแจ่มใส 28-34°C";
+            document.getElementById('sunriseTime').textContent = "06:34";
+            document.getElementById('sunsetTime').textContent = "17:58";
+
+            // Lunisolar Details
+            document.getElementById('chineseInfo').innerHTML = `
+                <div class="space-y-2">
+                    <p class="font-bold text-gray-500 uppercase text-[10px]">Lunisolar Data</p>
+                    <p class="text-lg">🐉 ปีนักษัตร: <span class="font-bold">มะเส็ง (งูเล็ก)</span></p>
+                    <p class="text-lg">🧧 วันจีน: <span class="font-bold">${getChineseDatePlaceholder(date)}</span></p>
+                </div>
+                <div class="space-y-2">
+                    <p class="font-bold text-gray-500 uppercase text-[10px]">Auspicious Status</p>
+                    <p class="text-lg">✨ สถานะ: <span class="font-black text-emerald-600">วันมงคล (ธงไชย)</span></p>
+                    <p class="text-lg">🕰️ เวลาดี: <span class="font-bold text-chinese-main">09:00 - 11:00 น.</span></p>
+                </div>
+            `;
+        }
+
+        window.onload = renderCalendar;
+    </script>
+</body>
+</html>
