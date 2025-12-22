@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tarot Royale - พยากรณ์ชั้นสูง</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Mitr:wght@300;400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold: #d4af37;
+            --dark-bg: #05050a;
+            --royal-purple: #1a0b2e;
+            --accent-blue: #0f172a;
+        }
+
+        body {
+            font-family: 'Mitr', sans-serif;
+            background: linear-gradient(135deg, var(--dark-bg) 0%, var(--royal-purple) 100%);
+            color: #f1f5f9;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .serif-font { font-family: 'Cinzel', serif; }
+        .classic-font { font-family: 'Playfair Display', serif; }
+
+        /* Luxury Glassmorphism */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+        }
+
+        .gold-border { border: 2px solid var(--gold); }
+        .gold-text { color: var(--gold); }
+        .gold-glow:hover { box-shadow: 0 0 20px rgba(212, 175, 55, 0.4); }
+
+        /* Card Animation Styles */
+        .card-inner {
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+        .card-container.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .card-front {
+            transform: rotateY(180deg);
+            background: #1e1e1e;
+            border: 2px solid var(--gold);
+        }
+        .card-back {
+            background: url('https://www.sacred-texts.com/tarot/pkt/img/back.jpg'); /* Classic pattern */
+            background-size: cover;
+            border: 2px solid #333;
+        }
+        .reversed { transform: rotate(180deg); }
+
+        /* Shuffling Animation */
+        @keyframes shuffle {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-50px) rotate(-5deg); }
+            50% { transform: translateX(50px) rotate(5deg); }
+            100% { transform: translateX(0); }
+        }
+        .shuffling { animation: shuffle 0.5s infinite; }
+
+        /* Loading Spinner */
+        .mystic-loader {
+            width: 80px;
+            height: 80px;
+            border: 3px solid transparent;
+            border-top: 3px solid var(--gold);
+            border-radius: 50%;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="p-4 md:p-10">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Decoration -->
+        <div class="fixed top-0 left-0 w-full h-full pointer-events-none opacity-20 z-0">
+            <div class="absolute top-10 left-10 text-gold-500"><i class="fas fa-moon text-9xl"></i></div>
+            <div class="absolute bottom-10 right-10 text-gold-500"><i class="fas fa-sun text-9xl"></i></div>
+        </div>
+
+        <!-- Header -->
+        <header class="text-center mb-12 relative z-10">
+            <h1 class="serif-font text-5xl md:text-7xl gold-text tracking-widest font-bold mb-4 drop-shadow-lg">TAROT ROYALE</h1>
+            <div class="h-1 w-32 bg-gradient-to-r from-transparent via-[#d4af37] to-transparent mx-auto mb-4"></div>
+            <p class="classic-font text-xl md:text-2xl text-gray-300 italic">"ศาสตร์พยากรณ์คลาสสิก สู่ความหยั่งรู้ในระดับจิตวิญญาณ"</p>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="relative z-10">
+            
+            <!-- Question Input Section -->
+            <div id="setup-panel" class="max-w-3xl mx-auto glass-card p-8 rounded-2xl">
+                <div class="mb-8">
+                    <label class="block gold-text serif-font text-xl mb-3 text-center">ปรารถนาจะถามถึงเรื่องใด?</label>
+                    <div class="relative">
+                        <textarea id="user-question" 
+                            class="w-full bg-black/40 border-b-2 border-gold-500/30 p-4 text-white text-lg focus:border-gold-500 outline-none transition-all placeholder:text-gray-600 italic" 
+                            rows="2" placeholder="จงปล่อยจิตให้ว่างแล้วพิมพ์คำถามของท่านลงไป..."></textarea>
+                    </div>
+                </div>
+
+                <div class="mb-10">
+                    <label class="block text-gray-400 text-sm uppercase tracking-widest text-center mb-4">รูปแบบการวางไพ่</label>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <button onclick="selectSpread('single')" id="btn-single" class="spread-option p-4 border border-gold-500/20 rounded-xl hover:bg-gold-500/10 transition flex flex-col items-center">
+                            <span class="serif-font gold-text mb-2">ใบเดียว</span>
+                            <span class="text-xs text-gray-500">คำตอบที่เฉียบคม</span>
+                        </button>
+                        <button onclick="selectSpread('three')" id="btn-three" class="spread-option p-4 border border-gold-500/20 rounded-xl hover:bg-gold-500/10 transition flex flex-col items-center border-gold-500 bg-gold-500/5">
+                            <span class="serif-font gold-text mb-2">สามกาลเวลา</span>
+                            <span class="text-xs text-gray-500">อดีต - ปัจจุบัน - อนาคต</span>
+                        </button>
+                        <button onclick="selectSpread('cross')" id="btn-cross" class="spread-option p-4 border border-gold-500/20 rounded-xl hover:bg-gold-500/10 transition flex flex-col items-center">
+                            <span class="serif-font gold-text mb-2">เซลติกครอส</span>
+                            <span class="text-xs text-gray-500">การวิเคราะห์ขั้นสูง 10 ใบ</span>
+                        </button>
+                    </div>
+                </div>
+
+                <button onclick="commenceRitual()" class="w-full bg-gradient-to-b from-[#d4af37] to-[#aa8a2e] text-black font-bold py-5 rounded-lg serif-font text-2xl tracking-widest gold-glow transform active:scale-95 transition">
+                    เริ่มพิธีเปิดเนตร
+                </button>
+            </div>
+
+            <!-- Ritual Stage -->
+            <div id="ritual-stage" class="hidden">
+                <div id="card-layout" class="flex flex-wrap justify-center gap-8 py-10 min-h-[500px]">
+                    <!-- Cards will be injected here -->
+                </div>
+
+                <div id="oracle-status" class="text-center mb-12 hidden">
+                    <div class="flex flex-col items-center">
+                        <div class="mystic-loader mb-4"></div>
+                        <p class="serif-font gold-text text-xl animate-pulse">ทูตสวรรค์กำลังอ่านชะตาชีวิตของท่าน...</p>
+                    </div>
+                </div>
+
+                <!-- Prediction Display -->
+                <div id="scroll-result" class="hidden max-w-4xl mx-auto mb-20">
+                    <div class="bg-[#f2e7d5] text-[#2c1e11] p-10 md:p-16 rounded-sm shadow-[0_0_50px_rgba(0,0,0,0.5)] relative border-x-8 border-[#3d2b1f]">
+                        <!-- Decorative Scroll Handles -->
+                        <div class="absolute -top-4 left-0 w-full h-8 bg-[#3d2b1f] rounded-full shadow-lg"></div>
+                        <div class="absolute -bottom-4 left-0 w-full h-8 bg-[#3d2b1f] rounded-full shadow-lg"></div>
+                        
+                        <div class="classic-font">
+                            <h2 class="text-4xl font-bold mb-8 text-center border-b border-[#3d2b1f]/20 pb-4">โองการแห่งโชคชะตา</h2>
+                            <div id="prediction-content" class="text-xl leading-relaxed space-y-6">
+                                <!-- AI Content -->
+                            </div>
+                        </div>
+                        
+                        <div class="mt-12 text-center">
+                            <button onclick="restartJourney()" class="px-8 py-3 border-2 border-[#3d2b1f] hover:bg-[#3d2b1f] hover:text-[#f2e7d5] transition rounded-full font-bold uppercase tracking-widest text-sm">
+                                ปิดตำราและเริ่มใหม่
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- UI Components -->
+    <div id="alert-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden p-4">
+        <div class="glass-card p-8 rounded-2xl max-w-sm w-full text-center">
+            <i class="fas fa-exclamation-triangle text-gold-500 text-4xl mb-4"></i>
+            <p id="alert-text" class="text-lg mb-6"></p>
+            <button onclick="closeAlert()" class="w-full bg-gold-500 text-black py-2 rounded-lg font-bold">รับทราบ</button>
+        </div>
+    </div>
+
+    <script>
+        const apiKey = ""; 
+        let currentSpread = 'three';
+        let selectedCards = [];
+
+        // Classic Rider-Waite Major Arcana Mapping
+        const majorArcana = [
+            { id: 0, name: "The Fool", img: "https://www.sacred-texts.com/tarot/pkt/img/ar00.jpg" },
+            { id: 1, name: "The Magician", img: "https://www.sacred-texts.com/tarot/pkt/img/ar01.jpg" },
+            { id: 2, name: "The High Priestess", img: "https://www.sacred-texts.com/tarot/pkt/img/ar02.jpg" },
+            { id: 3, name: "The Empress", img: "https://www.sacred-texts.com/tarot/pkt/img/ar03.jpg" },
+            { id: 4, name: "The Emperor", img: "https://www.sacred-texts.com/tarot/pkt/img/ar04.jpg" },
+            { id: 5, name: "The Hierophant", img: "https://www.sacred-texts.com/tarot/pkt/img/ar05.jpg" },
+            { id: 6, name: "The Lovers", img: "https://www.sacred-texts.com/tarot/pkt/img/ar06.jpg" },
+            { id: 7, name: "The Chariot", img: "https://www.sacred-texts.com/tarot/pkt/img/ar07.jpg" },
+            { id: 8, name: "Strength", img: "https://www.sacred-texts.com/tarot/pkt/img/ar08.jpg" },
+            { id: 9, name: "The Hermit", img: "https://www.sacred-texts.com/tarot/pkt/img/ar09.jpg" },
+            { id: 10, name: "Wheel of Fortune", img: "https://www.sacred-texts.com/tarot/pkt/img/ar10.jpg" },
+            { id: 11, name: "Justice", img: "https://www.sacred-texts.com/tarot/pkt/img/ar11.jpg" },
+            { id: 12, name: "The Hanged Man", img: "https://www.sacred-texts.com/tarot/pkt/img/ar12.jpg" },
+            { id: 13, name: "Death", img: "https://www.sacred-texts.com/tarot/pkt/img/ar13.jpg" },
+            { id: 14, name: "Temperance", img: "https://www.sacred-texts.com/tarot/pkt/img/ar14.jpg" },
+            { id: 15, name: "The Devil", img: "https://www.sacred-texts.com/tarot/pkt/img/ar15.jpg" },
+            { id: 16, name: "The Tower", img: "https://www.sacred-texts.com/tarot/pkt/img/ar16.jpg" },
+            { id: 17, name: "The Star", img: "https://www.sacred-texts.com/tarot/pkt/img/ar17.jpg" },
+            { id: 18, name: "The Moon", img: "https://www.sacred-texts.com/tarot/pkt/img/ar18.jpg" },
+            { id: 19, name: "The Sun", img: "https://www.sacred-texts.com/tarot/pkt/img/ar19.jpg" },
+            { id: 20, name: "Judgement", img: "https://www.sacred-texts.com/tarot/pkt/img/ar20.jpg" },
+            { id: 21, name: "The World", img: "https://www.sacred-texts.com/tarot/pkt/img/ar21.jpg" }
+        ];
+
+        // Minor Arcana placeholder generator for a full 78 deck simulation
+        const suits = ['Wands', 'Cups', 'Swords', 'Pentacles'];
+        const minorArcana = suits.flatMap(suit => 
+            Array.from({length: 14}, (_, i) => ({
+                id: 22 + i,
+                name: `${i === 0 ? 'Ace' : i === 10 ? 'Page' : i === 11 ? 'Knight' : i === 12 ? 'Queen' : i === 13 ? 'King' : i + 1} of ${suit}`,
+                // Using placeholders as high-quality classic minor arcana URLs are more varied
+                img: `https://www.sacred-texts.com/tarot/pkt/img/${suit[0].toLowerCase()}${String(i+1).padStart(2, '0')}.jpg`
+            }))
+        );
+
+        const fullDeck = [...majorArcana, ...minorArcana];
+
+        function selectSpread(type) {
+            currentSpread = type;
+            document.querySelectorAll('.spread-option').forEach(btn => btn.classList.remove('border-gold-500', 'bg-gold-500/5'));
+            document.getElementById(`btn-${type}`).classList.add('border-gold-500', 'bg-gold-500/5');
+        }
+
+        function showAlert(msg) {
+            document.getElementById('alert-text').innerText = msg;
+            document.getElementById('alert-modal').classList.remove('hidden');
+        }
+
+        function closeAlert() {
+            document.getElementById('alert-modal').classList.add('hidden');
+        }
+
+        async function commenceRitual() {
+            const question = document.getElementById('user-question').value.trim();
+            if (!question) {
+                showAlert("ท่านต้องระบุคำถามก่อนจะเปิดม่านแห่งกาลเวลา");
+                return;
+            }
+
+            document.getElementById('setup-panel').classList.add('hidden');
+            document.getElementById('ritual-stage').classList.remove('hidden');
+            
+            drawCards();
+            await renderCardsWithAnimation();
+            
+            // Proceed to AI Interpretation
+            document.getElementById('oracle-status').classList.remove('hidden');
+            try {
+                const interpretation = await fetchAIInterpretation(question);
+                displayResult(interpretation);
+            } catch (err) {
+                showAlert("เกิดข้อผิดพลาดในการสื่อสารกับเบื้องบน โปรดลองอีกครั้ง");
+            } finally {
+                document.getElementById('oracle-status').classList.add('hidden');
+            }
+        }
+
+        function drawCards() {
+            const count = currentSpread === 'single' ? 1 : currentSpread === 'three' ? 3 : 10;
+            const shuffled = [...fullDeck].sort(() => 0.5 - Math.random());
+            selectedCards = shuffled.slice(0, count).map(card => ({
+                ...card,
+                reversed: Math.random() > 0.7 // 30% chance of reversal
+            }));
+        }
+
+        async function renderCardsWithAnimation() {
+            const container = document.getElementById('card-layout');
+            container.innerHTML = '';
+
+            for (let i = 0; i < selectedCards.length; i++) {
+                const card = selectedCards[i];
+                const cardEl = document.createElement('div');
+                cardEl.className = "card-container w-40 h-64 md:w-56 md:h-80 relative perspective-1000";
+                cardEl.innerHTML = `
+                    <div class="card-inner w-full h-full relative">
+                        <div class="card-back shadow-2xl"></div>
+                        <div class="card-front shadow-2xl ${card.reversed ? 'reversed' : ''}">
+                            <img src="${card.img}" alt="${card.name}" class="w-full h-full object-cover">
+                            <div class="absolute bottom-0 left-0 w-full bg-black/60 p-2 text-center text-xs serif-font gold-text border-t border-gold-500/30">
+                                ${card.name} ${card.reversed ? '(กลับหัว)' : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(cardEl);
+                
+                // Staggered Flip
+                await new Promise(r => setTimeout(r, 400));
+                cardEl.classList.add('flipped');
+            }
+        }
+
+        async function fetchAIInterpretation(question) {
+            const cardStrings = selectedCards.map((c, i) => 
+                `ใบที่ ${i+1}: ${c.name} (${c.reversed ? 'กลับหัว' : 'หัวตั้ง'})`
+            ).join(', ');
+
+            const systemPrompt = `คุณคือ "The Oracle Royale" นักพยากรณ์ไพ่ทาโร่ที่เก่งที่สุดในโลก ใช้ภาษาสละสลวยเหมือนในวรรณกรรม คลาสสิก หรูหรา และแม่นยำ 
+            - วิเคราะห์ตามหลักการพยากรณ์จริง (Rider-Waite)
+            - หากไพ่กลับหัว (Reversed) ให้ตีความถึงพลังที่อุดตันหรือมุมกลับ
+            - ให้คำแนะนำที่ทรงพลังและลึกซึ้ง
+            - รูปแบบการตอบ: ใช้หัวข้อที่ดูขลัง เช่น "วิถีแห่งดวงดาว", "คำแนะนำจากจิตวิญญาณ"`;
+
+            const prompt = `ผู้ใช้ถามว่า: "${question}" 
+            รูปแบบการวางไพ่: ${currentSpread} 
+            ไพ่ที่สุ่มได้: ${cardStrings}
+            โปรดทำนายอย่างละเอียดและสง่างามที่สุดในฐานะราชสำนักแห่งโชคชะตา`;
+
+            let retries = 5;
+            let delay = 1000;
+            while(retries > 0) {
+                try {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            systemInstruction: { parts: [{ text: systemPrompt }] }
+                        })
+                    });
+                    if (!response.ok) throw new Error();
+                    const data = await response.json();
+                    return data.candidates[0].content.parts[0].text;
+                } catch (e) {
+                    retries--;
+                    if(retries === 0) throw e;
+                    await new Promise(r => setTimeout(r, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        function displayResult(text) {
+            const content = document.getElementById('prediction-content');
+            // Basic formatting for the AI text
+            content.innerHTML = text
+                .split('\n')
+                .map(p => p.trim() ? `<p>${p}</p>` : '')
+                .join('');
+            
+            document.getElementById('scroll-result').classList.remove('hidden');
+            window.scrollTo({ top: document.getElementById('scroll-result').offsetTop - 100, behavior: 'smooth' });
+        }
+
+        function restartJourney() {
+            selectedCards = [];
+            document.getElementById('scroll-result').classList.add('hidden');
+            document.getElementById('ritual-stage').classList.add('hidden');
+            document.getElementById('setup-panel').classList.remove('hidden');
+            document.getElementById('user-question').value = '';
+        }
+
+    </script>
+</body>
+</html>
