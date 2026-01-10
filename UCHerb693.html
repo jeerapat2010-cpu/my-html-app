@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inspectorate Report - Samut Prakan Health-Related Economy 2569</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- React & ReactDOM CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel for JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f1f5f9;
+            color: #1e293b;
+            font-size: 15px;
+        }
+
+        @media print {
+            @page {
+                size: A4;
+                margin: 12mm;
+            }
+            body { background-color: white; padding: 0; }
+            .no-print { display: none !important; }
+            .print-shadow-none { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
+            .page-break { page-break-before: always; }
+            .avoid-break { break-inside: avoid; }
+            .rounded-custom { border-radius: 1rem !important; }
+            .section-card { border: 1px solid #e2e8f0 !important; margin-bottom: 1rem; }
+        }
+
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        .text-summary { font-size: 13px; line-height: 1.6; }
+        .title-summary { font-size: 11px; font-weight: 800; letter-spacing: 0.05em; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+
+        // --- Constants ---
+        const DISTRICTS = [
+            "คปสอ.เมืองสมุทรปราการ", "คปสอ.พระประแดง", "คปสอ.พระสมุทรเจดีย์", 
+            "คปสอ.บางพลี", "คปสอ.บางบ่อ", "คปสอ.บางเสาธง"
+        ];
+
+        const DISEASE_GROUPS = [
+            "ปวดกล้ามเนื้อ/ข้อ", "ไข้หวัด/ไอ", "ท้องอืด/เฟ้อ", "ท้องผูก/ริดสีดวง", 
+            "วิงเวียน/คลื่นไส้", "ชาอัมพฤกษ์/เส้น", "ผิวหนัง/แผล", "นอนไม่หลับ", 
+            "ท้องเสีย", "เบื่ออาหาร"
+        ];
+
+        const QUALITY_CRITERIA = {
+            service: {
+                id: "service",
+                title: "1. การใช้ยาสมุนไพรตาม CPG (Service Delivery)",
+                definition: "ประเมินการขับเคลื่อนการใช้ยาสมุนไพรทดแทนยาแผนปัจจุบันตามแนวทางเวชปฏิบัติ 10 กลุ่มอาการเป้าหมาย และการกำหนดรายการยาเป้าหมายอย่างน้อย 6 รายการ",
+                theme: { primary: "blue", bg: "bg-blue-50", border: "border-blue-200", accent: "bg-blue-600", text: "text-blue-700" },
+                levels: [
+                    { lv: 1, score: 40, range: "0-40", desc: "มีการจัดทำแนวทางเวชปฏิบัติ (CPG) สำหรับการใช้ยาสมุนไพรทดแทนใน 3-6 กลุ่มโรคเป้าหมาย และมีการกำหนดรายการยาสมุนไพรเป้าหมาย (ED) อย่างน้อย 6 รายการ ในระดับสถานพยาบาล" },
+                    { lv: 2, score: 55, range: "41-55", desc: "มีการจัดทำ CPG ใน 7 กลุ่มโรคเป้าหมาย และเริ่มมีการสั่งใช้ยาสมุนไพรทดแทนจริงในระบบบริการ แต่สัดส่วนยังต่ำกว่าร้อยละ 30 ของจำนวนรายการยาเป้าหมายที่กำหนดในแผน" },
+                    { lv: 3, score: 70, range: "56-70", desc: "มีการจัดทำ CPG ใน 7 กลุ่มโรคเป้าหมาย และมีผลสัมฤทธิ์ของสัดส่วนการสั่งใช้ยาสมุนไพรทดแทนได้จริงอยู่ระหว่างร้อยละ 30 - 60 ของจำนวนรายการยาเป้าหมายที่กำหนด" },
+                    { lv: 4, score: 85, range: "71-85", desc: "มีการจัดทำ CPG ครบถ้วนทั้ง 10 กลุ่มอาการเป้าหมาย และสามารถผลักดันสัดส่วนการสั่งใช้ยาสมุนไพรทดแทนได้ร้อยละ 61 - 85 ของจำนวนรายการยาเป้าหมายในระบบบริการ" },
+                    { lv: 5, score: 100, range: "86-100", desc: "มีการจัดทำ CPG ครบถ้วนทั้ง 10 กลุ่มอาการ และมีความเข้มแข็งเชิงนโยบายโดยสั่งใช้ยาทดแทนได้มากกว่าร้อยละ 85 ของจำนวนรายการยาเป้าหมายที่กำหนดไว้อย่างต่อเนื่องและยั่งยืน" }
+                ]
+            },
+            workforce: {
+                id: "workforce",
+                title: "2. ศักยภาพและกำลังคน (Health Workforce)",
+                definition: "ความพร้อมและทักษะของบุคลากรหลักในการใช้ยาสมุนไพรในบัญชียาหลักแห่งชาติ และการประเมินทักษะความรอบรู้ (Health Literacy)",
+                theme: { primary: "amber", bg: "bg-amber-50", border: "border-amber-200", accent: "bg-amber-500", text: "text-amber-700" },
+                levels: [
+                    { lv: 1, score: 40, range: "0-40", desc: "มีแผนงาน/โครงการจัดอบรมหรือประเมินทักษะความรอบรู้ (Health Literacy) เกี่ยวกับการใช้ยาสมุนไพรในบัญชียาหลักฯ ให้แก่บุคลากรหลัก (แพทย์ เภสัชกร พยาบาล แพทย์แผนไทย)" },
+                    { lv: 2, score: 55, range: "41-55", desc: "บุคลากรหลักตามกลุ่มเป้าหมายผ่านการอบรมหรือประเมินทักษะความรอบรู้ฯ ต่ำกว่าร้อยละ 50 ของจำนวนกลุ่มเป้าหมายบุคลากรหลักทั้งหมดในหน่วยงาน" },
+                    { lv: 3, score: 70, range: "56-70", desc: "บุคลากรหลักตามกลุ่มเป้าหมายผ่านการอบรมหรือประเมินทักษะความรอบรู้ฯ อยู่ที่ร้อยละ 50 - 70 ของจำนวนกลุ่มเป้าหมายบุคลากรหลักที่ปฏิบัติงานจริง" },
+                    { lv: 4, score: 85, range: "71-85", desc: "บุคลากรหลักตามกลุ่มเป้าหมายผ่านการอบรมหรือประเมินทักษะความรอบรู้ฯ อยู่ที่ร้อยละ 71 - 85 ของจำนวนกลุ่มเป้าหมาย และมีความพร้อมในการให้คำแนะนำเชิงวิชาการแก่ผู้ป่วย" },
+                    { lv: 5, score: 100, range: "86-100", desc: "บุคลากรหลักผ่านการอบรมฯ มากกว่าร้อยละ 85 และมีทีมผู้เชี่ยวชาญให้คำปรึกษาการสั่งใช้ยา (Consultant Team) ที่ประกอบด้วยวิชาชีพสหสาขาเพื่อสนับสนุนการทำงานอย่างชัดเจน" }
+                ]
+            },
+            information: {
+                id: "information",
+                title: "3. ระบบข้อมูลและการจัดการ (Health Information System)",
+                definition: "ความถูกต้องของการบันทึกรหัสยามาตรฐาน 24 หลัก และรหัสที่มาของยาหลักที่ 25 เพื่อความถูกต้องของมูลค่าการเบิกจ่าย",
+                theme: { primary: "indigo", bg: "bg-indigo-50", border: "border-indigo-200", accent: "bg-indigo-600", text: "text-indigo-700" },
+                levels: [
+                    { lv: 1, score: 40, range: "0-40", desc: "พบความถูกต้องแม่นยำในการบันทึกรหัสยามาตรฐาน 24 หลัก ต่ำกว่าร้อยละ 60 ของจำนวนรายการรหัสยาสมุนไพรที่ปรากฏบนระบบ HIS ของหน่วยบริการ" },
+                    { lv: 2, score: 55, range: "41-55", desc: "พบความถูกต้องแม่นยำในการบันทึกรหัสยามาตรฐาน 24 หลัก อยู่ที่ร้อยละ 60 - 70 เมื่อตรวจสอบเปรียบเทียบกับรายการยาที่มีการสั่งใช้จริงในฐานข้อมูล HDC" },
+                    { lv: 3, score: 70, range: "56-70", desc: "พบความถูกต้องแม่นยำในการบันทึกรหัสยามาตรฐาน 24 หลัก อยู่ที่ร้อยละ 71 - 80 ข้อมูลในระดับสถานพยาบาลมีความน่าเชื่อถือและสามารถใช้ตรวจสอบมูลค่าเบื้องต้นได้" },
+                    { lv: 4, score: 85, range: "71-85", desc: "พบความถูกต้องแม่นยำในการบันทึกรหัสยามาตรฐาน 24 หลัก อยู่ที่ร้อยละ 81 - 90 ข้อมูลมีความสอดคล้องกับมาตรฐานรหัสยา THAIPADI และการเบิกจ่ายชดเชย" },
+                    { lv: 5, score: 100, range: "86-100", desc: "พบความถูกต้องแม่นยำในการบันทึกรหัสยามาตรฐาน 24 หลัก มากกว่าร้อยละ 90 ข้อมูลมีความสมบูรณ์สูงมาก สามารถนำไปวิเคราะห์เชิงเศรษฐกิจและเปรียบเทียบประสิทธิภาพรายหน่วยงานได้" }
+                ]
+            },
+            access: {
+                id: "access",
+                title: "4. การเข้าถึงยาและเทคโนโลยี (Access & Tech)",
+                definition: "การใช้ยาสมุนไพรที่ผลิตจากแหล่งมาตรฐาน GMP และประสิทธิภาพในการบริหารคลังเวชภัณฑ์เพื่อความสม่ำเสมอในการบริการ",
+                theme: { primary: "rose", bg: "bg-rose-50", border: "border-rose-200", accent: "bg-rose-500", text: "text-rose-700" },
+                levels: [
+                    { lv: 1, score: 40, range: "0-40", desc: "มีการสั่งใช้ยาสมุนไพรในบัญชียาหลักฯ (ED) ที่ผ่านการรับรองเกณฑ์มาตรฐาน GMP ต่ำกว่าร้อยละ 50 ของมูลค่าการจัดซื้อยาสมุนไพรทั้งหมดของหน่วยงาน" },
+                    { lv: 2, score: 55, range: "41-55", desc: "มีการสั่งใช้ยาสมุนไพร (ED) ที่ผ่านการรับรองเกณฑ์มาตรฐาน GMP อยู่ที่ร้อยละ 50 - 70 ของจำนวนรายการยาเป้าหมายที่ปรากฏในระบบบัญชีคอมพิวเตอร์" },
+                    { lv: 3, score: 70, range: "56-70", desc: "มีการสั่งใช้ยาสมุนไพร (ED) ที่ผ่านการรับรองเกณฑ์มาตรฐาน GMP อยู่ที่ร้อยละ 71 - 80 และมีระบบการสำรองยาเป้าหมายเพื่อป้องกันภาวะขาดแคลนยา" },
+                    { lv: 4, score: 85, range: "71-85", desc: "มีการสั่งใช้ยาสมุนไพร (ED) ที่ผ่านการรับรองเกณฑ์มาตรฐาน GMP อยู่ที่ร้อยละ 81 - 95 กระบวนการจัดซื้อและบริหารคลังยาเป็นไปตามเกณฑ์มาตรฐานความปลอดภัย" },
+                    { lv: 5, score: 100, range: "86 - 100", desc: "มีการสั่งใช้ยาสมุนไพร (ED) ที่ผลิตตามมาตรฐาน GMP มากกว่าร้อยละ 95 ครอบคลุมเกือบทุกรายการ และมีการใช้เทคโนโลยีสารสนเทศในการจัดการคลังยาที่มีประสิทธิภาพสูงสุด" }
+                ]
+            }
+        };
+
+        const Icon = ({ name, className, size = 20 }) => {
+            useEffect(() => { if (window.lucide) { window.lucide.createIcons(); } }, [name]);
+            return <i data-lucide={name} className={className} style={{width: size, height: size}}></i>;
+        };
+
+        const App = () => {
+            // --- States ---
+            const [admin, setAdmin] = useState({
+                unitName: 'กลุ่มงานการแพทย์แผนไทยและทางเลือก สสจ.สป.', 
+                assessedUnit: DISTRICTS[0], 
+                assessorName: '', 
+                assesseeName: '', 
+                evalDate: new Date().toISOString().split('T')[0]
+            });
+            const [thaipadiValue, setThaipadiValue] = useState(0);
+            const [qualityLevels, setQualityLevels] = useState({ service: 1, workforce: 1, information: 1, access: 1 });
+            const [feedback, setFeedback] = useState({
+                service: { observation: '', strength: '', recommendation: '', weakness: '' },
+                workforce: { observation: '', strength: '', recommendation: '', weakness: '' },
+                information: { observation: '', strength: '', recommendation: '', weakness: '' },
+                access: { observation: '', strength: '', recommendation: '', weakness: '' }
+            });
+            const [checklists, setChecklists] = useState({ cpgGroups: Array(10).fill(false) });
+
+            // --- Derived Data ---
+            const computedTarget = useMemo(() => (thaipadiValue * 4) * 1.2, [thaipadiValue]);
+            const performancePercent = useMemo(() => computedTarget <= 0 ? 0 : (thaipadiValue / computedTarget) * 100, [thaipadiValue, computedTarget]);
+            const quantScore = useMemo(() => Math.min(Math.max((performancePercent / 20.83) * 10, 0), 10), [performancePercent]);
+            const avgQualityScore = useMemo(() => {
+                return (QUALITY_CRITERIA.service.levels.find(l => l.lv === qualityLevels.service).score +
+                        QUALITY_CRITERIA.workforce.levels.find(l => l.lv === qualityLevels.workforce).score +
+                        QUALITY_CRITERIA.information.levels.find(l => l.lv === qualityLevels.information).score +
+                        QUALITY_CRITERIA.access.levels.find(l => l.lv === qualityLevels.access).score) / 4;
+            }, [qualityLevels]);
+            const finalScore = (quantScore * 0.7) + ((avgQualityScore / 10) * 0.3);
+
+            const getRating = (s) => {
+                if (s >= 8.6) return { label: 'ดีเยี่ยม', color: 'bg-emerald-600', text: 'text-emerald-700', border: 'border-emerald-200' };
+                if (s >= 7.1) return { label: 'ดี', color: 'bg-blue-600', text: 'text-blue-700', border: 'border-blue-200' };
+                if (s >= 5.6) return { label: 'พอใช้', color: 'bg-amber-500', text: 'text-amber-700', border: 'border-amber-200' };
+                return { label: 'ต้องพัฒนา', color: 'bg-rose-600', text: 'text-rose-700', border: 'border-rose-200' };
+            };
+
+            const synthesizedSummary = useMemo(() => {
+                const results = [];
+                results.push({
+                    key: 'quant',
+                    title: 'ผลสัมฤทธิ์เชิงปริมาณ (Economic Index)',
+                    val: performancePercent.toFixed(2) + '%',
+                    score: quantScore.toFixed(2) + '/10',
+                    text: performancePercent >= 20.8 
+                        ? `บรรลุเป้าหมายการเติบโตเชิงเศรษฐกิจ (Progress: ${performancePercent.toFixed(1)}%) แสดงถึงการขยายตัวของมูลค่าการใช้ยาสมุนไพรในสิทธิ UC ตามกรอบนโยบายเชิงรุก Growth 20%`
+                        : `อัตราความสำเร็จ ${performancePercent.toFixed(1)}% ยังคงมีส่วนต่างจากเป้าหมายประจำไตรมาส จำเป็นต้องวิเคราะห์สาเหตุการสั่งใช้ยาในระดับรพ.สต. เพื่อเพิ่มมูลค่าสะสม`,
+                    observations: 'คำนวณอัตโนมัติจากฐานข้อมูล THAIPADI'
+                });
+
+                Object.keys(QUALITY_CRITERIA).forEach(key => {
+                    const data = QUALITY_CRITERIA[key];
+                    const lv = qualityLevels[key];
+                    const fb = feedback[key];
+                    let synthesis = `ระดับคะแนน ${lv}/5 (${data.levels.find(l => l.lv === lv).score} คะแนน). `;
+                    if (lv >= 4) synthesis += "ระบบมีความพร้อมสูง มีมาตรฐานเป็นที่ยอมรับ และมีกลไกกำกับดูแลที่เข้มแข็ง. ";
+                    else if (lv >= 2) synthesis += "มีการดำเนินงานเบื้องต้นแต่ยังพบโอกาสในการพัฒนาเชิงระบบให้มีความเสถียรมากขึ้น. ";
+                    else synthesis += "ต้องเร่งทบทวนกระบวนการทำงานและทรัพยากรที่เกี่ยวข้องตามเกณฑ์มาตรฐาน. ";
+
+                    if (fb.strength) synthesis += `จุดแข็ง: ${fb.strength}. `;
+                    if (fb.weakness) synthesis += `จุดอ่อน: ${fb.weakness}. `;
+                    if (fb.recommendation) synthesis += `แนวทางพัฒนา: ${fb.recommendation}. `;
+
+                    results.push({
+                        key: key,
+                        title: data.title,
+                        val: `Lv ${lv}`,
+                        score: `${data.levels.find(l => l.lv === lv).score}/100`,
+                        text: synthesis,
+                        observations: fb.observation || 'ไม่มีข้อสังเกตเพิ่มเติม'
+                    });
+                });
+                return results;
+            }, [performancePercent, quantScore, qualityLevels, feedback]);
+
+            const lowKeyId = useMemo(() => {
+                return Object.keys(qualityLevels).reduce((a, b) => 
+                    QUALITY_CRITERIA[a].levels.find(l => l.lv === qualityLevels[a]).score < 
+                    QUALITY_CRITERIA[b].levels.find(l => l.lv === qualityLevels[b]).score ? a : b
+                );
+            }, [qualityLevels]);
+
+            const expertAdvice = useMemo(() => ({
+                keyPriority: QUALITY_CRITERIA[lowKeyId].title,
+                advice: `หน่วยงานควรให้ความสำคัญสูงสุดกับการพัฒนาด้าน "${QUALITY_CRITERIA[lowKeyId].title}" เนื่องจากเป็นประเด็นที่มีคะแนนคุณภาพต่ำที่สุดในปัจจุบัน ซึ่งส่งผลต่อการบรรลุตัวชี้วัดภาพรวมเชิงเศรษฐกิจสุขภาพ. ข้อเสนอแนะคือการจัดทำ Action Plan เฉพาะหน้าเพื่อแก้ไขจุดอ่อนที่พบ และประสานขอความสนับสนุนทางวิชาการจาก สสจ. เพื่อยกระดับทักษะบุคลากรและระบบข้อมูลให้เป็นไปตามมาตรฐาน.`
+            }), [lowKeyId]);
+
+            return (
+                <div className="min-h-screen pb-12 print:p-0">
+                    <div className="max-w-6xl mx-auto bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border border-slate-200 print:shadow-none print:rounded-none">
+                        
+                        {/* 1. Official Header */}
+                        <div className="bg-gradient-to-r from-emerald-800 via-teal-900 to-indigo-950 p-10 text-white relative">
+                            <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-400/10 rounded-full blur-[100px] -mr-40 -mt-40 opacity-40"></div>
+                            <div className="flex flex-col md:flex-row justify-between items-center relative z-10 gap-8">
+                                <div className="space-y-1 text-center md:text-left">
+                                    <div className="flex items-center gap-4 justify-center md:justify-start mb-2">
+                                        <div className="p-3 bg-emerald-500 rounded-2xl shadow-xl"><Icon name="activity" size={32} /></div>
+                                        <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight leading-tight">Inspection Health-Related<br/>Economy Excellence 2569</h1>
+                                    </div>
+                                    <p className="text-emerald-200 font-bold tracking-[0.2em] uppercase text-[10px]">Strategic Management Analytics Dashboard: Samut Prakan v5.5</p>
+                                </div>
+                                <button onClick={() => window.print()} className="no-print flex items-center gap-3 bg-emerald-500 hover:bg-emerald-400 text-white px-10 py-5 rounded-[1.5rem] font-black shadow-2xl transition-all hover:scale-105 active:scale-95">
+                                    <Icon name="printer" size={20} /> พิมพ์รายงาน (A4 PDF)
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-8 space-y-10 bg-white">
+                            
+                            {/* 2. Administrative Section (TOP) */}
+                            <section className="bg-slate-50 border border-slate-200 rounded-[2.5rem] p-8 grid grid-cols-1 md:grid-cols-2 gap-8 shadow-inner avoid-break">
+                                <div className="space-y-6">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">หน่วยงานผู้ตรวจประเมิน</label>
+                                        <div className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-700 shadow-sm">{admin.unitName}</div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1">หน่วยงานรับการตรวจ (จังหวัดสมุทรปราการ)</label>
+                                        <select 
+                                            value={admin.assessedUnit} 
+                                            onChange={e => setAdmin({...admin, assessedUnit: e.target.value})} 
+                                            className="w-full p-4 bg-white border-2 border-indigo-100 rounded-2xl font-bold text-lg outline-none focus:border-indigo-500 transition-all cursor-pointer shadow-sm"
+                                        >
+                                            {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-4">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">ชื่อผู้ตรวจประเมิน</label>
+                                            <input type="text" value={admin.assessorName} onChange={e => setAdmin({...admin, assessorName: e.target.value})} className="w-full p-4 border border-slate-200 rounded-2xl font-bold text-sm shadow-sm" placeholder="..." />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">ชื่อผู้รับประเมิน</label>
+                                            <input type="text" value={admin.assesseeName} onChange={e => setAdmin({...admin, assesseeName: e.target.value})} className="w-full p-4 border border-slate-200 rounded-2xl font-bold text-sm shadow-sm" placeholder="..." />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1 flex flex-col">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">วันที่ประเมิน</label>
+                                        <input type="date" value={admin.evalDate} onChange={e => setAdmin({...admin, evalDate: e.target.value})} className="w-full p-4 border border-slate-200 rounded-2xl font-black text-lg h-full shadow-sm" />
+                                    </div>
+                                </div>
+                            </section>
+
+                            {/* Dashboard Highlights */}
+                            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 no-print">
+                                <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl flex flex-col items-center justify-center text-center">
+                                    <div className="text-3xl font-black text-slate-800 mb-1 tabular-nums">{performancePercent.toFixed(1)}%</div>
+                                    <h4 className="font-black text-slate-400 uppercase text-[9px] tracking-widest opacity-60">Achievement Rate</h4>
+                                </div>
+                                <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl flex flex-col items-center justify-center text-center">
+                                    <div className="text-2xl font-black text-slate-700 tabular-nums">{(computedTarget/1000000).toFixed(2)}<span className="text-xs"> M.</span></div>
+                                    <h4 className="font-black text-slate-400 uppercase text-[9px] tracking-widest opacity-60">Calculated Target</h4>
+                                </div>
+                                <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl flex flex-col items-center justify-center text-center">
+                                    <div className="text-3xl font-black text-indigo-600 tabular-nums">{avgQualityScore.toFixed(0)}</div>
+                                    <h4 className="font-black text-slate-400 uppercase text-[9px] tracking-widest opacity-60">Quality Average</h4>
+                                </div>
+                                <div className="bg-gradient-to-br from-indigo-700 to-emerald-600 p-6 rounded-[2rem] text-white flex flex-col items-center justify-center shadow-2xl relative overflow-hidden group">
+                                    <div className="text-6xl font-black mb-1 tabular-nums drop-shadow-lg">{finalScore.toFixed(2)}</div>
+                                    <div className={`px-4 py-1 rounded-full text-[9px] font-black uppercase shadow-md ${getRating(finalScore).color}`}>
+                                        {getRating(finalScore).label}
+                                    </div>
+                                </div>
+                            </section>
+
+                            {/* Section 1: Quantitative Analytics (MEGA INPUT) */}
+                            <section className="bg-white border border-slate-200 p-10 rounded-[3rem] shadow-xl border-t-8 border-t-emerald-500 avoid-break relative overflow-hidden group">
+                                <div className="flex items-center gap-4 mb-8">
+                                    <div className="p-3 bg-emerald-100 rounded-2xl text-emerald-700 shadow-sm"><Icon name="target" size={28} /></div>
+                                    <h3 className="text-2xl font-black text-slate-700 uppercase tracking-tight">ส่วนที่ 1: ผลลัพธ์เชิงปริมาณ (Economic Growth)</h3>
+                                </div>
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+                                    <div className="lg:col-span-7 p-10 bg-indigo-50/50 rounded-[3.5rem] border-2 border-indigo-100 text-center shadow-inner group-hover:bg-white transition-all duration-500">
+                                        <label className="text-base font-black text-indigo-900 uppercase block mb-4 tracking-[0.2em]">มูลค่า THAIPADI ล่าสุด (บาท)</label>
+                                        <input 
+                                            type="number" 
+                                            value={thaipadiValue || ''} 
+                                            onChange={e => setThaipadiValue(Number(e.target.value))} 
+                                            className="w-full p-10 border-4 border-white rounded-[2.5rem] font-black text-indigo-700 text-7xl text-center shadow-2xl outline-none tabular-nums bg-white focus:bg-white transition-all placeholder-indigo-100"
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                    <div className="lg:col-span-5 space-y-6">
+                                        <div className="p-8 bg-emerald-50 rounded-[2.5rem] border border-emerald-100 shadow-lg">
+                                            <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest opacity-60">Annual Target (Projected + 20%):</span>
+                                            <div className="text-3xl font-black text-emerald-800 mt-1">{(computedTarget).toLocaleString()} บาท</div>
+                                        </div>
+                                        <div className="p-8 bg-blue-50 rounded-[2.5rem] border border-blue-100 shadow-lg">
+                                            <span className="text-[10px] font-black text-blue-700 uppercase tracking-widest opacity-60">Achievement Ratio:</span>
+                                            <div className="text-4xl font-black text-blue-800 mt-1">{performancePercent.toFixed(2)}%</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            {/* Section 2: Building Blocks Evaluation */}
+                            <section className="space-y-12">
+                                <h2 className="text-3xl font-black text-slate-700 flex items-center gap-3 px-2 avoid-break">
+                                    <Icon name="clipboard-check" className="text-indigo-600" size={32} /> ส่วนที่ 2: เกณฑ์คุณภาพ Building Blocks (Outcome)
+                                </h2>
+                                {Object.entries(QUALITY_CRITERIA).map(([key, data]) => (
+                                    <div key={key} className={`bg-white border-2 ${data.theme.border} rounded-[3.5rem] shadow-2xl overflow-hidden avoid-break`}>
+                                        <div className={`${data.theme.bg} p-10 border-b ${data.theme.border} flex justify-between items-center`}>
+                                            <div className="max-w-3xl">
+                                                <h4 className={`text-3xl font-black ${data.theme.text} tracking-tight uppercase`}>{data.title}</h4>
+                                                <p className="text-base font-bold italic opacity-70 mt-1">{data.definition}</p>
+                                            </div>
+                                            <div className={`${data.theme.accent} text-white px-10 py-5 rounded-[2rem] font-black text-5xl shadow-xl`}>
+                                                {data.levels.find(l => l.lv === qualityLevels[key]).score}
+                                            </div>
+                                        </div>
+                                        <div className="p-10 space-y-10">
+                                            {/* ENRICHED LEVEL SELECTOR */}
+                                            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                                                {data.levels.map(level => (
+                                                    <button 
+                                                        key={level.lv} 
+                                                        onClick={() => setQualityLevels({...qualityLevels, [key]: level.lv})} 
+                                                        className={`p-6 rounded-[2.5rem] border-2 transition-all text-left flex flex-col justify-between h-full ${qualityLevels[key] === level.lv ? `${data.theme.border} ${data.theme.bg} scale-105 shadow-xl ring-4 ring-${data.theme.primary}-100` : 'bg-slate-50 border-transparent hover:border-slate-300 hover:bg-white'}`}
+                                                    >
+                                                        <div className="mb-4">
+                                                            <div className={`text-[10px] font-black uppercase tracking-widest ${qualityLevels[key] === level.lv ? data.theme.text : 'text-slate-400'}`}>ระดับที่ {level.lv}</div>
+                                                            <div className={`text-xl font-black ${qualityLevels[key] === level.lv ? data.theme.text : 'text-slate-700'}`}>{level.range} Pt.</div>
+                                                        </div>
+                                                        <div className={`text-[13px] font-bold leading-relaxed ${qualityLevels[key] === level.lv ? 'text-slate-900' : 'text-slate-500'}`}>{level.desc}</div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            
+                                            {key === 'service' && (
+                                                <div className="p-10 bg-blue-50/30 rounded-[3rem] border border-blue-100 shadow-inner grid grid-cols-2 md:grid-cols-5 gap-4 border-dashed">
+                                                    {DISEASE_GROUPS.map((d, i) => (
+                                                        <label key={i} className={`flex items-center gap-3 text-xs font-black cursor-pointer uppercase transition-all ${checklists.cpgGroups[i] ? 'text-blue-700 font-extrabold' : 'text-slate-400'}`}>
+                                                            <input type="checkbox" checked={checklists.cpgGroups[i]} onChange={e => {
+                                                                const arr = [...checklists.cpgGroups]; arr[i] = e.target.checked; setChecklists({...checklists, cpgGroups: arr});
+                                                            }} className="w-7 h-7 rounded-xl border-2 border-blue-200 checked:bg-blue-600 transition-all cursor-pointer" />
+                                                            {d}
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Detailed Feedback Sections (No-print for input area) */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-slate-100 no-print">
+                                                <div className="space-y-6">
+                                                    <textarea value={feedback[key].observation} onChange={e => setFeedback({...feedback, [key]: {...feedback[key], observation: e.target.value}})} className="w-full p-6 bg-slate-50 border border-slate-200 rounded-[2rem] text-[16px] min-h-[140px] font-bold outline-none focus:bg-white focus:border-indigo-100 transition-all shadow-inner" placeholder="ข้อสังเกตจากการประเมินหน้างาน..."></textarea>
+                                                    <textarea value={feedback[key].strength} onChange={e => setFeedback({...feedback, [key]: {...feedback[key], strength: e.target.value}})} className="w-full p-6 bg-emerald-50/50 border border-emerald-100 rounded-[2rem] text-[16px] min-h-[140px] font-bold outline-none focus:bg-white focus:border-emerald-200 transition-all shadow-inner" placeholder="จุดแข็งที่เด่นชัด..."></textarea>
+                                                </div>
+                                                <div className="space-y-6">
+                                                    <textarea value={feedback[key].recommendation} onChange={e => setFeedback({...feedback, [key]: {...feedback[key], recommendation: e.target.value}})} className="w-full p-6 bg-amber-50/50 border border-amber-100 rounded-[2rem] text-[16px] min-h-[140px] font-bold outline-none focus:bg-white focus:border-amber-200 transition-all shadow-inner" placeholder="ข้อแนะนำเชิงพัฒนา..."></textarea>
+                                                    <textarea value={feedback[key].weakness} onChange={e => setFeedback({...feedback, [key]: {...feedback[key], weakness: e.target.value}})} className="w-full p-6 bg-rose-50/50 border border-rose-100 rounded-[2rem] text-[16px] min-h-[140px] font-bold outline-none focus:bg-white focus:border-rose-200 transition-all shadow-inner" placeholder="จุดอ่อนหรืออุปสรรคด่วน..."></textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </section>
+
+                            {/* 6. Deep Synthesis Report Section (A4 Optimized) */}
+                            <section className="bg-gradient-to-br from-indigo-50 via-white to-blue-50 p-12 md:p-16 rounded-[4rem] text-slate-800 shadow-2xl border border-slate-200 relative overflow-hidden page-break section-card">
+                                <div className="absolute top-0 right-0 w-[50rem] h-[50rem] bg-indigo-500/5 rounded-full blur-[120px] -mr-40 -mt-40 opacity-30"></div>
+                                
+                                <div className="flex items-center gap-5 mb-14 relative z-10 avoid-break">
+                                    <div className="p-5 bg-indigo-600 rounded-[2.5rem] text-white shadow-2xl shadow-indigo-100"><Icon name="file-text" size={40} /></div>
+                                    <div>
+                                        <h2 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tight">Summary Executive Report</h2>
+                                        <p className="text-base text-slate-500 font-bold tracking-[0.2em] uppercase opacity-80 italic underline decoration-emerald-200 underline-offset-8">ฉบับวิเคราะห์รายประเด็นย่อยเชิงลึก (จังหวัดสมุทรปราการ)</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 relative z-10">
+                                    <div className="space-y-10">
+                                        <h4 className="title-summary text-indigo-600 uppercase mb-4 flex items-center gap-3"><Icon name="bar-chart-3" size={14} /> ผลการประเมินสังเคราะห์รายมิติ (In-Depth Synthesis)</h4>
+                                        <div className="space-y-8">
+                                            {synthesizedSummary.map(item => (
+                                                <div key={item.key} className="bg-white/90 backdrop-blur-sm p-8 rounded-[2.5rem] border border-slate-100 shadow-lg avoid-break border-l-8 border-l-indigo-400">
+                                                    <div className="flex justify-between items-center mb-4 border-b border-slate-50 pb-2">
+                                                        <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">{item.title}</span>
+                                                        <div className="flex gap-2">
+                                                            <span className="bg-slate-100 text-slate-600 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tighter">{item.score}</span>
+                                                            <span className="bg-indigo-600 text-white px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest">{item.val}</span>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-sm font-bold text-slate-700 leading-relaxed mb-4 text-justify">{item.text}</p>
+                                                    <div className="bg-slate-50/80 p-5 rounded-2xl border border-slate-100 shadow-inner">
+                                                        <div className="text-[12px] leading-relaxed">
+                                                            <span className="font-black uppercase tracking-[0.2em] text-[10px] text-indigo-500 block mb-1">Evidence & Findings:</span>
+                                                            <p className="text-slate-600 italic">"{item.observations}"</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="space-y-12">
+                                        {/* Strategic Recommendation Card */}
+                                        <div className="p-12 bg-white border-2 border-emerald-100 rounded-[3.5rem] shadow-2xl relative overflow-hidden group hover:shadow-emerald-200 transition-all avoid-break border-dashed">
+                                            <div className="absolute -right-8 -top-8 p-6 text-emerald-500/5 font-black text-[15rem] select-none group-hover:scale-110 transition-transform duration-1000 uppercase opacity-30">Strat</div>
+                                            <h4 className="title-summary text-emerald-600 uppercase mb-8 flex items-center gap-3 tracking-[0.4em]"><Icon name="shield-alert" size={16}/> Strategic Priority & Guidance</h4>
+                                            <div className="space-y-10 relative z-10">
+                                                <div>
+                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 opacity-60">Target Priority:</span>
+                                                    <p className="text-2xl font-black text-slate-800 uppercase tracking-tight leading-tight underline decoration-indigo-200 underline-offset-8 decoration-4">{expertAdvice.keyPriority}</p>
+                                                </div>
+                                                <div>
+                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 opacity-60">Policy Expert Advice:</span>
+                                                    <p className="text-[15px] font-bold text-emerald-700 leading-relaxed text-justify">{expertAdvice.advice}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Score Visuals */}
+                                        <div className="flex flex-col md:flex-row gap-12 items-center justify-between pt-12 border-t border-slate-100 avoid-break">
+                                            <div className="flex flex-col text-center md:text-left">
+                                                <span className="title-summary text-indigo-500 uppercase mb-2 opacity-60 tracking-[0.4em]">Integrated Grade</span>
+                                                <span className={`text-6xl font-black ${getRating(finalScore).text} drop-shadow-sm uppercase tracking-tighter`}>{getRating(finalScore).label}</span>
+                                            </div>
+                                            <div className="flex flex-col text-center md:text-right">
+                                                <span className="title-summary text-emerald-500 uppercase mb-2 opacity-60 tracking-[0.4em]">Integrated Index Score</span>
+                                                <span className="text-[10rem] font-black tabular-nums tracking-tighter text-slate-900 leading-none drop-shadow-2xl">{finalScore.toFixed(2)}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Signatures */}
+                                        <div className="grid grid-cols-2 gap-12 pt-20 border-t border-slate-200 avoid-break">
+                                            <div className="text-center group/sign">
+                                                <div className="h-1 bg-slate-100 w-full mb-8 rounded-full shadow-sm transition-all group-hover/sign:bg-emerald-500"></div>
+                                                <p className="text-xl font-black text-slate-800 tracking-widest uppercase mb-1">Inspector</p>
+                                                <div className="px-6 py-3 border border-slate-50 rounded-2xl inline-block bg-slate-50/30">
+                                                    <p className="text-[15px] text-slate-600 font-bold tracking-widest">( {admin.assessorName || '...........................................'} )</p>
+                                                </div>
+                                                <p className="text-[10px] text-slate-400 font-black uppercase mt-3 tracking-widest">ผู้ตรวจราชการ / ผู้ประเมิน</p>
+                                            </div>
+                                            <div className="text-center group/sign">
+                                                <div className="h-1 bg-slate-100 w-full mb-8 rounded-full shadow-sm transition-all group-hover/sign:bg-indigo-500"></div>
+                                                <p className="text-xl font-black text-slate-800 tracking-widest uppercase mb-1">Authorized</p>
+                                                <div className="px-6 py-3 border border-slate-50 rounded-2xl inline-block bg-slate-50/30">
+                                                    <p className="text-[15px] text-slate-600 font-bold tracking-widest">( {admin.assesseeName || '...........................................'} )</p>
+                                                </div>
+                                                <p className="text-[10px] text-slate-400 font-black uppercase mt-3 tracking-widest">หัวหน้าหน่วยงาน / ผู้รับการตรวจ</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <footer className="p-16 text-center text-[10px] text-slate-400 font-black uppercase tracking-[0.8em] bg-white border-t border-slate-100 opacity-60 italic avoid-break">
+                               Samut Prakan Public Health Office | Strategic Governance Analytics 2026 | v5.5.0
+                            </footer>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
