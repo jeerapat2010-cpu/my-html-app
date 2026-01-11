@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ทำเนียบบุคลากร การแพทย์แผนไทยและการแพทย์ทางเลือกจังหวัดสมุทรปราการ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans Thai', sans-serif; scroll-behavior: smooth; }
+        .card-hover:hover { transform: translateY(-10px); box-shadow: 0 40px 80px -20px rgba(16, 185, 129, 0.25); }
+        .workplace-box { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; min-height: 4rem; line-height: 1.4; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #10b981; border-radius: 10px; }
+        input[type="file"]::file-selector-button {
+            background-color: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer; font-weight: bold; margin-right: 15px; transition: 0.3s;
+        }
+        .nav-btn.active { background-color: #10b981; color: white; box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3); }
+        .progress-bar { transition: width 1s ease-in-out; }
+    </style>
+</head>
+<body class="bg-[#F8FAFC] text-slate-900 custom-scrollbar overflow-x-hidden">
+
+    <!-- 1. Passcode Screen -->
+    <div id="passcodeScreen" class="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-6 text-center">
+        <div class="max-w-md w-full space-y-10">
+            <div class="space-y-4">
+                <div class="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-[2.5rem] mx-auto flex items-center justify-center shadow-2xl shadow-emerald-100 animate-bounce">
+                    <i data-lucide="shield-check" class="w-12 h-12"></i>
+                </div>
+                <h1 class="text-4xl font-black text-slate-800 tracking-tighter">ระบบทำเนียบบุคลากร</h1>
+                <p class="text-slate-400 font-bold">ใส่รหัสผ่าน 5 หลักเพื่อเข้าถึง Dashboard</p>
+            </div>
+            <div class="flex justify-center gap-4 py-4">
+                <div class="w-4 h-4 rounded-full border-2 border-emerald-500 transition-all" id="dot-0"></div>
+                <div class="w-4 h-4 rounded-full border-2 border-emerald-500 transition-all" id="dot-1"></div>
+                <div class="w-4 h-4 rounded-full border-2 border-emerald-500 transition-all" id="dot-2"></div>
+                <div class="w-4 h-4 rounded-full border-2 border-emerald-500 transition-all" id="dot-3"></div>
+                <div class="w-4 h-4 rounded-full border-2 border-emerald-500 transition-all" id="dot-4"></div>
+            </div>
+            <p id="pinError" class="text-rose-500 font-bold text-sm opacity-0">รหัสผ่านผิดพลาด! กรุณาลองใหม่</p>
+            <div class="grid grid-cols-3 gap-6 max-w-[300px] mx-auto">
+                <button onclick="appendPin('1')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white transition-all shadow-sm active:scale-90">1</button>
+                <button onclick="appendPin('2')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white transition-all shadow-sm active:scale-90">2</button>
+                <button onclick="appendPin('3')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white transition-all shadow-sm active:scale-90">3</button>
+                <button onclick="appendPin('4')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white transition-all shadow-sm active:scale-90">4</button>
+                <button onclick="appendPin('5')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white transition-all shadow-sm active:scale-90">5</button>
+                <button onclick="appendPin('6')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white transition-all shadow-sm active:scale-90">6</button>
+                <button onclick="appendPin('7')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white transition-all shadow-sm active:scale-90">7</button>
+                <button onclick="appendPin('8')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white transition-all shadow-sm active:scale-90">8</button>
+                <button onclick="appendPin('9')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white transition-all shadow-sm active:scale-90">9</button>
+                <button onclick="clearPin()" class="w-20 h-20 bg-white border border-slate-100 rounded-full text-sm font-black text-slate-300 hover:text-emerald-500">ล้าง</button>
+                <button onclick="appendPin('0')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white transition-all shadow-sm active:scale-90">0</button>
+                <button onclick="backspacePin()" class="w-20 h-20 bg-white border border-slate-100 rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 transition-all"><i data-lucide="delete"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Main App Content -->
+    <div id="mainApp" class="hidden">
+        <!-- Top Nav -->
+        <nav class="bg-white border-b border-slate-100 py-4 px-6 sticky top-0 z-[60] shadow-sm">
+            <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="flex items-center gap-4">
+                    <div class="p-2.5 bg-emerald-600 rounded-2xl text-white shadow-lg shadow-emerald-200">
+                        <i data-lucide="heart" class="w-6 h-6"></i>
+                    </div>
+                    <span class="font-black text-xl tracking-tight uppercase">Medical Dashboard v5.2</span>
+                </div>
+                
+                <div class="flex bg-slate-100 p-1.5 rounded-2xl gap-1">
+                    <button id="navDirectory" onclick="switchView('directory')" class="nav-btn active px-6 py-2.5 rounded-xl font-black text-sm flex items-center gap-2 transition-all">
+                        <i data-lucide="users"></i> รายชื่อบุคลากร
+                    </button>
+                    <button id="navDashboard" onclick="switchView('dashboard')" class="nav-btn px-6 py-2.5 rounded-xl font-black text-sm flex items-center gap-2 transition-all">
+                        <i data-lucide="pie-chart"></i> สรุปสถิติ (Dashboard)
+                    </button>
+                </div>
+
+                <div class="hidden lg:flex items-center gap-3">
+                    <div class="text-right">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Authenticated Account</p>
+                        <p class="text-sm font-bold text-slate-700">jeerapat2010@gmail.com</p>
+                    </div>
+                    <div class="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 border border-emerald-200 shadow-sm">
+                        <i data-lucide="fingerprint"></i>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Header Area -->
+        <header class="bg-white pt-16 pb-24 px-6 border-b border-slate-50 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-50 rounded-full -translate-y-1/2 translate-x-1/2 blur-[120px] opacity-40"></div>
+            <div class="max-w-7xl mx-auto relative z-10">
+                <div class="flex flex-col lg:flex-row items-center justify-between gap-12 text-center lg:text-left">
+                    <div class="space-y-6">
+                        <h1 class="text-4xl md:text-6xl font-black text-slate-900 tracking-tighter leading-[1.05]">
+                            ทำเนียบบุคลากร <br class="hidden md:block">
+                            <span class="text-emerald-600 underline decoration-emerald-200">การแพทย์แผนไทยและการแพทย์ทางเลือก</span><br>
+                            <span class="text-slate-400 italic font-medium">จังหวัดสมุทรปราการ • ประจำปี 2569</span>
+                        </h1>
+                    </div>
+                    <div class="bg-white p-8 rounded-[3.5rem] shadow-2xl border border-emerald-100 flex flex-col items-center gap-5 w-full max-w-sm">
+                        <div class="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-emerald-100 ring-4 ring-emerald-50">
+                            <i data-lucide="upload-cloud"></i>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-sm font-black text-slate-700 uppercase tracking-wide">ประมวลผลข้อมูลใหม่</p>
+                            <p class="text-[10px] text-slate-400 font-bold mt-1 uppercase">Upload CSV to refresh stats</p>
+                        </div>
+                        <input type="file" id="csvFileInput" accept=".csv" class="w-full text-xs">
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main View: Directory -->
+        <div id="directoryView" class="view-content max-w-7xl mx-auto py-16 px-6">
+            <div class="mb-16 flex flex-col lg:flex-row gap-5 p-3 bg-white rounded-[2.5rem] shadow-xl border border-slate-50 ring-8 ring-slate-50/50">
+                <div class="flex-grow relative group">
+                    <i data-lucide="search" class="absolute left-8 top-1/2 -translate-y-1/2 text-slate-300 w-7 h-7"></i>
+                    <input id="searchInput" type="text" placeholder="ค้นหาชื่อ, ตำแหน่ง หรือเบอร์โทร..." class="w-full pl-20 pr-10 py-6 bg-transparent focus:outline-none text-2xl font-bold placeholder:text-slate-200 tracking-tight">
+                </div>
+                <div class="lg:w-1/3 relative border-t lg:border-t-0 lg:border-l border-slate-100">
+                    <select id="workplaceFilter" class="w-full pl-8 pr-12 py-6 bg-transparent appearance-none focus:outline-none cursor-pointer font-black text-slate-600 text-lg">
+                        <option value="all">ทุกหน่วยงาน</option>
+                    </select>
+                    <div class="absolute right-8 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300"><i data-lucide="chevron-down"></i></div>
+                </div>
+            </div>
+            <div id="personnelGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-12">
+                <!-- Cards appear here -->
+                <div class="col-span-full py-32 text-center">
+                    <p class="text-slate-300 text-xl font-bold italic">กรุณาอัปโหลดไฟล์ CSV เพื่อเริ่มต้นการประมวลผล...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main View: Dashboard -->
+        <div id="dashboardView" class="view-content hidden max-w-7xl mx-auto py-20 px-6 space-y-16">
+            <!-- Summary Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div class="bg-white p-8 rounded-[3.5rem] shadow-xl border border-slate-50 flex flex-col items-center">
+                    <div class="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg shadow-emerald-100"><i data-lucide="users"></i></div>
+                    <p class="text-slate-400 font-black text-xs uppercase tracking-widest mb-1">บุคลากรทั้งหมด</p>
+                    <h3 id="statTotal" class="text-5xl font-black text-slate-900 tracking-tighter">0</h3>
+                </div>
+                <div class="bg-white p-8 rounded-[3.5rem] shadow-xl border border-slate-50 flex flex-col items-center">
+                    <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg shadow-blue-100"><i data-lucide="map"></i></div>
+                    <p class="text-slate-400 font-black text-xs uppercase tracking-widest mb-1">อำเภอที่รับผิดชอบ</p>
+                    <h3 id="statDistricts" class="text-5xl font-black text-slate-900 tracking-tighter">0</h3>
+                </div>
+                <div class="bg-white p-8 rounded-[3.5rem] shadow-xl border border-slate-50 flex flex-col items-center">
+                    <div class="w-16 h-16 bg-amber-500 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg shadow-amber-100"><i data-lucide="briefcase"></i></div>
+                    <p class="text-slate-400 font-black text-xs uppercase tracking-widest mb-1">หน่วยงานสังกัด</p>
+                    <h3 id="statWorkplaces" class="text-5xl font-black text-slate-900 tracking-tighter">0</h3>
+                </div>
+                <div class="bg-white p-8 rounded-[3.5rem] shadow-xl border border-slate-50 flex flex-col items-center">
+                    <div class="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg shadow-indigo-100"><i data-lucide="smile"></i></div>
+                    <p class="text-slate-400 font-black text-xs uppercase tracking-widest mb-1">อายุเฉลี่ย</p>
+                    <h3 id="statAvgAge" class="text-5xl font-black text-slate-900 tracking-tighter">0</h3>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                
+                <!-- 1. District Distribution -->
+                <div class="bg-white p-12 rounded-[4rem] shadow-2xl border border-slate-50">
+                    <h4 class="text-2xl font-black text-slate-800 mb-10 flex items-center gap-4">
+                        <div class="w-2 h-8 bg-emerald-500 rounded-full"></div> การกระจายตัวตามอำเภอ (%)
+                    </h4>
+                    <div id="districtStats" class="space-y-8">
+                        <!-- Dynamic Progress Bars -->
+                    </div>
+                </div>
+
+                <!-- 2. Employment Types (Chart) -->
+                <div class="bg-white p-12 rounded-[4rem] shadow-2xl border border-slate-50 flex flex-col items-center">
+                    <h4 class="text-2xl font-black text-slate-800 mb-10 self-start flex items-center gap-4">
+                        <div class="w-2 h-8 bg-blue-500 rounded-full"></div> สัดส่วนประเภทการจ้างงาน (%)
+                    </h4>
+                    <div class="w-full max-w-[320px]">
+                        <canvas id="typeChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 3. Age Distribution (New requested feature) -->
+                <div class="bg-white p-12 rounded-[4rem] shadow-2xl border border-slate-50">
+                    <h4 class="text-2xl font-black text-slate-800 mb-10 flex items-center gap-4">
+                        <div class="w-2 h-8 bg-indigo-500 rounded-full"></div> สรุปสถิติตามช่วงอายุ (ปี)
+                    </h4>
+                    <div class="w-full">
+                        <canvas id="ageDistributionChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 4. Profession Breakdown -->
+                <div class="bg-white p-12 rounded-[4rem] shadow-2xl border border-slate-50">
+                    <h4 class="text-2xl font-black text-slate-800 mb-10 flex items-center gap-4">
+                        <div class="w-2 h-8 bg-rose-500 rounded-full"></div> สรุปตามตำแหน่งและวิชาชีพ
+                    </h4>
+                    <div id="positionStats" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <!-- Stat Boxes -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Footer -->
+        <footer class="mt-40 bg-slate-950 p-20 rounded-[5rem] mx-6 mb-10 text-white flex flex-col lg:flex-row justify-between items-center gap-10">
+            <div class="flex items-center gap-10">
+                <div id="totalBadge" class="w-32 h-32 bg-emerald-600 rounded-[3.5rem] flex items-center justify-center text-6xl font-black shadow-2xl ring-8 ring-emerald-500/20">0</div>
+                <div class="space-y-2">
+                    <p class="text-emerald-400 font-black text-sm uppercase tracking-[0.3em]">Official Database v5.2</p>
+                    <h3 class="text-2xl md:text-3xl font-black tracking-tight leading-tight">กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก<br>สำนักงานสาธารณสุขจังหวัดสมุทรปราการ</h3>
+                </div>
+            </div>
+            <div class="px-12 py-6 bg-white/5 border border-white/10 rounded-3xl text-xl font-bold flex items-center gap-5 backdrop-blur-md">
+                <i data-lucide="shield-check" class="text-emerald-500 w-8 h-8"></i>
+                Authorized: jeerapat2010@gmail.com
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // CORE CONFIG
+        const PASSCODE = "13579";
+        let currentPin = "";
+        let allPersonnel = [];
+        const TODAY = new Date(2026, 0, 9);
+        let charts = {};
+
+        // 1. Passcode Screen Management
+        function appendPin(num) {
+            if (currentPin.length < 5) {
+                currentPin += num;
+                document.getElementById(`dot-${currentPin.length - 1}`).classList.add('bg-emerald-500', 'scale-125', 'shadow-[0_0_15px_#10b981]');
+                if (currentPin.length === 5) setTimeout(validatePin, 250);
+            }
+        }
+        function clearPin() {
+            currentPin = "";
+            for(let i=0; i<5; i++) {
+                document.getElementById(`dot-${i}`).classList.remove('bg-emerald-500', 'scale-125', 'shadow-[0_0_15px_#10b981]');
+            }
+            document.getElementById('pinError').classList.add('opacity-0');
+        }
+        function backspacePin() {
+            if (currentPin.length > 0) {
+                document.getElementById(`dot-${currentPin.length - 1}`).classList.remove('bg-emerald-500', 'scale-125', 'shadow-[0_0_15px_#10b981]');
+                currentPin = currentPin.slice(0, -1);
+            }
+        }
+        function validatePin() {
+            if (currentPin === PASSCODE) {
+                document.getElementById('passcodeScreen').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                lucide.createIcons();
+            } else {
+                document.getElementById('pinError').classList.remove('opacity-0');
+                clearPin();
+            }
+        }
+
+        // 2. CSV Data Processor
+        document.getElementById('csvFileInput').addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = event => processCSV(event.target.result);
+            reader.readAsText(file, 'UTF-8');
+        });
+
+        function processCSV(text) {
+            const lines = text.split(/\r?\n/);
+            const seen = new Set();
+            const data = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
+                if (cols.length < 5) continue;
+                const uniqueId = `${cols[0]} ${cols[1]}`;
+                if (seen.has(uniqueId)) continue;
+                seen.add(uniqueId);
+
+                const ageObj = calculateAge(cols[6]);
+
+                data.push({
+                    name: cols[0], surname: cols[1], nickname: cols[2], 
+                    photoId: extractId(cols[3]), workplace: cols[4], 
+                    position: cols[5], dob: cols[6], phone: cols[7], type: cols[8],
+                    district: detectDistrict(cols[4]),
+                    age: ageObj.y, ageMonths: ageObj.m
+                });
+            }
+            allPersonnel = data.sort((a,b) => a.name.localeCompare(b.name, 'th'));
+            initApp();
+        }
+
+        function extractId(url) { return url.includes('id=') ? url.split('id=')[1].split('&')[0] : url; }
+
+        function detectDistrict(wp) {
+            const w = wp.toLowerCase();
+            if (w.includes('บางพลี') || w.includes('ราชาเทวะ') || w.includes('บางแก้ว') || w.includes('บางโฉลง') || w.includes('เปร็ง')) return "อ.บางพลี";
+            if (w.includes('เมือง') || w.includes('สมุทรปราการ') || w.includes('บางปู') || w.includes('แพรกษา')) return "อ.เมือง";
+            if (w.includes('พระประแดง') || w.includes('บางยอ') || w.includes('บางพึ่ง')) return "อ.พระประแดง";
+            if (w.includes('พระสมุทรเจดีย์') || w.includes('แหลมฟ้าผ่า') || w.includes('ในคลอง')) return "อ.พระสมุทรเจดีย์";
+            if (w.includes('บางบ่อ') || w.includes('คลองด่าน')) return "อ.บางบ่อ";
+            if (w.includes('บางเสาธง')) return "อ.บางเสาธง";
+            return "สำนักงานสาธารณสุขจังหวัด";
+        }
+
+        function calculateAge(dob) {
+            if (!dob || dob.split('/').length !== 3) return { y: 0, m: 0 };
+            const [d,m,y] = dob.split('/').map(Number);
+            const birth = new Date(y, m-1, d);
+            let ageY = TODAY.getFullYear() - birth.getFullYear();
+            let ageM = TODAY.getMonth() - birth.getMonth();
+            if (ageM < 0 || (ageM === 0 && TODAY.getDate() < birth.getDate())) { ageY--; ageM += 12; }
+            return { y: ageY, m: ageM };
+        }
+
+        // 3. Application View Controller
+        function switchView(view) {
+            document.querySelectorAll('.view-content').forEach(v => v.classList.add('hidden'));
+            document.getElementById(`${view}View`).classList.remove('hidden');
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`nav${view.charAt(0).toUpperCase() + view.slice(1)}`).classList.add('active');
+            if (view === 'dashboard') setTimeout(updateDashboard, 100);
+        }
+
+        function initApp() {
+            const filter = document.getElementById('workplaceFilter');
+            filter.innerHTML = `<option value="all">ทุกหน่วยงาน (${allPersonnel.length} ราย)</option>`;
+            [...new Set(allPersonnel.map(p => p.workplace))].sort().forEach(w => {
+                const o = document.createElement('option'); o.value = w; o.textContent = w; filter.appendChild(o);
+            });
+            updateDirectory();
+            switchView('directory');
+        }
+
+        function updateDirectory() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const wp = document.getElementById('workplaceFilter').value;
+            const grid = document.getElementById('personnelGrid');
+            const filtered = allPersonnel.filter(p => 
+                (`${p.name} ${p.surname} ${p.nickname} ${p.phone} ${p.position}`.toLowerCase().includes(query)) && (wp === 'all' || p.workplace === wp)
+            );
+            
+            document.getElementById('totalBadge').textContent = allPersonnel.length;
+            grid.innerHTML = filtered.map(p => `
+                <div class="bg-white rounded-[4rem] shadow-sm flex flex-col group border border-slate-100 overflow-hidden text-left card-hover transition-all duration-700">
+                    <div class="relative aspect-[3/4] m-4 rounded-[3.5rem] overflow-hidden bg-slate-50 ring-8 ring-white shadow-inner">
+                        ${p.photoId ? `<img src="https://drive.google.com/thumbnail?id=${p.photoId}&sz=w600" class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110">` : 
+                        `<div class="w-full h-full flex flex-col items-center justify-center bg-emerald-50 text-emerald-600 font-black text-6xl">${p.name.charAt(0)}</div>`}
+                        <div class="absolute inset-0 bg-emerald-950/80 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center backdrop-blur-md p-10">
+                            <a href="https://drive.google.com/open?id=${p.photoId}" target="_blank" class="bg-white text-emerald-900 px-8 py-4 rounded-2xl font-black text-xs hover:bg-yellow-400 transition-all uppercase tracking-widest shadow-2xl">Open Photo</a>
+                        </div>
+                        <div class="absolute bottom-6 left-6"><span class="px-4 py-2 bg-white/95 backdrop-blur-md rounded-full text-[10px] font-black uppercase text-emerald-800 border border-white/50">${p.position}</span></div>
+                    </div>
+                    <div class="px-10 pb-12 pt-2 flex flex-col flex-grow">
+                        <h2 class="text-3xl font-black text-slate-900 mb-2 leading-tight">${p.name} <br> ${p.surname}</h2>
+                        <div class="flex flex-wrap gap-2 mb-8">
+                            <span class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-xl text-xs font-black border border-emerald-100">หมอ${p.nickname}</span>
+                            <span class="bg-slate-50 text-slate-400 px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-100 italic">${p.age} ปี ${p.ageMonths} ด.</span>
+                        </div>
+                        <div class="space-y-4 mb-10 text-[13px] font-bold text-slate-500">
+                            <div class="flex items-center gap-3"><i data-lucide="phone" class="w-4 h-4 text-emerald-500"></i> <a href="tel:${p.phone}" class="hover:text-emerald-600 transition-colors">${p.phone || 'ไม่ระบุ'}</a></div>
+                            <div class="flex items-start gap-3"><i data-lucide="map-pin" class="w-4 h-4 text-slate-300 shrink-0 mt-1"></i> <p class="workplace-box uppercase leading-relaxed">${p.workplace}</p></div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // 4. Dashboard Analytics Logic
+        function updateDashboard() {
+            if (!allPersonnel.length) return;
+            const total = allPersonnel.length;
+            document.getElementById('statTotal').textContent = total;
+            
+            // 1. Avg Age Stat
+            const ages = allPersonnel.map(p => p.age).filter(a => a > 0);
+            const avgAge = (ages.reduce((a,b)=>a+b, 0) / ages.length).toFixed(1);
+            document.getElementById('statAvgAge').textContent = avgAge;
+
+            // 2. Districts Analysis
+            const distMap = {};
+            allPersonnel.forEach(p => distMap[p.district] = (distMap[p.district] || 0) + 1);
+            document.getElementById('statDistricts').textContent = Object.keys(distMap).length;
+            document.getElementById('statWorkplaces').textContent = [...new Set(allPersonnel.map(p=>p.workplace))].length;
+            
+            const distHtml = Object.entries(distMap).sort((a,b) => b[1] - a[1]).map(([d, c]) => {
+                const pc = ((c/total)*100).toFixed(1);
+                return `
+                    <div class="space-y-3">
+                        <div class="flex justify-between font-black text-[13px] uppercase tracking-wide">
+                            <span class="text-slate-600">${d}</span> 
+                            <span class="text-emerald-600">${c} ท่าน (${pc}%)</span>
+                        </div>
+                        <div class="w-full h-4 bg-slate-50 rounded-full border border-slate-100 overflow-hidden shadow-inner ring-4 ring-slate-50/50">
+                            <div class="progress-bar h-full bg-emerald-500 shadow-lg" style="width: ${pc}%"></div>
+                        </div>
+                    </div>`;
+            }).join('');
+            document.getElementById('districtStats').innerHTML = distHtml;
+
+            // 3. Employment Types Chart
+            const typeMap = {};
+            allPersonnel.forEach(p => typeMap[p.type] = (typeMap[p.type] || 0) + 1);
+            if (charts.type) charts.type.destroy();
+            charts.type = new Chart(document.getElementById('typeChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(typeMap),
+                    datasets: [{
+                        data: Object.values(typeMap),
+                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#6366f1', '#ec4899', '#94a3b8'],
+                        borderWidth: 8,
+                        borderColor: '#ffffff',
+                        hoverOffset: 15
+                    }]
+                },
+                options: { 
+                    cutout: '65%',
+                    plugins: { 
+                        legend: { position: 'bottom', labels: { font: { weight: 'bold', size: 10 }, padding: 20 } } 
+                    } 
+                }
+            });
+
+            // 4. Age Distribution Chart (Bar)
+            const ageBuckets = { "< 30": 0, "30-39": 0, "40-49": 0, "50+": 0 };
+            allPersonnel.forEach(p => {
+                if (p.age < 30) ageBuckets["< 30"]++;
+                else if (p.age < 40) ageBuckets["30-39"]++;
+                else if (p.age < 50) ageBuckets["40-49"]++;
+                else ageBuckets["50+"]++;
+            });
+
+            if (charts.age) charts.age.destroy();
+            charts.age = new Chart(document.getElementById('ageDistributionChart'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(ageBuckets),
+                    datasets: [{
+                        label: 'จำนวนบุคลากร (ท่าน)',
+                        data: Object.values(ageBuckets),
+                        backgroundColor: '#6366f1',
+                        borderRadius: 12,
+                        maxBarThickness: 50
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: { beginAtZero: true, grid: { display: false } },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => `${ctx.raw} ท่าน (${((ctx.raw/total)*100).toFixed(1)}%)`
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 5. Position Stats Breakdown
+            const posMap = {};
+            allPersonnel.forEach(p => posMap[p.position] = (posMap[p.position] || 0) + 1);
+            const posHtml = Object.entries(posMap).sort((a,b)=>b[1]-a[1]).map(([p, c]) => {
+                const pc = ((c/total)*100).toFixed(1);
+                return `
+                    <div class="bg-[#FDFDFD] p-6 rounded-3xl border border-slate-100 shadow-sm hover:border-emerald-200 transition-all flex justify-between items-center group">
+                        <div class="space-y-1">
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">${p}</p>
+                            <h5 class="text-3xl font-black text-slate-800 tracking-tighter">${c} <span class="text-xs text-slate-300 font-bold ml-1">ท่าน</span></h5>
+                        </div>
+                        <div class="text-emerald-500 font-black text-lg bg-emerald-50 px-3 py-1 rounded-xl shadow-sm border border-emerald-100">${pc}%</div>
+                    </div>`;
+            }).join('');
+            document.getElementById('positionStats').innerHTML = posHtml;
+        }
+
+        // Listeners & Initial State
+        document.getElementById('searchInput').addEventListener('input', updateDirectory);
+        document.getElementById('workplaceFilter').addEventListener('change', updateDirectory);
+        window.onload = () => { lucide.createIcons(); };
+    </script>
+</body>
+</html>
