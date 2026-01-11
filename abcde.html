@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ทำเนียบบุคลากร การแพทย์แผนไทยและการแพทย์ทางเลือกจังหวัดสมุทรปราการ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js DataLabels Plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <!-- Leaflet.js for Interactive Mapping -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans Thai', sans-serif; scroll-behavior: smooth; }
+        .card-hover:hover { transform: translateY(-12px); box-shadow: 0 40px 80px -20px rgba(16, 185, 129, 0.3); }
+        .workplace-box { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; min-height: 4rem; line-height: 1.4; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #10b981; border-radius: 10px; }
+        input[type="file"]::file-selector-button {
+            background-color: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer; font-weight: bold; margin-right: 15px; transition: 0.3s;
+        }
+        .nav-btn.active { background-color: #10b981; color: white; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4); }
+        #distributionMap { height: 600px; border-radius: 3rem; z-index: 10; border: 6px solid white; box-shadow: 0 30px 60px -12px rgba(0,0,0,0.15); }
+        .map-popup-header { border-bottom: 2px solid #ecfdf5; margin-bottom: 10px; padding-bottom: 6px; font-weight: 900; color: #065f46; font-size: 15px; }
+        .map-popup-item { padding: 10px 14px; border-radius: 14px; transition: 0.2s; cursor: pointer; display: block; margin-bottom: 6px; background: #f8fafc; border: 1px solid #f1f5f9; font-weight: 700; }
+        .map-popup-item:hover { background: #10b981; color: white; transform: translateX(5px); }
+    </style>
+</head>
+<body class="bg-[#F8FAFC] text-slate-900 custom-scrollbar overflow-x-hidden">
+
+    <!-- Passcode Screen -->
+    <div id="passcodeScreen" class="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-6 text-center">
+        <div class="max-w-md w-full space-y-10 scale-95 md:scale-100">
+            <div class="space-y-4">
+                <div class="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-[2.5rem] mx-auto flex items-center justify-center shadow-2xl animate-bounce">
+                    <i data-lucide="shield-check" class="w-12 h-12"></i>
+                </div>
+                <h1 class="text-4xl font-black text-slate-800 tracking-tighter">เข้าใช้งานทำเนียบ (v5.8.1)</h1>
+                <p class="text-slate-400 font-bold uppercase tracking-widest text-xs">Security Passcode Required (13579)</p>
+            </div>
+            <div class="flex justify-center gap-4 py-4">
+                <div class="w-4 h-4 rounded-full border-2 border-emerald-500 transition-all" id="dot-0"></div>
+                <div class="w-4 h-4 rounded-full border-2 border-emerald-500 transition-all" id="dot-1"></div>
+                <div class="w-4 h-4 rounded-full border-2 border-emerald-500 transition-all" id="dot-2"></div>
+                <div class="w-4 h-4 rounded-full border-2 border-emerald-500 transition-all" id="dot-3"></div>
+                <div class="w-4 h-4 rounded-full border-2 border-emerald-500 transition-all" id="dot-4"></div>
+            </div>
+            <p id="pinError" class="text-rose-500 font-bold text-sm opacity-0">รหัสผ่านไม่ถูกต้อง!</p>
+            <div class="grid grid-cols-3 gap-6 max-w-[300px] mx-auto">
+                <button onclick="appendPin('1')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white shadow-sm transition-all active:scale-90">1</button>
+                <button onclick="appendPin('2')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white shadow-sm transition-all active:scale-90">2</button>
+                <button onclick="appendPin('3')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white shadow-sm transition-all active:scale-90">3</button>
+                <button onclick="appendPin('4')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white shadow-sm transition-all active:scale-90">4</button>
+                <button onclick="appendPin('5')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white shadow-sm transition-all active:scale-90">5</button>
+                <button onclick="appendPin('6')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white shadow-sm transition-all active:scale-90">6</button>
+                <button onclick="appendPin('7')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white shadow-sm transition-all active:scale-90">7</button>
+                <button onclick="appendPin('8')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white shadow-sm transition-all active:scale-90">8</button>
+                <button onclick="appendPin('9')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white shadow-sm transition-all active:scale-90">9</button>
+                <button onclick="clearPin()" class="w-20 h-20 bg-white border border-slate-100 rounded-full text-sm font-black text-slate-300 hover:text-emerald-500 transition-all uppercase tracking-widest">Clr</button>
+                <button onclick="appendPin('0')" class="w-20 h-20 bg-slate-50 rounded-full text-2xl font-black hover:bg-emerald-500 hover:text-white shadow-sm transition-all active:scale-90">0</button>
+                <button onclick="backspacePin()" class="w-20 h-20 bg-white border border-slate-100 rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 transition-all"><i data-lucide="delete"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainApp" class="hidden">
+        <nav class="bg-white border-b border-slate-100 py-5 px-6 sticky top-0 z-[60] shadow-sm backdrop-blur-md bg-opacity-90">
+            <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="flex items-center gap-4">
+                    <div class="p-3 bg-emerald-600 rounded-2xl text-white shadow-xl shadow-emerald-200"><i data-lucide="activity"></i></div>
+                    <span class="font-black text-2xl tracking-tighter uppercase text-slate-800">SPH Network v5.8.1</span>
+                </div>
+                <div class="flex bg-slate-100 p-2 rounded-2xl gap-2">
+                    <button id="navDirectory" onclick="switchView('directory')" class="nav-btn active px-8 py-3 rounded-xl font-black text-sm flex items-center gap-2 transition-all"><i data-lucide="users"></i> รายชื่อบุคลากร</button>
+                    <button id="navDashboard" onclick="switchView('dashboard')" class="nav-btn px-8 py-3 rounded-xl font-black text-sm flex items-center gap-2 transition-all"><i data-lucide="pie-chart"></i> สถิติ & แผนที่</button>
+                </div>
+                <div class="hidden lg:flex items-center gap-4">
+                    <div class="text-right">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 leading-none">Access Level: Verified</p>
+                        <p class="text-sm font-bold text-slate-700 uppercase">jeerapat2010@gmail.com</p>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <header class="bg-white pt-20 pb-28 px-6 border-b border-slate-50 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-50 rounded-full -translate-y-1/2 translate-x-1/2 blur-[150px] opacity-40"></div>
+            <div class="max-w-7xl mx-auto relative z-10 flex flex-col lg:flex-row items-center justify-between gap-16">
+                <div class="space-y-8 lg:w-2/3 text-center lg:text-left">
+                    <div class="inline-flex items-center gap-2 px-5 py-2 bg-emerald-50 text-emerald-700 rounded-full text-xs font-black tracking-widest uppercase border border-emerald-100">
+                        <i data-lucide="heart" class="w-4 h-4 fill-emerald-600 animate-pulse"></i> Medical Directory 2026
+                    </div>
+                    <h1 class="text-5xl md:text-7xl font-black text-slate-900 tracking-tighter leading-[1.05]">
+                        ทำเนียบบุคลากร <span class="text-emerald-600 underline decoration-emerald-100">การแพทย์แผนไทย</span><br>
+                        <span class="text-emerald-600 underline decoration-emerald-100">และการแพทย์ทางเลือก</span> จังหวัดสมุทรปราการ
+                    </h1>
+                </div>
+                <div class="bg-white p-10 rounded-[4rem] shadow-2xl border border-emerald-100 flex flex-col items-center gap-6 w-full max-w-sm">
+                    <div class="w-20 h-20 bg-emerald-600 rounded-3xl flex items-center justify-center text-white shadow-xl shadow-emerald-200"><i data-lucide="upload" class="w-10 h-10"></i></div>
+                    <div class="text-center">
+                        <p class="text-lg font-black text-slate-800 uppercase tracking-tight">อัปโหลดไฟล์ CSV</p>
+                        <p class="text-[11px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">Verified 73 Cells Processing</p>
+                    </div>
+                    <input type="file" id="csvFileInput" accept=".csv" class="w-full text-xs cursor-pointer">
+                </div>
+            </div>
+        </header>
+
+        <!-- Directory View -->
+        <div id="directoryView" class="view-content max-w-7xl mx-auto py-20 px-6">
+            <div class="mb-16 flex flex-col lg:flex-row gap-5 p-4 bg-white rounded-[3rem] shadow-2xl border border-slate-50 ring-[12px] ring-slate-50/50">
+                <div class="flex-grow relative group">
+                    <i data-lucide="search" class="absolute left-8 top-1/2 -translate-y-1/2 text-slate-300 w-8 h-8 group-focus-within:text-emerald-500 transition-all"></i>
+                    <input id="searchInput" type="text" placeholder="ค้นหาด้วยชื่อ, นามสกุล, ตำแหน่ง หรือหน่วยงาน..." class="w-full pl-20 pr-10 py-7 bg-transparent focus:outline-none text-2xl font-bold placeholder:text-slate-200 tracking-tight">
+                </div>
+                <div class="lg:w-1/3 relative border-t lg:border-t-0 lg:border-l border-slate-100">
+                    <select id="workplaceFilter" class="w-full pl-8 pr-12 py-7 bg-transparent appearance-none focus:outline-none cursor-pointer font-black text-slate-600 text-xl tracking-tight uppercase">
+                        <option value="all">ทุกหน่วยงานในฐานข้อมูล</option>
+                    </select>
+                    <div class="absolute right-8 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300"><i data-lucide="chevron-down" class="w-7 h-7"></i></div>
+                </div>
+            </div>
+            <div id="personnelGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-14 lg:gap-16">
+                <!-- Initial State -->
+                <div class="col-span-full py-48 text-center bg-white rounded-[5rem] border-4 border-dashed border-slate-100">
+                    <div class="w-32 h-32 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-10 text-slate-200 shadow-inner">
+                        <i data-lucide="database" class="w-16 h-16"></i>
+                    </div>
+                    <h3 class="text-4xl font-black text-slate-900 mb-4 tracking-tighter">กรุณาอัปโหลดไฟล์ CSV เพื่อประมวลผล</h3>
+                    <p class="text-slate-400 font-bold italic text-lg tracking-widest">Awaiting Database Stream...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard View -->
+        <div id="dashboardView" class="view-content hidden max-w-7xl mx-auto py-24 px-6 space-y-20">
+            <!-- Global Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
+                <div class="bg-white p-10 rounded-[4rem] shadow-xl border border-slate-50 flex flex-col items-center">
+                    <div class="w-20 h-20 bg-emerald-600 rounded-3xl flex items-center justify-center text-white mb-8 shadow-lg shadow-emerald-100"><i data-lucide="users-2" class="w-10 h-10"></i></div>
+                    <p class="text-slate-400 font-black text-xs uppercase tracking-[0.3em] mb-2">Total Personnel</p>
+                    <h3 id="statTotal" class="text-6xl font-black text-slate-900 tracking-tighter leading-none">0</h3>
+                </div>
+                <div class="bg-white p-10 rounded-[4rem] shadow-xl border border-slate-50 flex flex-col items-center text-center">
+                    <div class="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center text-white mb-8 shadow-lg shadow-blue-100"><i data-lucide="map-pin" class="w-10 h-10"></i></div>
+                    <p class="text-slate-400 font-black text-xs uppercase tracking-[0.3em] mb-2">Active Facilities</p>
+                    <h3 id="statWorkplaces" class="text-6xl font-black text-slate-900 tracking-tighter leading-none">0</h3>
+                </div>
+                <div class="bg-white p-10 rounded-[4rem] shadow-xl border border-slate-50 flex flex-col items-center">
+                    <div class="w-20 h-20 bg-amber-500 rounded-3xl flex items-center justify-center text-white mb-8 shadow-lg shadow-amber-100"><i data-lucide="smile" class="w-10 h-10"></i></div>
+                    <p class="text-slate-400 font-black text-xs uppercase tracking-[0.3em] mb-2">Avg. Age (Years)</p>
+                    <h3 id="statAvgAge" class="text-6xl font-black text-slate-900 tracking-tighter leading-none">0</h3>
+                </div>
+                <div class="bg-white p-10 rounded-[4rem] shadow-xl border border-slate-50 flex flex-col items-center text-center">
+                    <div class="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center text-white mb-8 shadow-lg shadow-indigo-100"><i data-lucide="check-circle" class="w-10 h-10"></i></div>
+                    <p class="text-slate-400 font-black text-xs uppercase tracking-[0.3em] mb-2">Map Sync Status</p>
+                    <h3 class="text-6xl font-black text-slate-900 tracking-tighter leading-none">100%</h3>
+                </div>
+            </div>
+
+            <!-- Distribution Map -->
+            <div class="bg-white p-10 md:p-16 rounded-[6rem] shadow-2xl border border-slate-50">
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-10">
+                    <div class="space-y-4">
+                        <h4 class="text-4xl font-black text-slate-900 tracking-tighter flex items-center gap-6">
+                            <div class="p-5 bg-emerald-100 text-emerald-600 rounded-[2.5rem] shadow-sm"><i data-lucide="map-pinned" class="w-10 h-10"></i></div> 
+                            แผนที่แสดงตำแหน่งหน่วยงานและรายชื่อบุคลากร
+                        </h4>
+                        <p class="text-slate-400 font-bold text-lg max-w-xl italic">
+                            *พิกัดสำนักงานสาธารณสุขจังหวัดสมุทรปราการ (สสจ.) อัปเดตล่าสุด: <span class="text-emerald-600">13.59934, 100.60753</span>
+                        </p>
+                    </div>
+                </div>
+                <div id="distributionMap"></div>
+            </div>
+
+            <!-- Analytics Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-16">
+                <div class="bg-white p-16 rounded-[5rem] shadow-2xl border border-slate-50">
+                    <h4 class="text-3xl font-black text-slate-800 mb-12 flex items-center gap-5">
+                        <div class="w-2.5 h-10 bg-emerald-500 rounded-full"></div> สัดส่วนตามพื้นที่อำเภอ (%)
+                    </h4>
+                    <div id="districtStats" class="space-y-10"></div>
+                </div>
+                <div class="bg-white p-16 rounded-[5rem] shadow-2xl border border-slate-50 flex flex-col items-center">
+                    <h4 class="text-3xl font-black text-slate-800 mb-12 self-start flex items-center gap-5">
+                        <div class="w-2.5 h-10 bg-blue-500 rounded-full"></div> สัดส่วนประเภทการจ้างงาน
+                    </h4>
+                    <div class="w-full max-w-[380px]"><canvas id="typeChart"></canvas></div>
+                </div>
+                <div class="bg-white p-16 rounded-[5rem] shadow-2xl border border-slate-50">
+                    <h4 class="text-3xl font-black text-slate-800 mb-12 flex items-center gap-5">
+                        <div class="w-2.5 h-10 bg-indigo-500 rounded-full"></div> การกระจายตัวตามช่วงอายุ
+                    </h4>
+                    <div class="w-full"><canvas id="ageDistributionChart"></canvas></div>
+                </div>
+                <div class="bg-white p-16 rounded-[5rem] shadow-2xl border border-slate-50">
+                    <h4 class="text-3xl font-black text-slate-800 mb-12 flex items-center gap-5">
+                        <div class="w-2.5 h-10 bg-rose-500 rounded-full"></div> สรุปตำแหน่งวิชาชีพ
+                    </h4>
+                    <div id="positionStats" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="mt-48 bg-slate-950 p-24 rounded-[6rem] mx-8 mb-12 text-white flex flex-col lg:flex-row justify-between items-center gap-16 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-4 bg-gradient-to-r from-emerald-500 via-yellow-400 to-emerald-600"></div>
+            <div class="flex items-center gap-14 text-center md:text-left relative z-10">
+                <div id="totalBadge" class="w-44 h-44 bg-emerald-600 rounded-[4rem] flex items-center justify-center text-8xl font-black shadow-2xl border-[15px] border-emerald-500/20 rotate-6">0</div>
+                <div class="space-y-4">
+                    <p class="text-emerald-400 font-black text-lg uppercase tracking-[0.6em] leading-none mb-2">Authenticated System v5.8.1</p>
+                    <h3 class="text-4xl font-black tracking-tighter uppercase leading-tight">Thai Traditional Medicine <br> Samut Prakan Health Office</h3>
+                </div>
+            </div>
+            <div class="px-16 py-8 bg-white/5 border border-white/10 rounded-[3rem] text-2xl font-bold flex items-center gap-8 backdrop-blur-2xl relative z-10 shadow-2xl">
+                <i data-lucide="shield-check" class="text-emerald-500 w-12 h-12"></i>
+                jeerapat2010@gmail.com
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const PASSCODE = "13579";
+        let currentPin = "";
+        let allPersonnel = [];
+        const TODAY = new Date(2026, 0, 9);
+        let charts = {};
+        let map;
+        let mapMarkers = [];
+
+        // --- Precise Mapping: Verified with Google Maps Names ---
+        const facilityCoords = {
+            "สำนักงานสาธารณสุขจังหวัดสมุทรปราการ": [13.599343695294184, 100.60753250329219],
+            "สสจ.สมุทรปราการ": [13.599343695294184, 100.60753250329219],
+            "โรงพยาบาลสมุทรปราการ": [13.5972, 100.5978],
+            "โรงพยาบาลบางพลี": [13.6048, 100.7108],
+            "โรงพยาบาลบางบ่อ": [13.5048, 100.8423],
+            "โรงพยาบาลบางเสาธง": [13.5958, 100.8313],
+            "โรงพยาบาลพระสมุทรเจดีย์สวาทยานนท์": [13.5342, 100.5172],
+            "โรงพยาบาลบางจาก": [13.6188, 100.5368],
+            "โรงพยาบาลพระประแดง": [13.6673, 100.5343],
+            "เทศบาลเทพารักษ์ (ศูนย์บริการสาธารณสุขเทศบาลเทพารักษ์)": [13.6263, 100.6233],
+            "เทศบาลเทพารักษ์": [13.6263, 100.6233],
+            "ศูนย์บริการสาธารณสุขเทศบาลนครสมุทรปราการ 1 (วัดชัยมงคล)": [13.5953, 100.5983],
+            "ศสธ.เทศบาลนครสมุทรปราการ 1 (วัดชัยมงคล)": [13.5953, 100.5983],
+            "ศูนย์บริการสาธารณสุขเทศบาลเมืองปู่เจ้าสมิงพราย": [13.6553, 100.5603],
+            "ศสธ.เทศบาลเมืองปู่เจ้าสมิงพราย": [13.6553, 100.5603],
+            "ศูนย์บริการสาธารณสุขเทศบาลตำบลบางเมือง": [13.6153, 100.6053],
+            "ศสธ.เทศบาลตำบลบางเมือง": [13.6153, 100.6053],
+            "ศสธ. 1 เทศบาลตำบลบางปู": [13.5253, 100.6553],
+            "ศูนย์บริการสาธารณสุข 1 เทศบาลตำบลบางปู": [13.5253, 100.6553],
+            "สอน.สาขาวัดบางปิ้ง": [13.6103, 100.6023],
+            "สอน.บ้านคลองบางปิ้ง": [13.6103, 100.6023],
+            "รพ.สต.บางยอ": [13.6703, 100.5653],
+            "รพ.สต.คลองกระออม": [13.5203, 100.7853],
+            "รพ.สต.คลองด่านหมู่ 1": [13.5083, 100.8253],
+            "รพ.สต.คลองด่านหมู่ 13": [13.5023, 100.8353],
+            "รพ.สต.บางปลา": [13.5483, 100.7453],
+            "รพ.สต.ราชาเทวะ": [13.6653, 100.7053],
+            "รพ.สต.บางแก้ว": [13.6553, 100.6653],
+            "รพ.สต.สำโรงเหนือ": [13.6453, 100.5953],
+            "รพ.สต.เทศบาลตำบลสำโรงเหนือ (นครทอง)": [13.6453, 100.5953],
+            "รพ.สต.เทพารักษ์": [13.6263, 100.6233],
+            "รพ.สต.เมืองใหม่บางพลี": [13.5853, 100.7853],
+            "รพ.สต.แหลมฟ้าผ่า": [13.5453, 100.5353],
+            "รพ.สต.ในคลองบางปลากด": [13.5653, 100.5253],
+            "รพ.สต.บ้านคู่สร้าง": [13.5353, 100.5253],
+            "รพ.สต.บ้านคลองนาเกลือน้อย": [13.5453, 100.4653],
+            "รพ.สต.เปร็ง": [13.6853, 100.8953],
+            "รพ.สต.บางโฉลง": [13.6153, 100.7553],
+            "รพ.สต.แพรกษา": [13.5853, 100.6453],
+            "รพ.สต.บางปู": [13.5253, 100.6553],
+            "รพ.สต.ท้ายบ้าน": [13.5803, 100.6053],
+            "รพ.สต.สำโรง": [13.6453, 100.5953],
+            "รพ.สต.บางพึ่ง": [13.6603, 100.5353],
+            "รพ.สต.บางหญ้าแพรก": [13.6253, 100.5553],
+            "รพ.สต.บางพลีใหญ่": [13.6153, 100.6853],
+            "สอน.วัดกลาง": [13.5953, 100.5983],
+            "สอน.ปากคลอง": [13.5353, 100.5153],
+            "สอน.สาขากลาง": [13.6153, 100.6053],
+            "สอน.บางปู": [13.5253, 100.6553],
+            "สอน.บ้านบางปิ้ง": [13.6103, 100.6023]
+        };
+
+        function appendPin(num) {
+            if (currentPin.length < 5) {
+                currentPin += num;
+                document.getElementById(`dot-${currentPin.length - 1}`).classList.add('bg-emerald-500', 'scale-150', 'shadow-[0_0_20px_#10b981]');
+                if (currentPin.length === 5) setTimeout(validatePin, 300);
+            }
+        }
+        function clearPin() {
+            currentPin = "";
+            for(let i=0; i<5; i++) document.getElementById(`dot-${i}`).className = "w-4 h-4 rounded-full border-2 border-emerald-500 transition-all";
+            document.getElementById('pinError').classList.add('opacity-0');
+        }
+        function backspacePin() {
+            if (currentPin.length > 0) {
+                document.getElementById(`dot-${currentPin.length - 1}`).className = "w-4 h-4 rounded-full border-2 border-emerald-500 transition-all";
+                currentPin = currentPin.slice(0, -1);
+            }
+        }
+        function validatePin() {
+            if (currentPin === PASSCODE) {
+                document.getElementById('passcodeScreen').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                lucide.createIcons();
+                initMap();
+            } else {
+                document.getElementById('pinError').classList.remove('opacity-0');
+                clearPin();
+            }
+        }
+
+        document.getElementById('csvFileInput').addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = event => processCSV(event.target.result);
+            reader.readAsText(file, 'UTF-8');
+        });
+
+        function processCSV(text) {
+            const lines = text.split(/\r?\n/);
+            const seen = new Set();
+            const data = [];
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
+                if (cols.length < 5) continue;
+                const uid = `${cols[0]} ${cols[1]}`;
+                if (seen.has(uid)) continue; seen.add(uid);
+                const ageObj = calculateAge(cols[6]);
+                data.push({
+                    name: cols[0], surname: cols[1], nickname: cols[2], 
+                    photoId: extractId(cols[3]), workplace: cols[4], 
+                    position: cols[5], dob: cols[6], phone: cols[7], type: cols[8],
+                    district: detectDistrict(cols[4]), age: ageObj.y, ageMonths: ageObj.m
+                });
+            }
+            allPersonnel = data.sort((a,b) => a.name.localeCompare(b.name, 'th'));
+            initApp();
+        }
+
+        function extractId(url) { return url.includes('id=') ? url.split('id=')[1].split('&')[0] : url; }
+
+        function detectDistrict(wp) {
+            const w = wp.toLowerCase();
+            if (w.includes('บางพลี') || w.includes('ราชาเทวะ') || w.includes('บางแก้ว') || w.includes('บางโฉลง') || w.includes('เปร็ง')) return "อ.บางพลี";
+            if (w.includes('เมือง') || w.includes('สมุทรปราการ') || w.includes('บางปู') || w.includes('แพรกษา')) return "อ.เมือง";
+            if (w.includes('พระประแดง') || w.includes('บางยอ') || w.includes('บางพึ่ง')) return "อ.พระประแดง";
+            if (w.includes('พระสมุทรเจดีย์') || w.includes('แหลมฟ้าผ่า') || w.includes('ในคลอง') || w.includes('สวาทยานนท์')) return "อ.พระสมุทรเจดีย์";
+            if (w.includes('บางบ่อ') || w.includes('คลองด่าน')) return "อ.บางบ่อ";
+            if (w.includes('บางเสาธง')) return "อ.บางเสาธง";
+            return "สำนักงานสาธารณสุขจังหวัด";
+        }
+
+        function calculateAge(dob) {
+            if (!dob || dob.split('/').length !== 3) return { y: 0, m: 0 };
+            const [d,m,y] = dob.split('/').map(Number);
+            const birth = new Date(y, m-1, d);
+            let ageY = TODAY.getFullYear() - birth.getFullYear();
+            let ageM = TODAY.getMonth() - birth.getMonth();
+            if (ageM < 0 || (ageM === 0 && TODAY.getDate() < birth.getDate())) { ageY--; ageM += 12; }
+            return { y: ageY, m: ageM };
+        }
+
+        function switchView(view) {
+            document.querySelectorAll('.view-content').forEach(v => v.classList.add('hidden'));
+            document.getElementById(`${view}View`).classList.remove('hidden');
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`nav${view.charAt(0).toUpperCase() + view.slice(1)}`).classList.add('active');
+            if (view === 'dashboard' && map) {
+                setTimeout(() => { updateDashboard(); map.invalidateSize(); }, 200);
+            }
+        }
+
+        function initApp() {
+            const filter = document.getElementById('workplaceFilter');
+            filter.innerHTML = `<option value="all">ทุกหน่วยงานในฐานข้อมูล (${allPersonnel.length} ราย)</option>`;
+            [...new Set(allPersonnel.map(p => p.workplace))].sort().forEach(w => {
+                const o = document.createElement('option'); o.value = w; o.textContent = w; filter.appendChild(o);
+            });
+            updateDirectory();
+            switchView('directory');
+        }
+
+        function updateDirectory() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const wp = document.getElementById('workplaceFilter').value;
+            const grid = document.getElementById('personnelGrid');
+            const filtered = allPersonnel.filter(p => 
+                (`${p.name} ${p.surname} ${p.nickname} ${p.phone} ${p.position}`.toLowerCase().includes(query)) && (wp === 'all' || p.workplace === wp)
+            );
+            
+            document.getElementById('totalBadge').textContent = allPersonnel.length;
+            grid.innerHTML = filtered.map(p => {
+                const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.workplace + ' จังหวัดสมุทรปราการ')}`;
+                return `
+                <div class="bg-white rounded-[4rem] shadow-sm flex flex-col group border border-slate-100 overflow-hidden card-hover transition-all duration-700 animate-in fade-in slide-in-from-bottom-5 text-left">
+                    <div class="relative aspect-[3/4] m-4 rounded-[3.5rem] overflow-hidden bg-slate-50 ring-8 ring-white shadow-inner">
+                        ${p.photoId ? `<img src="https://drive.google.com/thumbnail?id=${p.photoId}&sz=w600" class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110">` : 
+                        `<div class="w-full h-full flex flex-col items-center justify-center bg-emerald-50 text-emerald-600 font-black text-6xl">${p.name.charAt(0)}</div>`}
+                        <div class="absolute inset-0 bg-emerald-950/80 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center backdrop-blur-md p-10 text-center">
+                            <a href="https://drive.google.com/open?id=${p.photoId}" target="_blank" class="bg-white text-emerald-900 px-10 py-4 rounded-2xl font-black text-xs hover:bg-yellow-400 transition-all uppercase tracking-widest shadow-2xl">เข้าดูรูปต้นฉบับ</a>
+                        </div>
+                        <div class="absolute bottom-6 left-6"><span class="px-4 py-2 bg-white/95 backdrop-blur-md rounded-full text-[10px] font-black uppercase text-emerald-800 border border-white/50 shadow-sm">${p.position}</span></div>
+                    </div>
+                    <div class="px-10 pb-12 pt-2 flex flex-col flex-grow">
+                        <h2 class="text-3xl font-black text-slate-900 mb-2 leading-tight">${p.name} <br> ${p.surname}</h2>
+                        <div class="flex flex-wrap gap-2 mb-8">
+                            <span class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-xl text-xs font-black border border-emerald-100">หมอ${p.nickname}</span>
+                            <span class="bg-slate-50 text-slate-400 px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-100 italic">${p.age} ปี ${p.ageMonths} ด.</span>
+                        </div>
+                        <div class="space-y-4 mb-10 text-[13px] font-bold text-slate-500">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 bg-slate-50 rounded-2xl flex items-center justify-center shrink-0 border border-slate-100 text-slate-400"><i data-lucide="briefcase" class="w-5 h-5"></i></div>
+                                <p class="text-[12px] uppercase font-black text-slate-400 leading-tight">${p.type}</p>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 bg-emerald-50 rounded-2xl flex items-center justify-center shrink-0 border border-emerald-100 text-emerald-600"><i data-lucide="phone" class="w-5 h-5"></i></div>
+                                <a href="tel:${p.phone}" class="hover:text-emerald-600 transition-colors font-black text-slate-800 text-lg">${p.phone || '-'}</a>
+                            </div>
+                            <a href="${mapLink}" target="_blank" class="flex items-start gap-4 hover:text-emerald-600 transition-all group/loc">
+                                <div class="w-10 h-10 bg-slate-50 rounded-2xl flex items-center justify-center shrink-0 border border-slate-100 text-emerald-500 group-hover/loc:bg-emerald-600 group-hover/loc:text-white transition-all"><i data-lucide="map-pin" class="w-5 h-5"></i></div>
+                                <div><p class="workplace-box uppercase leading-relaxed font-black text-[13px]">${p.workplace}</p><p class="text-[10px] text-emerald-500 uppercase mt-1 opacity-0 group-hover/loc:opacity-100 tracking-widest font-black transition-all">Open Google Maps →</p></div>
+                            </a>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        // Dashboard & Map System
+        function initMap() {
+            if (map) return;
+            map = L.map('distributionMap').setView([13.6, 100.65], 11);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+        }
+
+        function showPersonDetail(nameSearch) {
+            const searchBox = document.getElementById('searchInput');
+            searchBox.value = nameSearch;
+            switchView('directory');
+            updateDirectory();
+            window.scrollTo({ top: searchBox.offsetTop - 120, behavior: 'smooth' });
+        }
+
+        function updateMap(data) {
+            mapMarkers.forEach(m => map.removeLayer(m));
+            mapMarkers = [];
+            const workplaceMap = {};
+            data.forEach(p => { if (!workplaceMap[p.workplace]) workplaceMap[p.workplace] = []; workplaceMap[p.workplace].push(p); });
+
+            Object.entries(workplaceMap).forEach(([wp, group]) => {
+                const coord = facilityCoords[wp];
+                if (coord) {
+                    const marker = L.marker(coord).addTo(map);
+                    let popup = `<div class="p-3 font-sans min-w-[250px]">
+                        <div class="map-popup-header">${wp}</div>
+                        <p class="text-[11px] font-black text-slate-400 uppercase mb-4 tracking-widest leading-none">${group.length} บุคลากรในสังกัด:</p>
+                        <div class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">`;
+                    group.forEach(person => {
+                        popup += `<div class="map-popup-item" onclick="showPersonDetail('${person.name}')">
+                            <p class="text-[13px] font-black leading-tight">${person.name} ${person.surname}</p>
+                            <p class="text-[10px] text-slate-500 mt-1 uppercase font-bold tracking-tight">${person.position} (${person.type})</p>
+                        </div>`;
+                    });
+                    popup += `</div></div>`;
+                    marker.bindPopup(popup);
+                    mapMarkers.push(marker);
+                }
+            });
+        }
+
+        function updateDashboard() {
+            if (!allPersonnel.length) return;
+            const total = allPersonnel.length;
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statWorkplaces').textContent = [...new Set(allPersonnel.map(p=>p.workplace))].length;
+            const ages = allPersonnel.map(p => p.age).filter(a => a > 0);
+            document.getElementById('statAvgAge').textContent = (ages.reduce((a,b)=>a+b, 0) / ages.length).toFixed(1);
+
+            updateMap(allPersonnel);
+
+            // Districts
+            const distMap = {}; allPersonnel.forEach(p => distMap[p.district] = (distMap[p.district] || 0) + 1);
+            document.getElementById('districtStats').innerHTML = Object.entries(distMap).sort((a,b) => b[1] - a[1]).map(([d, c]) => {
+                const pc = ((c/total)*100).toFixed(1);
+                return `<div class="space-y-4"><div class="flex justify-between font-black text-[14px] uppercase text-slate-600"><span>${d}</span> <span>${c} ท่าน (${pc}%)</span></div><div class="w-full h-5 bg-slate-50 rounded-full border border-slate-100 overflow-hidden shadow-inner"><div class="progress-bar h-full bg-emerald-500 shadow-xl" style="width: ${pc}%"></div></div></div>`;
+            }).join('');
+
+            // Doughnut Chart with Count and %
+            const typeMap = {}; allPersonnel.forEach(p => typeMap[p.type] = (typeMap[p.type] || 0) + 1);
+            if (charts.type) charts.type.destroy();
+            charts.type = new Chart(document.getElementById('typeChart'), {
+                type: 'doughnut',
+                plugins: [ChartDataLabels],
+                data: {
+                    labels: Object.keys(typeMap),
+                    datasets: [{ data: Object.values(typeMap), backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#6366f1', '#ec4899'], borderWidth: 8, borderColor: '#fff' }]
+                },
+                options: {
+                    cutout: '65%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { weight: 'bold', size: 11 }, padding: 15 } },
+                        datalabels: {
+                            color: '#fff', font: { weight: 'bold', size: 12 },
+                            formatter: (val) => `${val}\n(${((val/total)*100).toFixed(0)}%)`
+                        }
+                    }
+                }
+            });
+
+            // Age Bar Chart with Count and %
+            const buckets = { "< 30": 0, "30-39": 0, "40-49": 0, "50+": 0 };
+            allPersonnel.forEach(p => { if (p.age < 30) buckets["< 30"]++; else if (p.age < 40) buckets["30-39"]++; else if (p.age < 50) buckets["40-49"]++; else buckets["50+"]++; });
+            if (charts.age) charts.age.destroy();
+            charts.age = new Chart(document.getElementById('ageDistributionChart'), {
+                type: 'bar',
+                plugins: [ChartDataLabels],
+                data: {
+                    labels: Object.keys(buckets),
+                    datasets: [{ label: 'จำนวน (ท่าน)', data: Object.values(buckets), backgroundColor: '#6366f1', borderRadius: 15 }]
+                },
+                options: {
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: {
+                            anchor: 'end', align: 'top', color: '#6366f1', font: { weight: 'bold', size: 14 },
+                            formatter: (val) => `${val} คน (${((val/total)*100).toFixed(0)}%)`
+                        }
+                    },
+                    scales: { y: { beginAtZero: true, grid: { display: false }, ticks: { display: false } }, x: { grid: { display: false } } }
+                }
+            });
+
+            // Position Cards
+            const posMap = {}; allPersonnel.forEach(p => posMap[p.position] = (posMap[p.position] || 0) + 1);
+            document.getElementById('positionStats').innerHTML = Object.entries(posMap).sort((a,b)=>b[1]-a[1]).map(([p, c]) => {
+                const pc = ((c/total)*100).toFixed(1);
+                return `<div class="bg-[#FDFDFD] p-8 rounded-[3rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:bg-slate-50">
+                    <div class="space-y-1">
+                        <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest">${p}</p>
+                        <h5 class="text-4xl font-black text-slate-800 tracking-tighter">${c}</h5>
+                    </div>
+                    <div class="text-emerald-600 font-black text-xl bg-emerald-50 px-4 py-2 rounded-2xl border border-emerald-100 shadow-sm">${pc}%</div>
+                </div>`;
+            }).join('');
+        }
+
+        document.getElementById('searchInput').addEventListener('input', updateDirectory);
+        document.getElementById('workplaceFilter').addEventListener('change', updateDirectory);
+        window.onload = () => { lucide.createIcons(); };
+    </script>
+</body>
+</html>
