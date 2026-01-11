@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดเวรคลินิกแพทย์แผนไทย สสจ.สป.</title>
+    
+    <!-- Libraries -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Use specific stable version of Lucide -->
+    <script src="https://unpkg.com/lucide@0.263.1"></script>
+    
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- html2pdf for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Mitr:wght@400;600&display=swap" rel="stylesheet">
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fresh: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                        },
+                        teal: {
+                            400: '#2dd4bf',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                        },
+                        gold: {
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Sarabun', 'sans-serif'],
+                        heading: ['Mitr', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #f6fff8; color: #1e293b; }
+        .fresh-gradient { background: linear-gradient(135deg, #22c55e 0%, #0d9488 100%); }
+        
+        /* PDF specific tweaks */
+        .pdf-content table { width: 100%; border-collapse: collapse; font-size: 10px; }
+        .pdf-content th, .pdf-content td { padding: 2px; border: 1px solid #ccc; }
+        .pdf-content select { font-size: 10px; }
+        
+        /* Print Styles */
+        @media print {
+            @page { size: A4 landscape; margin: 5mm; }
+            body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            #main-container { margin: 0; padding: 0; width: 100%; max-width: 100%; }
+            table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+            th, td { border: 1px solid #333 !important; padding: 2px !important; color: black !important; }
+            select { appearance: none; border: none; text-align: center; width: 100%; font-weight: bold; font-size: 8pt; }
+            
+            .bg-yellow-50 { background-color: #fefce8 !important; }
+            .bg-pink-50 { background-color: #fdf2f8 !important; }
+            .bg-green-50 { background-color: #f0fdf4 !important; }
+            .bg-orange-50 { background-color: #fff7ed !important; }
+            .bg-blue-50 { background-color: #eff6ff !important; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useCallback } = React;
+
+        const Icon = ({ name, className }) => {
+            const [svg, setSvg] = useState("");
+            useEffect(() => {
+                if (window.lucide) {
+                    const pascalName = name.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
+                    const iconNode = window.lucide.icons[pascalName] || window.lucide.icons[name];
+                    if (iconNode && typeof iconNode.toSvg === 'function') {
+                        setSvg(iconNode.toSvg({ class: className, width: 20, height: 20 }));
+                    }
+                }
+            }, [name, className]);
+            return <span dangerouslySetInnerHTML={{ __html: svg }} className="inline-flex items-center justify-center" />;
+        };
+
+        const INITIAL_STAFF = [
+            { id: "1", name: "วิภาวีร์ ฤทธิ์แก้ว", defaultAM: "", defaultPM: "" },
+            { id: "2", name: "จีรภัทร พลายงาม", defaultAM: "", defaultPM: "" },
+            { id: "3", name: "ขจีวรรณ ตันพานิชย์", defaultAM: "", defaultPM: "" },
+            { id: "4", name: "กานต์รวี รัตนโชติ", defaultAM: "doctor", defaultPM: "doctor" },
+            { id: "5", name: "มัทธา สุขโชติ", defaultAM: "", defaultPM: "" },
+            { id: "6", name: "พัชรา สุดกังวาน", defaultAM: "", defaultPM: "" },
+            { id: "7", name: "รัตนาวลี วิทูรสกุล", defaultAM: "", defaultPM: "" },
+            { id: "8", name: "วิลาวัลย์ อริยภูชัย", defaultAM: "", defaultPM: "" },
+            { id: "9", name: "นายธิติณัฐ จันทร์แจ้ง", defaultAM: "chinese_doctor", defaultPM: "chinese_doctor" },
+            { id: "10", name: "สิราณี ชาญปรีชา", defaultAM: "massage1", defaultPM: "massage1" },
+            { id: "11", name: "บุญชู นาคเจริญ", defaultAM: "massage2", defaultPM: "massage2" }
+        ];
+
+        const ROLES = {
+            counter: "เคาท์เตอร์",
+            doctor: "ผู้ตรวจแผนไทย",
+            chinese_doctor: "ผู้ตรวจแผนจีน",
+            massage1: "นวดไทย 1",
+            massage2: "นวดไทย 2",
+            finance: "การเงิน"
+        };
+
+        // --- Login Component ---
+        const LoginView = ({ onLogin }) => {
+            const [password, setPassword] = useState("");
+            const [error, setError] = useState(false);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (password === "97531") {
+                    onLogin();
+                } else {
+                    setError(true);
+                    setPassword("");
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-f0fdf4 fresh-gradient relative overflow-hidden">
+                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                    <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md relative z-10 mx-4">
+                        <div className="text-center mb-8">
+                            <div className="w-20 h-20 bg-fresh-100 rounded-full flex items-center justify-center mx-auto mb-4 text-fresh-600 shadow-inner">
+                                <Icon name="lock" className="w-10 h-10" />
+                            </div>
+                            <h1 className="text-2xl font-bold text-gray-800 font-heading">เข้าสู่ระบบ</h1>
+                            <p className="text-gray-500 text-sm mt-1">ระบบจัดเวรคลินิกแพทย์แผนไทย</p>
+                        </div>
+                        
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">รหัสผ่าน (Passcode)</label>
+                                <div className="relative">
+                                    <input 
+                                        type="password" 
+                                        value={password}
+                                        onChange={(e) => { setPassword(e.target.value); setError(false); }}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-fresh-500 focus:border-fresh-500 outline-none transition-all text-center text-lg tracking-widest"
+                                        placeholder="•••••"
+                                        autoFocus
+                                    />
+                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-400">
+                                        <Icon name="key" className="w-5 h-5" />
+                                    </div>
+                                </div>
+                                {error && <p className="text-red-500 text-xs mt-2 text-center flex items-center justify-center gap-1"><Icon name="alert-circle" className="w-3 h-3"/> รหัสผ่านไม่ถูกต้อง</p>}
+                            </div>
+                            
+                            <button 
+                                type="submit" 
+                                className="w-full bg-fresh-600 text-white py-3 rounded-xl font-bold hover:bg-fresh-700 transition shadow-lg transform active:scale-95 flex items-center justify-center gap-2"
+                            >
+                                <Icon name="log-in" className="w-5 h-5"/> เข้าใช้งาน
+                            </button>
+                        </form>
+                        <div className="mt-8 text-center text-xs text-gray-400">
+                            &copy; 2026 Samut Prakan Health Office
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [isLoggedIn, setIsLoggedIn] = useState(false); // Auth State
+            // Updated keys to v15 to reflect name fix
+            const [staff, setStaff] = useState(() => JSON.parse(localStorage.getItem('db_staff_v15')) || INITIAL_STAFF);
+            const [schedule, setSchedule] = useState(() => JSON.parse(localStorage.getItem('db_schedule_v15')) || {});
+            const [swaps, setSwaps] = useState(() => JSON.parse(localStorage.getItem('db_swaps_v15')) || []);
+            const [view, setView] = useState('schedule');
+            const [currentDate, setCurrentDate] = useState(new Date());
+            const [selectedStaffId, setSelectedStaffId] = useState(null);
+            
+            // Check login session
+            useEffect(() => {
+                const session = sessionStorage.getItem('isLoggedIn');
+                if (session === 'true') setIsLoggedIn(true);
+            }, []);
+
+            const handleLogin = () => {
+                setIsLoggedIn(true);
+                sessionStorage.setItem('isLoggedIn', 'true');
+            };
+
+            const handleLogout = () => {
+                setIsLoggedIn(false);
+                sessionStorage.removeItem('isLoggedIn');
+                setView('schedule'); // Reset view
+            };
+
+            useEffect(() => localStorage.setItem('db_staff_v15', JSON.stringify(staff)), [staff]);
+            useEffect(() => localStorage.setItem('db_schedule_v15', JSON.stringify(schedule)), [schedule]);
+            useEffect(() => localStorage.setItem('db_swaps_v15', JSON.stringify(swaps)), [swaps]);
+
+            const getMonthName = (date) => date.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+            
+            const formatDate = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+            
+            const getStaffName = (id) => staff.find(s => s.id == id)?.name || "-";
+
+            const getDayTheme = (dayOfWeek) => {
+                switch(dayOfWeek) {
+                    case 1: return { bg: 'bg-yellow-50', border: 'border-yellow-200', name: 'จันทร์' };
+                    case 2: return { bg: 'bg-pink-50', border: 'border-pink-200', name: 'อังคาร' };
+                    case 3: return { bg: 'bg-green-50', border: 'border-green-200', name: 'พุธ' };
+                    case 4: return { bg: 'bg-orange-50', border: 'border-orange-200', name: 'พฤหัสบดี' };
+                    case 5: return { bg: 'bg-blue-50', border: 'border-blue-200', name: 'ศุกร์' };
+                    default: return { bg: 'bg-white', border: 'border-gray-200', name: '' };
+                }
+            };
+
+            const updateSchedule = (date, period, role, staffId) => {
+                setSchedule(prev => {
+                    const day = prev[date] || {};
+                    if (role === 'finance') {
+                        return { ...prev, [date]: { ...day, finance: staffId } };
+                    }
+                    return {
+                        ...prev,
+                        [date]: { ...day, [period]: { ...(day[period] || {}), [role]: staffId } }
+                    };
+                });
+            };
+
+            const applyDefaults = useCallback(() => {
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                
+                let newSchedule = { ...schedule };
+                let hasChanges = false;
+
+                for (let i = 1; i <= daysInMonth; i++) {
+                    const d = new Date(year, month, i);
+                    if (d.getDay() === 0 || d.getDay() === 6) continue;
+
+                    const dateStr = formatDate(d);
+                    const dayData = newSchedule[dateStr] || {};
+                    let dayChanged = false;
+
+                    if (!dayData.am) dayData.am = {};
+                    if (!dayData.pm) dayData.pm = {};
+
+                    staff.forEach(s => {
+                        const setRole = (p, r) => {
+                            if (p === 'fullDay') {
+                                if (dayData.finance === undefined) { dayData.finance = s.id; dayChanged = true; }
+                            } else {
+                                if (dayData[p][r] === undefined) { dayData[p][r] = s.id; dayChanged = true; }
+                            }
+                        };
+
+                        if (s.defaultAM) {
+                            if (s.defaultAM === 'finance') setRole('fullDay', 'finance');
+                            else setRole('am', s.defaultAM);
+                        }
+                        if (s.defaultPM) {
+                            setRole('pm', s.defaultPM);
+                        }
+                    });
+
+                    if (dayChanged) {
+                        newSchedule[dateStr] = dayData;
+                        hasChanges = true;
+                    }
+                }
+
+                if (hasChanges) {
+                    setSchedule(newSchedule);
+                }
+            }, [currentDate, staff, schedule]);
+
+            useEffect(() => {
+                if (isLoggedIn) applyDefaults();
+            }, [currentDate, staff, isLoggedIn]); 
+
+            const stats = useMemo(() => {
+                const data = staff.map(s => ({ ...s, count: 0, swapOut: 0, swapIn: 0 }));
+                const rolesToCheck = ['counter', 'doctor', 'chinese_doctor', 'massage1', 'massage2'];
+                
+                Object.values(schedule).forEach(day => {
+                    ['am', 'pm'].forEach(p => {
+                        if (day[p]) {
+                            rolesToCheck.forEach(r => {
+                                if (day[p][r]) {
+                                    const s = data.find(d => d.id == day[p][r]);
+                                    if (s) s.count++;
+                                }
+                            });
+                            if (!day.finance && day[p].finance) { const s = data.find(d => d.id == day[p].finance); if (s) s.count++; }
+                        }
+                    });
+                    if (day.finance) { const s = data.find(d => d.id == day.finance); if (s) s.count += 2; }
+                });
+                swaps.forEach(s => {
+                    const giver = data.find(d => d.name === s.oldStaff);
+                    const receiver = data.find(d => d.name === s.newStaff);
+                    if (giver) giver.swapOut++;
+                    if (receiver) receiver.swapIn++;
+                });
+                return data.sort((a,b) => b.count - a.count);
+            }, [schedule, staff, swaps]);
+
+            // --- Export Functions ---
+            const handleExportExcel = () => {
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const exportData = [];
+
+                for (let i = 1; i <= daysInMonth; i++) {
+                    const d = new Date(year, month, i);
+                    if (d.getDay() === 0 || d.getDay() === 6) continue;
+
+                    const dateStr = formatDate(d);
+                    const dayData = schedule[dateStr] || {};
+                    const financeName = getStaffName(dayData.finance);
+                    const gn = (p, r) => getStaffName(dayData[p]?.[r]);
+
+                    exportData.push({
+                        "วันที่": dateStr,
+                        "วัน": d.toLocaleDateString('th-TH', {weekday:'long'}),
+                        "ช่วงเวลา": "เช้า (08:30-12:00)",
+                        "เคาท์เตอร์": gn('am', 'counter'),
+                        "ผู้ตรวจแผนไทย": gn('am', 'doctor'),
+                        "ผู้ตรวจแผนจีน": gn('am', 'chinese_doctor'),
+                        "นวดไทย 1": gn('am', 'massage1'),
+                        "นวดไทย 2": gn('am', 'massage2'),
+                        "การเงิน": financeName
+                    });
+
+                    exportData.push({
+                        "วันที่": dateStr,
+                        "วัน": d.toLocaleDateString('th-TH', {weekday:'long'}),
+                        "ช่วงเวลา": "บ่าย (13:00-16:30)",
+                        "เคาท์เตอร์": gn('pm', 'counter'),
+                        "ผู้ตรวจแผนไทย": gn('pm', 'doctor'),
+                        "ผู้ตรวจแผนจีน": gn('pm', 'chinese_doctor'),
+                        "นวดไทย 1": gn('pm', 'massage1'),
+                        "นวดไทย 2": gn('pm', 'massage2'),
+                        "การเงิน": financeName
+                    });
+                }
+
+                const ws = XLSX.utils.json_to_sheet(exportData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Schedule");
+                XLSX.writeFile(wb, `ตารางเวร_${getMonthName(currentDate)}.xlsx`);
+            };
+
+            const handleExportPDF = () => {
+                const element = document.getElementById('print-area');
+                const opt = {
+                    margin: 5,
+                    filename: `ตารางเวร_${getMonthName(currentDate)}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2 },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+                };
+                html2pdf().set(opt).from(element).save();
+            };
+
+            const handleExportIndividualPDF = (staffName) => {
+                const element = document.getElementById('individual-report-area');
+                const opt = {
+                    margin: [10, 10, 10, 10], 
+                    filename: `ใบสรุปเวร_${staffName}_${getMonthName(currentDate)}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                    pagebreak: { mode: 'avoid-all' }
+                };
+                html2pdf().set(opt).from(element).save();
+            };
+
+            // --- Components ---
+
+            const IndividualReportView = ({ staffId, onBack }) => {
+                const s = staff.find(st => st.id === staffId);
+                if (!s) return null;
+
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const reportRows = [];
+                let totalShifts = 0;
+
+                for(let i=1; i<=daysInMonth; i++) {
+                    const d = new Date(year, month, i);
+                    if (d.getDay() === 0 || d.getDay() === 6) continue;
+
+                    const dateStr = formatDate(d);
+                    const dayData = schedule[dateStr] || {};
+                    let amRole = "-";
+                    let pmRole = "-";
+                    let dayCount = 0;
+
+                    if (dayData.finance == staffId) {
+                        amRole = "การเงิน";
+                        pmRole = "การเงิน";
+                        dayCount = 2;
+                    } else {
+                        Object.keys(ROLES).forEach(r => {
+                            if (dayData.am && dayData.am[r] == staffId) { amRole = ROLES[r]; dayCount++; }
+                        });
+                        Object.keys(ROLES).forEach(r => {
+                            if (dayData.pm && dayData.pm[r] == staffId) { pmRole = ROLES[r]; dayCount++; }
+                        });
+                    }
+                    
+                    totalShifts += dayCount;
+                    reportRows.push({
+                        date: d.getDate(),
+                        day: d.toLocaleDateString('th-TH', { weekday: 'long' }),
+                        am: amRole,
+                        pm: pmRole,
+                        count: dayCount
+                    });
+                }
+
+                return (
+                    <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl border border-fresh-100 p-6 animate-fade-in">
+                        <div className="flex justify-between items-center mb-4 no-print">
+                            <button onClick={onBack} className="text-gray-500 hover:text-fresh-600 flex items-center gap-2">
+                                <Icon name="arrow-left" className="w-5 h-5"/> ย้อนกลับ
+                            </button>
+                            <button onClick={() => handleExportIndividualPDF(s.name)} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-red-700 shadow-md">
+                                <Icon name="file-text" className="w-5 h-5"/> ดาวน์โหลด PDF (A4)
+                            </button>
+                        </div>
+
+                        <div id="individual-report-area" className="bg-white border border-gray-100 shadow-sm rounded-lg" style={{width: '190mm', padding: '15mm', margin: '0 auto'}}>
+                            <div className="text-center mb-4 border-b border-fresh-100 pb-2">
+                                <h2 className="text-xl font-bold text-gray-800">ใบสรุปการปฏิบัติงานรายบุคคล</h2>
+                                <h3 className="text-lg text-fresh-700 font-bold mt-1">{s.name}</h3>
+                                <p className="text-gray-500 text-sm mt-1">ประจำเดือน {getMonthName(currentDate)}</p>
+                                <p className="text-xs text-gray-400">คลินิกการแพทย์แผนไทย สสจ.สป.</p>
+                            </div>
+
+                            <table className="w-full border-collapse text-[10px]">
+                                <thead>
+                                    <tr className="bg-gray-100 text-gray-700">
+                                        <th className="border p-1 w-10">วันที่</th>
+                                        <th className="border p-1 w-16">วัน</th>
+                                        <th className="border p-1">เวรเช้า (08:30-12:00)</th>
+                                        <th className="border p-1">เวรบ่าย (13:00-16:30)</th>
+                                        <th className="border p-1 w-10">จำนวน</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {reportRows.map((row, idx) => (
+                                        <tr key={idx} className={row.count > 0 ? "bg-white" : "bg-gray-50 text-gray-400"}>
+                                            <td className="border p-1 text-center">{row.date}</td>
+                                            <td className="border p-1 text-center">{row.day}</td>
+                                            <td className={`border p-1 text-center ${row.am !== '-' ? 'font-bold text-fresh-700' : ''}`}>{row.am}</td>
+                                            <td className={`border p-1 text-center ${row.pm !== '-' ? 'font-bold text-fresh-700' : ''}`}>{row.pm}</td>
+                                            <td className="border p-1 text-center font-bold">{row.count > 0 ? row.count : "-"}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot>
+                                    <tr className="bg-fresh-600 text-white font-bold">
+                                        <td colSpan="4" className="border p-1 text-right">รวมจำนวนเวรทั้งหมด</td>
+                                        <td className="border p-1 text-center text-sm">{totalShifts}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+
+                            <div className="mt-6 flex justify-end">
+                                <div className="text-center w-32">
+                                    <div className="border-b border-gray-400 h-6"></div>
+                                    <p className="mt-1 text-[10px]">ผู้ปฏิบัติงาน</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const CalendarView = () => {
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const days = [];
+                for(let i=1; i<=daysInMonth; i++) {
+                    const d = new Date(year, month, i);
+                    if(d.getDay() !== 0 && d.getDay() !== 6) days.push(d);
+                }
+
+                return (
+                    <div className="flex gap-4 flex-col lg:flex-row">
+                        <div className="flex-1 bg-white rounded-2xl shadow-xl border border-fresh-100 p-6" id="print-area">
+                            <div className="flex justify-between items-start mb-4" data-html2canvas-ignore="true">
+                                <div></div>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={handleExportExcel}
+                                        className="bg-green-700 text-white px-3 py-1.5 rounded-lg font-bold shadow hover:bg-green-800 transition flex items-center gap-2 text-sm"
+                                    >
+                                        <Icon name="table" className="w-4 h-4"/> ส่งออก Excel
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="text-center mb-6 border-b-2 border-fresh-100 pb-2">
+                                <h2 className="text-2xl font-heading font-bold text-fresh-700">ตารางปฏิบัติงานคลินิกการแพทย์แผนไทย</h2>
+                                <p className="text-gray-500 mt-1 font-light text-sm">สำนักงานสาธารณสุขจังหวัดสมุทรปราการ</p>
+                                <div className="mt-2 inline-block bg-gradient-to-r from-fresh-500 to-teal-500 text-white px-4 py-1 rounded-full text-xs font-bold shadow-md">
+                                    {getMonthName(currentDate)}
+                                </div>
+                            </div>
+                            
+                            <div className="overflow-x-auto rounded-lg border border-fresh-100">
+                                <table className="w-full text-xs text-center">
+                                    <thead className="bg-fresh-600 text-white">
+                                        <tr>
+                                            <th className="p-2 border-r border-fresh-500">วันที่</th>
+                                            <th className="p-2 border-r border-fresh-500">เวลา</th>
+                                            <th className="p-2 border-r border-fresh-500 w-[12%]">เคาท์เตอร์</th>
+                                            <th className="p-2 border-r border-fresh-500 w-[12%]">ตรวจแผนไทย</th>
+                                            <th className="p-2 border-r border-fresh-500 w-[12%]">ตรวจแผนจีน</th>
+                                            <th className="p-2 border-r border-fresh-500 w-[12%]">นวดไทย 1</th>
+                                            <th className="p-2 border-r border-fresh-500 w-[12%]">นวดไทย 2</th>
+                                            <th className="p-2 w-[12%]">การเงิน (ทั้งวัน)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {days.map((d, index) => {
+                                            const dateStr = formatDate(d);
+                                            const dayData = schedule[dateStr] || {};
+                                            const dayTheme = getDayTheme(d.getDay());
+                                            const isNewWeek = d.getDay() === 1 && index !== 0;
+
+                                            const SelectBox = ({ p, r, fullDay }) => (
+                                                <div className="relative group h-full">
+                                                    <select 
+                                                        className={`w-full bg-transparent p-1 cursor-pointer outline-none text-gray-700 font-medium hover:bg-white/50 focus:bg-white rounded transition-colors appearance-none text-center text-[10px] ${fullDay ? 'h-full py-4 font-bold text-fresh-800' : ''}`}
+                                                        value={(fullDay ? (dayData.finance) : dayData[p]?.[r]) || ""}
+                                                        onChange={e => updateSchedule(dateStr, p, r, e.target.value)}
+                                                    >
+                                                        <option value="" className="text-gray-400">-</option>
+                                                        {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                    </select>
+                                                </div>
+                                            );
+
+                                            return (
+                                                <React.Fragment key={dateStr}>
+                                                    {isNewWeek && (
+                                                        <tr className="bg-gray-200 h-1 border-t border-b border-gray-300">
+                                                            <td colSpan="8"></td>
+                                                        </tr>
+                                                    )}
+                                                    <tr className={`border-b ${dayTheme.border} ${dayTheme.bg} transition-colors`}>
+                                                        <td rowSpan="2" className={`p-1 border-r ${dayTheme.border} font-bold text-gray-700 align-middle`}>
+                                                            <div className="text-sm">{d.getDate()}</div>
+                                                            <div className="text-[10px] font-normal opacity-80">{d.toLocaleDateString('th-TH', {weekday:'short'})}</div>
+                                                        </td>
+                                                        <td className={`p-1 text-[10px] font-bold text-gray-600 border-r ${dayTheme.border}`}>เช้า</td>
+                                                        <td className={`p-0 border-r ${dayTheme.border}`}><SelectBox p="am" r="counter"/></td>
+                                                        <td className={`p-0 border-r ${dayTheme.border}`}><SelectBox p="am" r="doctor"/></td>
+                                                        <td className={`p-0 border-r ${dayTheme.border}`}><SelectBox p="am" r="chinese_doctor"/></td>
+                                                        <td className={`p-0 border-r ${dayTheme.border}`}><SelectBox p="am" r="massage1"/></td>
+                                                        <td className={`p-0 border-r ${dayTheme.border}`}><SelectBox p="am" r="massage2"/></td>
+                                                        <td rowSpan="2" className="p-0 align-middle border-l border-gray-200 bg-white/30"><SelectBox p="fullDay" r="finance" fullDay={true}/></td>
+                                                    </tr>
+                                                    <tr className={`border-b-2 ${dayTheme.border} ${dayTheme.bg} transition-colors`}>
+                                                        <td className={`p-1 text-[10px] font-bold text-gray-600 border-r ${dayTheme.border}`}>บ่าย</td>
+                                                        <td className={`p-0 border-r ${dayTheme.border}`}><SelectBox p="pm" r="counter"/></td>
+                                                        <td className={`p-0 border-r ${dayTheme.border}`}><SelectBox p="pm" r="doctor"/></td>
+                                                        <td className={`p-0 border-r ${dayTheme.border}`}><SelectBox p="pm" r="chinese_doctor"/></td>
+                                                        <td className={`p-0 border-r ${dayTheme.border}`}><SelectBox p="pm" r="massage1"/></td>
+                                                        <td className={`p-0 border-r ${dayTheme.border}`}><SelectBox p="pm" r="massage2"/></td>
+                                                    </tr>
+                                                </React.Fragment>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-20 mt-8 text-center pt-4">
+                                <div className="border-t border-gray-400 pt-2 text-xs">ผู้จัดทำตารางเวร</div>
+                                <div className="border-t border-gray-400 pt-2 text-xs">หัวหน้ากลุ่มงานฯ</div>
+                            </div>
+                        </div>
+
+                        <div className="w-full lg:w-64 flex-shrink-0" data-html2canvas-ignore="true">
+                            <div className="bg-white rounded-2xl shadow-xl border border-fresh-100 p-0 sticky top-6 overflow-hidden">
+                                <div className="bg-gradient-to-r from-fresh-500 to-teal-500 p-4 text-white">
+                                    <h3 className="font-bold flex items-center gap-2 text-md"><Icon name="activity" className="text-white"/> Real-time Monitor</h3>
+                                </div>
+                                <div className="p-3 space-y-2 max-h-[80vh] overflow-y-auto bg-fresh-50/30">
+                                    {stats.map((s, i) => (
+                                        <div key={s.id} className="flex items-center justify-between p-2 bg-white rounded-lg border border-fresh-100 shadow-sm text-sm">
+                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                <div className={`w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${i < 3 ? 'bg-gold-400' : 'bg-gray-300'}`}>{i+1}</div>
+                                                <div className="font-bold text-gray-700 truncate">{s.name}</div>
+                                            </div>
+                                            <div className={`px-2 py-0.5 rounded text-xs font-bold ${s.count > 10 ? 'bg-red-100 text-red-600' : 'bg-fresh-100 text-fresh-700'}`}>{s.count}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const StaffView = () => {
+                const [input, setInput] = useState("");
+                return (
+                    <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl border border-fresh-100 p-8">
+                        <h2 className="text-2xl font-heading font-bold text-fresh-700 mb-6 flex items-center gap-2"><Icon name="users" className="text-gold-500"/> จัดการรายชื่อเจ้าหน้าที่</h2>
+                        
+                        <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl mb-6 text-sm text-blue-800 flex items-start gap-3">
+                            <Icon name="info" className="shrink-0 mt-0.5"/>
+                            <div>
+                                <strong>ระบบเติมตารางอัตโนมัติ (Auto-Fill):</strong><br/>
+                                ระบบจะนำชื่อไปใส่ในตารางเวรให้อัตโนมัติทันทีที่มีช่องว่างตามตำแหน่งที่ระบุ
+                            </div>
+                        </div>
+
+                        <div className="flex gap-2 mb-6">
+                            <input value={input} onChange={e=>setInput(e.target.value)} placeholder="พิมพ์ชื่อ-นามสกุล..." className="flex-1 p-3 border border-gray-200 rounded-xl outline-none focus:border-fresh-500 focus:ring-2 focus:ring-fresh-200 transition-all"/>
+                            <button onClick={()=>{ if(input){ setStaff([...staff, {id: Date.now().toString(), name: input, defaultAM: '', defaultPM: ''}]); setInput(""); }}} className="bg-fresh-600 text-white px-6 rounded-xl font-bold hover:bg-fresh-700 transition shadow-md flex items-center gap-2"><Icon name="plus-circle" className="w-5 h-5"/> เพิ่ม</button>
+                        </div>
+                        <div className="space-y-3">
+                            {staff.map(s => (
+                                <div key={s.id} className="flex flex-col lg:flex-row justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-white hover:shadow-md transition gap-4">
+                                    <div className="font-medium text-gray-700 flex-1">{s.name}</div>
+                                    <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto justify-end">
+                                        <div className="flex items-center gap-2 bg-yellow-50 p-2 rounded-lg border border-yellow-100">
+                                            <span className="text-[10px] text-yellow-600 font-bold whitespace-nowrap uppercase">Default เช้า</span>
+                                            <select 
+                                                value={s.defaultAM || ""} 
+                                                onChange={(e) => {
+                                                    const newStaff = staff.map(st => st.id === s.id ? { ...st, defaultAM: e.target.value } : st);
+                                                    setStaff(newStaff);
+                                                }}
+                                                className="p-1 border border-yellow-200 rounded text-sm bg-white focus:ring-1 focus:ring-yellow-300 outline-none w-40"
+                                            >
+                                                <option value="">- ไม่มี -</option>
+                                                <option value="counter">เคาท์เตอร์</option>
+                                                <option value="doctor">ตรวจแผนไทย</option>
+                                                <option value="chinese_doctor">ตรวจแผนจีน</option>
+                                                <option value="massage1">นวดไทย 1</option>
+                                                <option value="massage2">นวดไทย 2</option>
+                                                <option value="finance">การเงิน (ทั้งวัน)</option>
+                                            </select>
+                                        </div>
+                                        <div className="flex items-center gap-2 bg-blue-50 p-2 rounded-lg border border-blue-100">
+                                            <span className="text-[10px] text-blue-600 font-bold whitespace-nowrap uppercase">Default บ่าย</span>
+                                            <select 
+                                                value={s.defaultPM || ""} 
+                                                onChange={(e) => {
+                                                    const newStaff = staff.map(st => st.id === s.id ? { ...st, defaultPM: e.target.value } : st);
+                                                    setStaff(newStaff);
+                                                }}
+                                                className="p-1 border border-blue-200 rounded text-sm bg-white focus:ring-1 focus:ring-blue-300 outline-none w-40 disabled:bg-gray-100 disabled:text-gray-400"
+                                                disabled={s.defaultAM === 'finance'}
+                                            >
+                                                <option value="">- ไม่มี -</option>
+                                                <option value="counter">เคาท์เตอร์</option>
+                                                <option value="doctor">ตรวจแผนไทย</option>
+                                                <option value="chinese_doctor">ตรวจแผนจีน</option>
+                                                <option value="massage1">นวดไทย 1</option>
+                                                <option value="massage2">นวดไทย 2</option>
+                                            </select>
+                                        </div>
+                                        <button onClick={()=>setStaff(staff.filter(x => x.id !== s.id))} className="text-gray-300 hover:text-red-500 transition-colors p-2"><Icon name="trash-2"/></button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            };
+
+            const DashboardView = () => {
+                if (selectedStaffId) {
+                    return <IndividualReportView staffId={selectedStaffId} onBack={() => setSelectedStaffId(null)} />;
+                }
+
+                return (
+                    <div className="space-y-8">
+                        <div className="bg-white rounded-2xl shadow-xl border-l-8 border-fresh-500 p-8">
+                            <h2 className="text-2xl font-heading font-bold text-gray-800 mb-6 flex items-center gap-3">
+                                <div className="p-2 bg-fresh-100 rounded-lg text-fresh-600"><Icon name="pie-chart"/></div> สรุปการปฏิบัติงานคลินิก
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {stats.map((s, idx) => (
+                                    <div key={idx} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-lg hover:-translate-y-1 transition-transform duration-300 relative overflow-hidden group">
+                                        <div className="flex items-center justify-between gap-4 mb-4 relative z-10">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-fresh-400 to-teal-500 shadow-lg flex items-center justify-center font-heading font-bold text-xl text-white">{idx+1}</div>
+                                                <div>
+                                                    <h3 className="font-bold text-gray-800 text-lg">{s.name}</h3>
+                                                    <p className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full inline-block mt-1">เจ้าหน้าที่</p>
+                                                </div>
+                                            </div>
+                                            {/* --- FIXED BUTTON --- */}
+                                            <button 
+                                                onClick={() => setSelectedStaffId(s.id)} 
+                                                className="bg-fresh-100 text-fresh-700 hover:bg-fresh-200 px-3 py-1.5 rounded-lg transition flex items-center gap-2 text-xs font-bold shadow-sm" 
+                                                title="ดูใบสรุปเวร"
+                                            >
+                                                <Icon name="file-text" className="w-4 h-4"/> ดูใบสรุป
+                                            </button>
+                                        </div>
+                                        <div className="mb-6 relative z-10">
+                                            <span className="text-5xl font-bold text-fresh-600 tracking-tighter">{s.count}</span>
+                                            <span className="text-sm text-gray-400 ml-2 font-medium">เวร (Weighted)</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3 text-center text-xs relative z-10">
+                                            <div className="bg-red-50 p-2 rounded-lg text-red-600 font-bold border border-red-100">แลกออก: {s.swapOut}</div>
+                                            <div className="bg-teal-50 p-2 rounded-lg text-teal-600 font-bold border border-teal-100">อยู่แทน: {s.swapIn}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const SwapView = () => {
+                const [form, setForm] = useState({ date: formatDate(new Date()), period: 'am', role: 'counter', newStaffId: '', reason: '' });
+
+                const handleSubmit = (e) => {
+                    e.preventDefault();
+                    if(!form.newStaffId) return alert("กรุณาเลือกคนใหม่");
+                    
+                    let oldId;
+                    if (form.role === 'finance') {
+                         oldId = schedule[form.date]?.finance || schedule[form.date]?.am?.finance;
+                    } else {
+                         oldId = schedule[form.date]?.[form.period]?.[form.role];
+                    }
+                    
+                    const oldName = getStaffName(oldId);
+                    const newName = getStaffName(form.newStaffId);
+                    
+                    updateSchedule(form.date, (form.role === 'finance' ? 'fullDay' : form.period), form.role, form.newStaffId);
+                    
+                    const log = {
+                        ...form,
+                        period: form.role === 'finance' ? 'fullDay' : form.period,
+                        oldStaff: oldName,
+                        newStaff: newName,
+                        timestamp: new Date().toLocaleString('th-TH')
+                    };
+                    setSwaps([log, ...swaps]);
+                    
+                    alert("บันทึกเรียบร้อย");
+                    setForm({...form, reason: ''});
+                };
+
+                let currentOwnerId;
+                if (form.role === 'finance') {
+                    currentOwnerId = schedule[form.date]?.finance || schedule[form.date]?.am?.finance;
+                } else {
+                    currentOwnerId = schedule[form.date]?.[form.period]?.[form.role];
+                }
+                const currentOwner = currentOwnerId ? getStaffName(currentOwnerId) : "(ยังไม่จัดเวร)";
+
+                return (
+                    <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div className="bg-gradient-to-b from-gold-400 to-gold-500 text-white p-8 rounded-2xl shadow-xl h-fit relative overflow-hidden">
+                            <h3 className="font-heading font-bold text-2xl mb-6 relative z-10">ข้อตกลงการแลก</h3>
+                            <ul className="text-sm space-y-4 relative z-10">
+                                <li className="flex gap-3 items-start"><Icon name="check-circle" className="shrink-0 text-white/80"/> ตกลงกันทั้งสองฝ่ายให้เรียบร้อยก่อนบันทึก</li>
+                                <li className="flex gap-3 items-start"><Icon name="check-circle" className="shrink-0 text-white/80"/> มีผลทันทีต่อตารางเวรหลัก</li>
+                                <li className="flex gap-3 items-start"><Icon name="check-circle" className="shrink-0 text-white/80"/> การเงิน (เต็มวัน) แลกแล้วจะมีผลทั้งวัน</li>
+                            </ul>
+                        </div>
+                        
+                        <div className="md:col-span-2 bg-white rounded-2xl shadow-xl border border-fresh-100 p-8">
+                            <h2 className="text-2xl font-heading font-bold text-fresh-700 mb-8 flex items-center gap-2">
+                                <div className="p-2 bg-gold-100 rounded-lg text-gold-600"><Icon name="refresh-ccw"/></div>
+                                บันทึกการแลกเวร
+                            </h2>
+                            
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">วันที่</label>
+                                        <input type="date" value={form.date} onChange={e=>setForm({...form, date: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-fresh-400 transition-all"/>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">เวลา</label>
+                                        <select 
+                                            value={form.role === 'finance' ? 'fullDay' : form.period} 
+                                            onChange={e=>setForm({...form, period: e.target.value})} 
+                                            className={`w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-fresh-400 transition-all ${form.role === 'finance' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''}`}
+                                            disabled={form.role === 'finance'}
+                                        >
+                                            {form.role === 'finance' ? <option value="fullDay">ทั้งวัน (Full Day)</option> : <><option value="am">เช้า</option><option value="pm">บ่าย</option></>}
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">ตำแหน่ง</label>
+                                    <select value={form.role} onChange={e=>setForm({...form, role: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-fresh-400 transition-all">
+                                        <option value="counter">เคาท์เตอร์</option>
+                                        <option value="doctor">ผู้ตรวจแผนไทย</option>
+                                        <option value="chinese_doctor">ผู้ตรวจแผนจีน</option>
+                                        <option value="massage1">นวดไทย 1</option>
+                                        <option value="massage2">นวดไทย 2</option>
+                                        <option value="finance">การเงิน (ทั้งวัน)</option>
+                                    </select>
+                                </div>
+
+                                <div className="bg-orange-50 p-5 rounded-xl border border-orange-100 flex justify-between items-center shadow-sm">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600"><Icon name="user-x"/></div>
+                                        <div>
+                                            <div className="text-xs text-orange-500 font-bold uppercase">ผู้ปฏิบัติงานเดิม</div>
+                                            <div className="text-lg font-bold text-orange-800">{currentOwner}</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">เปลี่ยนเป็น (คนใหม่)</label>
+                                    <select value={form.newStaffId} onChange={e=>setForm({...form, newStaffId: e.target.value})} className="w-full p-3 bg-white border-2 border-fresh-400 rounded-xl outline-none shadow-sm focus:ring-4 focus:ring-fresh-100 transition-all font-bold text-fresh-800">
+                                        <option value="">-- เลือกผู้มาแทน --</option>
+                                        {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">เหตุผล</label>
+                                    <textarea value={form.reason} onChange={e=>setForm({...form, reason: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-fresh-400 transition-all h-24" placeholder="ระบุเหตุผล..." required></textarea>
+                                </div>
+
+                                <button type="submit" className="w-full bg-gradient-to-r from-fresh-600 to-teal-600 hover:from-fresh-700 hover:to-teal-700 text-white p-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all">ยืนยันการแลกเวร</button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            };
+
+            // --- Main Layout ---
+            if (!isLoggedIn) return <LoginView onLogin={handleLogin} />;
+
+            return (
+                <div className="min-h-screen flex flex-col md:flex-row font-sans">
+                    <aside className="fresh-gradient text-white w-full md:w-72 flex-shrink-0 flex flex-col shadow-2xl relative overflow-hidden no-print z-20">
+                        <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                        <div className="p-8 relative z-10">
+                            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-md border border-white/30 text-white shadow-inner">
+                                <Icon name="leaf" className="w-8 h-8"/>
+                            </div>
+                            <h1 className="text-xl font-heading font-bold tracking-wide leading-tight text-shadow">ตารางปฏิบัติงาน<br/>คลินิกการแพทย์แผนไทย<br/>สสจ.สป.</h1>
+                            <p className="text-xs text-fresh-100 mt-2 font-bold bg-white/10 inline-block px-2 py-1 rounded">
+                                พัฒนาโดย ภก.จีรภัทร พลายงาม<br/>
+                                V24 (11 ม.ค. 2569)
+                            </p>
+                        </div>
+                        <nav className="flex-1 px-4 space-y-3 py-4 relative z-10">
+                            {[
+                                { id: 'schedule', icon: 'calendar-days', label: 'จัดตารางเวร' },
+                                { id: 'staff', icon: 'users', label: 'เจ้าหน้าที่' },
+                                { id: 'dashboard', icon: 'pie-chart', label: 'สรุปผลงาน' },
+                                { id: 'swap', icon: 'refresh-ccw', label: 'แลกเวร' },
+                            ].map(item => (
+                                <button 
+                                    key={item.id}
+                                    onClick={() => { setView(item.id); setSelectedStaffId(null); }}
+                                    className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-300 ${view === item.id ? 'bg-white text-fresh-700 font-bold shadow-lg transform scale-105' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
+                                >
+                                    <Icon name={item.icon} className={view === item.id ? "text-fresh-600" : "text-white/70"} />
+                                    {item.label}
+                                </button>
+                            ))}
+                        </nav>
+                        <div className="p-4 relative z-10">
+                            <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 bg-red-600/80 hover:bg-red-700 text-white py-2 rounded-lg transition text-sm font-bold shadow-inner">
+                                <Icon name="log-out" className="w-4 h-4"/> ออกจากระบบ
+                            </button>
+                        </div>
+                        <div className="p-4 bg-black/10 text-xs text-center text-white/60 relative z-10">
+                            &copy; 2026 Samut Prakan<br/>Health Office
+                        </div>
+                    </aside>
+
+                    <main className="flex-1 h-screen overflow-y-auto bg-f0fdf4 relative" id="main-container">
+                        <header className="bg-white/80 backdrop-blur-md sticky top-0 z-20 border-b border-fresh-100 px-8 py-5 flex justify-between items-center no-print shadow-sm">
+                            <h2 className="text-2xl font-heading font-bold text-gray-700 flex items-center gap-3 capitalize">
+                                <span className="w-2 h-8 bg-fresh-500 rounded-full"></span>
+                                {view === 'schedule' && "จัดการตารางเวร"}
+                                {view === 'staff' && "ฐานข้อมูลเจ้าหน้าที่"}
+                                {view === 'dashboard' && "สรุปผลงานรวม"}
+                                {view === 'swap' && "ระบบแลกเปลี่ยนเวร"}
+                            </h2>
+                            {view === 'schedule' && (
+                                <div className="flex gap-4">
+                                    <div className="flex items-center bg-white border border-fresh-100 rounded-xl p-1 shadow-sm px-3">
+                                        <button onClick={()=>setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth()-1)))} className="p-2 hover:bg-fresh-50 rounded-lg text-fresh-600 transition"><Icon name="chevron-left"/></button>
+                                        <input 
+                                            type="month" 
+                                            className="outline-none bg-transparent font-bold text-gray-700 text-center cursor-pointer min-w-[150px]"
+                                            value={`${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}`}
+                                            onChange={(e) => {
+                                                if(e.target.value) setCurrentDate(new Date(e.target.value + "-01"));
+                                            }}
+                                        />
+                                        <button onClick={()=>setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth()+1)))} className="p-2 hover:bg-fresh-50 rounded-lg text-fresh-600 transition"><Icon name="chevron-right"/></button>
+                                    </div>
+                                    <button 
+                                        onClick={handleExportPDF}
+                                        className="bg-red-600 text-white px-5 py-2 rounded-xl shadow-lg hover:bg-red-700 flex items-center gap-2 font-bold transition-all"
+                                    >
+                                        <Icon name="file-text" className="w-5 h-5"/> ส่งออก PDF
+                                    </button>
+                                </div>
+                            )}
+                        </header>
+
+                        <div className="p-8 pb-20 max-w-[1600px] mx-auto">
+                            {view === 'schedule' && <CalendarView />}
+                            {view === 'staff' && <StaffView />}
+                            {view === 'dashboard' && <DashboardView />}
+                            {view === 'swap' && <SwapView />}
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
