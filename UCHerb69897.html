@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบประเมินยุทธศาสตร์สมุนไพร UC - v20.1 Full (Executive Strategy Analysis)</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+
+        /* Official Print Styling */
+        @media print {
+            body { background-color: white !important; font-size: 11px; color: black; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            
+            @page { 
+                margin: 20mm 15mm; 
+                size: A4; 
+            }
+
+            .report-page {
+                width: 100%;
+                color: black;
+            }
+
+            .avoid-break { page-break-inside: avoid; }
+            .page-break { page-break-before: always; }
+            
+            .formal-table { 
+                width: 100%; 
+                border-collapse: collapse; 
+                margin-bottom: 1rem; 
+            }
+            .formal-table th, .formal-table td { 
+                border: 0.5pt solid #000; 
+                padding: 6px 8px; 
+                text-align: left; 
+                vertical-align: top;
+            }
+            .formal-table th { 
+                background-color: #f3f4f6 !important; 
+                -webkit-print-color-adjust: exact; 
+                font-weight: bold;
+                font-size: 11px;
+                text-align: center;
+            }
+            .section-header {
+                font-size: 18px;
+                font-weight: 800;
+                border-bottom: 2.5pt solid black;
+                margin-bottom: 12px;
+                margin-top: 25px;
+                color: black;
+                text-transform: uppercase;
+                display: flex;
+                justify-content: space-between;
+            }
+            .sub-section-header {
+                font-size: 13px;
+                font-weight: 700;
+                color: black;
+                margin-bottom: 8px;
+                margin-top: 15px;
+                text-decoration: underline;
+            }
+            .expert-box {
+                border: 1pt solid #000;
+                padding: 12px;
+                background-color: #f9fafb !important;
+                -webkit-print-color-adjust: exact;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+        }
+
+        .print-only { display: none; }
+        
+        .animate-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+
+        // --- GLOBAL UTILITIES ---
+        const formatCurrency = (num) => Number(num || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        
+        const getRating = (s) => {
+            if (s >= 8.6) return { label: 'ดีเยี่ยม (Excellent)', color: 'bg-emerald-600', text: 'text-emerald-700', light: 'bg-emerald-50', border: 'border-emerald-200' };
+            if (s >= 7.1) return { label: 'ดี (Good Standard)', color: 'bg-blue-600', text: 'text-blue-700', light: 'bg-blue-50', border: 'border-blue-200' };
+            if (s >= 5.6) return { label: 'พอใช้ (Fair Standing)', color: 'bg-amber-600', text: 'text-amber-700', light: 'bg-amber-50', border: 'border-amber-200' };
+            return { label: 'ต้องพัฒนา (Needs Improvement)', color: 'bg-rose-600', text: 'text-rose-700', light: 'bg-rose-50', border: 'border-rose-200' };
+        };
+
+        const PROGRAM_INFO = {
+            name: "ระบบประเมินยุทธศาสตร์ขับเคลื่อนสมุนไพร UC จังหวัดสมุทรปราการ",
+            developer: "ภก.จีรภัทร พลายงาม",
+            version: "v20.1 (Executive Intelligence)",
+            updateDate: "13 มกราคม 2569"
+        };
+
+        const DISTRICTS = ["คปสอ.เมืองสมุทรปราการ", "คปสอ.พระประแดง", "คปสอ.พระสมุทรเจดีย์", "คปสอ.บางพลี", "คปสอ.บางบ่อ", "คปสอ.บางเสาธง"];
+
+        const QUALITY_CRITERIA_TAB1 = {
+            service: { 
+                id: "service", title: "1. การใช้ยาสมุนไพรตาม CPG (Service Delivery)", 
+                levels: [
+                    {lv:1, score:40, desc:"มีคู่มือ CPG ครอบคลุม 3-6 กลุ่มโรคเป้าหมาย (เช่น ระบบทางเดินอาหาร, ระบบทางเดินหายใจ) แต่ยังไม่มีการกำกับติดตามที่ชัดเจน"},
+                    {lv:2, score:55, desc:"เริ่มมีการสั่งใช้ยาสมุนไพรตาม CPG ในหน้างานจริง แต่สัดส่วนรายการยาทดแทนยังน้อยกว่าร้อยละ 30 ของกลุ่มโรคเป้าหมาย"},
+                    {lv:3, score:70, desc:"มีสัดส่วนการสั่งใช้จริงตาม CPG ระหว่างร้อยละ 30 - 60 มีระบบประเมินผลลัพธ์ทางคลินิก (Outcome) เบื้องต้นในระดับหน่วยงาน"},
+                    {lv:4, score:85, desc:"สั่งใช้ยาสมุนไพรทดแทนได้ร้อยละ 61 - 85 มีการสรุปผลการรักษาเปรียบเทียบกับยาแผนปัจจุบัน และมีรายงาน ADR ที่เป็นระบบ"},
+                    {lv:5, score:100, desc:"สั่งใช้ยาทดแทนได้มากกว่าร้อยละ 85 อย่างต่อเนื่อง มีนวัตกรรมบริการร่วมกับทีมสหวิชาชีพ และเป็นแม่ข่ายการเรียนรู้ด้าน CPG ในระดับเขต"}
+                ] 
+            },
+            workforce: { 
+                id: "workforce", title: "2. ศักยภาพและกำลังคน (Health Workforce)", 
+                levels: [
+                    {lv:1, score:40, desc:"มีแผนงานจัดอบรมบุคลากรประจำปี แต่สัดส่วนผู้เข้าร่วมยังไม่ครอบคลุมทุกจุดบริการ (OPD/IPD/PCU)"},
+                    {lv:2, score:55, desc:"บุคลากร (แพทย์/เภสัชกร/พยาบาล) ผ่านการอบรมด้านยาสมุนไพรน้อยกว่าร้อยละ 50 ของทีม และยังขาดการประเมิน Competency"},
+                    {lv:3, score:70, desc:"บุคลากรผ่านการอบรมหรือประเมินทักษะฯ ร้อยละ 50 - 70 มีผู้รับผิดชอบงานสมุนไพรชัดเจนในระดับ คปสอ. และมีทีมที่ปรึกษา"},
+                    {lv:4, score:85, desc:"บุคลากรผ่านการอบรมฯ ร้อยละ 71 - 85 มีความเชี่ยวชาญสูงในการวินิจฉัยและจ่ายยา สามารถจัดการกรณี ADR ที่ซับซ้อนได้เอง"},
+                    {lv:5, score:100, desc:"บุคลากรผ่านการอบรม > 85% มีทีม Expert Consultant ระดับจังหวัด และมีการทำวิจัยหรือ KM ต่อยอดงานสมุนไพรอย่างสม่ำเสมอ"}
+                ] 
+            },
+            information: { 
+                id: "information", title: "3. ระบบข้อมูลและการจัดการ (HIS Accuracy)", 
+                levels: [
+                    {lv:1, score:40, desc:"ความถูกต้องแม่นยำรหัสยา 24 หลัก (TMT) น้อยกว่า 60% พบปัญหาการ mapping ข้อมูลในระบบ HIS ของหน่วยงาน"},
+                    {lv:2, score:55, desc:"ความถูกต้องแม่นยำรหัสยา 24 หลัก 60-70% ข้อมูลการเบิกจ่าย (e-Claim) ยังมีความคลาดเคลื่อนในระดับรายการ"},
+                    {lv:3, score:70, desc:"ความถูกต้องแม่นยำรหัสยา 24 หลัก 71-80% มีการส่งออกข้อมูล 43 แฟ้มได้ตามรอบ และมีระบบตรวจสอบข้อมูล (Internal Audit)"},
+                    {lv:4, score:85, desc:"ความถูกต้องแม่นยำรหัสยา 24 หลัก 81-90% ระบบสามารถวิเคราะห์ต้นทุนและมูลค่าการใช้ยาได้แบบ Real-time รายหน่วยบริการ"},
+                    {lv:5, score:100, desc:"ความถูกต้องแม่นยำรหัสยา 24 หลัก > 90% ข้อมูลสะท้อนเศรษฐกิจจริง มี Dashboard สำหรับผู้บริหารในการตัดสินใจเชิงกลยุทธ์"}
+                ] 
+            },
+            access: { 
+                id: "access", title: "4. การเข้าถึงยาและเทคโนโลยี (Access & Tech)", 
+                levels: [
+                    {lv:1, score:40, desc:"ใช้ยามาตรฐาน GMP < 50% ของมูลค่าจัดซื้อ รายการยาสมุนไพรในบัญชียาโรงพยาบาลยังไม่ครอบคลุมกลุ่มโรคหลัก"},
+                    {lv:2, score:55, desc:"ใช้ยามาตรฐาน GMP 50-70% มีระบบการคัดเลือกยาเข้าบัญชีโดยคณะกรรมการ PTC แต่ยังไม่มีระบบสำรองยาที่เสถียร"},
+                    {lv:3, score:70, desc:"ใช้ยามาตรฐาน GMP 71-80% มีระบบคลังยาที่เป็นมาตรฐาน และมีการใช้ระบบ Inventory Online เชื่อมโยงเครือข่าย"},
+                    {lv:4, score:85, desc:"ใช้ยามาตรฐาน GMP 81-95% การบริหารคลังยาได้เกณฑ์เฉลี่ย (Turnover Rate) และไม่มีภาวะยาขาดคลัง (Stock-out) ในกลุ่มยาเป้าหมาย"},
+                    {lv:5, score:100, desc:"ใช้ยามาตรฐาน GMP > 95% ครอบคลุมทุกรายการยาหลัก มีระบบประกันคุณภาพยา (Post-marketing surveillance) ในระดับพื้นที่"}
+                ] 
+            }
+        };
+
+        const OUTCOME_CRITERIA_TAB2 = {
+            service: { id: "out_service", title: "1. การให้บริการสุขภาพ (Service Delivery)", evidence: "CPG, ทะเบียนสั่งใช้ยา, รายงาน THAIPADI, สรุปผลการรักษา" },
+            workforce: { id: "out_workforce", title: "2. กำลังคนด้านสุขภาพ (Health Workforce)", evidence: "ทะเบียนอบรม, บันทึกทีมที่ปรึกษา, แผนพัฒนาประจำปี, ประวัติบุคลากร" },
+            information: { id: "out_info", title: "3. ระบบข้อมูลสุขภาพ (Health Information)", evidence: "Audit Log TMT, ข้อมูล 43 แฟ้ม, รายงานต้นทุน, Dashboard ผู้บริหาร" },
+            access: { id: "out_access", title: "4. การเข้าถึงยาที่จำเป็น (Essential Medicines)", evidence: "ใบรับรอง GMP, ทะเบียนยาหลัก (ED), รายงานคลังยา, แผนจัดซื้อ" },
+            financing: { id: "out_financing", title: "5. การคลังสุขภาพ (Health Financing)", evidence: "รายงานสรุปเบิกจ่าย e-Claim, รายงานความคุ้มค่าเชิงเศรษฐศาสตร์" },
+            governance: { id: "out_governance", title: "6. ภาวะผู้นำและธรรมาภิบาล (Governance)", evidence: "คำสั่งแต่งตั้ง PTC, รายงานการประชุมคณะกรรมการ, แผนยุทธศาสตร์จังหวัด" }
+        };
+
+        const IMPACT_CRITERIA_TAB3 = {
+            access: { 
+                id: "imp_access", title: "1. การเข้าถึงบริการ (Access Impact)", 
+                detail: "ความสำเร็จในการลดอุปสรรคการเข้าถึงบริการสมุนไพรของประชาชนอย่างเป็นรูปธรรม", 
+                guide: "ประเมินความสะดวก ความรวดเร็ว และการลดขั้นตอนในการเข้าถึงบริการสมุนไพรเทียบกับปีก่อนหน้า",
+                evidence: "สถิติผู้รับบริการสมุนไพรเปรียบเทียบย้อนหลัง, รายงานระยะเวลารอคอย, แบบสำรวจความพึงพอใจด้านการเข้าถึง" 
+            },
+            coverage: { 
+                id: "imp_coverage", title: "2. ความครอบคลุมการรักษา (Coverage Impact)", 
+                detail: "การขยายขอบเขตการดูแลผู้ป่วยในกลุ่มโรคสำคัญ (NCDs) ให้ทั่วถึงทุกระดับพื้นที่", 
+                guide: "ประเมินสัดส่วนการใช้ยาสมุนไพรในกลุ่มโรคเป้าหมายในระดับ รพ.สต./ชุมชน และการกระจายตัวของจุดบริการ",
+                evidence: "GIS Map แสดงจุดบริการเครือข่าย, รายงานความครอบคลุมรายตำบล/หมู่บ้าน, รายงานการเยี่ยมบ้านผู้ป่วยเรื้อรัง" 
+            },
+            standards: { 
+                id: "imp_standards", title: "3. มาตรฐานวิชาชีพ (Standard Impact)", 
+                detail: "การยกระดับความเชื่อมั่นในการสั่งใช้ยาและคุณภาพการให้บริการทางการแพทย์แผนไทย", 
+                guide: "ประเมินความสอดคล้องระหว่างการวินิจฉัยและการจ่ายยาตามหลักวิชาชีพและ CPG ที่เป็นที่ยอมรับ",
+                evidence: "รายงาน Audit เวชระเบียนรายไตรมาส, ใบประกาศเกียรติคุณ/รางวัลด้านคุณภาพบริการ, ผลประเมินมาตรฐานโรงพยาบาล (HA/TQA)" 
+            },
+            efficiency: { 
+                id: "imp_efficiency", title: "4. ประสิทธิภาพการรักษา (Efficiency Impact)", 
+                detail: "ผลสัมฤทธิ์ทางการรักษาที่เป็นรูปธรรมและการลดการพึ่งพายาแผนปัจจุบันที่มีราคาสูง", 
+                guide: "ประเมินผลการรักษา (Heredity/Cure Rate) และมูลค่าความประหยัดงบประมาณจากการใช้ยาสมุนไพรทดแทน",
+                evidence: "ข้อมูล Clinical Outcome (Lab/อาการดีขึ้น), รายงานสรุปการประหยัดมูลค่าเวชภัณฑ์, ข้อมูลการส่งต่อผู้ป่วย" 
+            },
+            safety: { 
+                id: "imp_safety", title: "5. ความปลอดภัยและข้อมูล (Safety Impact)", 
+                detail: "การเฝ้าอาการไม่พึงประสงค์และความมั่นคงของฐานข้อมูลสุขภาพระดับบุคคล", 
+                guide: "ประเมินระบบรายงานอาการไม่พึงประสงค์ (ADR) และความมั่นคงปลอดภัยของข้อมูลสารสนเทศ (Cybersecurity)",
+                evidence: "รายงาน ADR (HPVC Online), ทะเบียนการบริหารจัดการความเสี่ยงรายบุคคล, ผลการทดสอบความปลอดภัยระบบ HIS" 
+            }
+        };
+
+        const IconComp = ({ name, className = "", size = 20 }) => {
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [name]);
+            return <i data-lucide={name} className={className} style={{width: size, height: size, display: 'inline-block'}}></i>;
+        };
+
+        function App() {
+            const [activeTab, setActiveTab] = useState('quality'); 
+            const [evalPeriod, setEvalPeriod] = useState('round1'); 
+            const [admin, setAdmin] = useState({ assessedUnit: DISTRICTS[0], assessorName: '', assesseeName: '', evalDate: new Date().toISOString().split('T')[0] });
+            
+            const [currentValue, setCurrentValue] = useState(0); 
+            const [customTarget, setCustomTarget] = useState(0);   
+            const [prevYearValue, setPrevYearValue] = useState(0);
+            const [growthTarget, setGrowthTarget] = useState(20);
+
+            const [qualityLevels, setQualityLevels] = useState({ service: 1, workforce: 1, information: 1, access: 1 });
+            const [qualityFeedback, setQualityFeedback] = useState({
+                service: { observation: '', strength: '', recommendation: '', weakness: '' },
+                workforce: { observation: '', strength: '', recommendation: '', weakness: '' },
+                information: { observation: '', strength: '', recommendation: '', weakness: '' },
+                access: { observation: '', strength: '', recommendation: '', weakness: '' }
+            });
+
+            const [outcomeScores, setOutcomeScores] = useState({ service: 1, workforce: 1, information: 1, access: 1, financing: 1, governance: 1 });
+            const [outcomeObs, setOutcomeObs] = useState({ service: '', workforce: '', information: '', access: '', financing: '', governance: '' });
+
+            const [impactLevels, setImpactLevels] = useState({ access: 1, coverage: 1, standards: 1, efficiency: 1, safety: 1 });
+            
+            // Calculations
+            const successPct = useMemo(() => (customTarget <= 0) ? 0 : (currentValue / customTarget) * 100, [currentValue, customTarget]);
+            const quantScoreValue = useMemo(() => {
+                const pct = successPct;
+                const isR1 = evalPeriod === 'round1';
+                if (isR1) {
+                    if (pct >= 80) return 10; if (pct >= 75) return 9; if (pct >= 70) return 8; if (pct >= 65) return 7; if (pct >= 60) return 6;
+                    if (pct >= 55) return 5; if (pct >= 50) return 4; if (pct >= 45) return 3; if (pct >= 40) return 2; if (pct >= 30) return 1; return 0;
+                } else {
+                    if (pct >= 100) return 10; if (pct >= 90) return 9; if (pct >= 80) return 8; if (pct >= 70) return 7; if (pct >= 60) return 6;
+                    if (pct >= 50) return 5; if (pct >= 40) return 4; if (pct >= 30) return 3; if (pct >= 20) return 2; if (pct >= 10) return 1; return 0;
+                }
+            }, [successPct, evalPeriod]);
+
+            const qualitySumRaw = useMemo(() => Object.entries(qualityLevels).reduce((acc, [k, l]) => acc + (QUALITY_CRITERIA_TAB1[k].levels.find(item => item.lv === l)?.score || 0), 0), [qualityLevels]);
+            const outcomeSumRaw = useMemo(() => Object.values(outcomeScores).reduce((a, b) => a + b, 0), [outcomeScores]);
+            const impactSumRaw = useMemo(() => Object.values(impactLevels).reduce((a, b) => a + b, 0), [impactLevels]);
+            const qualityFinalScoreValue = (quantScoreValue * 0.7) + (((qualitySumRaw / 4) / 10) * 0.3);
+
+            const dimensionSyntheses = useMemo(() => {
+                const map = {};
+                Object.keys(QUALITY_CRITERIA_TAB1).forEach(key => {
+                    const lv = qualityLevels[key];
+                    const title = QUALITY_CRITERIA_TAB1[key].title.split('.')[1];
+                    let text = lv === 5 ? `ระบบด้าน${title}เข้มแข็งสูงสุด เป็น Best Practice` :
+                               lv === 4 ? `ระบบด้าน${title}มีประสิทธิภาพสูง ควบคุมมาตรฐานได้ดี` :
+                               lv === 3 ? `ระบบด้าน${title}อยู่ในเกณฑ์มาตรฐาน แต่ยังขาดความต่อเนื่อง` :
+                               lv === 2 ? `พบช่องว่างเชิงระบบในด้าน${title} กระบวนการหน้างานยังไม่เชื่อมโยง` :
+                               `ระบบด้าน${title}ยังต้องวางรากฐานโครงสร้างและกำกับดูแลเร่งด่วน`;
+                    map[key] = text;
+                });
+                return map;
+            }, [qualityLevels]);
+
+            const outcomeSynthesis = useMemo(() => ({
+                service: `จัดบริการสอดคล้องยุทธศาสตร์ที่ ${successPct.toFixed(1)}% ตาม CPG ระดับ ${qualityLevels.service}/5`,
+                workforce: `ศักยภาพบุคลากรระดับ ${qualityLevels.workforce}/5 ในเครือข่าย ${admin.assessedUnit}`,
+                information: `ความแม่นยำข้อมูลระดับ ${qualityLevels.information}/5 สนับสนุนการตัดสินใจ`,
+                access: `การเข้าถึงยาสมุนไพรมาตรฐาน GMP ระดับ ${qualityLevels.access}/5`,
+                financing: `ยอดเบิกจ่ายสะสม ${formatCurrency(currentValue)} บาท สะท้อนประสิทธิภาพคลัง`,
+                governance: `ธรรมาภิบาลและการกำกับดูแลโดยผู้บริหารเป็นกลไกขับเคลื่อนหลัก`
+            }), [successPct, qualityLevels, currentValue, admin.assessedUnit]);
+
+            const impactSynthesis = useMemo(() => ({
+                access: `ความก้าวหน้าการเข้าถึงบริการสะสมร้อยละ ${successPct.toFixed(2)} ของเป้าหมาย`,
+                coverage: `ยกระดับความครอบคลุมการรักษาผ่านมาตรฐาน CPG ระดับ ${qualityLevels.service}/5`,
+                standards: `สั่งใช้ยาตามมาตรฐานวิชาชีพ (ระดับกำลังคน ${qualityLevels.workforce}/5)`,
+                efficiency: `ประสิทธิภาพเชิงระบบดีขึ้นจากการใช้ยาสมุนไพรทดแทน (ระดับเข้าถึงยา ${qualityLevels.access}/5)`,
+                safety: `ความปลอดภัยข้อมูลและผู้ป่วยได้รับการดูแล (ระดับความถูกต้องข้อมูล ${qualityLevels.information}/5)`
+            }), [successPct, qualityLevels]);
+
+            const expertDiagnosis = useMemo(() => {
+                const rating = getRating(qualityFinalScoreValue);
+                const lowDimKey = Object.keys(qualityLevels).reduce((a, b) => qualityLevels[a] < qualityLevels[b] ? a : b);
+                return {
+                    sum: qualitySumRaw, 
+                    status: rating.label,
+                    analysis: `เครือข่าย ${admin.assessedUnit} มีระดับความพร้อมเชิงคุณภาพรวม ${qualitySumRaw}/400 คะแนน เทียบกับเป้าหมายเชิงปริมาณที่บรรลุร้อยละ ${successPct.toFixed(1)} ยุทธศาสตร์มีทิศทางการเติบโตที่สมดุล แต่ต้องการการเร่งรัดในมิติข้อมูลเพื่อให้สะท้อนมูลค่าเศรษฐกิจจริง`,
+                    strategicAdvice: [
+                        { type: "Critical Point", detail: `ต้องเร่งพัฒนาด้าน "${QUALITY_CRITERIA_TAB1[lowDimKey].title.split('.')[1]}" เนื่องจากคะแนนต่ำสุดในระบบ` },
+                        { type: "Growth Driver", detail: `สัดส่วนความสำเร็จเชิงปริมาณ (${successPct.toFixed(1)}%) สะท้อนความต้องการบริการที่สูง (High Demand)` },
+                        { type: "System Risk", detail: `หากมิติข้อมูล (HIS Accuracy) ไม่ได้รับการแก้ไข จะส่งผลต่อความคุ้มค่าของการเบิกจ่ายในอนาคต` }
+                    ],
+                    tacticalPlan: [
+                        "จัดตั้งทีม Audit ข้อมูลรหัส 24 หลักในทุกสัปดาห์",
+                        "ทบทวนรายการยาสมุนไพรตามกลุ่มโรค NCDs ให้ครอบคลุม 100%",
+                        "สร้างระบบรางวัล/แรงจูงใจสำหรับบุคลากรที่มีอัตราการจ่ายยาตาม CPG สูง"
+                    ]
+                };
+            }, [qualitySumRaw, qualityFinalScoreValue, successPct, admin.assessedUnit, qualityLevels]);
+
+            const detailedRoadmap = useMemo(() => {
+                const map = {};
+                const configs = {
+                    service: { car: "ปรับปรุง CPG ในกลุ่มอาการเป้าหมาย", per: "สร้างระบบเฝ้าระวังความคลาดเคลื่อนทางยา", ofi: "ขยายผลสู่ระบบการดูแลผู้ป่วยที่บ้าน" },
+                    workforce: { car: "เร่งอบรมบุคลากรในจุดที่พบการสั่งใช้ยา ต่ำ", per: "จัดตั้งทีมพี่เลี้ยงสมุนไพรประจำอำเภอ", ofi: "พัฒนาหลักสูตรเชี่ยวชาญเฉพาะทางระดับปฐมภูมิ" },
+                    information: { car: "แก้ไขรหัสมาตรฐาน 24 หลักที่ไม่สอดคล้อง", per: "จัดระบบ Auto-Audit ข้อมูลส่งออก 43 แฟ้ม", ofi: "สร้างระบบวิเคราะห์ข้อมูล (BI) ประสิทธิภาพการรักษา" },
+                    access: { car: "ปรับปรุงรายการยาเป้าหมายในบัญชียาโรงพยาบาล", per: "พัฒนาระบบสำรองยาเป้าหมายอัตโนมัติ", ofi: "ยกระดับคลังยาสมุนไพรสู่มาตรฐาน GSP" }
+                };
+                
+                Object.keys(QUALITY_CRITERIA_TAB1).forEach(key => {
+                    const qLv = qualityLevels[key];
+                    const title = QUALITY_CRITERIA_TAB1[key].title.split('.')[1];
+                    map[key] = {
+                        car: { cause: qLv <= 2 ? `ความมั่นคงระบบ${title} เสี่ยง` : `บกพร่องรายมิติ`, measure: configs[key].car, responsible: qLv <= 2 ? "Admin" : "หัวหน้างาน", timeline: "1-3 เดือน" },
+                        par: { cause: `ดัชนี ${title} ต้องการเสถียรภาพ`, measure: configs[key].per, responsible: "ทีมวิชาการ", timeline: "ต่อเนื่อง" },
+                        ofi: { cause: `โอกาสจากดัชนีสะสม ${qualitySumRaw}`, measure: configs[key].ofi, responsible: "คณะกรรมการ", timeline: "3-6 เดือน" }
+                    };
+                });
+                return map;
+            }, [qualityLevels, qualitySumRaw]);
+
+            const expertOutcomeDiagnosis = useMemo(() => {
+                const lowScoreKey = Object.keys(outcomeScores).reduce((a, b) => outcomeScores[a] < outcomeScores[b] ? a : b);
+                const avgScore = outcomeSumRaw / 6;
+                return {
+                    summary: `เครือข่าย ${admin.assessedUnit} มีดัชนีผลลัพธ์ยุทธศาสตร์สะสม ${outcomeSumRaw}/30 คะแนน (เฉลี่ย ${avgScore.toFixed(1)}/5) สะท้อนถึงเสถียรภาพของระบบในระดับปานกลาง โดยมีจุดเปราะบางสำคัญที่ด้าน "${OUTCOME_CRITERIA_TAB2[lowScoreKey].title.split(' (')[0]}" ซึ่งอาจส่งผลกระทบต่อความยั่งยืนของโครงการในระยะยาว`,
+                    gaps: [
+                        `ขาดความเชื่อมโยงของข้อมูลระหว่าง HIS และระบบการเบิกจ่าย e-Claim (Gap: ${5 - outcomeScores.information} points)`,
+                        `การสั่งใช้ยาตาม CPG ยังไม่ครอบคลุมผู้ป่วยนอก (OPD) ในสัดส่วนที่ตั้งเป้าไว้`,
+                        `ความต่อเนื่องของกำลังคนในการให้คำปรึกษาด้านสมุนไพรยังกระจุกตัวอยู่ในระดับ รพช.`
+                    ],
+                    corrective: [
+                        `จัดทำ Dashboard ติดตามรหัส TMT 24 หลักรายสัปดาห์เพื่อลดข้อผิดพลาดการส่งข้อมูล`,
+                        `ทบทวนสิทธิประโยชน์และรายการยาในบัญชีโรงพยาบาล (ED) ให้สอดคล้องกับระเบียบ UC ล่าสุด`,
+                        `ยกระดับบทบาทเภสัชกรในการ Audit ข้อมูลก่อนส่งออกเพื่อเพิ่มรายรับจากการเบิกจ่าย`
+                    ],
+                    development: [
+                        `พัฒนาโมเดล "Value-based Herbal Medicine" โดยใช้ข้อมูลจริง (Real-world data) มาพิสูจน์ความคุ้มค่าทางการรักษา`,
+                        `สร้างระบบพี่เลี้ยง (Mentoring System) ระหว่าง รพช. และ รพ.สต. เพื่อขยายฐานบริการสู่ชุมชน`,
+                        `บูรณาการงานสมุนไพรเข้ากับ Service Plan สาขาต่างๆ อย่างเป็นรูปธรรม`
+                    ]
+                };
+            }, [outcomeScores, outcomeSumRaw, admin.assessedUnit]);
+
+            const expertImpactDiagnosis = useMemo(() => {
+                const lowImpactKey = Object.keys(impactLevels).reduce((a, b) => impactLevels[a] < impactLevels[b] ? a : b);
+                const impactRating = impactSumRaw >= 21 ? 'ระดับสูงมาก (Extreme Impact)' : impactSumRaw >= 16 ? 'ระดับสูง (Significant Impact)' : 'ระดับปานกลาง (Developing Impact)';
+                return {
+                    summary: `จากการประเมินผลกระทบเชิงยุทธศาสตร์ พบว่าเครือข่าย ${admin.assessedUnit} บรรลุผลกระทบใน${impactRating} โดยมีคะแนนสะสม ${impactSumRaw}/25 คะแนน ซึ่งสะท้อนความสำเร็จในการสร้างความเชื่อมั่นต่อระบบยาสมุนไพรในกลุ่มประชาชน อย่างไรก็ตาม ยังพบความท้าทายในด้าน "${IMPACT_CRITERIA_TAB3[lowImpactKey].title}" ที่ต้องอาศัยการปรับปรุงระบบสนับสนุนหลังบ้านให้เข้มแข็งขึ้น`,
+                    insights: [
+                        `ดัชนีการเข้าถึงบริการ (${impactLevels.access}/5) สอดคล้องกับ Success Ratio เชิงปริมาณที่ร้อยละ ${successPct.toFixed(1)}`,
+                        `ความปลอดภัยของข้อมูล (Safety Impact) เป็นรากฐานสำคัญในการสร้างความเชื่อมั่นระดับนโยบาย`,
+                        `ประสิทธิภาพการรักษา (Efficiency) จะเป็นตัวชี้วัดสำคัญในการขอสนับสนุนงบประมาณเพิ่มเติมในรอบปีถัดไป`
+                    ],
+                    corrective: [
+                        `ปรับปรุงจุดอุดตันในด้าน "${IMPACT_CRITERIA_TAB3[lowImpactKey].title}" โดยการเพิ่มทรัพยากรและการกำกับติดตามที่เข้มข้น`,
+                        `เร่งรัดการเก็บรวบรวมหลักฐานเชิงประจักษ์ (Evidence Collection) ให้เป็นปัจจุบันและตรวจสอบได้ 100%`,
+                        `จัดตั้งวอร์รูม (War Room) เพื่อติดตามผลกระทบรายสัปดาห์ในพื้นที่ที่มีคะแนนต่ำ`
+                    ],
+                    development: [
+                        `ขยายขอบเขต Impact จากระดับหน่วยงานสู่ระดับเขตสุขภาพ (Regional Integration)`,
+                        `พัฒนาเทคโนโลยีดิจิทัล (AI/Big Data) มาใช้ในการพยากรณ์ผลกระทบสุขภาพและเศรษฐกิจสะสม`,
+                        `สร้างโมเดลความสำเร็จ (Success Story) เพื่อสื่อสารผลกระทบต่อสาธารณชนและผู้มีส่วนได้ส่วนเสีย`
+                    ]
+                };
+            }, [impactLevels, impactSumRaw, admin.assessedUnit, successPct]);
+
+            // --- TAB 5: COMPREHENSIVE STRATEGY SUMMARY COMPUTATION ---
+            const fullStrategySummary = useMemo(() => {
+                const rating = getRating(qualityFinalScoreValue);
+                const lowDimKey = Object.keys(qualityLevels).reduce((a, b) => qualityLevels[a] < qualityLevels[b] ? a : b);
+                const highDimKey = Object.keys(qualityLevels).reduce((a, b) => qualityLevels[a] > qualityLevels[b] ? a : b);
+
+                return [
+                    {
+                        title: "1. มิติคุณภาพและความสำเร็จเชิงปริมาณ (Quality & Quant)",
+                        icon: "award",
+                        color: "blue",
+                        result: `คะแนน Maturity: ${qualityFinalScoreValue.toFixed(2)}/10 (${rating.label}) | ความสำเร็จสะสม: ${successPct.toFixed(2)}%`,
+                        strengths: [
+                            `ความโดดเด่นในด้าน "${QUALITY_CRITERIA_TAB1[highDimKey].title.split('.')[1]}" (ระดับ ${qualityLevels[highDimKey]}/5) เป็นแรงขับเคลื่อนหลัก`,
+                            `สัดส่วนมูลค่าการใช้ยาจริง (${formatCurrency(currentValue)} บาท) สะท้อนถึงการยอมรับในผลิตภัณฑ์สมุนไพรของเครือข่าย`
+                        ],
+                        limitations: [
+                            `ข้อจำกัดวิกฤตในด้าน "${QUALITY_CRITERIA_TAB1[lowDimKey].title.split('.')[1]}" (ระดับ ${qualityLevels[lowDimKey]}/5) ซึ่งฉุดคะแนนภาพรวม`,
+                            `เป้าหมายที่ตั้งไว้มีความท้าทายสูงเมื่อเทียบกับทรัพยากรที่มีอยู่ (Growth Target: ${growthTarget}%)`
+                        ],
+                        solutions: [
+                            `นำมาตรการ CAR (Corrective Action) จากแผนพัฒนาคุณภาพมาบังคับใช้ทันทีในจุดวิกฤต`,
+                            `ปรับกลยุทธ์การกระจายทรัพยากรไปยังส่วนงานที่มีระดับ Maturity ต่ำกว่าเกณฑ์มาตรฐาน`
+                        ]
+                    },
+                    {
+                        title: "2. มิติผลลัพธ์ยุทธศาสตร์ (WHO 6 Building Blocks)",
+                        icon: "pie-chart",
+                        color: "emerald",
+                        result: `ดัชนี Outcome: ${outcomeSumRaw}/30 คะแนน | ระดับความพร้อมเฉลี่ย: ${(outcomeSumRaw/6).toFixed(1)}/5`,
+                        strengths: [
+                            `ระบบธรรมาภิบาลและการกำกับดูแลโดยผู้บริหารมีความเข้มแข็ง (Governance Score: ${outcomeScores.governance}/5)`,
+                            `หลักฐานเชิงประจักษ์ (Evidence) ในด้านบริการสุขภาพมีการบันทึกที่เป็นระบบและสอดคล้องกับ CPG`
+                        ],
+                        limitations: [
+                            `การเชื่อมโยงข้อมูลสารสนเทศ (Health Information) ยังมีคอขวดในขั้นตอนการ Audit ข้อมูลรหัส 24 หลัก`,
+                            `งบประมาณสนับสนุน (Financing) ยังกระจุกตัวและต้องการการพิสูจน์ความคุ้มค่าเชิงประจักษ์เพิ่มเติม`
+                        ],
+                        solutions: [
+                            `พัฒนา Dashboard แบบ Real-time เพื่อเชื่อมโยงทั้ง 6 Blocks เข้าด้วยกันเพื่อการตัดสินใจที่แม่นยำ`,
+                            `จัดตั้งคณะทำงานเฉพาะกิจเพื่อแก้ไขปัญหา HIS Mapping ให้เป็นไปตามมาตรฐานกลาง 100%`
+                        ]
+                    },
+                    {
+                        title: "3. มิติผลกระทบเชิงยุทธศาสตร์ (Strategic Impact)",
+                        icon: "target",
+                        color: "amber",
+                        result: `ดัชนี Impact: ${impactSumRaw}/25 คะแนน | สถานะ: ${impactSumRaw >= 16 ? 'บรรลุผลกระทบในระดับสูง' : 'อยู่ระหว่างการพัฒนาผลกระทบ'}`,
+                        strengths: [
+                            `การเข้าถึงบริการ (Access Impact) ของประชาชนเพิ่มขึ้นอย่างมีนัยสำคัญจากการขยายจุดบริการเครือข่าย`,
+                            `ความครอบคลุมการรักษา (Coverage) ในกลุ่มโรค NCDs เริ่มส่งผลต่อการลดภาระค่าใช้จ่ายด้านยาแผนปัจจุบัน`
+                        ],
+                        limitations: [
+                            `ความมั่นคงของข้อมูลและความปลอดภัย (Safety Impact) ยังเป็นจุดเปราะบางที่ต้องได้รับการทดสอบมาตรฐาน`,
+                            `ประสิทธิภาพเชิงเศรษฐศาสตร์ (Efficiency) ยังขาดตัวเลขวิเคราะห์เปรียบเทียบความประหยัดที่ชัดเจน`
+                        ],
+                        solutions: [
+                            `ยกระดับระบบเฝ้าระวัง ADR สู่มาตรฐานเขตสุขภาพเพื่อสร้าง Safety Impact ที่น่าเชื่อถือ`,
+                            `จ้างวานหรือมอบหมายงานวิจัยความคุ้มค่าเชิงเศรษฐศาสตร์สุขภาพ (Health Economics) เพื่อใช้เป็นฐานข้อมูลขอทุนสนับสนุนปีกัดไป`
+                        ]
+                    }
+                ];
+            }, [qualityLevels, successPct, outcomeScores, impactLevels, qualitySumRaw, outcomeSumRaw, impactSumRaw, qualityFinalScoreValue, currentValue, growthTarget]);
+
+            return (
+                <div className="min-h-screen pb-12 print:p-0">
+                    <div className="max-w-6xl mx-auto bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border border-slate-200 print:shadow-none print:rounded-none my-8 print:my-0">
+                        
+                        <header className="p-8 md:p-10 text-white relative no-print shadow-xl transition-all duration-500 bg-slate-900 italic font-black">
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-6 relative z-10">
+                                <div className="space-y-3 flex-1 text-center md:text-left uppercase">
+                                    <div className="flex flex-col md:flex-row items-center gap-4">
+                                        <div className="bg-white p-2 rounded-lg"><IconComp name="award" className="text-slate-900" size={32} /></div>
+                                        <h1 className="text-2xl md:text-3xl font-black tracking-tight leading-tight italic">ระบบประเมินยุทธศาสตร์สมุนไพร UC</h1>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-4 justify-center md:justify-start">
+                                        <div className="bg-amber-400 px-3 py-0.5 rounded-full text-[10px] font-black text-slate-900 tracking-widest">{PROGRAM_INFO.version}</div>
+                                        <p className="text-slate-300 text-[10px] tracking-widest border-l border-slate-700 pl-4 italic">พัฒนาโดย {PROGRAM_INFO.developer} | {PROGRAM_INFO.updateDate}</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => window.print()} className="flex items-center gap-3 bg-white text-slate-950 px-8 py-4 rounded-2xl font-black shadow-lg hover:bg-slate-100 transition-all text-sm uppercase italic"><IconComp name="printer" size={20} /> พิมพ์รายงานฉบับสมบูรณ์</button>
+                            </div>
+                        </header>
+
+                        <nav className="no-print bg-slate-100 border-b border-slate-200 flex justify-center sticky top-0 z-50 shadow-sm overflow-x-auto whitespace-nowrap px-2 py-1 font-bold italic font-black">
+                            {[
+                                { id: 'quality', label: '1. ประเมินคุณภาพเชิงลึก', active: 'bg-sky-600 text-white shadow-md' },
+                                { id: 'outcome', label: '2. Outcome (Evidence)', active: 'bg-emerald-600 text-white shadow-md' },
+                                { id: 'impact', label: '3. Impact & Analysis', active: 'bg-amber-600 text-white shadow-md' },
+                                { id: 'improvement', label: '4. CAR/PAR/OFI', active: 'bg-purple-600 text-white shadow-md' },
+                                { id: 'summary', label: '5. สรุปภาพรวมยุทธศาสตร์', active: 'bg-slate-950 text-white shadow-md' }
+                            ].map(tab => (
+                                <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-5 py-4 font-black text-[12px] uppercase transition-all rounded-xl m-1 ${activeTab === tab.id ? tab.active : 'text-slate-500 hover:bg-white'}`}>{tab.label}</button>
+                            ))}
+                        </nav>
+
+                        <div className="p-6 md:p-10 space-y-8 bg-white italic font-black">
+                            {/* Admin Header */}
+                            <section className="no-print border border-slate-200 rounded-3xl p-6 grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 shadow-inner italic font-black">
+                                <div className="space-y-4 font-bold">
+                                    <label className="text-[10px] font-black uppercase text-slate-500 ml-1 underline">รอบนิเทศและหน่วยงาน</label>
+                                    <div className="flex gap-2 p-1 bg-white rounded-xl shadow-sm border border-slate-200">
+                                        <button onClick={() => setEvalPeriod('round1')} className={`flex-1 py-2 rounded-lg text-xs transition-all ${evalPeriod === 'round1' ? 'bg-sky-600 text-white' : 'text-slate-400'}`}>รอบ 1/2569</button>
+                                        <button onClick={() => setEvalPeriod('round2')} className={`flex-1 py-2 rounded-lg text-xs transition-all ${evalPeriod === 'round2' ? 'bg-sky-600 text-white' : 'text-slate-400'}`}>รอบ 2/2569</button>
+                                    </div>
+                                    <select value={admin.assessedUnit} onChange={e => setAdmin({...admin, assessedUnit: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-sky-300 font-black">{DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}</select>
+                                </div>
+                                <div className="grid grid-cols-1 gap-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <input type="text" value={admin.assessorName} onChange={e => setAdmin({...admin, assessorName: e.target.value})} className="p-3 bg-white border border-slate-200 rounded-xl text-xs font-black" placeholder="ชื่อผู้ตรวจ" />
+                                        <input type="text" value={admin.assesseeName} onChange={e => setAdmin({...admin, assesseeName: e.target.value})} className="p-3 bg-white border border-slate-200 rounded-xl text-xs font-black" placeholder="ชื่อผู้รับ" />
+                                    </div>
+                                    <input type="date" value={admin.evalDate} onChange={e => setAdmin({...admin, evalDate: e.target.value})} className="p-3 bg-white border border-slate-200 rounded-xl text-sm outline-none font-black" />
+                                </div>
+                            </section>
+
+                            {activeTab === 'quality' && (
+                                <div className="space-y-10 animate-in italic font-black">
+                                    {/* Quantitative Stats */}
+                                    <div className="bg-white border-4 border-sky-50 p-8 md:p-10 rounded-[3rem] shadow-xl relative font-bold italic font-black">
+                                        <h3 className="text-center text-sky-600 uppercase text-xs tracking-[0.3em] mb-8 underline underline-offset-8 italic font-black">Quantitative Performance Index</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end font-black">
+                                            <div className="space-y-2"><label className="text-[10px] uppercase text-sky-500 font-black">มูลค่าใช้จริง (Actual)</label><input type="number" value={currentValue || ''} onChange={e => setCurrentValue(parseFloat(e.target.value) || 0)} className="w-full p-3 border-2 border-slate-100 rounded-xl text-center font-black" /></div>
+                                            <div className="space-y-2"><label className="text-[10px] uppercase text-sky-500 font-black">เป้าหมาย (Target)</label><input type="number" value={customTarget || ''} onChange={e => setCustomTarget(parseFloat(e.target.value) || 0)} className="w-full p-3 border-2 border-slate-100 rounded-xl text-center font-black" /></div>
+                                            <div className="space-y-2"><label className="text-[10px] uppercase text-sky-500 font-black">ปีก่อน (Baseline)</label><input type="number" value={prevYearValue || ''} onChange={e => setPrevYearValue(parseFloat(e.target.value) || 0)} className="w-full p-3 border-2 border-slate-100 rounded-xl text-center font-black" /></div>
+                                            <div className="space-y-2"><label className="text-[10px] uppercase text-sky-500 font-black">เติบโตที่คาดหวัง %</label><input type="number" value={growthTarget || ''} onChange={e => setGrowthTarget(parseFloat(e.target.value) || 0)} className="w-full p-3 border-2 border-slate-100 rounded-xl text-center font-black" /></div>
+                                        </div>
+                                        <div className="mt-8 pt-6 border-t border-slate-100 flex justify-center gap-12 font-black italic underline decoration-sky-100 decoration-4 underline-offset-8">
+                                            <div className="text-center font-black italic"><span className="text-[9px] text-slate-400 block mb-1 font-black">SUCCESS RATIO</span><div className="text-2xl text-slate-900">{successPct.toFixed(2)}%</div></div>
+                                            <div className="text-center text-sky-600 font-black italic"><span className="text-[9px] text-sky-400 block mb-1 font-black">QUANT SCORE (10.0)</span><div className="text-2xl">{quantScoreValue.toFixed(1)}</div></div>
+                                        </div>
+                                    </div>
+
+                                    {/* Quality Criteria Grid */}
+                                    {Object.entries(QUALITY_CRITERIA_TAB1).map(([key, data]) => (
+                                        <div key={key} className="bg-white border-2 border-slate-200 rounded-[3rem] shadow-lg overflow-hidden group hover:border-sky-400 transition-all font-black">
+                                            <div className="bg-slate-50 p-8 border-b flex flex-col md:flex-row justify-between items-center gap-4 underline decoration-slate-200 decoration-4 underline-offset-8 italic font-black">
+                                                <h4 className="text-xl uppercase text-sky-600 font-black tracking-tight">{data.title}</h4>
+                                                <div className="bg-sky-500 text-white px-8 py-4 rounded-2xl text-4xl tabular-nums shadow-lg border-4 border-sky-300 font-black italic">{QUALITY_CRITERIA_TAB1[key].levels.find(l => l.lv === qualityLevels[key])?.score}</div>
+                                            </div>
+                                            <div className="p-8 space-y-8 font-black">
+                                                <div className="grid grid-cols-1 md:grid-cols-5 gap-3 font-black">
+                                                    {data.levels.map(level => (
+                                                        <button key={level.lv} onClick={() => setQualityLevels({...qualityLevels, [key]: level.lv})} className={`p-5 rounded-[2.5rem] border-2 transition-all text-left flex flex-col justify-between h-full min-h-[160px] ${qualityLevels[key] === level.lv ? 'border-sky-500 bg-sky-50 shadow-xl scale-105' : 'border-transparent bg-slate-50/50 hover:bg-white hover:border-sky-100'}`}>
+                                                            <div className="mb-3 font-black text-[9px] uppercase tracking-widest text-sky-600 italic">Level {level.lv}</div>
+                                                            <div className="text-[11px] leading-relaxed text-slate-800 font-normal italic">"{level.desc}"</div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-8 border-t border-slate-100 italic">
+                                                    <div className="space-y-2 font-black"><label className="text-[9px] text-slate-500 uppercase flex items-center gap-2 font-black"><IconComp name="eye" size={12} /> Observations</label><textarea value={qualityFeedback[key].observation} onChange={e => setQualityFeedback({...qualityFeedback, [key]: {...qualityFeedback[key], observation: e.target.value}})} className="w-full p-4 bg-slate-50 border border-transparent rounded-2xl text-[11px] h-24 focus:bg-white focus:border-sky-400 outline-none shadow-inner italic font-black" /></div>
+                                                    <div className="space-y-2 font-black"><label className="text-[9px] text-emerald-600 uppercase flex items-center gap-2 font-black"><IconComp name="trending-up" size={12} /> Strengths</label><textarea value={qualityFeedback[key].strength} onChange={e => setQualityFeedback({...qualityFeedback, [key]: {...qualityFeedback[key], strength: e.target.value}})} className="w-full p-4 bg-emerald-50 border border-transparent rounded-2xl text-[11px] h-24 focus:bg-white focus:border-emerald-400 outline-none shadow-inner italic font-black" /></div>
+                                                    <div className="space-y-2 font-black"><label className="text-[9px] text-rose-600 uppercase flex items-center gap-2 font-black"><IconComp name="trending-down" size={12} /> Weaknesses</label><textarea value={qualityFeedback[key].weakness} onChange={e => setQualityFeedback({...qualityFeedback, [key]: {...qualityFeedback[key], weakness: e.target.value}})} className="w-full p-4 bg-rose-50 border border-transparent rounded-2xl text-[11px] h-24 focus:bg-white focus:border-rose-400 outline-none shadow-inner italic font-black" /></div>
+                                                    <div className="space-y-2 font-black"><label className="text-[9px] text-sky-500 uppercase flex items-center gap-2 font-black"><IconComp name="lightbulb" size={12} /> Measures</label><textarea value={qualityFeedback[key].recommendation} onChange={e => setQualityFeedback({...qualityFeedback, [key]: {...qualityFeedback[key], recommendation: e.target.value}})} className="w-full p-4 bg-white border border-slate-100 rounded-2xl text-[11px] h-24 focus:border-sky-400 outline-none shadow-sm italic font-black" /></div>
+                                                </div>
+                                                <div className="p-6 bg-slate-900 text-white rounded-[2.5rem] border border-slate-700 italic font-black shadow-xl">
+                                                    <h5 className="text-[10px] font-black uppercase text-sky-400 mb-2 flex items-center gap-2 tracking-[0.2em] italic font-black"><IconComp name="shield-check" size={12} /> DIMENSION DIAGNOSIS:</h5>
+                                                    <p className="text-[14px] leading-relaxed font-bold underline decoration-sky-800 underline-offset-8 italic font-black">"{dimensionSyntheses[key]}"</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {/* Expert Summary Dashboard */}
+                                    <div className="bg-white border-8 border-slate-50 p-12 md:p-16 rounded-[4.5rem] shadow-2xl relative overflow-hidden animate-in italic font-black mt-16">
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 pb-8 border-b-2 border-slate-100 font-black italic font-black">
+                                            <div className="flex items-center gap-5 italic font-black">
+                                                <div className="p-4 bg-sky-600 rounded-3xl text-white shadow-xl italic font-black"><IconComp name="activity" size={40} /></div>
+                                                <div>
+                                                    <h2 className="text-3xl uppercase tracking-wider text-slate-900 font-black italic font-black">Expert Quality Analysis Dashboard</h2>
+                                                    <p className="text-xs text-sky-600 font-black tracking-[0.4em] uppercase mt-1 italic font-black">Chief Strategic Quality Validation v20.1</p>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4 md:mt-0 px-8 py-4 bg-slate-900 text-amber-400 rounded-2xl text-2xl font-black shadow-lg italic font-black">
+                                                Final Score: {qualityFinalScoreValue.toFixed(2)} / 10
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 font-black italic font-black">
+                                            <div className="space-y-12 font-black italic font-black">
+                                                <div className="font-black italic">
+                                                    <h3 className="text-xl uppercase font-black text-slate-800 mb-6 border-l-8 border-sky-500 pl-4 italic underline decoration-slate-100 underline-offset-8 font-black italic">1. Integrated Quality Summary</h3>
+                                                    <p className="text-lg text-slate-700 leading-relaxed font-normal p-8 bg-slate-50 rounded-[3rem] border border-slate-100 shadow-inner italic font-black">"{expertDiagnosis.analysis}"</p>
+                                                </div>
+                                                <div className="space-y-6 font-black italic font-black">
+                                                    <h3 className="text-sm uppercase font-black text-rose-600 mb-2 italic flex items-center gap-2 italic font-black underline underline-offset-4 font-black"><IconComp name="zap" size={14} /> Strategic Quality Insights</h3>
+                                                    <div className="grid gap-3 font-black italic font-black">
+                                                        {expertDiagnosis.strategicAdvice.map((adv, idx) => (
+                                                            <div key={idx} className="flex items-start gap-4 p-5 bg-white border border-slate-200 rounded-[2rem] shadow-sm italic font-black transition-all hover:bg-sky-50">
+                                                                <span className="text-[10px] font-black uppercase bg-slate-100 px-2 py-1 rounded text-slate-500 shrink-0 italic font-black">{adv.type}</span>
+                                                                <p className="text-sm font-bold text-slate-700 italic font-black tracking-tight">{adv.detail}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-12 font-black italic font-black">
+                                                <div className="bg-slate-900 p-10 rounded-[4rem] text-white shadow-2xl border-t-[16px] border-sky-500 italic font-black relative overflow-hidden font-black">
+                                                    <div className="absolute top-0 right-0 p-6 opacity-10 italic font-black"><IconComp name="cpu" size={100} /></div>
+                                                    <h3 className="text-xl uppercase font-black text-amber-400 mb-8 flex items-center gap-3 italic font-black font-black"><IconComp name="tool" /> 2. แนวทางการแก้ไขคุณภาพ (Corrective Action)</h3>
+                                                    <div className="space-y-6 italic font-black font-black">
+                                                        {Object.keys(QUALITY_CRITERIA_TAB1).filter(k => qualityLevels[k] <= 3).map((key, i) => (
+                                                            <div key={key} className="flex items-start gap-5 group italic font-black font-black">
+                                                                <div className="w-8 h-8 bg-sky-500/20 rounded-full flex items-center justify-center font-black text-sky-400 shrink-0 group-hover:bg-sky-500 group-hover:text-white transition-all italic text-xs font-black">{i+1}</div>
+                                                                <p className="text-[15px] font-bold leading-tight text-slate-200 group-hover:text-sky-300 transition-colors italic font-black underline decoration-white/10 underline-offset-8 font-black">ด้าน {QUALITY_CRITERIA_TAB1[key].title.split('.')[1]}: {detailedRoadmap[key]?.car.measure}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-sky-600 p-10 rounded-[4rem] text-white shadow-2xl border-b-[16px] border-sky-900 italic font-black relative overflow-hidden font-black">
+                                                    <div className="absolute top-0 right-0 p-6 opacity-10 italic font-black"><IconComp name="trending-up" size={100} /></div>
+                                                    <h3 className="text-xl uppercase font-black text-slate-900 mb-8 flex items-center gap-3 italic font-black font-black"><IconComp name="rocket" /> 3. แนวทางการพัฒนาเพื่อเลิศ (Development Path)</h3>
+                                                    <div className="space-y-6 italic font-black font-black">
+                                                        {Object.keys(QUALITY_CRITERIA_TAB1).map((key, i) => (
+                                                            <div key={key} className="flex items-start gap-5 group italic font-black font-black">
+                                                                <div className="w-8 h-8 bg-slate-900/20 rounded-full flex items-center justify-center font-black text-white shrink-0 group-hover:bg-white group-hover:text-sky-700 transition-all italic text-xs font-black">{i+1}</div>
+                                                                <p className="text-[15px] font-bold leading-tight text-white group-hover:text-slate-900 transition-colors italic font-black underline decoration-sky-800 underline-offset-8 font-black">มุ่งสู่ {detailedRoadmap[key]?.ofi.measure}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'outcome' && (
+                                <div className="space-y-12 animate-in italic font-black">
+                                    <div className="flex items-center justify-between border-b-4 border-emerald-500 pb-2 text-emerald-800 uppercase font-black italic">
+                                        <div className="flex items-center gap-3 italic font-black"><IconComp name="pie-chart" size={24} /> <h2>วิเคราะห์ผลลัพธ์และหลักฐานเชิงประจักษ์ (WHO 6 Blocks)</h2></div>
+                                        <div className="bg-emerald-50 px-6 py-1 rounded-full border border-emerald-200 text-lg tabular-nums italic font-black">Outcome Score: {outcomeSumRaw} / 30</div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 font-black italic">
+                                        {Object.entries(OUTCOME_CRITERIA_TAB2).map(([key, data]) => (
+                                            <div key={key} className="bg-white border-2 border-emerald-100 rounded-[2.5rem] shadow-lg overflow-hidden flex flex-col italic group hover:border-emerald-400 transition-all font-black">
+                                                <div className="bg-emerald-50 p-5 border-b border-emerald-100 font-black flex justify-between items-center italic">
+                                                    <h4 className="text-sm text-emerald-950 uppercase italic font-black">{data.title}</h4>
+                                                    <span className="text-[10px] bg-emerald-600 text-white px-2 py-1 rounded-md italic font-black">Score: {outcomeScores[key]}/5</span>
+                                                </div>
+                                                <div className="p-6 flex-grow space-y-5 italic font-black">
+                                                    <div className="bg-slate-50 p-4 rounded-2xl border-l-4 border-emerald-600 text-sm font-bold text-slate-700 italic font-black">
+                                                        <span className="text-[10px] block text-emerald-600 uppercase mb-1 underline italic font-black">บทวิเคราะห์ (Analysis):</span>
+                                                        "{outcomeSynthesis[key]}"
+                                                    </div>
+                                                    
+                                                    {/* Evidence Section */}
+                                                    <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100 italic font-black">
+                                                        <span className="text-[10px] font-black uppercase text-emerald-800 block mb-2 underline flex items-center gap-1.5 italic font-black">
+                                                            <IconComp name="file-text" size={12} /> รายการหลักฐานประกอบ (Required Evidence):
+                                                        </span>
+                                                        <p className="text-[11px] font-bold text-emerald-900 leading-relaxed tracking-tight italic font-black">• {data.evidence}</p>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-3 bg-emerald-50 p-3 rounded-xl italic font-black">
+                                                        <span className="text-[10px] font-black uppercase text-emerald-800 italic font-black">Level:</span>
+                                                        <div className="flex gap-1 font-black italic font-black">
+                                                            {[1,2,3,4,5].map(v => (
+                                                                <button key={v} onClick={() => setOutcomeScores({...outcomeScores, [key]: v})} className={`w-8 h-8 rounded-lg font-black text-xs transition-all italic font-black ${outcomeScores[key] === v ? 'bg-emerald-700 text-white shadow-md' : 'bg-white text-emerald-400 border border-emerald-100'}`}>{v}</button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    <textarea value={outcomeObs[key]} onChange={e => setOutcomeObs({...outcomeObs, [key]: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs h-20 outline-none italic font-black shadow-inner" placeholder="บันทึกข้อสังเกตเพิ่มเติม/ระบุชื่อไฟล์หลักฐานที่อัปโหลด..." />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Expert Outcome Dashboard */}
+                                    <div className="bg-white border-8 border-emerald-50 p-12 md:p-16 rounded-[4.5rem] shadow-2xl relative overflow-hidden animate-in italic font-black">
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 pb-8 border-b-2 border-emerald-100 font-black italic">
+                                            <div className="flex items-center gap-5 italic font-black">
+                                                <div className="p-4 bg-emerald-600 rounded-3xl text-white shadow-xl italic font-black"><IconComp name="clipboard-check" size={40} /></div>
+                                                <div>
+                                                    <h2 className="text-3xl uppercase tracking-wider text-emerald-950 font-black italic">Outcome Diagnostic Dashboard</h2>
+                                                    <p className="text-xs text-emerald-600 font-black tracking-[0.4em] uppercase mt-1 italic font-black">บทวิเคราะห์วินิจฉัยเชิงลึกโดยนักวิเคราะห์ยุทธศาสตร์</p>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4 md:mt-0 px-8 py-4 bg-emerald-950 text-emerald-400 rounded-2xl text-2xl font-black shadow-lg italic font-black">Outcome Index: {outcomeSumRaw} / 30</div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 font-black italic font-black">
+                                            <div className="space-y-10 font-black italic font-black">
+                                                <div className="font-black italic">
+                                                    <h3 className="text-xl uppercase font-black text-emerald-900 mb-6 border-l-8 border-emerald-500 pl-4 italic underline decoration-emerald-100 underline-offset-8 font-black">1. Strategic Analysis Summary</h3>
+                                                    <p className="text-lg text-slate-700 leading-relaxed font-normal p-8 bg-emerald-50 rounded-[3rem] border border-emerald-100 shadow-inner italic font-black">"{expertOutcomeDiagnosis.summary}"</p>
+                                                </div>
+                                                <div className="space-y-4 font-black italic">
+                                                    <h3 className="text-sm uppercase font-black text-rose-700 mb-2 italic flex items-center gap-2 italic font-black"><IconComp name="alert-triangle" size={14} /> Gap Analysis & Bottlenecks</h3>
+                                                    <div className="grid gap-3 font-black italic">
+                                                        {expertOutcomeDiagnosis.gaps.map((gap, idx) => (
+                                                            <div key={idx} className="flex items-start gap-4 p-5 bg-rose-50 border border-rose-100 rounded-3xl shadow-sm italic font-black">
+                                                                <span className="text-[10px] font-black uppercase bg-rose-200 px-2 py-1 rounded text-rose-800 shrink-0 italic">Gap {idx+1}</span>
+                                                                <p className="text-sm font-bold text-rose-900 italic font-black tracking-tight">{gap}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-10 font-black italic">
+                                                <div className="bg-slate-900 p-10 rounded-[3.5rem] text-white shadow-2xl border-t-[16px] border-emerald-500 italic font-black relative overflow-hidden">
+                                                    <div className="absolute top-0 right-0 p-4 opacity-10 italic font-black"><IconComp name="wrench" size={100} /></div>
+                                                    <h3 className="text-xl uppercase font-black text-emerald-400 mb-8 flex items-center gap-3 italic font-black"><IconComp name="tool" /> 2. แนวทางการแก้ไข (Corrective Path)</h3>
+                                                    <div className="space-y-6 italic font-black">
+                                                        {expertOutcomeDiagnosis.corrective.map((item, i) => (
+                                                            <div key={i} className="flex items-start gap-5 group italic">
+                                                                <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center font-black text-emerald-400 shrink-0 group-hover:bg-emerald-500 group-hover:text-white transition-all italic text-xs">{i+1}</div>
+                                                                <p className="text-[15px] font-bold leading-tight text-emerald-100 group-hover:text-white transition-colors italic font-black underline decoration-white/10 underline-offset-8">{item}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-emerald-600 p-10 rounded-[3.5rem] text-white shadow-2xl border-b-[16px] border-emerald-900 italic font-black relative overflow-hidden">
+                                                    <div className="absolute top-0 right-0 p-4 opacity-10 italic font-black"><IconComp name="trending-up" size={100} /></div>
+                                                    <h3 className="text-xl uppercase font-black text-emerald-950 mb-8 flex items-center gap-3 italic font-black"><IconComp name="rocket" /> 3. แนวทางการพัฒนาสู่เลิศ (Development Strategy)</h3>
+                                                    <div className="space-y-6 italic font-black">
+                                                        {expertOutcomeDiagnosis.development.map((item, i) => (
+                                                            <div key={i} className="flex items-start gap-5 group italic font-black">
+                                                                <div className="w-8 h-8 bg-emerald-900/30 rounded-full flex items-center justify-center font-black text-white shrink-0 group-hover:bg-white group-hover:text-emerald-700 transition-all italic text-xs font-black">{i+1}</div>
+                                                                <p className="text-[15px] font-bold leading-tight text-emerald-50 group-hover:text-white transition-colors italic font-black underline decoration-emerald-800 underline-offset-8 font-black">{item}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'impact' && (
+                                <div className="space-y-12 animate-in italic font-black">
+                                    <div className="flex items-center justify-between border-b-4 border-amber-500 pb-2 text-amber-900 uppercase font-black italic">
+                                        <div className="flex items-center gap-3 italic font-black"><IconComp name="target" size={24} /> <h2>ประเมินผลกระทบเชิงยุทธศาสตร์และแนวทางการวัดผล (Impact & Guide)</h2></div>
+                                        <div className="bg-amber-50 px-6 py-1 rounded-full border border-amber-200 text-lg tabular-nums italic font-black">Impact Score: {impactSumRaw} / 25</div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-8 italic font-black">
+                                        {Object.entries(IMPACT_CRITERIA_TAB3).map(([key, data]) => (
+                                            <div key={key} className="bg-white border-2 border-amber-100 rounded-[3.5rem] shadow-xl p-10 font-black italic transition-all hover:border-amber-400">
+                                                <div className="flex flex-col lg:flex-row justify-between items-start gap-8 mb-8 font-black italic">
+                                                    <div className="flex-1 space-y-4 italic font-black">
+                                                        <h4 className="text-2xl text-amber-950 uppercase underline decoration-amber-200 decoration-8 underline-offset-8 italic font-black">{data.title}</h4>
+                                                        <p className="text-slate-600 text-sm leading-relaxed font-bold italic font-black"><strong>นิยาม:</strong> {data.detail}</p>
+                                                        
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 italic font-black">
+                                                            <div className="bg-amber-50 p-6 rounded-[2rem] border border-amber-100 italic font-black shadow-inner">
+                                                                <span className="text-[10px] font-black uppercase text-amber-700 block mb-2 underline flex items-center gap-1.5 italic font-black">
+                                                                    <IconComp name="book-open" size={14} /> Guide: แนวทางการประเมิน (Evaluation Guide)
+                                                                </span>
+                                                                <p className="text-[11px] font-bold text-amber-900 leading-relaxed italic font-black tracking-tight">{data.guide}</p>
+                                                            </div>
+                                                            <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-200 italic font-black shadow-inner">
+                                                                <span className="text-[10px] font-black uppercase text-slate-500 block mb-2 underline flex items-center gap-1.5 italic font-black">
+                                                                    <IconComp name="layers" size={14} /> Example Evidence: ตัวอย่างหลักฐานประกอบ
+                                                                </span>
+                                                                <p className="text-[11px] font-bold text-slate-700 leading-relaxed italic font-black tracking-tight">{data.evidence}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-slate-900 p-8 rounded-[3rem] border-l-[20px] border-amber-500 text-2xl font-bold leading-relaxed text-amber-50 mb-8 italic font-black shadow-2xl">
+                                                    <span className="text-[10px] block text-amber-400 uppercase mb-2 underline italic font-black">บทวิเคราะห์สะสม (Dynamic Insight):</span>
+                                                    " {impactSynthesis[key]} "
+                                                </div>
+
+                                                <div className="flex flex-wrap items-center gap-4 bg-amber-50 p-5 rounded-[2.5rem] max-w-fit font-black italic font-black shadow-inner">
+                                                    <span className="text-xs font-black uppercase text-amber-900 italic font-black">ระดับผลกระทบ (Score 1-5):</span>
+                                                    <div className="flex gap-2 font-black italic">
+                                                        {[1,2,3,4,5].map(v => (
+                                                            <button 
+                                                                key={v} 
+                                                                onClick={() => setImpactLevels({...impactLevels, [key]: v})} 
+                                                                className={`w-12 h-12 rounded-2xl font-black text-xl transition-all italic font-black ${impactLevels[key] === v ? 'bg-amber-600 text-white shadow-2xl scale-110 border-4 border-amber-400' : 'bg-white text-amber-300 border border-amber-200 hover:border-amber-400'}`}
+                                                            >
+                                                                {v}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Expert Impact Dashboard */}
+                                    <div className="bg-white border-8 border-amber-50 p-12 md:p-16 rounded-[4.5rem] shadow-2xl relative overflow-hidden animate-in italic font-black mt-16">
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 pb-8 border-b-2 border-amber-200 font-black italic font-black">
+                                            <div className="flex items-center gap-5 italic font-black">
+                                                <div className="p-4 bg-amber-600 rounded-3xl text-white shadow-xl italic font-black"><IconComp name="shield-check" size={40} /></div>
+                                                <div>
+                                                    <h2 className="text-3xl uppercase tracking-wider text-amber-950 font-black italic font-black">Expert Impact Diagnostic Dashboard</h2>
+                                                    <p className="text-xs text-amber-600 font-black tracking-[0.4em] uppercase mt-1 italic font-black">บทวิเคราะห์วินิจฉัยเชิงลึกโดยนักวิเคราะห์ยุทธศาสตร์</p>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4 md:mt-0 px-8 py-4 bg-slate-900 text-amber-400 rounded-2xl text-2xl font-black shadow-lg italic font-black tabular-nums border-b-4 border-amber-500">
+                                                Impact Index: {impactSumRaw} / 25
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 font-black italic font-black">
+                                            <div className="space-y-12 font-black italic font-black">
+                                                <div className="font-black italic">
+                                                    <h3 className="text-xl uppercase font-black text-amber-900 mb-6 border-l-8 border-amber-500 pl-4 italic underline decoration-amber-100 underline-offset-8 font-black italic">1. High-Level Impact Summary</h3>
+                                                    <p className="text-lg text-slate-700 leading-relaxed font-normal p-8 bg-amber-50 rounded-[3rem] border border-amber-100 shadow-inner italic font-black">"{expertImpactDiagnosis.summary}"</p>
+                                                </div>
+                                                <div className="space-y-6 font-black italic font-black">
+                                                    <h3 className="text-sm uppercase font-black text-amber-800 mb-2 italic flex items-center gap-2 italic font-black underline underline-offset-4 font-black"><IconComp name="zap" size={14} /> Key Strategic Insights</h3>
+                                                    <div className="grid gap-3 font-black italic font-black">
+                                                        {expertImpactDiagnosis.insights.map((insight, idx) => (
+                                                            <div key={idx} className="flex items-start gap-4 p-5 bg-white border border-amber-100 rounded-[2rem] shadow-sm italic font-black transition-all hover:bg-amber-50">
+                                                                <span className="text-[10px] font-black uppercase bg-amber-600 text-white px-2 py-1 rounded italic font-black">INSIGHT {idx+1}</span>
+                                                                <p className="text-sm font-bold text-amber-900 italic font-black tracking-tight">{insight}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-12 font-black italic font-black">
+                                                <div className="bg-slate-900 p-10 rounded-[4rem] text-white shadow-2xl border-t-[16px] border-amber-500 italic font-black relative overflow-hidden font-black">
+                                                    <div className="absolute top-0 right-0 p-6 opacity-10 italic font-black"><IconComp name="refresh-cw" size={100} /></div>
+                                                    <h3 className="text-xl uppercase font-black text-amber-400 mb-8 flex items-center gap-3 italic font-black font-black"><IconComp name="check-circle" /> 2. แนวทางการแก้ไขเร่งด่วน (Corrective Path)</h3>
+                                                    <div className="space-y-6 italic font-black font-black">
+                                                        {expertImpactDiagnosis.corrective.map((item, i) => (
+                                                            <div key={i} className="flex items-start gap-5 group italic font-black font-black">
+                                                                <div className="w-8 h-8 bg-amber-500/20 rounded-full flex items-center justify-center font-black text-amber-400 shrink-0 group-hover:bg-amber-500 group-hover:text-white transition-all italic text-xs font-black">{i+1}</div>
+                                                                <p className="text-[15px] font-bold leading-tight text-amber-100 group-hover:text-amber-300 transition-colors italic font-black underline decoration-white/10 underline-offset-8 font-black">{item}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-amber-600 p-10 rounded-[4rem] text-white shadow-2xl border-b-[16px] border-amber-900 italic font-black relative overflow-hidden font-black">
+                                                    <div className="absolute top-0 right-0 p-6 opacity-10 italic font-black"><IconComp name="star" size={100} /></div>
+                                                    <h3 className="text-xl uppercase font-black text-amber-950 mb-8 flex items-center gap-3 italic font-black font-black"><IconComp name="trending-up" /> 3. แนวทางการพัฒนาเพื่อเลิศ (Development Strategy)</h3>
+                                                    <div className="space-y-6 italic font-black font-black">
+                                                        {expertImpactDiagnosis.development.map((item, i) => (
+                                                            <div key={i} className="flex items-start gap-5 group italic font-black font-black">
+                                                                <div className="w-8 h-8 bg-amber-950/30 rounded-full flex items-center justify-center font-black text-white shrink-0 group-hover:bg-white group-hover:text-amber-700 transition-all italic text-xs font-black">{i+1}</div>
+                                                                <p className="text-[15px] font-bold leading-tight text-amber-50 group-hover:text-white transition-colors italic font-black underline decoration-amber-800 underline-offset-8 font-black">{item}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'improvement' && (
+                                <div className="space-y-12 animate-in italic font-black">
+                                    <div className="flex items-center gap-3 border-b-4 border-purple-500 pb-2 text-purple-950 uppercase font-black italic font-black font-black font-black"><h2>Action Roadmap (CAR/PAR/OFI)</h2></div>
+                                    {Object.entries(QUALITY_CRITERIA_TAB1).map(([key, data]) => (
+                                        <div key={key} className="bg-white border-2 border-slate-200 rounded-[3.5rem] shadow-xl overflow-hidden font-black italic font-black font-black font-black">
+                                            <div className="bg-slate-50 p-8 border-b flex justify-between items-center italic font-black">
+                                                <h4 className="text-xl uppercase text-purple-900 font-black italic underline decoration-slate-200 underline-offset-8 font-black font-black font-black">{data.title}</h4>
+                                                <span className="bg-purple-900 text-white px-6 py-2 rounded-xl text-sm font-black italic font-black">Current Status: Lv {qualityLevels[key]}</span>
+                                            </div>
+                                            <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8 italic font-black font-black font-black font-black">
+                                                <div className="bg-rose-50 p-8 rounded-[3rem] border border-rose-100 space-y-6 italic font-black font-black">
+                                                    <div className="flex items-center gap-2 text-rose-700 font-black uppercase text-sm border-b-2 border-rose-200 pb-2 italic font-black"><IconComp name="alert-circle" size={16} /> CAR (Corrective)</div>
+                                                    <div className="space-y-4 text-xs font-black italic font-black font-black font-black">
+                                                        <div><span className="text-rose-600 block mb-1 underline italic font-black">สาเหตุ:</span> {detailedRoadmap[key]?.car.cause}</div>
+                                                        <div className="p-4 bg-white rounded-2xl border border-rose-200 font-black italic font-black"><span className="text-rose-800 block mb-1 font-black underline italic font-black">Action Item:</span> {detailedRoadmap[key]?.car.measure}</div>
+                                                        <div className="text-[10px] text-rose-500 font-bold mt-2 font-black italic font-black">Responsible: {detailedRoadmap[key]?.car.responsible} | Timeline: {detailedRoadmap[key]?.car.timeline}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-blue-50 p-8 rounded-[3rem] border border-blue-100 space-y-6 italic font-black font-black">
+                                                    <div className="flex items-center gap-2 text-blue-700 font-black uppercase text-sm border-b-2 border-blue-200 pb-2 italic font-black"><IconComp name="shield" size={16} /> PER (Preventive)</div>
+                                                    <div className="space-y-4 text-xs font-black italic font-black font-black font-black">
+                                                        <div><span className="text-blue-600 block mb-1 underline italic font-black">สาเหตุ:</span> {detailedRoadmap[key]?.par.cause}</div>
+                                                        <div className="p-4 bg-white rounded-2xl border border-blue-200 font-black italic font-black font-black"><span className="text-blue-800 block mb-1 font-black underline italic font-black">Standard:</span> {detailedRoadmap[key]?.par.measure}</div>
+                                                        <div className="text-[10px] text-blue-500 font-bold mt-2 font-black italic font-black font-black font-black">Responsible: {detailedRoadmap[key]?.par.responsible} | Timeline: {detailedRoadmap[key]?.par.timeline}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-emerald-50 p-8 rounded-[3rem] border border-emerald-100 space-y-6 italic font-black font-black">
+                                                    <div className="flex items-center gap-2 text-emerald-700 font-black uppercase text-sm border-b-2 border-emerald-200 pb-2 italic font-black font-black font-black font-black font-black font-black"><IconComp name="trending-up" size={16} /> OFI (Opportunity)</div>
+                                                    <div className="space-y-4 text-xs font-black italic font-black font-black font-black font-black">
+                                                        <div><span className="text-emerald-600 block mb-1 underline italic font-black font-black font-black">สาเหตุ:</span> {detailedRoadmap[key]?.ofi.cause}</div>
+                                                        <div className="p-4 bg-white rounded-2xl border border-emerald-200 font-black italic font-black font-black font-black font-black font-black"><span className="text-emerald-800 block mb-1 font-black underline italic font-black font-black font-black font-black">Innovation:</span> {detailedRoadmap[key]?.ofi.measure}</div>
+                                                        <div className="text-[10px] text-emerald-500 font-bold mt-2 font-black italic font-black font-black font-black font-black font-black font-black">Responsible: {detailedRoadmap[key]?.ofi.responsible} | Timeline: {detailedRoadmap[key]?.ofi.timeline}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {activeTab === 'summary' && (
+                                <div className="space-y-16 animate-in text-center font-bold italic font-black font-black">
+                                    <div className="text-center space-y-6">
+                                        <div className="inline-block p-6 bg-slate-950 text-amber-400 rounded-3xl shadow-2xl mb-4 font-black font-black font-black font-black">
+                                            <IconComp name="layout" size={64} />
+                                        </div>
+                                        <h2 className="text-5xl font-black uppercase text-slate-900 tracking-tight italic font-black font-black font-black font-black font-black">Chief Strategic Intelligence Analysis</h2>
+                                        <p className="text-slate-500 font-bold uppercase text-sm tracking-[0.6em] italic font-black font-black font-black font-black">รายงานสังเคราะห์แผนยุทธศาสตร์บูรณาการประจำปี 2569</p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 font-black italic font-black font-black">
+                                        {[
+                                            { label: "Maturity Level", val: qualityFinalScoreValue.toFixed(2), max: 10, icon: "award", color: "indigo", bg: "bg-indigo-50" },
+                                            { label: "Success Ratio", val: successPct.toFixed(1), max: 100, icon: "trending-up", color: "sky", bg: "bg-sky-50" },
+                                            { label: "Outcome Maturity", val: outcomeSumRaw, max: 30, icon: "pie-chart", color: "emerald", bg: "bg-emerald-50" },
+                                            { label: "Impact Index", val: impactSumRaw, max: 25, icon: "target", color: "amber", bg: "bg-amber-50" }
+                                        ].map((m, i) => (
+                                            <div key={i} className={`p-10 rounded-[3.5rem] border-2 border-white shadow-2xl transition-all hover:scale-105 ${m.bg} italic font-black font-black`}>
+                                                <div className={`p-4 rounded-2xl bg-white shadow-sm text-${m.color}-600 w-fit mb-6 mx-auto font-black font-black`}>
+                                                    <IconComp name={m.icon} size={24} />
+                                                </div>
+                                                <div className="text-4xl font-black tabular-nums text-slate-900 mb-2 font-black font-black">
+                                                    {m.val} <span className="text-sm text-slate-400 font-bold font-black font-black">/ {m.max}</span>
+                                                </div>
+                                                <p className="text-xs font-black uppercase text-slate-500 tracking-[0.2em] font-black font-black">{m.label}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-12 font-black italic font-black font-black">
+                                        {fullStrategySummary.map((section, idx) => (
+                                            <div key={idx} className="bg-white border-2 border-slate-100 rounded-[4.5rem] shadow-2xl overflow-hidden group hover:border-slate-300 transition-all font-black font-black">
+                                                <div className={`bg-${section.color}-50 p-10 border-b flex items-center gap-6 font-black font-black`}>
+                                                    <div className={`p-4 bg-white rounded-2xl shadow-md text-${section.color}-600 font-black font-black`}>
+                                                        <IconComp name={section.icon} size={32} />
+                                                    </div>
+                                                    <div className="font-black font-black">
+                                                        <h3 className="text-2xl font-black uppercase italic tracking-wide text-slate-900 font-black font-black">{section.title}</h3>
+                                                        <p className={`text-${section.color}-700 font-bold mt-1 underline underline-offset-4 font-black font-black`}>{section.result}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="p-10 grid grid-cols-1 lg:grid-cols-3 gap-10 font-black font-black">
+                                                    <div className="space-y-6 font-black font-black">
+                                                        <h4 className="flex items-center gap-2 text-emerald-600 font-black uppercase text-sm italic tracking-widest underline decoration-emerald-200 decoration-8 underline-offset-8 font-black font-black">
+                                                            <IconComp name="check-circle" size={16} /> ข้อดี / จุดเด่น (Strengths)
+                                                        </h4>
+                                                        <ul className="space-y-4 font-bold text-slate-700 italic font-black font-black">
+                                                            {section.strengths.map((s, i) => (
+                                                                <li key={i} className="flex gap-3 text-sm leading-relaxed p-4 bg-emerald-50/50 rounded-3xl border border-emerald-100 font-black font-black">
+                                                                    <span className="text-emerald-500 font-black">●</span> {s}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                    <div className="space-y-6 font-black font-black">
+                                                        <h4 className="flex items-center gap-2 text-rose-600 font-black uppercase text-sm italic tracking-widest underline decoration-rose-200 decoration-8 underline-offset-8 font-black font-black">
+                                                            <IconComp name="alert-triangle" size={16} /> ข้อจำกัด (Limitations)
+                                                        </h4>
+                                                        <ul className="space-y-4 font-bold text-slate-700 italic font-black font-black">
+                                                            {section.limitations.map((l, i) => (
+                                                                <li key={i} className="flex gap-3 text-sm leading-relaxed p-4 bg-rose-50/50 rounded-3xl border border-rose-100 font-black font-black">
+                                                                    <span className="text-rose-500 font-black">●</span> {l}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                    <div className="space-y-6 font-black font-black">
+                                                        <h4 className="flex items-center gap-2 text-indigo-600 font-black uppercase text-sm italic tracking-widest underline decoration-indigo-200 decoration-8 underline-offset-8 font-black font-black">
+                                                            <IconComp name="zap" size={16} /> การแก้ไขพัฒนา (Development)
+                                                        </h4>
+                                                        <ul className="space-y-4 font-bold text-slate-700 italic font-black font-black">
+                                                            {section.solutions.map((sol, i) => (
+                                                                <li key={i} className="flex gap-3 text-sm leading-relaxed p-4 bg-indigo-50/50 rounded-3xl border border-indigo-100 font-black shadow-inner font-black font-black">
+                                                                    <span className="text-indigo-500 font-black italic font-black">{i+1}.</span> {sol}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Verdict */}
+                                    <div className="bg-slate-950 p-16 rounded-[5rem] text-white shadow-2xl relative overflow-hidden italic font-black font-black">
+                                        <div className="absolute top-0 right-0 p-8 opacity-5 font-black font-black">
+                                            <IconComp name="shield" size={300} />
+                                        </div>
+                                        <h3 className="text-3xl font-black uppercase text-amber-400 mb-10 flex items-center gap-4 italic font-black font-black">
+                                            <IconComp name="award" size={40} /> Final Executive Strategy Verdict
+                                        </h3>
+                                        <p className="text-2xl leading-relaxed italic mb-12 font-bold p-10 bg-white/5 rounded-3xl border border-white/10 shadow-inner font-black font-black">
+                                            "{expertDiagnosis.analysis} และสรุปผลในภาพรวมว่าเครือข่ายมีการพัฒนาที่สอดคล้องกับมาตรฐานจังหวัด แต่ยังมีความเสี่ยงด้านข้อมูลที่ต้องจัดการแบบทันที (Real-time Remediation)"
+                                        </p>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mt-12 pt-10 border-t border-white/10 font-black font-black">
+                                            <div className="font-black font-black text-left">
+                                                <span className="text-xs uppercase text-slate-500 font-black block mb-6 italic tracking-[0.4em] font-black font-black">Policy Recommendation:</span>
+                                                <ul className="text-lg space-y-6 font-bold italic font-black font-black">
+                                                    {expertDiagnosis.tacticalPlan.slice(0,2).map((item, i) => (
+                                                        <li key={i} className="flex gap-4 italic underline decoration-white/10 underline-offset-8 font-black font-black">
+                                                            <span className="text-amber-500 font-black italic font-black">●</span> {item}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                            <div className="flex items-end justify-end italic font-black font-black">
+                                                <div className="text-right font-black font-black">
+                                                    <span className="block text-[10px] uppercase text-slate-500 font-black italic tracking-widest font-black font-black">Authorized By</span>
+                                                    <span className="text-2xl font-black uppercase text-amber-500 italic underline decoration-slate-800 underline-offset-8 font-black font-black">Chief Strategic Analyst</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* --- MASTER OFFICIAL PRINT REPORT (COMPLETE DATA) --- */}
+                            <section className="print-only report-page bg-white p-0 m-0 font-black italic font-black">
+                                {/* Header Cover */}
+                                <div className="text-center border-b-[3pt] border-black pb-8 mb-10 italic font-black">
+                                    <h1 className="text-2xl font-black uppercase mb-2">รายงานสรุปผลการนิเทศและประเมินยุทธศาสตร์สมุนไพร UC ฉบับสมบูรณ์</h1>
+                                    <h2 className="text-xl font-bold uppercase mb-4">ประจำปีงบประมาณ 2569</h2>
+                                    <p className="text-[12px] font-bold tracking-[0.15em] uppercase">{PROGRAM_INFO.name}</p>
+                                    <div className="flex justify-between items-end mt-10 text-[10px] font-bold uppercase">
+                                        <div className="text-left font-black space-y-1">
+                                            <p>หน่วยงานที่รับการประเมิน: {admin.assessedUnit}</p>
+                                            <p>รอบการนิเทศ: {evalPeriod === 'round1' ? 'รอบที่ 1 (ไตรมาส 1-2)' : 'รอบที่ 2 (ไตรมาส 3-4)'}</p>
+                                            <p>ผู้รับการนิเทศ: {admin.assesseeName || '....................'}</p>
+                                        </div>
+                                        <div className="text-right font-black space-y-1">
+                                            <p>วันที่ประเมิน: {admin.evalDate}</p>
+                                            <p>ผู้นิเทศ/ผู้ประเมิน: {admin.assessorName || '....................'}</p>
+                                            <p>Version: {PROGRAM_INFO.version}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Section 1: Core Performance */}
+                                <div className="avoid-break">
+                                    <div className="section-header"><span>ส่วนที่ 1: ผลสัมฤทธิ์เชิงปริมาณและคุณภาพ</span><span>SCORE: {qualityFinalScoreValue.toFixed(2)}/10</span></div>
+                                    <table className="formal-table italic">
+                                        <thead>
+                                            <tr>
+                                                <th>ตัวชี้วัดปริมาณ (Quantitative Indicators)</th>
+                                                <th>Actual (บาท)</th>
+                                                <th>Target (บาท)</th>
+                                                <th>Success Ratio (%)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td className="font-bold">มูลค่าการใช้ยาสมุนไพรในระบบ UC จังหวัดสมุทรปราการ</td>
+                                                <td className="text-center tabular-nums font-black">{formatCurrency(currentValue)}</td>
+                                                <td className="text-center tabular-nums font-black">{formatCurrency(customTarget)}</td>
+                                                <td className="text-center font-black underline">{successPct.toFixed(2)} %</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+
+                                    <div className="sub-section-header">ตารางวิเคราะห์ความมั่นคงเชิงคุณภาพรายมิติ (Maturity Criteria)</div>
+                                    <table className="formal-table text-[10px]">
+                                        <thead>
+                                            <tr>
+                                                <th width="30%">มิติคุณภาพ</th>
+                                                <th width="10%">ระดับ</th>
+                                                <th>สรุปวินิจฉัยเชิงกลยุทธ์ (Strategic Diagnosis)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {Object.entries(QUALITY_CRITERIA_TAB1).map(([k, d]) => (
+                                                <tr key={k}>
+                                                    <td className="font-bold">{d.title.split('.')[1]}</td>
+                                                    <td className="text-center font-black">{qualityLevels[k]}/5</td>
+                                                    <td>"{dimensionSyntheses[k]}"</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    
+                                    <div className="expert-box">
+                                        <p className="font-bold underline mb-2 text-[12px]">บทวิเคราะห์วินิจฉัยผู้เชี่ยวชาญ (Section Insight):</p>
+                                        <p className="text-justify font-black italic">"{expertDiagnosis.analysis}"</p>
+                                    </div>
+                                </div>
+
+                                {/* Section 2: WHO Blocks */}
+                                <div className="page-break">
+                                    <div className="section-header"><span>ส่วนที่ 2: ผลลัพธ์ยุทธศาสตร์ WHO 6 Building Blocks</span><span>INDEX: {outcomeSumRaw}/30</span></div>
+                                    <table className="formal-table text-[10px]">
+                                        <thead>
+                                            <tr>
+                                                <th width="25%">Building Blocks</th>
+                                                <th width="8%">ระดับ</th>
+                                                <th>การดำเนินงานและหลักฐานเชิงประจักษ์ (Operations & Evidence)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {Object.entries(OUTCOME_CRITERIA_TAB2).map(([k, d]) => (
+                                                <tr key={k}>
+                                                    <td className="font-bold">{d.title.split(' (')[0]}</td>
+                                                    <td className="text-center font-black">{outcomeScores[k]}/5</td>
+                                                    <td className="space-y-1">
+                                                        <p className="font-black italic underline">บทวิเคราะห์:</p>
+                                                        <p>"{outcomeSynthesis[k]}"</p>
+                                                        <p className="font-black italic underline mt-1">หลักฐาน:</p>
+                                                        <p>• {d.evidence} {outcomeObs[k] ? `(บันทึกเพิ่มเติม: ${outcomeObs[k]})` : ''}</p>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    <div className="expert-box border-emerald-500 border-2">
+                                        <p className="font-bold text-emerald-800 underline mb-2 italic">Strategic Gap Analysis (Expert Outcome View):</p>
+                                        <ul className="list-disc ml-5 space-y-1 font-black">
+                                            {expertOutcomeDiagnosis.gaps.map((gap, i) => <li key={i}>{gap}</li>)}
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                {/* Section 3: Impact */}
+                                <div className="page-break">
+                                    <div className="section-header"><span>ส่วนที่ 3: การประเมินผลกระทบเชิงยุทธศาสตร์ (Strategic Impact)</span><span>SCORE: {impactSumRaw}/25</span></div>
+                                    <table className="formal-table text-[10px]">
+                                        <thead>
+                                            <tr>
+                                                <th width="30%">มิติผลกระทบ (Impact Domains)</th>
+                                                <th width="10%">ระดับ</th>
+                                                <th>บทวิเคราะห์สะสมและผลลัพธ์ (Impact Synthesis)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {Object.entries(IMPACT_CRITERIA_TAB3).map(([k, d]) => (
+                                                <tr key={k}>
+                                                    <td className="font-bold">{d.title}</td>
+                                                    <td className="text-center font-black">{impactLevels[k]}/5</td>
+                                                    <td>"{impactSynthesis[k]}"</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    <div className="expert-box border-amber-500 border-2">
+                                        <p className="font-bold text-amber-900 underline mb-2 italic">Policy & Public Impact Insights:</p>
+                                        <p className="font-black mb-2">"{expertImpactDiagnosis.summary}"</p>
+                                        <ul className="list-disc ml-5 space-y-1 font-black italic">
+                                            {expertImpactDiagnosis.insights.map((insight, i) => <li key={i}>{insight}</li>)}
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                {/* Section 4: Action Roadmap */}
+                                <div className="page-break">
+                                    <div className="section-header"><span>ส่วนที่ 4: แผนปฏิบัติการพัฒนาคุณภาพเชิงรุก (Action Roadmap)</span></div>
+                                    {Object.entries(QUALITY_CRITERIA_TAB1).map(([key, data]) => (
+                                        <div key={key} className="avoid-break mb-6 border-b border-gray-200 pb-4">
+                                            <h4 className="font-bold underline text-[12px] mb-2">{data.title}</h4>
+                                            <table className="formal-table text-[9px]">
+                                                <thead>
+                                                    <tr>
+                                                        <th width="12%">ประเภทแผน</th>
+                                                        <th>สาเหตุ/จุดอุดตัน</th>
+                                                        <th>มาตรการยกระดับ (Target Measure)</th>
+                                                        <th width="15%">ผู้รับผิดชอบ</th>
+                                                        <th width="12%">ระยะเวลา</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="font-bold text-center">CAR (แก้ไข)</td>
+                                                        <td>{detailedRoadmap[key]?.car.cause}</td>
+                                                        <td className="font-black italic">{detailedRoadmap[key]?.car.measure}</td>
+                                                        <td className="text-center">{detailedRoadmap[key]?.car.responsible}</td>
+                                                        <td className="text-center">{detailedRoadmap[key]?.car.timeline}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="font-bold text-center">PAR (ป้องกัน)</td>
+                                                        <td>{detailedRoadmap[key]?.par.cause}</td>
+                                                        <td className="font-black italic">{detailedRoadmap[key]?.par.measure}</td>
+                                                        <td className="text-center">{detailedRoadmap[key]?.par.responsible}</td>
+                                                        <td className="text-center">{detailedRoadmap[key]?.par.timeline}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="font-bold text-center">OFI (โอกาส)</td>
+                                                        <td>{detailedRoadmap[key]?.ofi.cause}</td>
+                                                        <td className="font-black italic">{detailedRoadmap[key]?.ofi.measure}</td>
+                                                        <td className="text-center">{detailedRoadmap[key]?.ofi.responsible}</td>
+                                                        <td className="text-center">{detailedRoadmap[key]?.ofi.timeline}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Section 5: Executive Analysis Summary */}
+                                <div className="page-break">
+                                    <div className="section-header"><span>ส่วนที่ 5: สรุปภาพรวมและข้อเสนอแนะเชิงบริหาร</span></div>
+                                    <div className="space-y-6">
+                                        {fullStrategySummary.map((section, idx) => (
+                                            <div key={idx} className="expert-box">
+                                                <h4 className="font-black text-[13px] border-b border-black pb-1 mb-3 uppercase italic">{section.title}</h4>
+                                                <div className="grid grid-cols-2 gap-4 text-[10px]">
+                                                    <div className="font-black">
+                                                        <p className="underline italic">จุดเด่น/ข้อดี:</p>
+                                                        <ul className="list-disc ml-4 space-y-1 mt-1">
+                                                            {section.strengths.map((s, i) => <li key={i}>{s}</li>)}
+                                                        </ul>
+                                                    </div>
+                                                    <div className="font-black">
+                                                        <p className="underline italic">ข้อจำกัด/ความเสี่ยง:</p>
+                                                        <ul className="list-disc ml-4 space-y-1 mt-1">
+                                                            {section.limitations.map((l, i) => <li key={i}>{l}</li>)}
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3 bg-gray-100 p-2 font-black italic">
+                                                    <p className="underline">แนวทางการพัฒนาเร่งด่วน:</p>
+                                                    <ul className="list-decimal ml-4 space-y-1 mt-1">
+                                                        {section.solutions.map((sol, i) => <li key={i}>{sol}</li>)}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Final Verdict & Authorization */}
+                                    <div className="mt-10 p-6 border-[2.5pt] border-black bg-gray-50 italic font-black">
+                                        <h4 className="text-center font-black uppercase underline mb-4 text-[12px]">Chief Strategic Analyst Verdict (บทวินิจฉัยสรุปผู้เชี่ยวชาญ)</h4>
+                                        <p className="text-[11px] leading-relaxed text-justify mb-4">"{expertDiagnosis.analysis} จึงสรุปความเห็นในระดับยุทธศาสตร์ว่าเครือข่ายมีการบริหารจัดการที่เป็นระบบและพร้อมสำหรับการยกระดับสู่มาตรฐานที่เป็นสากลยิ่งขึ้น (International Standard Readiness)"</p>
+                                        <div className="grid grid-cols-1 gap-1 text-[10px] font-bold">
+                                            <p className="underline">ข้อเสนอแนะเชิงนโยบายสูงสุด:</p>
+                                            {expertDiagnosis.tacticalPlan.map((p, i) => <p key={i}>- {p}</p>)}
+                                        </div>
+                                    </div>
+
+                                    {/* Signature Grid */}
+                                    <div className="mt-20 flex justify-between items-end px-10 italic font-black text-center">
+                                        <div className="space-y-20">
+                                            <div className="h-px w-64 bg-black"></div>
+                                            <p className="text-[11px]">( {admin.assesseeName || '........................................' } )<br/>ผู้รับการนิเทศ / ตัวแทนหน่วยงาน</p>
+                                        </div>
+                                        <div className="space-y-20">
+                                            <div className="h-px w-64 bg-black"></div>
+                                            <p className="text-[11px]">( {admin.assessorName || '........................................' } )<br/>ผู้นิเทศ / ทีมตรวจประเมิน</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <footer className="fixed bottom-0 left-0 right-0 text-center text-[7px] text-gray-500 font-black uppercase tracking-[1.5em] pb-4">
+                                        MASTER STRATEGIC AUDIT v20.1 | PHARMA ANALYST HUB | PRODUCED: 13 JAN 2026
+                                    </footer>
+                                </div>
+                            </section>
+
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
