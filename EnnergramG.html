@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EnneaMastery Health v9.2 | ภก.จีรภัทร พลายงาม</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            scroll-behavior: smooth;
+        }
+        .emerald-gradient {
+            background: linear-gradient(135deg, #064e3b 0%, #059669 100%);
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+        .animate-slide-up {
+            animation: slideUp 1s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+        }
+        .card-hover:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+        }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; }
+            .report-page { padding: 0; margin: 0; width: 100%; }
+        }
+        .print-only { display: none; }
+    </style>
+</head>
+<body class="selection:bg-emerald-100">
+
+    <!-- Navigation -->
+    <nav class="h-20 px-8 flex items-center justify-between border-b border-emerald-100 bg-white/90 backdrop-blur-xl sticky top-0 z-50 no-print">
+        <div class="flex items-center gap-3 cursor-pointer" onclick="showView('landing')">
+            <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg text-white">
+                <i data-lucide="leaf"></i>
+            </div>
+            <span class="font-black text-2xl tracking-tighter italic uppercase">HealthMastery <span class="text-emerald-600">v9.2</span></span>
+        </div>
+        <div class="flex gap-8 items-center">
+            <button onclick="showView('library')" class="text-xs font-black text-slate-500 hover:text-emerald-600 transition uppercase tracking-widest hidden sm:block">คลังภูมิปัญญา</button>
+            <div class="text-right hidden md:block">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Verified by</p>
+                <p class="text-sm font-bold text-slate-800">ภก.จีรภัทร พลายงาม</p>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main id="app-content" class="no-print">
+        <!-- Views will be injected here -->
+    </main>
+
+    <!-- Print Layout -->
+    <div id="print-area" class="print-only"></div>
+
+    <script>
+        // --- CONSTANTS ---
+        const AUTHOR_NAME = "ภก.จีรภัทร พลายงาม";
+
+        // --- DATA ---
+        const TYPE_DETAILS = {
+            1: { 
+                name: "The Clinical Standardizer", th: "ผู้รักษามาตรฐานวิชาชีพ", color: "#059669", 
+                image: "https://images.unsplash.com/photo-1584017911766-d451b3d0e843?auto=format&fit=crop&q=80&w=1200", 
+                quote: "จรรยาบรรณและมาตรฐานการรักษาคือความปลอดภัยสูงสุดของผู้ป่วย",
+                core_motivation: "ปรารถนาที่จะทำตามระเบียบแบบแผนวิชาชีพ การปรุงยาสมุนไพรที่แม่นยำ และการรักษาสิ่งที่ดีงามในตำราแพทย์แผนไทย กลัวความผิดพลาดทางเทคนิค",
+                decision_logic: "อิงตามคัมภีร์ มาตรฐานวิชาชีพ และหลักฐานเชิงประจักษ์ (Evidence-based TTM) ตัดสินใจบนพื้นฐานของความปลอดภัยและคุณภาพยา",
+                crisis_resilience: "ในภาวะระบาดหรือวิกฤตสุขภาพ จะยิ่งเคร่งครัดเรื่องมาตรการป้องกันและขั้นตอนการรักษา อาจกดดันเพื่อนร่วมงานหากมาตรฐานไม่ถึง",
+                leadership: "ผู้นำที่เน้นคุณภาพ (Quality-oriented Leader) สร้างความเชื่อมั่นผ่านระเบียบปฏิบัติที่ชัดเจนและจริยธรรมที่มั่นคง",
+                hr_fit: "เหมาะกับงานตรวจสอบมาตรฐานยาสมุนไพร, งานควบคุมการผลิต (GMP), หรือหัวหน้างานคุ้มครองผู้บริโภค",
+                blind_spots: "การยึดติดตำราจนขาดความยืดหยุ่นในการประยุกต์ใช้แพทย์ทางเลือกใหม่ๆ และการตำหนิลูกน้องอย่างรุนแรงเมื่อเกิดความผิดพลาดเล็กน้อย",
+                mastery_path: "เรียนรู้การบูรณาการศาสตร์ใหม่ๆ เข้ากับดั้งเดิม และพัฒนาความเมตตา (Compassion) ต่อผู้ปฏิบัติงานที่กำลังเรียนรู้"
+            },
+            2: { 
+                name: "The Empathetic Healer", th: "ผู้อุปถัมภ์สุขภาพ", color: "#10b981", 
+                image: "https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&q=80&w=1200",
+                quote: "ความเมตตาคือตัวยาที่ดีที่สุดในการเยียวยาชีวิต",
+                core_motivation: "ต้องการดูแลและช่วยเหลือผู้ป่วยให้พ้นทุกข์ ปรารถนาการเป็นที่พึ่งของชุมชนและคนไข้ กลัวการถูกมองว่าทอดทิ้งผู้ป่วย",
+                decision_logic: "เน้นมิติความเป็นมนุษย์และความต้องการของผู้ป่วยเป็นศูนย์กลาง (Patient-centric) มักเลือกการรักษาที่สร้างความสบายใจให้กับครอบครัวคนไข้",
+                crisis_resilience: "พร้อมลงพื้นที่อาสาสมัครในทุกวิกฤต เสียสละเวลาส่วนตัวเพื่อดูแลคนไข้ แต่อาจเกิดภาวะสะสมความเครียดจนป่วยเอง",
+                leadership: "ผู้นำแบบพี่เลี้ยง (Mentoring Leader) เก่งในการประสานใจอาสาสมัครสาธารณสุข (อสม.) และทีมสหวิชาชีพ",
+                hr_fit: "โดดเด่นในงานชุมชนสัมพันธ์, งานให้คำปรึกษาผู้ป่วย (Counseling), งานสาธารณสุขมูลฐาน และงานดูแลผู้สูงอายุ",
+                blind_spots: "การทุ่มเทดูแลผู้อื่นจนลืมดูแลสุขภาพตนเอง และการพยายามเข้าแทรกแซงการตัดสินใจของคนไข้เพราะความหวังดีเกินไป",
+                mastery_path: "ฝึกการรักษาระยะห่างที่เหมาะสม (Professional Boundary) และพัฒนาทักษะการส่งเสริมให้ผู้ป่วยดูแลตนเองอย่างยั่งยืน"
+            },
+            3: { 
+                name: "The Health Innovator", th: "นักยกระดับภูมิปัญญา", color: "#34d399", 
+                image: "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80&w=1200",
+                quote: "ภูมิปัญญาไทยต้องก้าวไกลและเป็นที่ยอมรับในระดับสากล",
+                core_motivation: "มุ่งมั่นสร้างผลงานที่โดดเด่น เช่น การจดสิทธิบัตรยาใหม่ การทำคลินิกให้ประสบความสำเร็จ หรือการชนะเลิศรางวัลโรงพยาบาลดีเด่น กลัวการล้าสมัย",
+                decision_logic: "เน้นประสิทธิภาพ (Performance-driven) เลือกการรักษาหรือผลิตภัณฑ์สมุนไพรที่มีภาพลักษณ์ทันสมัยและตอบโจทย์ตลาดสุขภาพ",
+                crisis_resilience: "ในภาวะขาดแคลนทรัพยากร จะสามารถจัดสรรงบประมาณและทรัพยากรให้คุ้มค่าที่สุด เพื่อให้การทำงานยังบรรลุเป้าหมายตัวชี้วัด (KPI)",
+                leadership: "ผู้นำที่เป็นนักสร้างแรงบันาลใจ (Visionary Leader) ขับเคลื่อนทีมด้วยเป้าหมายที่ท้าทายและการพัฒนาภาพลักษณ์องค์กร",
+                hr_fit: "เหมาะกับงานพัฒนาผลิตภัณฑ์สมุนไพร, งานบริหารคลินิกความงาม/สุขภาพ, และงานวางแผนกลยุทธ์สาธารณสุข",
+                blind_spots: "การมุ่งเน้นแต่ตัวชี้วัดเชิงปริมาณจนมองข้ามคุณภาพชีวิตของพนักงาน หรือการแข่งขันระหว่างคลินิกที่สูงเกินไป",
+                mastery_path: "เรียนรู้ที่จะเห็นคุณค่าของกระบวนการรักษามากกว่าแค่ผลลัพธ์ และสร้างความร่วมมือมากกว่าการแข่งขันกับวิชาชีพอื่น"
+            },
+            4: { 
+                name: "The Holistic Intuitionist", th: "ผู้รักษาสมดุลธาตุ", color: "#0d9488", 
+                image: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&q=80&w=1200",
+                quote: "การเยียวยาที่แท้จริงคือการเชื่อมโยงกาย จิต และวิญญาณ",
+                core_motivation: "ค้นหาแนวทางการรักษาที่เป็นเอกลักษณ์ เข้าใจลึกซึ้งถึงสภาวะจิตใจผู้ป่วย กลัวความธรรมดาสามัญและการรักษารูปแบบอุตสาหกรรมที่ไร้จิตวิญญาณ",
+                decision_logic: "ใช้สัญชาตญาณและความรู้สึก (Intuition-driven) มักเลือกการบำบัดด้วยศิลปะ กลิ่นบำบัด หรือการปรับสมดุลธาตุที่ละเอียดอ่อน",
+                crisis_resilience: "เข้าถึงอารมณ์ความเศร้าของผู้สูญเสียได้ดีเยี่ยมในยามวิกฤต ช่วยให้ทีมเห็นมิติที่ลึกซึ้ง แต่อาจปลีกตัวหากเครียดเกินไป",
+                leadership: "ผู้นำเชิงสุนทรียภาพ (Inspirational & Artistic Leadership) มักนำทีมผ่านเรื่องเล่า (Storytelling) และวิสัยทัศน์ที่ทรงพลัง",
+                hr_fit: "เหมาะกับงานสปาและเวลเนส (Wellness), งานจิตบำบัดทางเลือก, และงานออกแบบบริการสุขภาพเชิงอัตลักษณ์",
+                blind_spots: "ความอ่อนไหวต่อคำวิจารณ์เชิงวิชาการ และการใช้อารมณ์ตัดสินสภาวะการทำงานในห้องยาหรือห้องนวด",
+                mastery_path: "ฝึกวินัยในการบันทึกเวชระเบียนอย่างเป็นระบบ และเรียนรู้การนำข้อมูลทางวิทยาศาสตร์มาสนับสนุนสัญชาตญาณของตน"
+            },
+            5: { 
+                name: "The TTM Scholar", th: "นักวิชาการคัมภีร์", color: "#065f46", 
+                image: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=1200",
+                quote: "การเข้าใจกลไกของสรรพคุณยาคือความมั่นคงของการรักษา",
+                core_motivation: "สะสมความรู้ในพระคัมภีร์และวิจัยยาสมุนไพรเชิงลึก ปรารถนาความเป็นอิสระในการศึกษาค้นคว้า กลัวความเขลาและการถูกรบกวนสมาธิ",
+                decision_logic: "วิเคราะห์ข้อมูลอย่างละเอียด (Logic-driven) ตัดสินใจเลือกสูตรยาโดยพิจารณาจากส่วนประกอบทางเคมีและทฤษฎีการแพทย์ดั้งเดิม",
+                crisis_resilience: "นิ่งที่สุดในภาวะฉุกเฉิน มักใช้เวลาค้นหาข้อมูลงานวิจัยใหม่ๆ เพื่อหาทางเลือกการรักษา แต่อาจดูเฉยเมยต่อความโกลาหลในหน้างาน",
+                leadership: "ผู้นำที่เป็นผู้เชี่ยวชาญเฉพาะทาง (Knowledge Leader) นำทีมด้วยความรู้และความน่าเชื่อถือเชิงวิชาการ",
+                hr_fit: "เหมาะกับงานวิจัยสมุนไพร, งานฐานข้อมูลภูมิปัญญา, งานสอนในคณะการแพทย์แผนไทย และงานเภสัชกรรมสมุนไพร",
+                blind_spots: "การแยกตัวออกจากงานบริการหน้างานผู้ป่วย (Clinical practice) และความยากในการอธิบายความรู้ที่ซับซ้อนให้ชาวบ้านเข้าใจ",
+                mastery_path: "เรียนรู้การสื่อสารด้วยภาษาดอกไม้ (Soft skills) และแบ่งปันองค์ความรู้สู่ชุมชนเพื่อประโยชน์สาธารณะที่กว้างขวาง"
+            },
+            6: { 
+                name: "The Clinical Guardian", th: "ผู้เฝ้าระวังภัยสุขภาพ", color: "#14b8a6", 
+                image: "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?auto=format&fit=crop&q=80&w=1200",
+                quote: "การป้องกันย่อมดีกว่าการรักษาที่สายเกินไป",
+                core_motivation: "แสวงหาความมั่นคงปลอดภัยในสถานพยาบาล ต้องการความชัดเจนจากนโยบายส่วนกลาง กลัวอันตรายจากการรักษาที่ผิดพลาดและการถูกทอดทิ้ง",
+                decision_logic: "ประเมินความเสี่ยงรอบด้าน (Risk-assessment) ตัดสินใจโดยอิงจากความปลอดภัยของคนไข้และเพื่อนร่วมงานเป็นหลัก",
+                crisis_resilience: "มีความรับผิดชอบสูงสุดในระบบสาธารณสุข พร้อมเตรียมเวชภัณฑ์และแผนสำรองฉุกเฉินตลอดเวลา เป็นที่พึ่งของทีมในยามลำบาก",
+                leadership: "ผู้นำแบบเน้นการทำงานเป็นกลุ่ม (Cohesive Leader) สร้างระบบระแวดระวังภัยและตรวจสอบซึ่งกันและกัน",
+                hr_fit: "เหมาะกับงานบริหารความเสี่ยงในโรงพยาบาล, งานระบาดวิทยา, งานบริหารคลังยา และงานจัดการงานโครงการภาครัฐ",
+                blind_spots: "ความวิตกกังวลที่มากเกินไปจนไม่กล้าทดลองศาสตร์การรักษาใหม่ๆ และการมองหาจุดผิดพลาดของผู้ร่วมงานตลอดเวลา",
+                mastery_path: "พัฒนาความเชื่อมั่นในศักยภาพของตนเอง (Self-confidence) ลดความกังวลล่วงหน้าด้วยการอยู่กับปัจจุบันขณะ"
+            },
+            7: { 
+                name: "The Health Visionary", th: "นักสร้างความสุขสุขภาพ", color: "#10b981", 
+                image: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=1200",
+                quote: "สุขภาพดีเริ่มต้นที่จิตใจที่ร่าเริงและเปิดกว้าง",
+                core_motivation: "ต้องการประสบการณ์ใหม่ๆ ในการส่งเสริมสุขภาพ ชอบกิจกรรมเวิร์กชอปที่สนุกสนาน กลัวความจำเจในโรงพยาบาลและความเจ็บป่วย",
+                decision_logic: "มองหาความเป็นไปได้ใหม่ๆ (Future-oriented) มักเลือกโครงการส่งเสริมสุขภาพที่รวดเร็ว ทันสมัย และดึงดูดใจผู้คน",
+                crisis_resilience: "หาทางออกที่สร้างสรรค์ได้ดีเยี่ยมในภาวะวิกฤต เช่น การเปลี่ยนวิถีการเข้าถึงคนไข้ผ่านเทคโนโลยี แต่อาจละเลยความจริงที่เจ็บปวด",
+                leadership: "ผู้นำที่สร้างแรงบันดาลใจ (Enthusiastic Leader) เก่งในการสร้างเครือข่ายสุขภาพและระดมทุนโครงการใหม่ๆ",
+                hr_fit: "เหมาะกับงานสุขศึกษา, งานพัฒนาธุรกิจสุขภาพ (Wellness Marketing), งานสื่อสารองค์กร และงานนวัตกรรมสุขภาพ",
+                blind_spots: "การขาดความละเอียดในการบันทึกเวชระเบียนที่น่าเบื่อ และการเปลี่ยนโปรเจกต์บ่อยจนงานเดิมยังไม่เห็นผลสัมฤทธิ์",
+                mastery_path: "ฝึกความอดทนกับงานเอกสารและงานฐานข้อมูลที่ละเอียด เรียนรู้ที่จะอยู่กับผู้ป่วยที่มีอาการเรื้อรังและยากลำบากอย่างมีสมาธิ"
+            },
+            8: { 
+                name: "The TTM Advocate", th: "นักรบภูมิปัญญา", color: "#064e3b", 
+                image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=1200",
+                quote: "เราต้องยืนหยัดเพื่อสิทธิของภูมิปัญญาไทยและคนไข้",
+                core_motivation: "ต้องการปกป้องรักษาศาสตร์แพทย์แผนไทยให้คงอยู่ ปรารถนาอำนาจในการจัดการเพื่อความเป็นธรรม กลัวความอ่อนแอและการถูกเอาเปรียบ",
+                decision_logic: "ใช้อำนาจและการตัดสินใจที่เด็ดเดี่ยว (Action-driven) ตัดสินใจปะทะกับระบบที่ล้าหลังเพื่อยกระดับวิชาชีพอย่างรวดเร็ว",
+                crisis_resilience: "จะก้าวขึ้นมาเป็นผู้นำศูนย์อำนวยการฉุกเฉินทันที พร้อมรับผิดชอบและปกป้องทีมจากแรงกดดันภายนอก แต่อาจดูดุดันในสายตาผู้อื่น",
+                leadership: "ผู้นำที่ทรงพลังและมีบารมี (Charismatic Leader) นำทีมบุกตะลุยงานยากๆ และยืนหยัดเพื่อความถูกต้อง",
+                hr_fit: "เหมาะกับงานบริหารระดับสูง, งานเจรจาต่อรองนโยบายสาธารณสุข, และงานจัดการวิกฤตสุขภาพในพื้นที่ยากลำบาก",
+                blind_spots: "ความก้าวร้าวที่อาจทำลายบรรยากาศทีม และการไม่ยอมรับความอ่อนแอหรือความเหนื่อยล้าของลูกน้อง",
+                mastery_path: "เรียนรู้การใช้ 'พลังอ่อนนุ่ม' (Soft Power) แสดงความเห็นอกเห็นใจผู้อื่นให้มากขึ้น และใช้อำนาจเพื่อการสร้างคนมากกว่าการสั่งการ"
+            },
+            9: { 
+                name: "The ZEN Peacemaker", th: "ผู้ประสานสมดุลองค์รวม", color: "#0f766e", 
+                image: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&q=80&w=1200",
+                quote: "สุขภาพคือความสมดุลที่ลงตัวระหว่างกายและใจ",
+                core_motivation: "แสวงหาความสงบภายในและความกลมเกลียวกับโลก ต้องการให้ทุกคนในโรงพยาบาลร่วมมือกันอย่างสันติ กลัวความขัดแย้งและการพลัดพราก",
+                decision_logic: "เน้นมติเอกฉันท์และการประนีประนอม (Consensus-driven) ตัดสินใจโดยพิจารณาผลกระทบต่อทุกส่วนเพื่อให้เกิดความราบรื่น",
+                crisis_resilience: "เป็นศูนย์กลางความใจเย็นที่ช่วยลดความตื่นตระหนกของทีมและผู้ป่วย แต่อาจล่าช้าในการตัดสินใจที่ต้องเด็ดขาดในภาวะเป็น-ตาย",
+                leadership: "ผู้นำที่ส่งเสริมความกลมเกลียว (Harmony Leader) เก่งในการเป็นคนกลางไกล่เกลี่ยข้อพิพาทในที่ทำงาน",
+                hr_fit: "เหมาะกับงานที่ปรึกษาด้านสุขภาพจิต, งานฝ่ายบุคคลที่เน้นความสุขในที่ทำงาน, และงานบริหารโรงพยาบาลส่งเสริมสุขภาพตำบล (รพ.สต.)",
+                blind_spots: "การปล่อยให้ปัญหาเชิงโครงสร้างสะสมเพียงเพื่อเลี่ยงการปะทะ และความดื้อเงียบ (Passive-aggressive) เมื่อถูกบีบให้เปลี่ยนแนวทางรักษา",
+                mastery_path: "ฝึกการพูดแสดงความเห็นอย่างตรงไปตรงมา (Assertiveness) และลงมือทำกิจกรรมส่งเสริมสุขภาพอย่างสม่ำเสมอไม่ผัดวันประกันพรุ่ง"
+            }
+        };
+
+        const QUESTIONS = [
+            { id: 1, type: 1, text: "ในการปรุงยาสมุนไพร ฉันให้ความสำคัญกับน้ำหนักและลำดับเครื่องยาอย่างเคร่งครัดตามตำราโดยไม่ยอมให้มีข้อผิดพลาด" },
+            { id: 2, type: 2, text: "ฉันรู้สึกอิ่มเอมใจทุกครั้งที่คนไข้บอกว่าเขารู้สึกดีขึ้นจากการดูแลเอาใจใส่ของฉันมากกว่าผลการรักษาเพียงอย่างเดียว" },
+            { id: 3, type: 3, text: "ฉันมุ่งมั่นที่จะพัฒนาคลินิกหรือหน่วยงานของฉันให้ได้รับรางวัลหรือเป็นที่ยอมรับในระดับจังหวัด/ประเทศ" },
+            { id: 4, type: 4, text: "ฉันมักจะใช้วิธีการบำบัดด้วยศิลปะหรือกลิ่นที่ฉันสร้างสรรค์ขึ้นเองเพื่อให้เข้ากับธาตุเจ้าเรือนเฉพาะของคนไข้แต่ละคน" },
+            { id: 5, type: 5, text: "ฉันชอบใช้เวลาว่างในการอ่านคัมภีร์ดั้งเดิมหรือวิจัยตัวยาสมุนไพรใหม่ๆ อย่างเงียบๆ คนเดียวในห้องทำงาน" },
+            { id: 6, type: 6, text: "ก่อนจะออกหน่วยคัดกรองสุขภาพ ฉันมักจะตรวจสอบเวชภัณฑ์สำรองและประเมินความเสี่ยงหน้างานอย่างรอบคอบ" },
+            { id: 7, type: 7, text: "ฉันชอบนำเสนอโครงการส่งเสริมสุขภาพใหม่ๆ ที่สนุกสนานและไม่น่าเบื่อ เพื่อกระตุ้นให้ชาวบ้านหันมาดูแลตัวเอง" },
+            { id: 8, type: 8, text: "ฉันพร้อมที่จะโต้แย้งในที่ประชุมหากพบว่าสิทธิของแพทย์แผนไทยหรือผู้ช่วยของฉันกำลังถูกเอาเปรียบ" },
+            { id: 9, type: 9, text: "ฉันยินยอมที่จะประนีประนอมหรือคล้อยตามคนอื่นเพื่อให้บรรยากาศในทีมสงบสุข" },
+            { id: 10, type: 1, text: "ฉันมักจะเข้มงวดกับจรรยาบรรณวิชาชีพและกฎระเบียบสาธารณสุข เพราะเชื่อว่านั่นคือสิ่งเดียวที่คุ้มครองผู้ป่วยได้" },
+            { id: 11, type: 2, text: "บ่อยครั้งที่ฉันใส่ใจความทุกข์ใจของคนไข้จนเก็บมาเครียดเองหรือลืมกินข้าวเพื่อให้งานบริการคนไข้เสร็จก่อน" },
+            { id: 12, type: 3, text: "ฉันรู้วิธีการสื่อสารที่ดูเป็นมืออาชีพและน่าเชื่อถือเพื่อให้ผู้ป่วยยอมรับในแนวทางการแพทย์ทางเลือกของฉัน" },
+            { id: 13, type: 4, text: "ฉันมักจะรู้สึกว่าตัวเองเข้าถึงความเจ็บปวดลึกๆ ของคนไข้ได้ดีกว่าเพื่อนร่วมงานคนอื่นๆ" },
+            { id: 14, type: 5, text: "ฉันให้ความสำคัญกับการพิสูจน์กลไกการออกฤทธิ์ของสมุนไพรด้วยข้อมูลทางวิทยาศาสตร์ก่อนจะนำไปแนะนำผู้อื่น" },
+            { id: 15, type: 6, text: "ความซื่อสัตย์ต่อหัวหน้างานและการทำงานตามขั้นตอนที่ระบบสาธารณสุขวางไว้คือสิ่งที่ฉันให้ความสำคัญมากที่สุด" },
+            { id: 16, type: 7, text: "ฉันมักมองหาแง่มุมที่สวยงามของการทำงานดูแลผู้ป่วย แม้ในวันที่สถานการณ์หน้างานจะยุ่งเหยิงมากก็ตาม" },
+            { id: 17, type: 8, text: "ฉันชอบที่จะเป็นผู้นำในการตัดสินใจรักษาเคสยากๆ และพร้อมรับผิดชอบผลที่ตามมาทั้งหมดด้วยตัวเอง" },
+            { id: 18, type: 9, text: "ฉันสามารถรับฟังความเห็นที่ขัดแย้งกันระหว่างหมอแผนปัจจุบันและแผนไทย และช่วยประสานรอยร้าวให้ทั้งสองฝ่ายเข้าใจกัน" }
+        ];
+
+        // --- STATE MANAGEMENT ---
+        let currentAnswers = {};
+        let currentStep = 0;
+
+        function showView(viewName, data = null) {
+            const container = document.getElementById('app-content');
+            container.innerHTML = '';
+            
+            if (viewName === 'landing') {
+                container.innerHTML = `
+                    <div class="min-h-[calc(100vh-80px)] overflow-hidden relative bg-white">
+                        <div class="absolute top-20 left-10 w-80 h-80 bg-emerald-200/30 rounded-full blur-[100px]"></div>
+                        <div class="max-w-7xl mx-auto py-20 px-8 flex flex-col lg:flex-row gap-20 items-center relative z-10">
+                            <div class="flex-1 space-y-10 animate-slide-up">
+                                <div class="inline-flex items-center gap-3 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-100">
+                                    <i data-lucide="activity" class="w-4 h-4 text-emerald-600"></i>
+                                    <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em]">Specialized for TTM & Health Services</p>
+                                </div>
+                                <h1 class="text-7xl lg:text-8xl font-black text-slate-900 leading-[0.9] tracking-tighter">
+                                    ศาสตร์ <span class="text-emerald-600">ตัวตน</span><br/> 
+                                    พลังแห่ง <span class="relative">เยียวยา <span class="absolute bottom-2 left-0 w-full h-4 bg-emerald-200 -z-10 rounded-full"></span></span>
+                                </h1>
+                                <p class="text-2xl text-slate-500 max-w-xl font-medium">ยกระดับภาวะผู้นำผ่าน "นพลักษณ์" สำหรับบุคลากรสุขภาพและแพทย์แผนไทย ค้นพบแรงขับเคลื่อนที่สร้างการรักษาที่ยั่งยืน</p>
+                                <div class="flex flex-col sm:flex-row gap-6">
+                                    <button onclick="startQuiz()" class="emerald-gradient text-white px-12 py-6 rounded-[2.5rem] font-black text-2xl shadow-xl hover:scale-105 transition active:scale-95 flex items-center justify-center gap-4">
+                                        <i data-lucide="rocket"></i> วิเคราะห์วิชาชีพ
+                                    </button>
+                                    <button onclick="showView('library')" class="bg-white border-2 border-slate-200 text-slate-600 px-12 py-6 rounded-[2.5rem] font-bold text-2xl hover:bg-slate-50 transition">คลังภูมิปัญญา</button>
+                                </div>
+                                <div class="pt-16 border-t border-slate-200 flex items-center gap-6">
+                                    <div class="w-16 h-16 rounded-[2rem] bg-slate-900 flex items-center justify-center text-white"><i data-lucide="user"></i></div>
+                                    <div><p class="text-[10px] font-black text-slate-400 uppercase leading-none mb-2">Principal Strategist & Pharmacist</p><p class="text-3xl font-black text-slate-900">${AUTHOR_NAME}</p></div>
+                                </div>
+                            </div>
+                            <div class="flex-1 relative">
+                                <img src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=1200" class="w-full h-[650px] object-cover rounded-[5rem] shadow-2xl border-[15px] border-white" alt="Leadership">
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (viewName === 'quiz') {
+                renderQuiz();
+            } else if (viewName === 'results') {
+                renderResults();
+            } else if (viewName === 'library') {
+                renderLibrary();
+            }
+            lucide.createIcons();
+        }
+
+        function startQuiz() {
+            currentAnswers = {};
+            currentStep = 0;
+            showView('quiz');
+        }
+
+        function handleAnswer(score) {
+            currentAnswers[QUESTIONS[currentStep].id] = score;
+            if (currentStep < QUESTIONS.length - 1) {
+                currentStep++;
+                renderQuiz();
+            } else {
+                showView('results');
+            }
+        }
+
+        function renderQuiz() {
+            const container = document.getElementById('app-content');
+            const q = QUESTIONS[currentStep];
+            const progress = ((currentStep + 1) / QUESTIONS.length) * 100;
+            
+            container.innerHTML = `
+                <div class="max-w-4xl mx-auto py-12 px-6 animate-fade-in">
+                    <div class="mb-14 text-center">
+                        <div class="flex justify-between items-end mb-4">
+                            <span class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.5em]">Phase: ${currentStep + 1} of ${QUESTIONS.length}</span>
+                            <span class="text-4xl font-black text-slate-900 italic">${Math.round(progress)}%</span>
+                        </div>
+                        <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                            <div class="bg-emerald-600 h-full transition-all duration-700" style="width: ${progress}%"></div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-12 lg:p-24 rounded-[5rem] shadow-2xl border border-emerald-50 text-center relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-2.5 bg-emerald-600"></div>
+                        <i data-lucide="quote" class="w-16 h-16 text-emerald-50 mx-auto mb-12"></i>
+                        <h2 class="text-4xl font-bold text-slate-800 mb-20 leading-tight italic px-8">"${q.text}"</h2>
+                        <div class="grid gap-5 max-w-md mx-auto">
+                            <button onclick="handleAnswer(5)" class="w-full py-6 rounded-3xl font-black text-lg bg-emerald-600 text-white shadow-xl transform hover:scale-105 active:scale-95 transition">ตรงกับฉันอย่างที่สุด</button>
+                            <button onclick="handleAnswer(4)" class="w-full py-6 rounded-3xl font-black text-lg bg-white border-2 border-slate-100 text-slate-700 hover:border-emerald-500 transition">ค่อนข้างตรง</button>
+                            <button onclick="handleAnswer(3)" class="w-full py-6 rounded-3xl font-black text-lg bg-white border-2 border-slate-100 text-slate-700 hover:border-emerald-500 transition">ปานกลาง</button>
+                            <button onclick="handleAnswer(2)" class="w-full py-6 rounded-3xl font-black text-lg bg-white border-2 border-slate-100 text-slate-700 hover:border-emerald-500 transition">ไม่ค่อยตรง</button>
+                            <button onclick="handleAnswer(1)" class="w-full py-6 rounded-3xl font-black text-lg bg-red-50 text-red-700 border-2 border-red-100 transition">ไม่ตรงเลย</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function renderResults() {
+            const container = document.getElementById('app-content');
+            const scores = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 };
+            QUESTIONS.forEach(q => scores[q.type] += (currentAnswers[q.id] || 3));
+            
+            const sorted = Object.entries(scores).sort((a,b) => b[1] - a[1]);
+            const topId = sorted[0][0];
+            const topType = TYPE_DETAILS[topId];
+            const dateStr = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+
+            container.innerHTML = `
+                <div class="max-w-7xl mx-auto py-12 px-6 animate-fade-in bg-white no-print">
+                    <header class="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-20 gap-8">
+                        <div>
+                            <div class="flex items-center gap-3 mb-4">
+                                <span class="h-1.5 w-12 bg-emerald-600 rounded-full"></span>
+                                <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.4em]">Health Leadership Analysis</p>
+                            </div>
+                            <h2 class="text-6xl font-black text-slate-900 tracking-tighter leading-none italic">ผู้นำวิชาชีพสุขภาพ <span class="text-emerald-600 uppercase">Type ${topId}</span></h2>
+                        </div>
+                        <button onclick="window.print()" class="bg-slate-900 text-white px-10 py-5 rounded-3xl font-black flex items-center gap-4 shadow-2xl hover:opacity-90 transition">
+                            <i data-lucide="printer"></i> ออกรายงาน PDF
+                        </button>
+                    </header>
+
+                    <!-- Profile Section -->
+                    <div class="bg-white rounded-[5rem] overflow-hidden shadow-2xl border border-emerald-50 mb-20 flex flex-col lg:flex-row">
+                        <div class="lg:w-1/2 relative min-h-[600px]">
+                            <img src="${topType.image}" class="w-full h-full object-cover" alt="Result">
+                            <div class="absolute inset-0 bg-gradient-to-t from-emerald-950/90 via-emerald-950/30 to-transparent"></div>
+                            <div class="absolute bottom-16 left-16 text-white">
+                                <div class="flex items-center gap-8 mb-8">
+                                    <div class="w-24 h-24 bg-emerald-600 rounded-[2.5rem] flex items-center justify-center text-white text-6xl font-black shadow-2xl rotate-6">${topId}</div>
+                                    <div><h3 class="text-5xl font-black tracking-tight leading-none mb-2 uppercase">${topType.name}</h3><p class="text-emerald-400 font-black uppercase tracking-[0.3em] text-lg italic">${topType.th}</p></div>
+                                </div>
+                                <p class="text-2xl text-emerald-50 italic font-bold leading-relaxed max-w-lg bg-white/5 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white/20">"${topType.quote}"</p>
+                            </div>
+                        </div>
+                        <div class="lg:w-1/2 p-16 lg:p-24 flex flex-col justify-center bg-emerald-50/10">
+                            <div class="space-y-14">
+                                <section>
+                                    <div class="flex items-center gap-5 mb-8"><i data-lucide="fingerprint" class="text-emerald-600 w-8 h-8"></i><h4 class="text-2xl font-black uppercase tracking-widest text-slate-900 italic">แกนหลักทางจิตวิทยา</h4></div>
+                                    <p class="text-slate-600 leading-relaxed text-2xl font-medium">${topType.core_motivation}</p>
+                                </section>
+                                <section>
+                                    <div class="flex items-center gap-5 mb-8 text-emerald-700"><i data-lucide="briefcase" class="w-8 h-8"></i><h4 class="text-2xl font-black uppercase tracking-widest italic">ภาวะผู้นำ (Leadership)</h4></div>
+                                    <p class="text-slate-800 font-black leading-relaxed bg-white p-10 rounded-[3rem] border border-emerald-100 shadow-xl">${topType.leadership}</p>
+                                </section>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Analysis Grid -->
+                    <div class="grid lg:grid-cols-3 gap-12 mb-20">
+                        <div class="bg-white p-12 rounded-[4rem] shadow-2xl border border-emerald-100 col-span-1">
+                             <h4 class="text-2xl font-black mb-12 flex items-center gap-5"><i data-lucide="bar-chart-3" class="text-emerald-600 w-8 h-8"></i> Matrix Score</h4>
+                             <canvas id="radarChart"></canvas>
+                        </div>
+                        <div class="lg:col-span-2 space-y-12">
+                            <div class="bg-white p-12 lg:p-20 rounded-[4rem] shadow-2xl border border-emerald-100 flex flex-col md:flex-row gap-16">
+                                <div class="flex-1">
+                                    <h4 class="text-2xl font-black uppercase tracking-widest text-slate-800 italic mb-6">การตัดสินใจรักษา</h4>
+                                    <p class="text-slate-600 text-xl leading-relaxed">${topType.decision_logic}</p>
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="text-2xl font-black uppercase tracking-widest text-slate-800 italic mb-6">การรับมือวิกฤต</h4>
+                                    <p class="text-slate-600 text-xl leading-relaxed">${topType.crisis_resilience}</p>
+                                </div>
+                            </div>
+                            <div class="bg-slate-900 p-16 rounded-[4.5rem] shadow-2xl text-white">
+                                <h4 class="text-2xl font-black uppercase tracking-widest italic text-emerald-400 mb-10">Organizational & HR Fit</h4>
+                                <p class="text-slate-200 text-2xl leading-relaxed font-bold">"${topType.hr_fit}"</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Blind Spots -->
+                    <div class="grid lg:grid-cols-2 gap-12 mb-20">
+                        <div class="bg-emerald-50 p-16 rounded-[5rem] border-2 border-emerald-100 shadow-xl">
+                            <h4 class="text-3xl font-black text-emerald-900 mb-12 flex items-center gap-5"><i data-lucide="alert-triangle" class="text-emerald-600"></i> Clinical Blind Spots</h4>
+                            <p class="text-emerald-800 text-2xl leading-relaxed font-black italic">"${topType.blind_spots}"</p>
+                        </div>
+                        <div class="bg-emerald-600 p-16 rounded-[5rem] shadow-2xl text-white">
+                            <h4 class="text-3xl font-black mb-12 flex items-center gap-5"><i data-lucide="target" class="text-white"></i> Path to Mastery</h4>
+                            <p class="text-emerald-50 text-2xl leading-relaxed font-black italic">"${topType.mastery_path}"</p>
+                        </div>
+                    </div>
+
+                    <div class="text-center pb-24 border-t border-emerald-100 pt-24 no-print">
+                        <p class="text-slate-400 text-sm font-bold uppercase tracking-widest mb-4">Certified by ${AUTHOR_NAME}</p>
+                        <button onclick="showView('landing')" class="text-slate-300 font-black hover:text-emerald-600 transition uppercase tracking-widest text-xs underline underline-offset-8">กลับหน้าหลัก</button>
+                    </div>
+                </div>
+            `;
+
+            // Init Radar Chart
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: sorted.map(s => `T${s[0]}`),
+                    datasets: [{
+                        label: 'Leadership Profile',
+                        data: sorted.map(s => s[1]),
+                        backgroundColor: 'rgba(16, 185, 129, 0.4)',
+                        borderColor: '#10b981',
+                        borderWidth: 4,
+                        pointBackgroundColor: '#10b981'
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: { min: 0, max: 15, ticks: { display: false } }
+                    }
+                }
+            });
+
+            // Set up Print View
+            renderPrintArea(topType, topId, sorted, dateStr);
+            lucide.createIcons();
+        }
+
+        function renderPrintArea(topType, topId, sorted, dateStr) {
+            const printArea = document.getElementById('print-area');
+            printArea.innerHTML = `
+                <div class="p-20 bg-white text-slate-900 report-page">
+                    <div class="border-b-[12px] border-emerald-600 pb-12 mb-16 flex justify-between items-end">
+                        <div>
+                            <h1 class="text-6xl font-black uppercase tracking-tighter italic">Clinical Personality Assessment</h1>
+                            <p class="font-bold text-emerald-600 mt-4 text-3xl uppercase tracking-widest underline underline-offset-[16px]">HEALTH STRATEGIC v9.2</p>
+                        </div>
+                        <div class="text-right"><p class="text-slate-900 text-xl italic font-black">DATE: ${dateStr}</p><p class="text-sm font-bold uppercase tracking-widest">CERTIFIED BY ${AUTHOR_NAME}</p></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-16 mb-16">
+                        <div class="border-[6px] border-emerald-600 p-12 rounded-[4rem]">
+                            <p class="text-[12px] font-black uppercase tracking-[0.4em] mb-6 text-emerald-600 italic">Primary Healer Type</p>
+                            <h3 class="text-5xl font-black text-slate-900 uppercase">Type ${topId}: ${topType.name}</h3>
+                        </div>
+                        <div class="bg-emerald-50 p-12 rounded-[4rem] flex items-center italic text-emerald-950 font-bold text-2xl leading-relaxed">"${topType.core_motivation}"</div>
+                    </div>
+                    <div class="space-y-14">
+                        <section class="border-l-[12px] border-emerald-600 pl-12"><h4 class="font-black text-2xl uppercase tracking-widest mb-6 italic text-emerald-800">1. การวิเคราะห์ตรรกะการตัดสินใจทางคลินิก</h4><p class="text-xl leading-relaxed">${topType.decision_logic}</p></section>
+                        <section class="border-l-[12px] border-emerald-600 pl-12"><h4 class="font-black text-2xl uppercase tracking-widest mb-6 italic text-emerald-800">2. ภาวะผู้นำและสไตล์การบริหารงานสุขภาพ</h4><p class="text-xl leading-relaxed">${topType.leadership}</p></section>
+                        <section class="border-l-[12px] border-emerald-600 pl-12"><h4 class="font-black text-2xl uppercase tracking-widest mb-6 italic text-emerald-800">3. การจัดการวิกฤตและความกดดันหน้างาน</h4><p class="text-xl leading-relaxed">${topType.crisis_resilience}</p></section>
+                        <section class="border-l-[12px] border-emerald-600 pl-12"><h4 class="font-black text-2xl uppercase tracking-widest mb-6 italic text-emerald-800">4. บทวิเคราะห์เชิงบริหารทรัพยากรบุคคล (HR Insight)</h4><p class="text-xl leading-relaxed">${topType.hr_fit}</p></section>
+                    </div>
+                    <div class="mt-32 text-center italic text-slate-300 font-black uppercase tracking-[0.8em] text-[10px]">Strategic Health Intelligence Platform • By ภก.จีรภัทร พลายงาม</div>
+                </div>
+            `;
+        }
+
+        function renderLibrary() {
+            const container = document.getElementById('app-content');
+            container.innerHTML = `
+                <div class="max-w-7xl mx-auto py-12 px-8 animate-fade-in bg-white">
+                    <div class="text-center mb-32 max-w-4xl mx-auto">
+                        <div class="inline-block h-1.5 w-24 bg-emerald-600 mb-12 rounded-full"></div>
+                        <h2 class="text-7xl font-black text-slate-900 mb-10 tracking-tighter uppercase italic leading-none">The Healer's <br/> <span class="text-emerald-600">Emerald Library</span></h2>
+                        <p class="text-2xl text-slate-500 font-medium italic leading-relaxed">คลังความรู้จิตวิทยาสำหรับวิชาชีพแพทย์แผนไทยและสาธารณสุข</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-16">
+                        ${Object.entries(TYPE_DETAILS).map(([id, d]) => `
+                            <div class="bg-white rounded-[4rem] overflow-hidden shadow-xl border border-emerald-50 hover:-translate-y-4 transition-all duration-700 group flex flex-col">
+                                <div class="h-80 overflow-hidden relative">
+                                    <img src="${d.image}" class="w-full h-full object-cover group-hover:scale-110 transition duration-700" alt="Lib">
+                                    <div class="absolute inset-0 bg-slate-950/20 transition group-hover:bg-transparent duration-700"></div>
+                                    <div class="absolute top-10 left-10 w-20 h-20 bg-white rounded-[2rem] flex items-center justify-center text-emerald-600 font-black text-5xl shadow-2xl">${id}</div>
+                                </div>
+                                <div class="p-14 flex-1">
+                                    <h3 class="text-3xl font-black text-slate-900 mb-2 uppercase">${d.name}</h3>
+                                    <p class="text-emerald-600 font-black text-sm uppercase tracking-widest mb-10 italic">${d.th}</p>
+                                    <p class="text-slate-500 text-lg leading-relaxed mb-12 italic">"${d.core_motivation.slice(0, 150)}..."</p>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="mt-32 text-center pb-20">
+                        <button onclick="showView('landing')" class="bg-slate-900 text-white px-20 py-7 rounded-[2.5rem] font-black text-2xl hover:bg-emerald-600 transition transform hover:scale-105">กลับสู่หน้าหลัก</button>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        // Initialize
+        window.onload = () => showView('landing');
+    </script>
+</body>
+</html>
