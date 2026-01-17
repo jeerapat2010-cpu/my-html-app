@@ -1,0 +1,658 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, collection, addDoc, query, onSnapshot, orderBy } from 'firebase/firestore';
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar, Legend, AreaChart, Area 
+} from 'recharts';
+import { 
+  Compass, History, BookOpen, Star, 
+  TrendingUp, Award, Zap, Briefcase, 
+  Printer, ChevronRight, ChevronLeft, CheckCircle2,
+  Brain, Heart, Target, Quote, User, ShieldCheck, 
+  AlertTriangle, Lightbulb, Users, BarChart3, Fingerprint, Sparkles, Rocket
+} from 'lucide-react';
+
+// --- CONFIGURATION ---
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'ennea-orange-v8';
+
+const AUTHOR_NAME = "ภก.จีรภัทร พลายงาม";
+
+// --- DEEP ANALYTICS DATA ---
+const TYPE_DETAILS = {
+  1: { 
+    name: "The Reformer", th: "ผู้สมบูรณ์แบบ", color: "#F97316", 
+    image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&q=80&w=1200",
+    quote: "ความถูกต้องและมาตรฐานคือรากฐานของความไว้วางใจ",
+    core_motivation: "ปรารถนาที่จะทำในสิ่งที่ถูกต้อง มีจริยธรรม และพัฒนาโลกให้สมบูรณ์แบบ กลัวความบกพร่องและการถูกตำหนิ",
+    decision_logic: "ใช้ตรรกะบนพื้นฐานของความถูกต้อง (Principle-driven) มักตัดสินใจอย่างรอบคอบโดยอิงจากมาตรฐานและกฎระเบียบที่วางไว้",
+    crisis_resilience: "ในภาวะวิกฤตจะยิ่งยึดติดกับกฎระเบียบมากขึ้น พยายามควบคุมทุกอย่างให้เป็นระบบ อาจเกิดความโกรธสะสมหากเห็นความไร้ระเบียบ",
+    leadership: "เน้นภาวะผู้นำแบบเป็นระเบียบ (Transactional & Ethical Leadership) สอนงานด้วยมาตรฐานที่ชัดเจนและเที่ยงธรรม",
+    hr_fit: "เหมาะกับงานตรวจสอบ (Audit), การวางระบบคุณภาพ (ISO/QA), และงานบริหารนโยบายที่ต้องการความแม่นยำสูงสุด",
+    blind_spots: "มักตำหนิตนเองและผู้อื่นอย่างรุนแรง (Inner Critic) ขาดความยืดหยุ่นในสถานการณ์ที่ต้องใช้ความคิดสร้างสรรค์แบบฉีกกฎ",
+    mastery_path: "เรียนรู้ที่จะยอมรับความไม่สมบูรณ์แบบ พัฒนาความเมตตาต่อตนเอง และเปิดใจรับฟังแนวทางที่แตกต่าง"
+  },
+  2: { 
+    name: "The Helper", th: "ผู้ให้", color: "#FB923C", 
+    image: "https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&q=80&w=1200",
+    quote: "การเติบโตที่แท้จริงคือการเติบโตไปพร้อมกับผู้คนรอบข้าง",
+    core_motivation: "ต้องการเป็นที่รักและเป็นที่ต้องการ ไวต่อความต้องการของผู้อื่น กลัวการถูกทอดทิ้งหรือการไม่มีค่าในสายตาใคร",
+    decision_logic: "ตัดสินใจโดยใช้ความรู้สึกและผลกระทบต่อความสัมพันธ์เป็นตัวตั้ง (Relation-driven) มักประนีประนอมเพื่อรักษาบรรยากาศ",
+    crisis_resilience: "ในยามวิกฤตจะพุ่งตัวเข้าช่วยเหลือผู้อื่นจนลืมตัวเอง อาจเกิดภาวะหมดไฟ (Burnout) ได้ง่ายหากไม่ได้รับการขอบคุณหรือเห็นค่า",
+    leadership: "ผู้นำแบบผู้รับใช้ (Servant Leadership) เก่งในการสร้างขวัญและกำลังใจ และเป็นกาวใจที่ยึดเหนี่ยวทีมเข้าด้วยกัน",
+    hr_fit: "โดดเด่นในงานบริหารความสัมพันธ์ลูกค้า (CRM), HRD, งานประสานงานโครงการ และงานบริการทางการแพทย์",
+    blind_spots: "มักจะหลงลืมความต้องการที่แท้จริงของตนเอง (Self-Neglect) และอาจใช้ความช่วยเหลือในการควบคุมผู้อื่นทางอ้อม",
+    mastery_path: "ฝึกการตั้งขอบเขต (Boundaries) ที่ชัดเจน พัฒนาความสามารถในการดูแลตนเอง และช่วยเหลือผู้อื่นโดยไม่คาดหวังผลตอบแทน"
+  },
+  3: { 
+    name: "The Achiever", th: "ผู้สร้างสำเร็จ", color: "#F59E0B", 
+    image: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=1200",
+    quote: "ประสิทธิภาพที่ยอดเยี่ยมคือภาษาสากลของความเป็นมืออาชีพ",
+    core_motivation: "ปรารถนาความสำเร็จ การยอมรับ และภาพลักษณ์ที่โดดเด่น กลัวความล้มเหลวและการถูกมองว่าไร้ความสามารถ",
+    decision_logic: "เน้นผลลัพธ์และความคุ้มค่า (Efficiency-driven) เลือกทางที่สั้นที่สุดและเห็นผลเร็วที่สุดเพื่อบรรลุ KPI",
+    crisis_resilience: "ในภาวะวิกฤตจะนิ่งและมุ่งเน้นงาน (Workaholic) สามารถปรับเปลี่ยนกลยุทธ์ได้ทันทีเพื่อรักษาชัยชนะ",
+    leadership: "ผู้นำที่ขับเคลื่อนด้วยเป้าหมาย (Goal-oriented Leadership) สร้างแรงจูงใจผ่านวิสัยทัศน์ความสำเร็จและผลตอบแทน",
+    hr_fit: "เหมาะกับงานฝ่ายขาย, การตลาดเชิงรุก, ผู้บริหารโปรเจกต์สำคัญ และงานที่ต้องแข่งขันสูง",
+    blind_spots: "มักให้ความสำคัญกับงานมากกว่าความรู้สึกของผู้คน (Task over People) และอาจละเลยจริยธรรมในบางกรณีเพื่อชัยชนะ",
+    mastery_path: "เรียนรู้ความจริงใจ (Authenticity) ค้นหาคุณค่าของตนเองที่ไม่ได้ผูกติดกับผลงาน และให้ความสำคัญกับความสัมพันธ์ที่ลึกซึ้ง"
+  },
+  4: { 
+    name: "The Individualist", th: "ผู้สร้างเอกลักษณ์", color: "#EA580C", 
+    image: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&q=80&w=1200",
+    quote: "ความหมายที่ลึกซึ้งคือจุดเริ่มต้นของทุกแรงบันดาลใจ",
+    core_motivation: "ค้นหาความเป็นตัวของตัวเองที่แท้จริงและความลึกซึ้งในชีวิต กลัวความธรรมดาสามัญและการไม่มีเอกลักษณ์",
+    decision_logic: "ใช้สัญชาตญาณและความซื่อสัตย์ต่ออารมณ์ (Meaning-driven) เลือกทางที่สะท้อนวิสัยทัศน์ที่แตกต่างและไม่ซ้ำใคร",
+    crisis_resilience: "ในยามวิกฤตจะเชื่อมโยงกับความรู้สึกได้ดีมาก ช่วยให้ทีมเห็นมิติที่ลึกซึ้ง แต่อาจปลีกตัวหากรู้สึกหดหู่เกินไป",
+    leadership: "ผู้นำเชิงสุนทรียภาพ (Inspirational & Artistic Leadership) มักนำทีมผ่านเรื่องเล่า (Storytelling) และวิสัยทัศน์ที่ทรงพลัง",
+    hr_fit: "เหมาะกับงานสร้างสรรค์ (Creative), งานดีไซน์, การวางรากฐานแบรนด์ และงานศิลปบำบัดหรือจิตวิทยา",
+    blind_spots: "อารมณ์ที่ขึ้นลงส่งผลต่อเสถียรภาพในการทำงาน และความรู้สึกว่าคนอื่นเข้าไม่ถึงตัวตนที่ซับซ้อนของตน",
+    mastery_path: "ฝึกฝนวินัยที่สม่ำเสมอ เรียนรู้ที่จะอยู่กับความเป็นจริง (Grounded) และไม่ใช้อารมณ์เป็นเครื่องตัดสินเพียงอย่างเดียว"
+  },
+  5: { 
+    name: "The Investigator", th: "ผู้สังเกตการณ์", color: "#F97316", 
+    image: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=1200",
+    quote: "ข้อมูลที่ถูกต้องคืออาวุธที่ทรงพลังที่สุดในภาวะสงครามธุรกิจ",
+    core_motivation: "ปรารถนาความรู้ ความเข้าใจในระบบ และความเป็นอิสระทางความคิด กลัวความไร้ความสามารถและการถูกรบกวน",
+    decision_logic: "วิเคราะห์ข้อมูลเชิงลึก (Data-driven) ตัดสินใจด้วยเหตุผลล้วนๆ และมองหาความเชื่อมโยงเชิงระบบที่ซับซ้อน",
+    crisis_resilience: "ในภาวะวิกฤตจะนิ่งมาก ตัดอารมณ์ออกเพื่อหาทางแก้ปัญหาเชิงเทคนิค แต่อาจดูเฉยเมยจนทีมรู้สึกขาดการสนับสนุน",
+    leadership: "ผู้นำเชิงกลยุทธ์และผู้เชี่ยวชาญ (Expert-based Leadership) นำทีมด้วยความรู้และความน่าเชื่อถือเชิงวิชาการ",
+    hr_fit: "เหมาะกับงานวิจัย (R&D), วิศวกรรมระบบ, นักวิเคราะห์ข้อมูลขนาดใหญ่ และที่ปรึกษาเฉพาะทาง",
+    blind_spots: "การใช้เวลาวิเคราะห์นานเกินไปจนเสียโอกาส (Analysis Paralysis) และความลำบากในการสื่อสารด้านความรู้สึก",
+    mastery_path: "เรียนรู้การเชื่อมโยงกับผู้คนในมิติทางอารมณ์ ก้าวออกจากความคิดสู่การลงมือทำ และแบ่งปันข้อมูลกับทีมมากขึ้น"
+  },
+  6: { 
+    name: "The Loyalist", th: "ผู้จงรักภักดี", color: "#F59E0B", 
+    image: "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?auto=format&fit=crop&q=80&w=1200",
+    quote: "ความปลอดภัยที่แท้จริงเกิดจากความร่วมมือที่จริงใจ",
+    core_motivation: "แสวงหาความมั่นคง การสนับสนุน และคำแนะนำที่ชัดเจน กลัวความไร้ที่พึ่งและการเผชิญหน้ากับอันตรายลำพัง",
+    decision_logic: "ประเมินความเสี่ยงรอบด้าน (Risk-aware) ตัดสินใจโดยอิงจากความปลอดภัยของกลุ่มและแผนสำรองที่มีประสิทธิภาพ",
+    crisis_resilience: "ในยามวิกฤตจะเป็นคนที่รับผิดชอบสูงที่สุด เตรียมพร้อมทุกอย่าง แต่อาจแสดงความกังวลจนคนรอบข้างเสียขวัญ",
+    leadership: "ผู้นำแบบระมัดระวังและสร้างทีม (Collaborative Leadership) เน้นความชัดเจนของเป้าหมายและขั้นตอน",
+    hr_fit: "เหมาะกับงานบริหารความเสี่ยง, งานกฎหมาย, การตรวจสอบระบบความปลอดภัย และการจัดการโครงการขนาดใหญ่",
+    blind_spots: "ความกังวลจนเกินเหตุจนทำอะไรไม่ได้ (Panic) และความระแวดระวังผู้อื่นมากเกินไปจนขัดขวางการเปลี่ยนแปลง",
+    mastery_path: "พัฒนาความเชื่อมั่นในตนเอง (Self-Trust) ลดความต้องการคำยืนยันจากภายนอก และเรียนรู้ที่จะอยู่กับความไม่แน่นอน"
+  },
+  7: { 
+    name: "The Enthusiast", th: "ผู้เสพสุข", color: "#FB923C", 
+    image: "https://images.unsplash.com/photo-1539635278303-d4002c07eae3?auto=format&fit=crop&q=80&w=1200",
+    quote: "วิสัยทัศน์ที่ไร้ขีดจำกัดคือกุญแจสู่โอกาสใหม่ๆ",
+    core_motivation: "แสวงหาประสบการณ์ใหม่ ความสุข และความตื่นเต้น กลัวความเจ็บปวด ความน่าเบื่อ และการถูกจำกัดอิสระ",
+    decision_logic: "มองหาโอกาสและการเติบโต (Optimistic-driven) ตัดสินใจอย่างรวดเร็วเพื่อรักษาความเคลื่อนไหวและทางเลือก",
+    crisis_resilience: "หาทางออกที่สร้างสรรค์ได้เก่งมากในภาวะวิกฤต แต่อาจพยายาม 'ฉาบสีชมพู' ให้ปัญหาจนมองข้ามความรุนแรงที่แท้จริง",
+    leadership: "ผู้นำเชิงนวัตกรรมและวิสัยทัศน์ (Visionary Leadership) สร้างพลังงานบวกและกระตุ้นให้ทีมคิดนอกกรอบ",
+    hr_fit: "เหมาะกับงาน Business Development, งานวางแผนนวัตกรรม, การจัดกิจกรรมองค์กร และงานที่ต้องการความคล่องตัวสูง",
+    blind_spots: "การขาดความต่อเนื่องในงานที่ต้องใช้ความละเอียด (Lack of Focus) และการวิ่งหนีปัญหาที่หนักหน่วงด้วยกิจกรรมอื่น",
+    mastery_path: "เรียนรู้ที่จะจดจ่ออยู่กับปัจจุบัน ฝึกฝนความอดทนต่อความยากลำบาก และทำงานชิ้นเดิมให้เสร็จสมบูรณ์ก่อนเริ่มใหม่"
+  },
+  8: { 
+    name: "The Challenger", th: "ผู้ปกป้อง", color: "#9A3412", 
+    image: "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80&w=1200",
+    quote: "อำนาจที่แท้จริงคือการมีพละกำลังเพื่อปกป้องผู้อ่อนแอกว่า",
+    core_motivation: "ปรารถนาความเข้มแข็ง การควบคุมสถานการณ์ และความยุติธรรม กลัวความอ่อนแอและการถูกควบคุมโดยผู้อื่น",
+    decision_logic: "ใช้อำนาจและการลงมือทำ (Action-oriented) ตัดสินใจเด็ดขาด รวดเร็ว และเน้นการกุมความได้เปรียบในเชิงกลยุทธ์",
+    crisis_resilience: "ยิ่งกดดันยิ่งแข็งแกร่ง (Crisis Leader) พร้อมเผชิญหน้าและปกป้องพวกพ้องอย่างเต็มกำลัง แต่อาจดูดุดันเกินไป",
+    leadership: "ผู้นำที่ทรงพลังและมีอิทธิพล (Commanding Leadership) นำทีมด้วยความมั่นใจและพร้อมลุยไปกับลูกน้อง",
+    hr_fit: "เหมาะสำหรับตำแหน่งผู้บริหารระดับสูง, ฝ่ายปฏิบัติการที่เน้นความเร็ว, การเจรจาต่อรอง และงานแก้ปัญหาเฉพาะหน้า",
+    blind_spots: "ความดุดันที่อาจทำลายความสัมพันธ์ (Aggression) และความลำบากในการยอมรับความผิดพลาดหรือจุดอ่อนของตน",
+    mastery_path: "พัฒนาความอ่อนโยน (Vulnerability) เรียนรู้ที่จะถอยและฟังคนอื่นบ้าง และใช้อำนาจเพื่อสร้างคนมากกว่าสั่งการ"
+  },
+  9: { 
+    name: "The Peacemaker", th: "ผู้ประสานไมตรี", color: "#C2410C", 
+    image: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&q=80&w=1200",
+    quote: "ความสามัคคีที่แท้จริงเริ่มต้นจากการรับฟังอย่างเข้าใจ",
+    core_motivation: "แสวงหาความสงบภายในและความกลมเกลียวกับโลก กลัวความขัดแย้ง การสูญเสียความสัมพันธ์ และความวุ่นวาย",
+    decision_logic: "เน้นมติเอกฉันท์และการประนีประนอม (Consensus-driven) ตัดสินใจโดยพิจารณาผลกระทบต่อทุกส่วนเพื่อให้เกิดความราบรื่น",
+    crisis_resilience: "เป็นศูนย์กลางความสงบในยามวิกฤต ช่วยลดความตึงเครียดของทีมได้ดี แต่อาจเฉยเมยจนปัญหาบานปลาย",
+    leadership: "ผู้นำแบบประสานรอยร้าว (Facilitative Leadership) สร้างบรรยากาศที่ทุกคนมีส่วนร่วมและรู้สึกปลอดภัย",
+    hr_fit: "โดดเด่นในงานบริหารความขัดแย้ง (Conflict Resolution), งานที่ปรึกษา, แรงงานสัมพันธ์ และงานพัฒนาวัฒนธรรมองค์กร",
+    blind_spots: "การดื้อเงียบ (Passive-aggressive) เมื่อถูกบีบคั้น และการปล่อยปละละเลยประเด็นสำคัญเพียงเพื่อเลี่ยงการเผชิญหน้า",
+    mastery_path: "ฝึกการแสดงออกถึงความต้องการที่ชัดเจน (Assertiveness) กล้าที่จะขัดแย้งเพื่อสิ่งที่ถูกต้อง และลงมือทำอย่างจริงจัง"
+  }
+};
+
+const QUESTIONS = [
+  { id: 1, type: 1, text: "ฉันมักจะสังเกตเห็นข้อผิดพลาดได้เร็วกว่าคนอื่น และรู้สึกว่าต้องแก้ไขให้ถูกต้องทันที" },
+  { id: 2, type: 2, text: "ความสุขของฉันเกิดจากการที่ได้ดูแลความรู้สึกและความต้องการของคนรอบข้าง" },
+  { id: 3, type: 3, text: "ฉันให้ความสำคัญกับการบรรลุเป้าหมายและผลลัพธ์ที่เป็นรูปธรรมมากกว่าเรื่องอารมณ์ความรู้สึก" },
+  { id: 4, type: 4, text: "ฉันมักจะแสวงหาความหมายเบื้องลึกและสไตล์ที่แตกต่างในการทำงานที่เป็นเอกลักษณ์ของตนเอง" },
+  { id: 5, type: 5, text: "ฉันชอบที่จะใช้เวลาลำพังเพื่อศึกษาข้อมูลและวิเคราะห์เรื่องต่างๆ อย่างละเอียดก่อนตัดสินใจ" },
+  { id: 6, type: 6, text: "ฉันมักจะวางแผนเพื่อรับมือกับปัญหาที่เลวร้ายที่สุดที่อาจเกิดขึ้นเพื่อความปลอดภัย" },
+  { id: 7, type: 7, text: "ฉันชอบแสวงหาโอกาสใหม่ๆ ที่สนุกสนาน และไม่ชอบความรู้สึกที่จำเจหรือหดหู่" },
+  { id: 8, type: 8, text: "ฉันเชื่อในการตัดสินใจที่เด็ดขาดและการยืนหยัดเพื่อสิ่งที่ถูกต้องแม้จะต้องปะทะ" },
+  { id: 9, type: 9, text: "ฉันยินยอมที่จะประนีประนอมหรือคล้อยตามคนอื่นเพื่อให้บรรยากาศในทีมสงบสุข" },
+  { id: 10, type: 1, text: "มาตรฐานการทำงานที่สูงและการทำสิ่งที่ 'ถูกต้อง' สำคัญกว่าการทำงานให้เสร็จเพียงอย่างเดียว" },
+  { id: 11, type: 2, text: "บ่อยครั้งที่ฉันใส่ใจความต้องการของผู้อื่นจนหลงลืมความต้องการที่แท้จริงของตนเอง" },
+  { id: 12, type: 3, text: "ฉันรู้วิธีที่จะแสดงภาพลักษณ์ที่ดูเป็นมืออาชีพและประสบความสำเร็จเพื่อให้ได้รับการยอมรับ" },
+  { id: 13, type: 4, text: "ฉันมักรู้สึกถึงอารมณ์ที่ซับซ้อนและเชื่อว่าความจริงใจ (Authenticity) สำคัญกว่าการทำตามกระแส" },
+  { id: 14, type: 5, text: "การสะสมความรู้และความเชี่ยวชาญเฉพาะทางทำให้ฉันรู้สึกมั่นใจและปลอดภัยในการทำงาน" },
+  { id: 15, type: 6, text: "ความซื่อสัตย์ต่อกลุ่มและความรับผิดชอบต่อหน้าที่เป็นสิ่งที่ฉันยึดถืออย่างเคร่งครัด" },
+  { id: 16, type: 7, text: "ฉันพยายามมองหาแแง่มุมที่บวกและน่าตื่นเต้นในทุกๆ วิกฤตเพื่อไม่ให้ตนเองจมอยู่กับความกังวล" },
+  { id: 17, type: 8, text: "ฉันชอบที่จะคุมสถานการณ์และไม่ยอมให้ใครมาเอาเปรียบตนเองหรือคนสำคัญของฉัน" },
+  { id: 18, type: 9, text: "ฉันเป็นคนรับฟังเก่งและสามารถไกล่เกลี่ยความขัดแย้งระหว่างผู้คนให้กลับมากลมเกลียวกันได้" }
+];
+
+export default function EnneaOrangeV8() {
+  const [user, setUser] = useState(null);
+  const [view, setView] = useState('landing');
+  const [history, setHistory] = useState([]);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  // --- FIREBASE INITIALIZATION ---
+  useEffect(() => {
+    const init = async () => {
+      await signInAnonymously(auth);
+      onAuthStateChanged(auth, (u) => {
+        setUser(u);
+        setLoading(false);
+      });
+    };
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, 'artifacts', appId, 'users', user.uid, 'history'), orderBy('timestamp', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  // --- LOGIC ---
+  const calculateResult = (ans) => {
+    const scores = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 };
+    QUESTIONS.forEach(q => scores[q.type] += (ans[q.id] || 3));
+    return scores;
+  };
+
+  const handleNext = async (score) => {
+    const newAnswers = { ...answers, [QUESTIONS[currentStep].id]: score };
+    setAnswers(newAnswers);
+    if (currentStep < QUESTIONS.length - 1) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      const finalScores = calculateResult(newAnswers);
+      await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'history'), {
+        scores: finalScores,
+        timestamp: Date.now(),
+        date: new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })
+      });
+      setView('results');
+    }
+  };
+
+  // --- COMPONENTS ---
+
+  const Nav = () => (
+    <nav className="h-20 px-8 flex items-center justify-between border-b border-orange-100 bg-white/90 backdrop-blur-xl sticky top-0 z-50 no-print">
+      <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setView('landing')}>
+        <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+          <Fingerprint className="w-5 h-5 text-white" />
+        </div>
+        <span className="font-black text-2xl tracking-tighter italic uppercase text-slate-900">EnneaMastery <span className="text-orange-600">v8.0</span></span>
+      </div>
+      <div className="flex gap-8 items-center">
+        <button onClick={() => setView('library')} className="text-xs font-black text-slate-500 hover:text-orange-600 transition uppercase tracking-widest hidden sm:block">Master Library</button>
+        {user && history.length > 0 && (
+            <button onClick={() => setView('results')} className="bg-orange-50 text-orange-700 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-orange-100 transition">View Report</button>
+        )}
+      </div>
+    </nav>
+  );
+
+  const LandingView = () => (
+    <div className="min-h-[calc(100vh-80px)] overflow-hidden relative">
+      {/* Background Animated Elements */}
+      <div className="absolute top-20 left-10 w-64 h-64 bg-orange-400/20 rounded-full blur-[100px] animate-pulse"></div>
+      <div className="absolute bottom-20 right-10 w-96 h-96 bg-orange-600/10 rounded-full blur-[120px] animate-pulse delay-700"></div>
+
+      <div className="max-w-7xl mx-auto py-20 px-8 flex flex-col lg:flex-row gap-20 items-center relative z-10">
+        <div className="flex-1 space-y-10 animate-slide-up">
+          <div className="inline-flex items-center gap-3 bg-orange-50 px-4 py-2 rounded-full border border-orange-100">
+            <Sparkles className="w-4 h-4 text-orange-600" />
+            <p className="text-xs font-black text-orange-600 uppercase tracking-[0.2em]">Next-Gen Executive Diagnostics</p>
+          </div>
+          
+          <h1 className="text-7xl lg:text-8xl font-black text-slate-900 leading-[0.9] tracking-tighter">
+            วิเคราะห์ <span className="text-orange-600">ตัวตน</span><br/> 
+            <span className="relative">
+              ขับเคลื่อน
+              <span className="absolute bottom-2 left-0 w-full h-4 bg-orange-200 -z-10 rounded-full"></span>
+            </span> 
+            องค์กร
+          </h1>
+          
+          <p className="text-2xl text-slate-500 leading-relaxed max-w-xl font-medium">
+            ปลดล็อกศักยภาพสูงสุดผ่านระบบนพลักษณ์เชิงบริหารที่ละเอียดและทรงพลังที่สุด ออกแบบเพื่อการตัดสินใจที่เฉียบคม
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-6">
+            <button 
+              onClick={() => { setCurrentStep(0); setAnswers({}); setView('quiz'); }}
+              className="bg-orange-600 text-white px-12 py-6 rounded-[2rem] font-black text-2xl shadow-[0_20px_40px_-10px_rgba(249,115,22,0.4)] hover:bg-orange-700 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-4 group"
+            >
+              <Rocket className="w-7 h-7 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" /> 
+              เริ่มการวิเคราะห์
+            </button>
+            <button 
+                onClick={() => setView('library')} 
+                className="bg-white border-2 border-slate-200 text-slate-600 px-12 py-6 rounded-[2rem] font-bold text-2xl hover:bg-slate-50 hover:border-orange-200 transition-all flex items-center justify-center gap-3"
+            >
+                Master Library
+            </button>
+          </div>
+          
+          <div className="pt-16 border-t border-slate-200 flex items-center gap-6">
+            <div className="w-16 h-16 rounded-2xl bg-slate-900 flex items-center justify-center shadow-xl rotate-3">
+                <User className="text-white w-8 h-8" />
+            </div>
+            <div>
+              <p className="text-xs font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Strategist & Mentor</p>
+              <p className="text-2xl font-black text-slate-900 tracking-tight italic">{AUTHOR_NAME}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 relative group">
+          <div className="absolute inset-0 bg-orange-600/20 rounded-[5rem] rotate-6 scale-105 blur-2xl group-hover:rotate-0 transition duration-1000"></div>
+          <div className="relative rounded-[5rem] overflow-hidden shadow-2xl border-[15px] border-white z-10">
+            <img 
+              src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80&w=1200" 
+              className="w-full h-[650px] object-cover hover:scale-110 transition duration-[2s]" 
+              alt="Professional Leadership"
+            />
+            <div className="absolute inset-0 bg-gradient-to-tr from-orange-600/40 via-transparent to-transparent"></div>
+          </div>
+          
+          {/* Floating Data Cards */}
+          <div className="absolute -top-10 -right-10 bg-white p-8 rounded-[2.5rem] shadow-2xl border border-orange-50 z-20 animate-float">
+             <div className="flex items-center gap-4 mb-2">
+                <Target className="text-orange-600 w-6 h-6" />
+                <span className="font-black text-2xl">45+</span>
+             </div>
+             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Psychological Metrics</p>
+          </div>
+          
+          <div className="absolute -bottom-6 -left-10 bg-white p-8 rounded-[2.5rem] shadow-2xl border border-orange-50 z-20 animate-float delay-700">
+             <div className="flex items-center gap-4 mb-2">
+                <BarChart3 className="text-orange-600 w-6 h-6" />
+                <span className="font-black text-2xl">Strategic</span>
+             </div>
+             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">HR Decision Support</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const QuizView = () => {
+    const q = QUESTIONS[currentStep];
+    const progress = ((currentStep + 1) / QUESTIONS.length) * 100;
+
+    return (
+      <div className="max-w-3xl mx-auto py-12 px-6 animate-fade-in">
+        <div className="mb-14 text-center">
+          <div className="flex justify-between items-end mb-4">
+            <span className="text-[10px] font-black text-orange-600 uppercase tracking-[0.4em]">Section: Discovery Phase</span>
+            <span className="text-3xl font-black text-slate-900 tracking-tighter">{currentStep + 1} <span className="text-slate-300 text-sm">/ {QUESTIONS.length}</span></span>
+          </div>
+          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden shadow-inner">
+            <div className="bg-orange-600 h-full transition-all duration-700 ease-out shadow-[0_0_10px_rgba(249,115,22,0.5)]" style={{ width: `${progress}%` }}></div>
+          </div>
+        </div>
+
+        <div className="bg-white p-12 lg:p-24 rounded-[4rem] shadow-2xl border border-orange-50 relative overflow-hidden text-center">
+          <div className="absolute top-0 left-0 w-full h-2 bg-orange-600 shadow-[0_4px_10px_rgba(249,115,22,0.2)]"></div>
+          <Quote className="w-12 h-12 text-orange-50 mx-auto mb-10" />
+          <h2 className="text-3xl font-bold text-slate-800 mb-20 leading-relaxed italic px-6 tracking-tight">"{q.text}"</h2>
+          <div className="grid gap-4 max-w-sm mx-auto">
+            {[
+              { s: 5, t: "ตรงกับฉันอย่างที่สุด", c: "bg-orange-600 text-white shadow-orange-200 shadow-xl" },
+              { s: 4, t: "ตรงบางส่วน", c: "bg-white border-2 border-slate-100 text-slate-700 hover:border-orange-500" },
+              { s: 3, t: "ปานกลาง", c: "bg-white border-2 border-slate-100 text-slate-700 hover:border-orange-500" },
+              { s: 2, t: "ไม่ค่อยตรง", c: "bg-white border-2 border-slate-100 text-slate-700 hover:border-orange-500" },
+              { s: 1, t: "ไม่ตรงเลย", c: "bg-red-50 text-red-700 border-2 border-red-100" }
+            ].map(b => (
+              <button key={b.s} onClick={() => handleNext(b.s)} className={`w-full py-5 px-8 rounded-2xl font-black transition transform active:scale-95 hover:scale-[1.03] ${b.c}`}>
+                {b.t}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const ResultView = () => {
+    if (!history[0]) return null;
+    const latest = history[0];
+    const sortedScores = Object.entries(latest.scores).sort((a,b) => b[1] - a[1]);
+    const topType = TYPE_DETAILS[sortedScores[0][0]];
+
+    const radarData = Object.entries(latest.scores).map(([type, score]) => ({
+      subject: `T${type}`,
+      score: score,
+      fullMark: 15
+    }));
+
+    return (
+      <div className="max-w-6xl mx-auto py-12 px-6 animate-fade-in no-print">
+        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-16 gap-8">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="h-1 w-10 bg-orange-600 rounded-full"></span>
+              <p className="text-xs font-black text-orange-600 uppercase tracking-widest">Executive Intelligence Profile</p>
+            </div>
+            <h2 className="text-5xl font-black text-slate-900 tracking-tighter">รายงานผลการวิเคราะห์ฉบับสมบูรณ์</h2>
+          </div>
+          <div className="flex gap-4">
+            <button onClick={() => setView('quiz')} className="bg-orange-600 text-white px-8 py-4 rounded-2xl font-black shadow-xl hover:opacity-90 transition flex items-center gap-3">
+              <Zap className="w-5 h-5" /> วิเคราะห์ใหม่อีกครั้ง
+            </button>
+            <button onClick={() => window.print()} className="bg-white border-2 border-slate-200 text-slate-600 px-8 py-4 rounded-2xl font-black shadow-sm hover:bg-slate-50 transition flex items-center gap-3">
+              <Printer className="w-5 h-5" /> พิมพ์สรุปผล (PDF)
+            </button>
+          </div>
+        </header>
+
+        {/* --- Main Profile Section --- */}
+        <div className="bg-white rounded-[4rem] overflow-hidden shadow-2xl border border-orange-50 mb-16 flex flex-col lg:flex-row">
+          <div className="lg:w-1/2 relative min-h-[500px]">
+            <img src={topType.image} className="w-full h-full object-cover" alt={topType.name} />
+            <div className="absolute inset-0 bg-gradient-to-t from-orange-900/90 via-orange-900/30 to-transparent"></div>
+            <div className="absolute bottom-12 left-12 text-white">
+              <div className="flex items-center gap-6 mb-6">
+                <div className="w-20 h-20 bg-orange-600 rounded-[2rem] flex items-center justify-center text-white text-5xl font-black shadow-2xl rotate-3">{sortedScores[0][0]}</div>
+                <div>
+                  <h3 className="text-4xl font-black tracking-tight leading-none mb-1">{topType.name}</h3>
+                  <p className="text-orange-300 font-bold uppercase tracking-[0.2em] text-sm italic">{topType.th}</p>
+                </div>
+              </div>
+              <p className="text-2xl text-orange-50 italic font-medium leading-relaxed max-w-md bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/20">"{topType.quote}"</p>
+            </div>
+          </div>
+          <div className="lg:w-1/2 p-12 lg:p-20 flex flex-col justify-center bg-orange-50/20">
+            <div className="space-y-12">
+              <section className="animate-slide-up">
+                <div className="flex items-center gap-4 mb-6">
+                  <Fingerprint className="text-orange-600 w-6 h-6" />
+                  <h4 className="text-xl font-black uppercase tracking-widest text-slate-900 italic">แรงจูงใจเบื้องลึก (Core Psychology)</h4>
+                </div>
+                <p className="text-slate-600 leading-relaxed text-xl">{topType.core_motivation}</p>
+              </section>
+              <section className="animate-slide-up delay-150">
+                <div className="flex items-center gap-4 mb-6 text-orange-700">
+                  <Briefcase className="w-6 h-6" />
+                  <h4 className="text-xl font-black uppercase tracking-widest italic">ภาวะผู้นำ (Leadership Style)</h4>
+                </div>
+                <p className="text-slate-700 font-bold leading-relaxed bg-white p-8 rounded-[2.5rem] border border-orange-100 shadow-sm">{topType.leadership}</p>
+              </section>
+            </div>
+          </div>
+        </div>
+
+        {/* --- Ultra Deep Dive Grid --- */}
+        <div className="grid lg:grid-cols-3 gap-10 mb-16">
+          <div className="bg-white p-12 rounded-[4rem] shadow-xl border border-orange-50 col-span-1">
+            <h4 className="text-2xl font-black mb-10 flex items-center gap-4">
+              <BarChart3 className="text-orange-600 w-7 h-7" /> Intelligence Matrix
+            </h4>
+            <div className="h-[350px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                  <PolarGrid stroke="#fed7aa" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#475569', fontSize: 12, fontWeight: 900 }} />
+                  <Radar name="Score" dataKey="score" stroke="#ea580c" fill="#ea580c" fillOpacity={0.6} />
+                  <Tooltip contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 space-y-10">
+            <div className="bg-white p-12 lg:p-16 rounded-[4rem] shadow-xl border border-orange-50 flex flex-col md:flex-row gap-12">
+              <div className="flex-1">
+                <div className="flex items-center gap-4 mb-8">
+                  <Brain className="text-orange-600 w-7 h-7" />
+                  <h4 className="text-xl font-black uppercase tracking-widest text-slate-800 italic">ตรรกะการตัดสินใจ</h4>
+                </div>
+                <p className="text-slate-600 text-lg leading-relaxed">{topType.decision_logic}</p>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-4 mb-8">
+                  <ShieldCheck className="text-orange-600 w-7 h-7" />
+                  <h4 className="text-xl font-black uppercase tracking-widest text-slate-800 italic">การรับมือวิกฤต</h4>
+                </div>
+                <p className="text-slate-600 text-lg leading-relaxed">{topType.crisis_resilience}</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 p-12 rounded-[4rem] shadow-2xl text-white relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-orange-600/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-1000"></div>
+              <div className="flex items-center gap-4 mb-8 text-orange-400">
+                <Users className="w-7 h-7" />
+                <h4 className="text-xl font-black uppercase tracking-widest italic">กลยุทธ์การบริหารบุคคล (HR Insight)</h4>
+              </div>
+              <p className="text-slate-200 text-xl leading-relaxed font-medium">{topType.hr_fit}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* --- Blind Spots & Mastery Section --- */}
+        <div className="grid lg:grid-cols-2 gap-10 mb-20">
+          <div className="bg-orange-50 p-14 rounded-[4.5rem] border-2 border-orange-100 relative overflow-hidden shadow-lg">
+            <AlertTriangle className="absolute -top-12 -right-12 w-56 h-56 text-orange-600 opacity-10" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-4 mb-10">
+                <AlertTriangle className="text-orange-600 w-8 h-8" />
+                <h4 className="text-3xl font-black text-orange-900 tracking-tight">Executive Blind Spots (จุดบอด)</h4>
+              </div>
+              <p className="text-orange-800 text-xl leading-relaxed font-bold italic">"{topType.blind_spots}"</p>
+            </div>
+          </div>
+
+          <div className="bg-orange-600 p-14 rounded-[4.5rem] shadow-2xl relative overflow-hidden">
+            <Lightbulb className="absolute -top-12 -right-12 w-56 h-56 text-white opacity-10" />
+            <div className="relative z-10 text-white">
+              <div className="flex items-center gap-4 mb-10">
+                <Target className="text-orange-200 w-8 h-8" />
+                <h4 className="text-3xl font-black tracking-tight text-white">Path to Mastery (แนวทางสู่ความสำเร็จ)</h4>
+              </div>
+              <p className="text-orange-50 text-xl leading-relaxed font-black italic">"{topType.mastery_path}"</p>
+            </div>
+          </div>
+        </div>
+
+        {/* --- History Evolution --- */}
+        <div className="bg-white p-14 rounded-[4.5rem] shadow-xl border border-orange-50 mb-20">
+          <div className="flex items-center justify-between mb-12">
+            <div>
+              <h4 className="text-3xl font-black text-slate-900 tracking-tighter">วิวัฒนาการทางศักยภาพ (Evolution Tracker)</h4>
+              <p className="text-slate-400 text-sm mt-1 uppercase tracking-widest font-black italic">Historical Performance Analysis</p>
+            </div>
+          </div>
+          <div className="h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={history.slice().reverse().map(h => ({ date: h.date, score: Math.max(...Object.values(h.scores)) }))}>
+                <defs>
+                  <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ea580c" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#ea580c" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 800 }} />
+                <Tooltip contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }} />
+                <Area type="monotone" dataKey="score" stroke="#ea580c" strokeWidth={5} fillOpacity={1} fill="url(#colorScore)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="text-center pb-24 no-print border-t border-orange-100 pt-20">
+            <div className="flex justify-center items-center gap-4 mb-6">
+                <hr className="w-16 border-orange-200" />
+                <p className="text-orange-300 text-xs font-black uppercase tracking-[0.4em] italic">Platinum Certification by ภก.จีรภัทร พลายงาม</p>
+                <hr className="w-16 border-orange-200" />
+            </div>
+          <button onClick={() => setView('landing')} className="text-slate-400 font-black hover:text-orange-600 transition uppercase tracking-widest text-xs">Back to Home</button>
+        </div>
+      </div>
+    );
+  };
+
+  const LibraryView = () => (
+    <div className="max-w-7xl mx-auto py-12 px-6 animate-fade-in no-print">
+      <div className="text-center mb-24 max-w-4xl mx-auto">
+        <h2 className="text-6xl font-black text-slate-900 mb-6 tracking-tighter uppercase italic">Master Library <span className="text-orange-600">v8.0</span></h2>
+        <p className="text-slate-500 text-xl font-medium">รวมโครงสร้างทางจิตวิทยาและรูปแบบการบริหารของนพลักษณ์ทั้ง 9 ในธีม Orange Energy</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
+        {Object.entries(TYPE_DETAILS).map(([id, d]) => (
+          <div key={id} className="bg-white rounded-[3.5rem] overflow-hidden shadow-lg border border-orange-50 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group flex flex-col">
+            <div className="h-72 overflow-hidden relative">
+              <img src={d.image} className="w-full h-full object-cover transition duration-1000 group-hover:scale-105" alt={d.name} />
+              <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-transparent transition duration-500"></div>
+              <div className="absolute top-8 left-8 w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-orange-600 font-black text-3xl shadow-2xl rotate-3 group-hover:rotate-0 transition-transform">{id}</div>
+            </div>
+            <div className="p-10 flex-1 flex flex-col">
+              <h3 className="text-2xl font-black text-slate-900 mb-2">{d.name}</h3>
+              <p className="text-orange-600 font-black text-xs uppercase tracking-widest mb-6 italic">{d.th}</p>
+              <p className="text-slate-500 text-sm leading-relaxed mb-8 flex-1 italic font-medium">"{d.core_motivation}"</p>
+              <div className="pt-8 border-t border-orange-50">
+                <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-3 italic">HR Core Strategy</p>
+                <p className="text-xs font-bold text-slate-700 leading-relaxed">{d.hr_fit.slice(0, 100)}...</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-20 text-center">
+        <button onClick={() => setView('landing')} className="bg-slate-900 text-white px-16 py-6 rounded-3xl font-black text-xl shadow-2xl hover:bg-orange-600 transition-all">กลับสู่หน้าหลัก</button>
+      </div>
+    </div>
+  );
+
+  // --- PRINT LAYOUT (INTERNAL) ---
+  const PrintOnlyReport = () => {
+    if (!history[0]) return null;
+    const latest = history[0];
+    const sorted = Object.entries(latest.scores).sort((a,b) => b[1] - a[1]);
+    const topType = TYPE_DETAILS[sorted[0][0]];
+    return (
+      <div className="print-only p-12 bg-white text-slate-900 text-sm">
+        <div className="border-b-8 border-orange-600 pb-10 mb-12 flex justify-between items-end">
+          <div>
+            <h1 className="text-5xl font-black uppercase tracking-tighter italic">Strategic Talent Analysis</h1>
+            <p className="font-bold text-orange-600 mt-2 text-2xl uppercase tracking-widest underline decoration-4">ENNEAMASTERY ORANGE v8.0</p>
+          </div>
+          <div className="text-right text-slate-400 font-bold">
+            <p className="text-slate-900">DATE: {latest.date}</p>
+            <p>ISSUED BY: {AUTHOR_NAME}</p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-10 mb-12">
+          <div className="border-4 border-orange-600 p-10 rounded-3xl">
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] mb-4 text-orange-600">Primary Identity Profile</p>
+            <h3 className="text-4xl font-black">Type {sorted[0][0]}: {topType.name}</h3>
+            <p className="text-2xl font-bold text-orange-800 mt-2">({topType.th})</p>
+          </div>
+          <div className="bg-orange-50 p-10 rounded-3xl flex items-center italic text-orange-900 font-bold text-lg leading-relaxed">
+            "{topType.core_motivation}"
+          </div>
+        </div>
+
+        <div className="space-y-10">
+          <section className="border-l-8 border-orange-600 pl-8">
+            <h4 className="font-black text-xl uppercase tracking-widest mb-4 italic text-orange-700">1. ตรรกะการตัดสินใจเชิงกลยุทธ์</h4>
+            <p className="text-lg leading-relaxed">{topType.decision_logic}</p>
+          </section>
+          <section className="border-l-8 border-orange-600 pl-8">
+            <h4 className="font-black text-xl uppercase tracking-widest mb-4 italic text-orange-700">2. ภาวะผู้นำ (Leadership Style)</h4>
+            <p className="text-lg leading-relaxed">{topType.leadership}</p>
+          </section>
+          <section className="border-l-8 border-orange-600 pl-8">
+            <h4 className="font-black text-xl uppercase tracking-widest mb-4 italic text-orange-700">3. การรับมือภาวะวิกฤตและความกดดัน</h4>
+            <p className="text-lg leading-relaxed">{topType.crisis_resilience}</p>
+          </section>
+          <section className="border-l-8 border-orange-600 pl-8">
+            <h4 className="font-black text-xl uppercase tracking-widest mb-4 italic text-orange-700">4. กลยุทธ์การบริหารคน (HR Insight)</h4>
+            <p className="text-lg leading-relaxed">{topType.hr_fit}</p>
+          </section>
+        </div>
+
+        <div className="mt-24 pt-10 border-t-2 border-orange-100 text-center italic text-orange-300 font-black uppercase tracking-[0.5em]">
+          Strategic Enneagram Analytics Platform v8.0 • ภก.จีรภัทร พลายงาม
+        </div>
+      </div>
+    );
+  };
+
+  // --- RENDER CONTROL ---
+  if (loading) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+      <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
+      <p className="mt-6 text-orange-600 font-black uppercase tracking-[0.4em] text-xs">Generating Orange Energy Matrix...</p>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-white selection:bg-orange-100">
+      <PrintOnlyReport />
+      <Nav />
+      <main className="no-print">
+        {view === 'landing' && <LandingView />}
+        {view === 'quiz' && <QuizView />}
+        {view === 'results' && <ResultView />}
+        {view === 'library' && <LibraryView />}
+      </main>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap');
+        body { font-family: 'Sarabun', sans-serif; overflow-x: hidden; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes float { 
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .animate-fade-in { animation: fadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+        .animate-slide-up { animation: slideUp 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+        .animate-float { animation: float 5s ease-in-out infinite; }
+        .delay-700 { animation-delay: 0.7s; }
+        .delay-150 { animation-delay: 0.15s; }
+        
+        @media print { .no-print { display: none !important; } }
+      `}} />
+    </div>
+  );
+}
