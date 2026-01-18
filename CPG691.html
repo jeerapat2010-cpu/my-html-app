@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TTM CPG Assistant Plus (Beta)</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f3f4f6;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card-hover:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- ICONS ---
+        const Icons = {
+            Stethoscope: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>,
+            Activity: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+            Pill: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>,
+            AlertCircle: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>,
+            ChevronRight: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="9 18 15 12 9 6"/></svg>,
+            Home: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+            UserCheck: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>,
+            FileText: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>,
+            Thermometer: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>,
+            Bone: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 10c.7-.7 1.69 0 2.5 0a2.5 2.5 0 1 0 0-5 .5.5 0 0 1-.5-.5 2.5 2.5 0 1 0-5 0c0 .81.7 1.8 0 2.5l-7 7c-.7.7-1.69 0-2.5 0a2.5 2.5 0 0 0 0 5c.28 0 .5.22.5.5a2.5 2.5 0 1 0 5 0c0-.81-.7-1.8 0-2.5Z"/></svg>,
+            Utensils: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>,
+            Droplets: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.35"/></svg>,
+            Zap: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+            ArrowLeft: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
+            Info: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="16" y2="12"/><line x1="12" x2="12.01" y1="8" y2="8"/></svg>,
+            Search: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>,
+            RefreshCw: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>,
+            ShieldCheck: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>,
+            HeartPulse: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg>,
+            ArrowDown: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>,
+            CheckCircle: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+            XCircle: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>,
+            Calendar: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+            AlertTriangle: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+            ExternalLink: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>,
+            Package: ({size=24, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22v-9"/></svg>
+        };
+
+        // --- SCREENING CRITERIA ---
+        const screeningCriteria = {
+            inclusion: [
+                "อายุ 18 ปีขึ้นไป และ รู้สึกตัวดี",
+                "สัญญาณชีพคงที่ (BT < 37.5°C, BP < 160/100 mmHg)",
+                "โรคประจำตัวไม่รุนแรง / อาการคงที่ (Stable)",
+                "ไม่มีภาวะติดเชื้อรุนแรง หรือ แผลติดเชื้อลุกลาม",
+                "ไม่มีประวัติแพ้ยาสมุนไพรที่ใช้รักษา"
+            ],
+            exclusion: [
+                "อายุต่ำกว่า 18 ปี หรือ หญิงตั้งครรภ์/ให้นมบุตร (บางตำรับ)",
+                "สัญญาณชีพไม่คงที่ / ไข้สูง > 38.5°C",
+                "โรคประจำตัวกำเริบรุนแรง (Uncontrolled DM/HT)",
+                "มีภาวะฉุกเฉินทางอายุรกรรม / ศัลยกรรม",
+                "โรคทางจิตเวชที่ควบคุมไม่ได้ / ก้าวร้าว"
+            ],
+            redFlags: [
+                "ปวดท้องรุนแรง กดเจ็บเกร็งท้อง (Acute Abdomen)",
+                "อาเจียนเป็นเลือด หรือ ถ่ายดำ/ถ่ายเป็นเลือด",
+                "หายใจหอบเหนื่อย แน่นหน้าอก ร้าวไปแขน/กราม",
+                "แขนขาอ่อนแรง ปากเบี้ยว พูดไม่ชัด (Stroke Signs)",
+                "ผื่นแพ้รุนแรง ตาบวม ปากบวม หายใจไม่ออก"
+            ]
+        };
+
+        // --- CPG DATA ---
+        const cpgData = {
+            musculoskeletal: {
+                title: "ระบบกล้ามเนื้อและกระดูก",
+                icon: <Icons.Bone className="w-6 h-6" />,
+                color: "bg-orange-100 text-orange-700",
+                symptoms: [
+                    {
+                        id: "muscle_pain_wind",
+                        label: "ปวดกล้ามเนื้อ (ออฟฟิศซินโดรม / ลมในเส้น)",
+                        diagnosis: "ลมปลายปัตฆาต / ลมจับโปง",
+                        desc: "ปวดตึงคอ บ่า ไหล่ ร้าวลงแขน หรือปวดหลังร้าวลงขา มีจุดกดเจ็บชัดเจน (Trigger point) สัมพันธ์กับการทำงานท่าเดิมนานๆ",
+                        drugs: ["sahastara", "tao_wan_priang"],
+                        flow: {
+                            prescription: "สั่งจ่ายยาให้ผู้ป่วย 1 เดือน",
+                            followUp: "ติดตามอาการ สัปดาห์ละ 2 ครั้ง (4 สัปดาห์) ผ่าน Telemedicine",
+                            success: "อาการปวดลดลง/องศาการเคลื่อนไหวดีขึ้น -> จำหน่าย",
+                            fail: "อาการปวดรุนแรงขึ้น/ชามากขึ้น -> ส่งต่อแพทย์แผนปัจจุบัน/กายภาพบำบัด"
+                        }
+                    },
+                    {
+                        id: "muscle_stiffness_constipation",
+                        label: "ปวดตึง เส้นจม ท้องผูก (กษัยเส้น)",
+                        diagnosis: "กษัยเส้น / เถาดาน",
+                        desc: "ปวดเมื่อยตามร่างกาย เส้นเอ็นแข็งตึง ร่วมกับมีอาการท้องผูก ถ่ายยาก หรือถ่ายไม่สุด เป็นเรื้อรัง",
+                        drugs: ["thoranee_santha_kart"],
+                        flow: {
+                            prescription: "สั่งจ่ายยาให้ผู้ป่วย 1 เดือน (ทานก่อนอาหารเช้า/ก่อนนอน)",
+                            followUp: "ติดตามอาการ สัปดาห์ละ 2 ครั้ง (4 สัปดาห์)",
+                            success: "อาการปวดลดลง และ ขับถ่ายปกติ -> จำหน่าย",
+                            fail: "ท้องผูกเรื้อรังไม่ดีขึ้น/ปวดท้องรุนแรง -> ส่งต่อ"
+                        }
+                    },
+                    {
+                        id: "muscle_external_pain",
+                        label: "ปวดบวม ฟกช้ำ เคล็ดขัดยอก (ภายนอก)",
+                        diagnosis: "ลมจับโปงแห้งเข่า / ข้อเท้าแพลง",
+                        desc: "มีอาการปวด บวม แดง ร้อน บริเวณข้อต่อหรือกล้ามเนื้อ จากการกระแทก หรืออักเสบเฉียบพลัน",
+                        drugs: ["phlai_oil", "capsicum_gel", "herbal_compress"],
+                        flow: {
+                            prescription: "จ่ายยาใช้ภายนอกตามอาการ",
+                            followUp: "ติดตามอาการเมื่อยาหมด หรือ อาการไม่ทุเลาใน 3 วัน",
+                            success: "ยุบบวม หายปวด -> จำหน่าย",
+                            fail: "ปวดบวมแดงร้อนมากขึ้น (ติดเชื้อ) -> หยุดยาและส่งต่อ"
+                        }
+                    }
+                ]
+            },
+            respiratory: {
+                title: "ระบบทางเดินหายใจ",
+                icon: <Icons.Thermometer className="w-6 h-6" />,
+                color: "bg-blue-100 text-blue-700",
+                symptoms: [
+                    {
+                        id: "respiratory_viral",
+                        label: "ไข้หวัด / เจ็บคอ (Viral Infection)",
+                        diagnosis: "ไข้หวัดน้อย / ไข้หวัดใหญ่",
+                        desc: "มีไข้ต่ำๆ หรือไข้สูง ครั่นเนื้อครั่นตัว คัดจมูก น้ำมูกไหล เจ็บคอ (คอแดงเล็กน้อย ไม่มีจุดหนอง)",
+                        drugs: ["fa_thalai_chon", "chantaleela"],
+                        flow: {
+                            prescription: "สั่งจ่ายยาตามอาการ (ฟ้าทะลายโจร ไม่เกิน 5 วัน)",
+                            followUp: "ติดตามอาการทุกวัน (หากไข้สูงเกิน 3 วันต้องส่งต่อ)",
+                            success: "ไข้ลดลงภายใน 3 วัน/อาการทั่วไปดีขึ้น -> จำหน่าย",
+                            fail: "ไข้สูงลอย/หายใจหอบ/เจ็บหน้าอก -> ส่งต่อโรงพยาบาลทันที"
+                        }
+                    },
+                    {
+                        id: "cough_phlegm",
+                        label: "ไอ มีเสมหะ (Cough)",
+                        diagnosis: "ไอ (Cough)",
+                        desc: "ไอแห้ง หรือไอมีเสมหะขาว/ใส ระคายคอ คันคอ",
+                        drugs: ["prasa_ma_waeng", "amuekkha_watee", "ma_kham_pom"],
+                        flow: {
+                            prescription: "สั่งจ่ายยาบรรเทาอาการไอ จิบเมื่อมีอาการ",
+                            followUp: "ติดตามอาการ 1 สัปดาห์",
+                            success: "อาการไอหาย -> จำหน่าย",
+                            fail: "ไอเรื้อรังเกิน 2 สัปดาห์/ไอเป็นเลือด/น้ำหนักลด -> ส่งต่อคัดกรอง TB/CA"
+                        }
+                    }
+                ]
+            },
+            gastrointestinal: {
+                title: "ระบบทางเดินอาหาร",
+                icon: <Icons.Utensils className="w-6 h-6" />,
+                color: "bg-green-100 text-green-700",
+                symptoms: [
+                    {
+                        id: "dyspepsia",
+                        label: "ท้องอืด ท้องเฟ้อ (Dyspepsia)",
+                        diagnosis: "ธาตุพิการ",
+                        desc: "แน่นจุกเสียด ลมในท้องเยอะ เรอเปรี้ยว ทานอาหารแล้วแน่นท้องบริเวณลิ้นปี่",
+                        drugs: ["khamin_chan", "that_opchoei", "ginger"],
+                        flow: {
+                            prescription: "สั่งจ่ายยาขับลม 1-2 สัปดาห์",
+                            followUp: "ติดตามอาการ 1 สัปดาห์",
+                            success: "สบายท้อง/ไม่จุกเสียด -> จำหน่าย",
+                            fail: "ปวดท้องรุนแรง/น้ำหนักลด/อาเจียนต่อเนื่อง -> ส่งต่อ"
+                        }
+                    },
+                    {
+                        id: "diarrhea",
+                        label: "ท้องเสีย ไม่ติดเชื้อ (Diarrhea)",
+                        diagnosis: "ธาตุพิการ / ท้องเดิน",
+                        desc: "ถ่ายเหลวเกิน 3 ครั้ง/วัน ไม่มีมูกเลือด ไม่มีไข้สูง อ่อนเพลียเล็กน้อย",
+                        drugs: ["lueang_pid_samut", "that_bunchop"],
+                        flow: {
+                            prescription: "สั่งจ่ายยาหยุดถ่าย/ยาธาตุบรรจบ (ทานเฉพาะเมื่อมีอาการ)",
+                            followUp: "ติดตามอาการภายใน 24 ชม.",
+                            success: "หยุดถ่าย/อุจจาระเป็นก้อน -> จำหน่าย",
+                            fail: "ถ่ายเป็นมูกเลือด/ไข้สูง/ช็อก -> ส่งต่อ ER ทันที"
+                        }
+                    },
+                    {
+                        id: "constipation",
+                        label: "ท้องผูก (Constipation)",
+                        diagnosis: "ท้องผูก",
+                        desc: "ถ่ายอุจจาระน้อยกว่า 3 ครั้ง/สัปดาห์ อุจจาระแข็ง ต้องออกแรงเบ่ง",
+                        drugs: ["chumhet_thet", "thoranee_santha_kart", "ma_kham_khaek"],
+                        flow: {
+                            prescription: "สั่งจ่ายยาระบาย (ระยะสั้น 3-5 วัน) + ปรับพฤติกรรม",
+                            followUp: "ติดตามอาการ 1 สัปดาห์",
+                            success: "ขับถ่ายได้เองสม่ำเสมอ -> จำหน่าย",
+                            fail: "ยังไม่ถ่าย/ปวดท้องรุนแรง/ท้องอืดมาก -> ส่งต่อ"
+                        }
+                    }
+                ]
+            },
+            skin: {
+                title: "ระบบผิวหนังและแผล",
+                icon: <Icons.Droplets className="w-6 h-6" />,
+                color: "bg-pink-100 text-pink-700",
+                symptoms: [
+                    {
+                        id: "herpes",
+                        label: "เริม / งูสวัด (Herpes Zoster)",
+                        diagnosis: "เริม / งูสวัด",
+                        desc: "ตุ่มน้ำใสขึ้นเป็นกลุ่ม บนฐานสีแดง ปวดแสบปวดร้อน ตามแนวเส้นประสาท",
+                        drugs: ["phaya_yo_cream"],
+                        flow: {
+                            prescription: "สั่งจ่ายยาครีมพญายอ ทาวันละ 5 ครั้ง",
+                            followUp: "ติดตามผลทุก 3 วัน",
+                            success: "ตุ่มแห้งตกสะเก็ด/ไม่ปวด -> สิ้นสุดการรักษา",
+                            fail: "ตุ่มลุกลามเข้าตา/ติดเชื้อแบคทีเรียซ้ำซ้อน -> ส่งต่อจักษุแพทย์/แพทย์ผิวหนัง"
+                        }
+                    },
+                    {
+                        id: "fungal",
+                        label: "กลาก เกลื้อน (Fungal Infection)",
+                        diagnosis: "โรคผิวหนังจากเชื้อรา",
+                        desc: "ผื่นวงแดง ขอบชัด มีขุย คัน หรือเป็นดวงขาวๆ (เกลื้อน) บริเวณร่มผ้า/เท้า",
+                        drugs: ["thong_pan_chang"],
+                        flow: {
+                            prescription: "สั่งจ่ายยาทิงเจอร์ทองพันชั่ง ทาเช้า-เย็น",
+                            followUp: "ทาต่อเนื่องจนหาย + 2 สัปดาห์",
+                            success: "ผื่นหายสนิท -> จำหน่าย",
+                            fail: "ผื่นลุกลาม/ผิวหนังอักเสบระคายเคือง -> ส่งต่อ"
+                        }
+                    }
+                ]
+            },
+            withdrawal: {
+                title: "ถอนพิษ / ยาเสพติด",
+                icon: <Icons.Zap className="w-6 h-6" />,
+                color: "bg-purple-100 text-purple-700",
+                symptoms: [
+                    {
+                        id: "alcohol_withdraw",
+                        label: "ถอนพิษสุรา / เมาค้าง",
+                        diagnosis: "ถอนพิษเบื่อเมา",
+                        desc: "คลื่นไส้ อาเจียน ปวดศีรษะ มือสั่น หงุดหงิด หลังจากหยุดดื่มสุรา",
+                        drugs: ["rang_jued"],
+                        flow: {
+                            prescription: "สั่งจ่ายรางจืด ชงดื่ม/แคปซูล 3-7 วัน",
+                            followUp: "ติดตามอาการทุกวัน",
+                            success: "อาการถอนพิษลดลง/สดชื่นขึ้น -> จำหน่าย",
+                            fail: "ชัก/สับสน/ประสาทหลอน (Delirium Tremens) -> ส่งต่อ ER ทันที"
+                        }
+                    }
+                ]
+            }
+        };
+
+        // --- UPDATED DRUG DATABASE (Side Effects + Min/Max/Cycle/Rate) ---
+        const drugDatabase = {
+            sahastara: {
+                name: "ตำรับยาสหัศธารา",
+                prop: "ขับลมในเส้น แก้ปวดกล้ามเนื้อ (ออฟฟิศซินโดรม)",
+                substitute: "NSAIDs (ยาแก้ปวดต้านการอักเสบ)",
+                dose: "รับประทานครั้งละ 1 - 1.5 กรัม วันละ 3 ครั้ง หลังอาหาร",
+                caution: "ห้ามใช้ในหญิงตั้งครรภ์/ผู้มีไข้, ระวังในผู้ป่วยความดันโลหิตสูง/โรคหัวใจ",
+                sideEffect: "อาจมีอาการร้อนวูบวาบ, แสบร้อนยอดอก, ระคายเคืองทางเดินอาหาร, ท้องผูก หรือปัสสาวะบ่อย",
+                rate: "150 point", min: 1, max: 2, unit: "ขวด", cycle: 30
+            },
+            tao_wan_priang: {
+                name: "ยาเถาวัลย์เปรียง",
+                prop: "บรรเทาอาการปวดกล้ามเนื้อ ลดการอักเสบ",
+                substitute: "NSAIDs (เช่น Diclofenac, Ibuprofen)",
+                dose: "รับประทานครั้งละ 0.5 - 1 กรัม วันละ 3 ครั้ง หลังอาหารทันที",
+                caution: "ระวังในผู้ป่วยแผลเปื่อยเพปติก",
+                sideEffect: "ระคายเคืองกระเพาะอาหาร, ปวดท้อง, คอแห้ง, หรืออาจมีอาการใจสั่น (พบน้อย)",
+                rate: "120 point", min: 1, max: 3, unit: "ขวด", cycle: 30
+            },
+            thamlai_phrasumeru: {
+                name: "ยาทำลายพระสุเมรุ",
+                prop: "แก้ลมในเส้น บรรเทาอาการปวดเมื่อย ชา (อัมพฤกษ์/อัมพาต)",
+                substitute: "ยาแก้ปวด/ยาคลายกล้ามเนื้อ (เสริมการฟื้นฟู)",
+                dose: "ตามแพทย์สั่ง (ยานอันตราย)",
+                caution: "ยาอันตราย ห้ามใช้ในหญิงตั้งครรภ์/ให้นมบุตร/เด็ก",
+                sideEffect: "ปากแห้ง คอแห้ง, ท้องผูก, ใจสั่น, นอนไม่หลับ (หากใช้เกินขนาด)",
+                rate: "เบิกได้เฉพาะผู้ป่วยใน", min: 1, max: 2, unit: "กระปุก", cycle: 15
+            },
+            thoranee_santha_kart: {
+                name: "ตำรับยาธรณีสัณฑฆาต",
+                prop: "แก้กษัยเส้น แก้เถาดาน ท้องผูก",
+                substitute: "Laxatives (ยาระบาย)",
+                dose: "รับประทานครั้งละ 0.5 - 1 กรัม วันละ 1 ครั้ง ก่อนอาหารเช้าหรือก่อนนอน",
+                caution: "ห้ามใช้ในหญิงตั้งครรภ์/ผู้มีไข้, ระวังการใช้ร่วมกับ Warfarin",
+                sideEffect: "ปวดมวนท้อง, ถ่ายเหลว, อ่อนเพลีย (หากถ่ายมากเกินไป)",
+                rate: "90 point", min: 1, max: 2, unit: "ขวด", cycle: 30
+            },
+            phlai_oil: {
+                name: "น้ำมันไพล / ครีมไพล",
+                prop: "บรรเทาอาการบวม ฟกช้ำ เคล็ดยอก",
+                substitute: "Topical NSAIDs (เช่น Diclofenac Gel)",
+                dose: "ทาและถูเบาๆ บริเวณที่มีอาการ วันละ 2-3 ครั้ง",
+                caution: "ห้ามทาบริเวณขอบตา เนื้อเยื่ออ่อน หรือแผลเปิด",
+                sideEffect: "ผื่นแดง คัน หรือแพ้สัมผัส (Contact dermatitis) ในผู้ที่แพ้สมุนไพร",
+                rate: "ไม่เกิน 65 บาท", min: 1, max: 2, unit: "หลอด/ขวด", cycle: 30
+            },
+            capsicum_gel: {
+                name: "ยาพริก (Capsicum)",
+                prop: "บรรเทาอาการปวดข้อ ปวดกล้ามเนื้อ",
+                substitute: "Topical Analgesics (Counterpain)",
+                dose: "ทาบริเวณที่ปวดบางๆ วันละ 2-3 ครั้ง",
+                caution: "ผิวหนังอาจแดง แสบร้อน, ห้ามทาผิวบอบบาง",
+                sideEffect: "แสบร้อนผิวหนังรุนแรง, ผิวหนังแดงอักเสบ, ไอจาม (หากสูดดม)",
+                rate: "100 point", min: 1, max: 2, unit: "หลอด", cycle: 30
+            },
+            herbal_compress: {
+                name: "ยาประคบสมุนไพร",
+                prop: "ลดอาการปวด คลายกล้ามเนื้อ",
+                substitute: "Physical Therapy (Heat Pack)",
+                dose: "นึ่งให้ร้อน ประคบขณะอุ่น วันละ 1-2 ครั้ง",
+                caution: "ห้ามประคบบริเวณอักเสบเฉียบพลัน (บวมแดงร้อน) ใน 24 ชม. แรก",
+                sideEffect: "ผิวหนังพุพองจากความร้อน (Burn), ผื่นคันจากการแพ้สมุนไพรในลูกประคบ",
+                rate: "200 point", min: 1, max: 5, unit: "ลูก", cycle: 7
+            },
+            prasa_ma_waeng: {
+                name: "ยาประสะมะแว้ง",
+                prop: "บรรเทาอาการไอ ขับเสมหะ",
+                substitute: "Expectorants / Antitussives",
+                dose: "ผู้ใหญ่ 1-1.4 กรัม (ละลายน้ำมะนาวแทรกเกลือ) เมื่อมีอาการ",
+                caution: "ไม่ควรใช้ติดต่อกันเกิน 15 วัน, ระวังเกลือในผู้ป่วยโรคไต",
+                sideEffect: "อาจระคายเคืองคอเพิ่มขึ้นในบางราย",
+                rate: "60 point", min: 1, max: 2, unit: "ซอง/ขวด", cycle: 7
+            },
+            amuekkha_watee: {
+                name: "ยาอำมฤควาที",
+                prop: "บรรเทาอาการไอ ขับเสมหะ",
+                substitute: "Expectorants (ยาขับเสมหะ)",
+                dose: "ผู้ใหญ่ 1 กรัม (ละลายน้ำกระสายยา) เมื่อมีอาการ",
+                caution: "ระวังเกลือในผู้ป่วยจำกัดโซเดียม",
+                sideEffect: "ปากแห้ง คอแห้ง (เล็กน้อย)",
+                rate: "60 point", min: 1, max: 2, unit: "ขวด", cycle: 7
+            },
+            ma_kham_pom: {
+                name: "ยาแก้ไอผสมมะขามป้อม",
+                prop: "บรรเทาอาการไอ ชุ่มคอ",
+                substitute: "Cough Syrup",
+                dose: "จิบเมื่อมีอาการ ทุก 4 ชั่วโมง",
+                caution: "ระวังในผู้ป่วยเบาหวาน (ถ้าสูตรมีน้ำตาล)",
+                sideEffect: "ถ่ายเหลว หรือระบายท้องอ่อนๆ (จากฤทธิ์มะขามป้อม)",
+                rate: "45 บาท", min: 1, max: 2, unit: "ขวด", cycle: 7
+            },
+            fa_thalai_chon: {
+                name: "ยาฟ้าทะลายโจร",
+                prop: "บรรเทาเจ็บคอ (ไวรัส/โควิด), หวัด, ไข้",
+                substitute: "Paracetamol, Anti-viral",
+                dose: "1.5 - 3 กรัม วันละ 4 ครั้ง หลังอาหารและก่อนนอน",
+                caution: "ห้ามใช้ในหญิงตั้งครรภ์/ให้นมบุตร",
+                sideEffect: "เบื่ออาหาร, คลื่นไส้ อาเจียน, ปวดท้อง, แขนขาอ่อนแรง (หากใช้นาน), อาจเกิดปฏิกิริยาแพ้รุนแรง (ผื่นลมพิษ, หายใจลำบาก)",
+                rate: "120 point", min: 1, max: 2, unit: "กระปุก", cycle: 7
+            },
+            chantaleela: {
+                name: "ยาจันทลีลา",
+                prop: "แก้ไข้ตัวร้อน ไข้เปลี่ยนฤดู",
+                substitute: "Paracetamol (ยาพาราเซตามอล)",
+                dose: "1-2 กรัม ทุก 3-4 ชั่วโมง เมื่อมีอาการ",
+                caution: "ถ้าใช้เกิน 3 วันไม่ดีขึ้นควรพบแพทย์",
+                sideEffect: "ไม่ค่อยพบผลข้างเคียงร้ายแรง (อาจมีคลื่นไส้ในบางราย)",
+                rate: "80 point", min: 1, max: 2, unit: "แผง/ขวด", cycle: 7
+            },
+            lueang_pid_samut: {
+                name: "ยาเหลืองปิดสมุทร",
+                prop: "บรรเทาท้องเสีย (ไม่ติดเชื้อ)",
+                substitute: "Antidiarrheal (ยาหยุดถ่าย)",
+                dose: "1 กรัม ทุก 3-5 ชั่วโมง เมื่อมีอาการ",
+                caution: "ห้ามใช้เกิน 1 วันถ้าไม่ดีขึ้น, ห้ามใช้ในท้องผูก/ลำไส้อุดตัน",
+                sideEffect: "ท้องผูก (หากใช้เกินขนาด)",
+                rate: "60 point", min: 1, max: 1, unit: "ขวด", cycle: 7
+            },
+            that_bunchop: {
+                name: "ยาธาตุบรรจบ",
+                prop: "บรรเทาท้องเสีย (ไม่ติดเชื้อ), ท้องอืดเฟ้อ",
+                substitute: "Carminative / Antidiarrheal",
+                dose: "1 กรัม วันละ 3 ครั้ง ก่อนอาหาร",
+                caution: "ห้ามใช้ในหญิงตั้งครรภ์",
+                sideEffect: "เรอเหม็นยา (กลิ่นสมุนไพรแรง)",
+                rate: "60 point", min: 1, max: 2, unit: "ขวด", cycle: 7
+            },
+            khamin_chan: {
+                name: "ยาขมิ้นชัน",
+                prop: "บรรเทาท้องอืด แน่นจุกเสียด",
+                substitute: "Omeprazole (ยาลดกรด), Simethicone",
+                dose: "500 มก. - 1 กรัม วันละ 4 ครั้ง หลังอาหารและก่อนนอน",
+                caution: "ห้ามใช้ในผู้ท่อน้ำดีอุดตัน, ระวังในนิ่วถุงน้ำดี",
+                sideEffect: "คลื่นไส้, ท้องเสีย, ปวดหัว, นอนไม่หลับ (พบน้อย)",
+                rate: "100 point", min: 1, max: 2, unit: "ขวด", cycle: 30
+            },
+            ginger: {
+                name: "ยาขิง",
+                prop: "ขับลม แก้ท้องอืด, แก้คลื่นไส้ เมารถ",
+                substitute: "Dimenhydrinate, Simethicone",
+                dose: "2-4 กรัม/วัน หรือตามขนาดบรรจุ",
+                caution: "ระวังในผู้ป่วยนิ่วถุงน้ำดี, ระวังใช้ร่วมกับยาละลายลิ่มเลือด",
+                sideEffect: "แสบร้อนยอดอก (Heartburn), ระคายเคืองกระเพาะอาหาร",
+                rate: "100 point", min: 1, max: 2, unit: "ขวด", cycle: 30
+            },
+            that_opchoei: {
+                name: "ยาธาตุอบเชย",
+                prop: "แก้ท้องอืด ท้องเฟ้อ ขับลม",
+                substitute: "Antiflatulence (ยาขับลม)",
+                dose: "1 กรัม วันละ 3 ครั้ง ก่อนอาหาร",
+                caution: "ห้ามใช้ในหญิงตั้งครรภ์ ผู้มีไข้",
+                sideEffect: "ร้อนวูบวาบ, ระคายเคืองกระเพาะอาหาร (หากทานตอนท้องว่าง)",
+                rate: "80 point", min: 1, max: 2, unit: "ขวด", cycle: 15
+            },
+            chumhet_thet: {
+                name: "ยาชุมเห็ดเทศ",
+                prop: "บรรเทาอาการท้องผูก",
+                substitute: "Stimulant Laxatives (Bisacodyl)",
+                dose: "3-6 กรัม ชงน้ำร้อนดื่มก่อนนอน",
+                caution: "ไม่ควรใช้ติดต่อกันนาน (ลำไส้จะชินยา)",
+                sideEffect: "ปวดมวนท้อง, คลื่นไส้ อาเจียน, ถ่ายเหลวมากเกินไป, สูญเสียสมดุลเกลือแร่ (หากใช้นาน)",
+                rate: "60 point", min: 1, max: 2, unit: "ซอง", cycle: 15
+            },
+            ma_kham_khaek: {
+                name: "ยามะขามแขก",
+                prop: "บรรเทาอาการท้องผูก",
+                substitute: "Senokot / Bisacodyl",
+                dose: "2 กรัม ชงน้ำร้อนดื่มก่อนนอน",
+                caution: "ห้ามใช้ในผู้ปวดท้องไม่ทราบสาเหตุ, หญิงตั้งครรภ์",
+                sideEffect: "ปวดเกร็งท้อง (Abdominal cramping), ถ่ายเหลว, ปัสสาวะเปลี่ยนสี",
+                rate: "60 point", min: 1, max: 2, unit: "กระปุก", cycle: 15
+            },
+            phet_sangkhat: {
+                name: "ยาผสมเพชรสังฆาต",
+                prop: "บรรเทาริดสีดวงทวาร",
+                substitute: "Daflon (ยารักษาริดสีดวง)",
+                dose: "1.2 กรัม วันละ 3 ครั้ง หลังอาหาร",
+                caution: "ระวังในหญิงตั้งครรภ์/ให้นมบุตร",
+                sideEffect: "ท้องผูก, ท้องอืด, ปวดศีรษะ",
+                rate: "150 point", min: 1, max: 3, unit: "กระปุก", cycle: 30
+            },
+            phaya_yo_cream: {
+                name: "ครีมพญายอ",
+                prop: "รักษาเริม งูสวัด (ลดปวดแสบปวดร้อน)",
+                substitute: "Acyclovir Cream",
+                dose: "ทาบางๆ บริเวณที่เป็น วันละ 5 ครั้ง",
+                caution: "ใช้ภายนอกเท่านั้น",
+                sideEffect: "ระคายเคืองผิวหนังเล็กน้อย (พบน้อย)",
+                rate: "80 point", min: 1, max: 2, unit: "หลอด", cycle: 15
+            },
+            thong_pan_chang: {
+                name: "ยาทิงเจอร์ทองพันชั่ง",
+                prop: "รักษากลาก เกลื้อน น้ำกัดเท้า (เชื้อรา)",
+                substitute: "Topical Antifungals (Clotrimazole)",
+                dose: "ทาบริเวณที่มีอาการ วันละ 2 ครั้ง เช้า-เย็น",
+                caution: "ห้ามทาบริเวณผิวบอบบาง หรือแผลเปิด",
+                sideEffect: "ระคายเคืองผิวหนัง, แสบ (เนื่องจากเป็นทิงเจอร์แอลกอฮอล์)",
+                rate: "60 point", min: 1, max: 2, unit: "ขวด", cycle: 15
+            },
+            rang_jued: {
+                name: "ชารางจืด / แคปซูลรางจืด",
+                prop: "ถอนพิษเบื่อเมา",
+                substitute: "-",
+                dose: "2-3 กรัม ชงน้ำร้อน ดื่มวันละ 3 ครั้ง",
+                caution: "ระวังในผู้ป่วยเบาหวาน (น้ำตาลตก), อาจล้างฤทธิ์ยาแผนปัจจุบัน",
+                sideEffect: "ร่างกายเย็นเกินไป (มือเท้าเย็น), อ่อนเพลีย, ชาตามปลายมือปลายเท้า (หากใช้นานเกินไป)",
+                rate: "100 point", min: 1, max: 2, unit: "กระปุก", cycle: 7
+            }
+        };
+
+        // --- SUB-COMPONENTS ---
+        const MenuCard = ({ icon, title, desc, onClick }) => (
+            <button 
+                onClick={onClick}
+                className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center gap-3 card-hover w-full group hover:border-emerald-200 hover:bg-emerald-50/30 transition-all duration-300"
+            >
+                <div className="p-4 bg-gray-50 rounded-full text-emerald-600 group-hover:bg-white group-hover:text-emerald-700 shadow-sm transition-colors">
+                    {icon}
+                </div>
+                <div>
+                    <h3 className="font-bold text-gray-800 text-lg mb-1">{title}</h3>
+                    <p className="text-sm text-gray-500 font-medium group-hover:text-emerald-600 transition-colors">{desc}</p>
+                </div>
+            </button>
+        );
+
+        const Header = ({ title, onBack, subtitle }) => (
+            <div className="flex items-center gap-3 mb-4 pt-2">
+                <button onClick={onBack} className="p-2.5 bg-white shadow-sm border border-gray-100 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-all text-gray-600">
+                    <Icons.ArrowLeft size={20} />
+                </button>
+                <div>
+                    <h2 className="text-xl font-bold text-gray-800 leading-tight">{title}</h2>
+                    {subtitle && <p className="text-sm text-gray-500 font-medium">{subtitle}</p>}
+                </div>
+            </div>
+        );
+
+        const NavButton = ({ icon, label, active, onClick }) => (
+            <button 
+                onClick={onClick}
+                className={`flex flex-col items-center gap-1.5 w-full p-2 rounded-xl transition-all duration-300 ${active ? 'text-emerald-600 bg-emerald-50 scale-105 font-bold shadow-sm' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+            >
+                {icon}
+                <span className="text-[10px] font-medium tracking-wide">{label}</span>
+            </button>
+        );
+
+        const HomeView = ({ setCurrentPage }) => (
+            <div className="space-y-8 pb-24">
+                <div className="bg-gradient-to-br from-emerald-600 to-teal-800 text-white p-8 rounded-3xl shadow-xl relative overflow-hidden">
+                    <div className="relative z-10">
+                        <div className="flex justify-between items-start mb-4">
+                             <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold border border-white/20 inline-block shadow-sm">
+                                Beta Version
+                            </div>
+                        </div>
+                        <h1 className="text-3xl font-bold mb-2 tracking-tight">CPG Assistant Plus</h1>
+                        <p className="opacity-90 text-sm font-medium mb-1">กลุ่มงานแพทย์แผนไทยและแพทย์ทางเลือก <br/>สสจ.สมุทรปราการ</p>
+                        <p className="text-[10px] opacity-75 font-light mt-4 pt-4 border-t border-white/20">Created by Pharm. Jeerapat Plaingam</p>
+                    </div>
+                    <div className="absolute -right-8 -top-8 opacity-10 text-white rotate-12 transform scale-150">
+                        <Icons.ShieldCheck size={200} />
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <h3 className="font-bold text-gray-800 text-lg px-1 flex items-center gap-2">
+                        <Icons.Activity size={20} className="text-emerald-500"/>
+                        เมนูหลัก
+                    </h3>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                         <button 
+                            onClick={() => setCurrentPage('screening')}
+                            className="col-span-2 bg-white p-5 rounded-2xl shadow-sm border border-emerald-100 flex items-center gap-4 card-hover group"
+                        >
+                            <div className="bg-emerald-100 p-3 rounded-xl text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                                <Icons.UserCheck size={28} />
+                            </div>
+                            <div className="text-left flex-1">
+                                <h3 className="font-bold text-gray-800 text-lg">คัดกรองผู้ป่วย</h3>
+                                <p className="text-sm text-gray-500">Screening Criteria</p>
+                            </div>
+                            <div className="bg-gray-50 p-2 rounded-full text-gray-300 group-hover:text-emerald-500 transition-colors">
+                                <Icons.ChevronRight size={20} />
+                            </div>
+                        </button>
+
+                        <MenuCard 
+                            icon={<Icons.Stethoscope size={24} />} 
+                            title="ตรวจรักษา" 
+                            desc="Clinical Flow"
+                            onClick={() => setCurrentPage('cpg')}
+                        />
+                        <MenuCard 
+                            icon={<Icons.Pill size={24} />} 
+                            title="ค้นหายา" 
+                            desc="Drug Database"
+                            onClick={() => setCurrentPage('drugs')}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+
+        const ScreeningView = ({ setCurrentPage }) => {
+            const [screeningResult, setScreeningResult] = useState(null);
+
+            return (
+                <div className="space-y-6 pb-24">
+                    <Header title="การคัดกรองผู้ป่วย" subtitle="Screening Criteria" onBack={() => setCurrentPage('home')} />
+                    
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-100">
+                        <h3 className="font-bold text-emerald-700 mb-4 flex items-center gap-2 text-lg">
+                            <Icons.UserCheck size={24} /> เกณฑ์รับบริการ (Inclusion)
+                        </h3>
+                        <ul className="space-y-3">
+                            {screeningCriteria.inclusion.map((item, idx) => (
+                                <li key={idx} className="flex items-start gap-3 text-sm text-gray-700 bg-emerald-50/50 p-2 rounded-lg">
+                                    <div className="bg-emerald-100 text-emerald-600 rounded-full p-0.5 mt-0.5"><Icons.CheckCircle size={14} /></div>
+                                    <span className="flex-1">{item}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-red-100">
+                        <h3 className="font-bold text-red-700 mb-4 flex items-center gap-2 text-lg">
+                            <Icons.AlertCircle size={24} /> เกณฑ์ที่ไม่รับ (Exclusion)
+                        </h3>
+                        <ul className="space-y-3">
+                            {screeningCriteria.exclusion.map((item, idx) => (
+                                <li key={idx} className="flex items-start gap-3 text-sm text-gray-700 bg-red-50/50 p-2 rounded-lg">
+                                    <div className="bg-red-100 text-red-600 rounded-full p-0.5 mt-0.5"><Icons.XCircle size={14} /></div>
+                                    <span className="flex-1">{item}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-red-50 to-orange-50 p-5 rounded-2xl border border-red-200 shadow-inner">
+                        <h3 className="font-bold text-red-800 mb-3 flex items-center gap-2">
+                            <Icons.AlertTriangle size={20} className="text-red-600" /> สัญญาณอันตราย (Red Flags)
+                        </h3>
+                        <p className="text-xs text-red-600 mb-3 font-semibold bg-white/50 inline-block px-2 py-1 rounded-md">⚠ หากพบอาการเหล่านี้ ห้ามจ่ายยา และส่งต่อทันที</p>
+                        <ul className="space-y-2">
+                            {screeningCriteria.redFlags.map((item, idx) => (
+                                <li key={idx} className="flex items-start gap-2 text-sm text-red-700 font-medium pl-1 border-l-2 border-red-300">
+                                    <span className="pl-2">{item}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    <div className="sticky bottom-24 grid grid-cols-2 gap-4 bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-gray-100 z-30">
+                        <button 
+                            onClick={() => {
+                                setScreeningResult('fail');
+                                window.scrollTo(0,0);
+                            }}
+                            className="py-3.5 bg-red-100 text-red-700 rounded-xl font-bold shadow-sm hover:bg-red-200 active:scale-95 transition-all flex justify-center items-center gap-2"
+                        >
+                            <Icons.XCircle size={20} /> ไม่ผ่านเกณฑ์
+                        </button>
+                        <button 
+                            onClick={() => {
+                                setScreeningResult('pass');
+                                setCurrentPage('cpg');
+                                window.scrollTo(0,0);
+                            }}
+                            className="py-3.5 bg-emerald-600 text-white rounded-xl font-bold shadow-md hover:bg-emerald-700 active:scale-95 transition-all flex justify-center items-center gap-2"
+                        >
+                            <Icons.CheckCircle size={20} /> ผ่านเกณฑ์
+                        </button>
+                    </div>
+
+                    {screeningResult === 'fail' && (
+                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+                            <div className="bg-white p-8 rounded-3xl w-full max-w-sm text-center shadow-2xl transform transition-all scale-100">
+                                <div className="mx-auto w-20 h-20 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                                    <Icons.AlertCircle size={48} />
+                                </div>
+                                <h3 className="text-2xl font-bold text-gray-800 mb-3">ไม่ผ่านเกณฑ์</h3>
+                                <p className="text-gray-600 mb-8 leading-relaxed">ผู้ป่วยมีความเสี่ยงสูง หรือมีอาการอันตราย <br/><span className="font-bold text-red-600">แนะนำให้ส่งต่อแพทย์แผนปัจจุบันทันที</span></p>
+                                <button 
+                                    onClick={() => setScreeningResult(null)}
+                                    className="w-full py-4 bg-gray-100 rounded-2xl font-bold text-gray-700 hover:bg-gray-200 active:scale-95 transition-all"
+                                >
+                                    รับทราบ
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const CPGMenuView = ({ setCurrentPage, setSelectedSystem }) => (
+            <div className="space-y-6 pb-24">
+                <Header title="กลุ่มอาการ / ระบบโรค" subtitle="Select System" onBack={() => setCurrentPage('home')} />
+                <div className="grid grid-cols-1 gap-4">
+                    {Object.entries(cpgData).map(([key, data]) => (
+                        <button
+                            key={key}
+                            onClick={() => setSelectedSystem(key)}
+                            className={`p-5 rounded-2xl flex items-center gap-5 transition-all hover:shadow-md border border-transparent hover:border-emerald-100 bg-white shadow-sm group active:scale-98`}
+                        >
+                            <div className={`p-4 rounded-xl ${data.color.replace('text-', 'bg-').replace('700', '100')} ${data.color.replace('bg-', 'text-').replace('100', '600')}`}>
+                                {data.icon}
+                            </div>
+                            <div className="text-left flex-1">
+                                <h3 className="font-bold text-lg text-gray-800 group-hover:text-emerald-700 transition-colors">{data.title}</h3>
+                            </div>
+                            <div className="text-gray-300 group-hover:text-emerald-500 transition-colors bg-gray-50 p-2 rounded-full group-hover:bg-emerald-50">
+                                <Icons.ChevronRight size={20} />
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        );
+
+        // *** UPDATED SYSTEM VIEW WITH FLOWCHART ***
+        const SystemView = ({ selectedSystem, selectedSymptom, setSelectedSymptom, setSelectedSystem, setCurrentPage, setSearchTerm }) => {
+            const system = cpgData[selectedSystem];
+
+            if (!selectedSymptom) {
+                return (
+                    <div className="space-y-6 pb-24">
+                        <Header title={system.title} onBack={() => setSelectedSystem(null)} />
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                            <h3 className="font-bold text-gray-800 mb-5 flex items-center gap-3 text-lg border-b border-gray-100 pb-3">
+                                <div className="bg-emerald-100 p-2 rounded-lg text-emerald-600"><Icons.Activity size={20} /></div>
+                                อาการนำ / การวินิจฉัย
+                            </h3>
+                            <div className="space-y-3">
+                                {system.symptoms.map((symptom) => (
+                                    <button
+                                        key={symptom.id}
+                                        onClick={() => setSelectedSymptom(symptom)}
+                                        className="w-full p-4 text-left bg-gray-50 hover:bg-white border border-transparent hover:border-emerald-200 rounded-xl transition-all shadow-sm hover:shadow-md group active:scale-[0.99]"
+                                    >
+                                        <div className="font-bold text-gray-800 group-hover:text-emerald-700 text-lg mb-1">{symptom.label}</div>
+                                        <div className="text-sm text-gray-500 mt-1 flex items-center gap-2">
+                                            <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide">Dx</span> 
+                                            {symptom.diagnosis}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Clinical Flow Data
+            const flow = selectedSymptom.flow;
+
+            return (
+                <div className="space-y-6 pb-24">
+                    <Header 
+                        title="แนวทางการรักษา" 
+                        onBack={() => setSelectedSymptom(null)} 
+                        subtitle="Clinical Pathway"
+                    />
+                    
+                    {/* Diagnosis Banner */}
+                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 p-5 rounded-2xl mb-2 text-center shadow-sm">
+                        <h3 className="text-xs font-bold text-emerald-600 uppercase mb-2 tracking-widest bg-white/50 inline-block px-3 py-1 rounded-full">Diagnosis</h3>
+                        <p className="text-xl font-bold text-emerald-900 mb-4">{selectedSymptom.label}</p>
+                        
+                        {/* Added Patient Symptoms Description */}
+                        <div className="bg-white p-4 rounded-xl text-sm text-gray-700 text-left border border-emerald-100/50 shadow-sm flex gap-3">
+                             <Icons.Info size={20} className="text-emerald-500 shrink-0 mt-0.5"/>
+                             <div>
+                                <span className="font-bold text-emerald-800 block mb-1">ลักษณะอาการ:</span>
+                                {selectedSymptom.desc}
+                             </div>
+                        </div>
+                    </div>
+
+                    {/* === FLOWCHART UI === */}
+                    <div className="relative space-y-6 px-2 pt-2">
+                        
+                        {/* Step 1: Prescription */}
+                        <div className="relative z-10">
+                            <div className="bg-white p-5 rounded-2xl shadow-md border-l-4 border-blue-500 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 bg-blue-50 text-blue-300 p-4 rounded-bl-3xl opacity-20"><Icons.Pill size={64}/></div>
+                                <div className="flex items-center gap-3 mb-4 relative z-10">
+                                    <div className="bg-blue-100 p-2 rounded-xl text-blue-600 shadow-sm"><Icons.Pill size={20}/></div>
+                                    <h4 className="font-bold text-gray-800 text-lg">1. การสั่งจ่ายยา</h4>
+                                </div>
+                                <div className="space-y-4 pl-1 relative z-10">
+                                    {selectedSymptom.drugs.map((drugId) => {
+                                        const drug = drugDatabase[drugId];
+                                        return (
+                                            <div key={drugId} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
+                                                <div className="flex flex-wrap justify-between items-start mb-2 gap-2">
+                                                    <button 
+                                                        onClick={() => {
+                                                            setSearchTerm(drug.name);
+                                                            setCurrentPage('drugs');
+                                                        }}
+                                                        className="font-bold text-emerald-700 text-base hover:text-emerald-900 hover:underline flex items-center gap-1 transition-colors text-left"
+                                                    >
+                                                        {drug.name}
+                                                        <Icons.ExternalLink size={14} className="text-emerald-500" />
+                                                    </button>
+                                                    {drug.substitute && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full border border-indigo-100 font-medium">แทน: {drug.substitute}</span>}
+                                                </div>
+                                                <div className="bg-gray-50 p-2 rounded-lg text-sm text-gray-700 mb-2 border border-gray-100">
+                                                    <span className="font-bold text-gray-900">วิธีใช้:</span> {drug.dose}
+                                                </div>
+                                                <div className="flex gap-2 flex-wrap">
+                                                    <span className="text-[10px] text-red-600 bg-red-50 px-2 py-1 rounded border border-red-100 flex items-center gap-1">
+                                                        ⚠ <b>ระวัง:</b> {drug.caution}
+                                                    </span>
+                                                    {drug.sideEffect && (
+                                                        <span className="text-[10px] text-orange-600 bg-orange-50 px-2 py-1 rounded border border-orange-100 flex items-center gap-1">
+                                                            ⚡ <b>ผลข้างเคียง:</b> {drug.sideEffect}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    <div className="mt-2 bg-blue-600 text-white p-3 rounded-xl text-sm font-semibold text-center shadow-sm">
+                                        {flow.prescription}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="absolute left-1/2 -bottom-5 transform -translate-x-1/2 text-gray-300 bg-gray-50 rounded-full p-1 z-20 border border-gray-200">
+                                <Icons.ArrowDown size={20} />
+                            </div>
+                        </div>
+
+                        {/* Step 2: Follow Up */}
+                        <div className="relative z-10 pt-2">
+                            <div className="bg-white p-5 rounded-2xl shadow-md border-l-4 border-amber-500 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 bg-amber-50 text-amber-300 p-4 rounded-bl-3xl opacity-20"><Icons.Calendar size={64}/></div>
+                                <div className="flex items-center gap-3 mb-3 relative z-10">
+                                    <div className="bg-amber-100 p-2 rounded-xl text-amber-600 shadow-sm"><Icons.Calendar size={20}/></div>
+                                    <h4 className="font-bold text-gray-800 text-lg">2. การติดตามผล</h4>
+                                </div>
+                                <p className="text-sm text-gray-700 pl-1 relative z-10 font-medium">{flow.followUp}</p>
+                            </div>
+                             <div className="absolute left-1/2 -bottom-5 transform -translate-x-1/2 text-gray-300 bg-gray-50 rounded-full p-1 z-20 border border-gray-200">
+                                <Icons.ArrowDown size={20} />
+                            </div>
+                        </div>
+
+                         {/* Step 3: Evaluation & Outcome */}
+                        <div className="relative z-10 pt-2">
+                             <div className="flex gap-4">
+                                {/* Success Path */}
+                                <div className="flex-1 bg-white p-4 rounded-2xl shadow-md border-t-4 border-green-500 flex flex-col items-center text-center card-hover">
+                                    <div className="text-green-500 mb-2 bg-green-50 p-2 rounded-full"><Icons.CheckCircle size={28}/></div>
+                                    <h5 className="font-bold text-xs text-green-600 uppercase mb-2 tracking-wide bg-green-50 px-2 py-0.5 rounded-full">ประเมิน: ดีขึ้น</h5>
+                                    <p className="text-sm font-bold text-gray-700 leading-tight">{flow.success}</p>
+                                </div>
+
+                                {/* Fail Path */}
+                                <div className="flex-1 bg-white p-4 rounded-2xl shadow-md border-t-4 border-red-500 flex flex-col items-center text-center card-hover">
+                                    <div className="text-red-500 mb-2 bg-red-50 p-2 rounded-full"><Icons.XCircle size={28}/></div>
+                                    <h5 className="font-bold text-xs text-red-600 uppercase mb-2 tracking-wide bg-red-50 px-2 py-0.5 rounded-full">ประเมิน: ไม่ดีขึ้น</h5>
+                                    <p className="text-sm font-bold text-gray-700 leading-tight">{flow.fail}</p>
+                                </div>
+                             </div>
+                        </div>
+
+                        {/* Connector Line Background */}
+                        <div className="absolute top-6 bottom-20 left-1/2 w-0.5 bg-gray-200 -z-0 transform -translate-x-1/2 border-l border-dashed border-gray-300"></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const DrugListView = ({ setCurrentPage, searchTerm, setSearchTerm }) => {
+            // Local state removed, using props
+            
+            const filteredDrugs = Object.values(drugDatabase).filter(d => 
+                d.name.includes(searchTerm) || 
+                d.prop.includes(searchTerm) ||
+                (d.substitute && d.substitute.includes(searchTerm))
+            );
+
+            return (
+                <div className="space-y-6 pb-24">
+                    <Header title="ฐานข้อมูลยา & ยาทดแทน" subtitle="Drug Database" onBack={() => setCurrentPage('home')} />
+                    
+                    <div className="sticky top-0 bg-white/90 backdrop-blur-md z-20 pb-4 pt-1 px-1 -mx-1">
+                        <div className="relative shadow-sm rounded-xl">
+                            <div className="absolute left-4 top-3.5 text-gray-400"><Icons.Search size={20} /></div>
+                            <input 
+                                type="text"
+                                placeholder="ค้นหาชื่อยา, สรรพคุณ..."
+                                className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-gray-50 transition-all"
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                value={searchTerm}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        {filteredDrugs.map((drug, idx) => (
+                            <div key={idx} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all">
+                                <div className="flex justify-between items-start mb-3">
+                                    <h4 className="font-bold text-emerald-700 text-lg">{drug.name}</h4>
+                                    {drug.substitute && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full border border-indigo-100 font-bold tracking-wide">แทน: {drug.substitute}</span>}
+                                </div>
+                                <p className="text-sm text-gray-600 mb-3 bg-gray-50 p-3 rounded-lg border-l-4 border-emerald-400">"{drug.prop}"</p>
+                                
+                                <div className="space-y-2">
+                                    <div className="text-xs text-gray-700 bg-blue-50/50 p-2 rounded border border-blue-100">
+                                        <span className="font-bold text-blue-700 block mb-1">วิธีใช้:</span> {drug.dose}
+                                    </div>
+                                    
+                                    {/* Added Dispensing Info Table */}
+                                    <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 mt-3">
+                                        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-200">
+                                            <Icons.Package size={16} className="text-gray-500"/>
+                                            <span className="text-xs font-bold text-gray-600">ข้อมูลการเบิกจ่าย (Dispensing Info)</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500">Min:</span>
+                                                <span className="font-medium">{drug.min} {drug.unit}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500">Max:</span>
+                                                <span className="font-medium">{drug.max} {drug.unit}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500">Cycle:</span>
+                                                <span className="font-medium">{drug.cycle} วัน</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500">Rate:</span>
+                                                <span className="font-medium text-emerald-600">{drug.rate}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {drug.sideEffect && (
+                                        <div className="text-xs text-orange-700 bg-orange-50/50 p-2 rounded border border-orange-100 mt-2">
+                                            <span className="font-bold text-orange-700 block mb-1">⚡ อาการไม่พึงประสงค์:</span> {drug.sideEffect}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [currentPage, setCurrentPage] = useState('home');
+            const [selectedSystem, setSelectedSystem] = useState(null);
+            const [selectedSymptom, setSelectedSymptom] = useState(null);
+            const [searchTerm, setSearchTerm] = useState('');
+
+            return (
+                <div className="min-h-screen font-sans text-gray-900 bg-gray-50/50">
+                    <div className="max-w-md mx-auto min-h-screen bg-white shadow-2xl overflow-hidden relative">
+                        
+                        {/* Status Bar Mockup */}
+                        <div className="h-safe-top w-full bg-white"></div>
+
+                        <div className="p-5 pt-4">
+                            {currentPage === 'home' && (
+                                <HomeView setCurrentPage={setCurrentPage} />
+                            )}
+                            
+                            {currentPage === 'screening' && (
+                                <ScreeningView setCurrentPage={setCurrentPage} />
+                            )}
+
+                            {currentPage === 'cpg' && !selectedSystem && (
+                                <CPGMenuView 
+                                    setCurrentPage={setCurrentPage} 
+                                    setSelectedSystem={setSelectedSystem} 
+                                />
+                            )}
+
+                            {currentPage === 'cpg' && selectedSystem && (
+                                <SystemView 
+                                    selectedSystem={selectedSystem}
+                                    selectedSymptom={selectedSymptom}
+                                    setSelectedSymptom={setSelectedSymptom}
+                                    setSelectedSystem={setSelectedSystem}
+                                    setCurrentPage={setCurrentPage}
+                                    setSearchTerm={setSearchTerm}
+                                />
+                            )}
+
+                            {currentPage === 'drugs' && (
+                                <DrugListView 
+                                    setCurrentPage={setCurrentPage} 
+                                    searchTerm={searchTerm}
+                                    setSearchTerm={setSearchTerm}
+                                />
+                            )}
+                        </div>
+
+                        <div className="fixed bottom-0 max-w-md w-full bg-white border-t border-gray-100 flex justify-around py-2 px-2 z-40 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.03)] glass-effect">
+                            <NavButton 
+                                icon={<Icons.Home size={24} />} 
+                                label="หน้าหลัก" 
+                                active={currentPage === 'home'} 
+                                onClick={() => {
+                                    setCurrentPage('home');
+                                    setSelectedSystem(null);
+                                    setSelectedSymptom(null);
+                                }} 
+                            />
+                            <NavButton 
+                                icon={<Icons.UserCheck size={24} />} 
+                                label="คัดกรอง" 
+                                active={currentPage === 'screening'} 
+                                onClick={() => setCurrentPage('screening')} 
+                            />
+                            <NavButton 
+                                icon={<Icons.Stethoscope size={24} />} 
+                                label="ตรวจรักษา" 
+                                active={currentPage === 'cpg' || selectedSystem} 
+                                onClick={() => setCurrentPage('cpg')} 
+                            />
+                            <NavButton 
+                                icon={<Icons.Pill size={24} />} 
+                                label="ยา" 
+                                active={currentPage === 'drugs'} 
+                                onClick={() => setCurrentPage('drugs')} 
+                            />
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
