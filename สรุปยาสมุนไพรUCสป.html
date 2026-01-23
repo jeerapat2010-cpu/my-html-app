@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบติดตามผลการดำเนินงานสมุนไพร สิทธิ UC จ.สมุทรปราการ - พัฒนาโดย ภก.จีรภัทร พลายงาม</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- UMD Guard -->
+    <script>
+        window.module = undefined;
+        window.exports = undefined;
+        window.define = undefined;
+    </script>
+
+    <!-- React & ReactDOM (Stable 17.x for best compatibility with Recharts 2.x UMD) -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.production.min.js"></script>
+    
+    <!-- Dependencies for Recharts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/classnames/2.3.2/index.min.js"></script>
+
+    <!-- Recharts (Stable 2.1.12) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.1.12/Recharts.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #fff7ed; /* Orange-50 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #fdba74; /* Orange-300 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #fb923c; /* Orange-400 */
+        }
+    </style>
+</head>
+<body class="bg-orange-50 text-slate-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+        
+        // Robust Recharts Loader
+        const RechartsLib = window.Recharts || (window.Recharts && window.Recharts.default);
+
+        if (!RechartsLib) {
+            document.getElementById('root').innerHTML = `
+                <div class="flex items-center justify-center min-h-screen bg-red-50">
+                    <div class="p-8 bg-white rounded-xl shadow-xl border border-red-200 text-center max-w-md">
+                        <svg class="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        <h2 class="text-xl font-bold text-red-700 mb-2">ไม่สามารถโหลดกราฟได้</h2>
+                        <p class="text-slate-600">กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต หรือลองรีเฟรชหน้าใหม่อีกครั้ง</p>
+                    </div>
+                </div>
+            `;
+            throw new Error("Recharts failed to load");
+        }
+
+        const { 
+            PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, Legend, ResponsiveContainer, LineChart, Line, ComposedChart 
+        } = RechartsLib;
+
+        // --- Icon Components ---
+        const Icons = {
+            LayoutDashboard: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>,
+            Map: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>,
+            Calculator: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>,
+            Upload: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>,
+            FileSpreadsheet: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>,
+            TrendingUp: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>,
+            AlertCircle: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>,
+            CheckCircle2: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>,
+            Menu: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>,
+            X: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>,
+        };
+
+        // Orange Theme Colors
+        const COLORS = ['#F97316', '#3B82F6', '#10B981', '#EF4444', '#8B5CF6', '#EC4899']; // Orange first
+        const PROVINCIAL_TARGETS = {
+            month6: 14620693.83,
+            month10: 21501020.34,
+            month12: 28381346.85
+        };
+
+        const INITIAL_DATA = [
+            { name: 'เมือง', value68: 11048897, value69: 2716175 },
+            { name: 'บางบ่อ', value68: 3421324, value69: 808581 },
+            { name: 'บางพลี', value68: 4731862, value69: 588540 },
+            { name: 'พระประแดง', value68: 2204389, value69: 1407538 },
+            { name: 'พระสมุทรเจดีย์', value68: 1595167, value69: 324989 },
+            { name: 'บางเสาธง', value68: 747135, value69: 406968 },
+        ];
+
+        const formatCurrency = (value) => {
+            return new Intl.NumberFormat('th-TH', {
+                style: 'currency',
+                currency: 'THB',
+                minimumFractionDigits: 2
+            }).format(value);
+        };
+
+        const formatNumber = (value) => {
+            return new Intl.NumberFormat('th-TH').format(value);
+        };
+
+        // --- Shared Components ---
+        const Card = ({ children, className = "" }) => (
+            <div className={`bg-white rounded-xl shadow-sm border border-orange-100 p-6 ${className}`}>
+                {children}
+            </div>
+        );
+
+        const KPICard = ({ title, value, subtext, Icon, colorClass }) => (
+            <Card className="relative overflow-hidden hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <p className="text-slate-500 text-sm font-medium mb-1">{title}</p>
+                        <h3 className="text-2xl font-bold text-slate-800">{value}</h3>
+                        {subtext && <p className="text-xs text-slate-400 mt-2">{subtext}</p>}
+                    </div>
+                    <div className={`p-3 rounded-lg ${colorClass} bg-opacity-10`}>
+                        <Icon size={24} className={colorClass.replace('bg-', 'text-')} />
+                    </div>
+                </div>
+            </Card>
+        );
+
+        const UploadModal = ({ isOpen, onClose, onUpload }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl transform scale-100">
+                        <div className="text-center">
+                            <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
+                                <Icons.Upload size={32} className="text-orange-600" />
+                            </div>
+                            <h2 className="text-xl font-bold text-slate-800 mb-2">นำเข้าข้อมูล Excel</h2>
+                            <p className="text-slate-500 text-sm mb-6">
+                                กรุณาอัปโหลดไฟล์ .xlsx ที่มีข้อมูลผลงานปี 2568 และ 2569 ตามรูปแบบที่กำหนด
+                            </p>
+                            
+                            <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 mb-6 hover:border-orange-400 transition-colors cursor-pointer bg-orange-50 group">
+                                <div className="flex justify-center mb-2">
+                                    <Icons.FileSpreadsheet className="text-slate-400 group-hover:text-orange-500" size={40} />
+                                </div>
+                                <p className="text-sm text-slate-400">ลากไฟล์มาวาง หรือ คลิกเพื่อเลือกไฟล์</p>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button onClick={onClose} className="flex-1 py-2.5 px-4 rounded-lg text-slate-600 font-medium hover:bg-slate-100 transition-colors">
+                                    ยกเลิก
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        onUpload();
+                                        onClose();
+                                    }} 
+                                    className="flex-1 py-2.5 px-4 rounded-lg bg-orange-600 text-white font-medium hover:bg-orange-700 shadow-lg shadow-orange-200 transition-all"
+                                >
+                                    ประมวลผลข้อมูล
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Main App ---
+        function App() {
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+            const [showUpload, setShowUpload] = useState(false);
+            const [rawData, setRawData] = useState(INITIAL_DATA);
+            const [lastUpdated, setLastUpdated] = useState(new Date().toLocaleDateString('th-TH'));
+
+            const processedData = useMemo(() => {
+                const total68 = rawData.reduce((acc, cur) => acc + cur.value68, 0);
+                const total69 = rawData.reduce((acc, cur) => acc + cur.value69, 0);
+
+                return rawData.map(item => {
+                    const share68 = item.value68 / total68;
+                    const share69 = item.value69 / total69;
+                    
+                    const compositeWeight = (share68 * 0.40) + (share69 * 0.60);
+
+                    return {
+                        ...item,
+                        share68: share68 * 100,
+                        share69: share69 * 100,
+                        compositeWeight: compositeWeight * 100,
+                        target6m: compositeWeight * PROVINCIAL_TARGETS.month6,
+                        target10m: compositeWeight * PROVINCIAL_TARGETS.month10,
+                        target12m: compositeWeight * PROVINCIAL_TARGETS.month12,
+                    };
+                }).sort((a, b) => b.compositeWeight - a.compositeWeight);
+            }, [rawData]);
+
+            const totalUsageCurrent = rawData.reduce((acc, cur) => acc + cur.value69, 0);
+            const totalTarget6m = PROVINCIAL_TARGETS.month6;
+            const progressPercent = (totalUsageCurrent / totalTarget6m) * 100;
+
+            const handleSimulateUpload = () => {
+                setLastUpdated(new Date().toLocaleDateString('th-TH'));
+                alert("จำลองการอัปโหลด: อัปเดตข้อมูลและคำนวณเป้าหมายใหม่เรียบร้อยแล้ว");
+            };
+
+            const OverviewView = () => (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <KPICard 
+                            title="ยอดใช้จริงปี 2569 (สะสม)" 
+                            value={formatCurrency(totalUsageCurrent)} 
+                            subtext={`ข้อมูล ณ วันที่ ${lastUpdated}`}
+                            Icon={Icons.TrendingUp}
+                            colorClass="text-orange-600 bg-orange-600"
+                        />
+                        <KPICard 
+                            title="เป้าหมายจังหวัด (6 เดือน)" 
+                            value={formatCurrency(PROVINCIAL_TARGETS.month6)} 
+                            subtext="ปีงบประมาณ 2569"
+                            Icon={Icons.Map}
+                            colorClass="text-blue-600 bg-blue-600"
+                        />
+                        <KPICard 
+                            title="ความก้าวหน้าเทียบเป้า 6 เดือน" 
+                            value={`${progressPercent.toFixed(2)}%`} 
+                            subtext="จากยอดรวมทั้งจังหวัด"
+                            Icon={progressPercent >= 50 ? Icons.CheckCircle2 : Icons.AlertCircle}
+                            colorClass={progressPercent >= 50 ? "text-green-500 bg-green-500" : "text-amber-500 bg-amber-500"}
+                        />
+                        <KPICard 
+                            title="มูลค่าเป้าหมายรวม (12 เดือน)" 
+                            value={formatCurrency(PROVINCIAL_TARGETS.month12)} 
+                            subtext="เป้าหมายสูงสุดสิ้นปี"
+                            Icon={Icons.FileSpreadsheet}
+                            colorClass="text-purple-600 bg-purple-600"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <Card className="lg:col-span-2">
+                            <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                                <Icons.TrendingUp size={20} className="text-orange-600"/>
+                                ภาพรวมผลการดำเนินงานเทียบเป้าหมาย (รายไตรมาส)
+                            </h3>
+                            <div className="h-80">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart
+                                        data={[
+                                            { name: 'ผลงานปัจจุบัน', amount: totalUsageCurrent, type: 'actual' },
+                                            { name: 'เป้า 6 เดือน', amount: PROVINCIAL_TARGETS.month6, type: 'target' },
+                                            { name: 'เป้า 10 เดือน', amount: PROVINCIAL_TARGETS.month10, type: 'target' },
+                                            { name: 'เป้า 12 เดือน', amount: PROVINCIAL_TARGETS.month12, type: 'target' },
+                                        ]}
+                                        layout="vertical"
+                                        margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                                        <XAxis type="number" tickFormatter={(val) => `${(val/1000000).toFixed(0)}M`} stroke="#64748b" fontSize={12} />
+                                        <YAxis dataKey="name" type="category" stroke="#64748b" fontSize={12} width={130} />
+                                        <RechartsTooltip 
+                                            formatter={(value) => formatCurrency(value)}
+                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        />
+                                        <Bar dataKey="amount" radius={[0, 4, 4, 0]}>
+                                            {
+                                                [0, 1, 2, 3].map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={index === 0 ? '#F97316' : '#CBD5E1'} />
+                                                ))
+                                            }
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </Card>
+
+                        <Card className="bg-gradient-to-br from-slate-800 to-slate-900 text-white border-none">
+                            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                                <Icons.AlertCircle size={20} className="text-orange-400"/>
+                                บทวิเคราะห์ภาพรวม
+                            </h3>
+                            <div className="space-y-4 text-slate-300 text-sm leading-relaxed">
+                                <p>
+                                    <strong className="text-orange-400">สถานการณ์ปัจจุบัน:</strong> ภาพรวมจังหวัดทำผลงานได้ <span className="text-white font-bold">{formatCurrency(totalUsageCurrent)}</span> คิดเป็น <span className="text-white font-bold">{progressPercent.toFixed(2)}%</span> ของเป้าหมาย 6 เดือน
+                                </p>
+                                <p>
+                                    <strong className="text-amber-400">ข้อสังเกต:</strong> หากพิจารณาตามช่วงเวลา (Time-based) ปัจจุบันเข้าสู่เดือนที่ 4 ของปีงบประมาณ ควรมีความก้าวหน้าสะสมประมาณ 33% หากยอดปัจจุบันยังต่ำกว่าเกณฑ์ อาจต้องเร่งประชาสัมพันธ์การใช้สมุนไพรในคลินิก
+                                </p>
+                                <div className="pt-4 mt-4 border-t border-slate-700">
+                                    <p className="font-semibold text-white mb-2">แนวโน้มเป้าหมาย:</p>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span>6 เดือน</span>
+                                        <span className="text-orange-400">{formatNumber(PROVINCIAL_TARGETS.month6 / 1000000)} ลบ.</span>
+                                    </div>
+                                    <div className="w-full bg-slate-700 rounded-full h-1.5">
+                                        <div className="bg-orange-500 h-1.5 rounded-full" style={{ width: `${Math.min(progressPercent, 100)}%` }}></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+                </div>
+            );
+
+            const DistrictView = () => (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Card>
+                            <h3 className="text-lg font-bold text-slate-800 mb-6">สัดส่วนเป้าหมายรายอำเภอ (%)</h3>
+                            <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={processedData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="target12m"
+                                        >
+                                            {processedData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <RechartsTooltip formatter={(value) => formatCurrency(value)} />
+                                        <Legend />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </Card>
+
+                        <Card>
+                            <h3 className="text-lg font-bold text-slate-800 mb-6">เปรียบเทียบผลงานจริง vs เป้า 6 เดือน</h3>
+                            <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ComposedChart data={processedData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                                        <CartesianGrid stroke="#f5f5f5" strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="name" fontSize={12} scale="point" padding={{ left: 10, right: 10 }} />
+                                        <YAxis fontSize={12} tickFormatter={(val) => `${(val/1000000).toFixed(1)}M`} />
+                                        <RechartsTooltip 
+                                            formatter={(value) => formatCurrency(value)}
+                                            contentStyle={{ borderRadius: '8px' }}
+                                        />
+                                        <Legend />
+                                        <Bar dataKey="value69" name="ผลงานจริง 69" barSize={20} fill="#F97316" radius={[4, 4, 0, 0]} />
+                                        <Line type="monotone" dataKey="target6m" name="เป้าหมาย 6 เดือน" stroke="#EF4444" strokeWidth={2} dot={{r: 4}} />
+                                    </ComposedChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </Card>
+                    </div>
+
+                    <Card className="overflow-hidden">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-slate-800">ตารางรายละเอียดการจัดสรรเป้าหมาย</h3>
+                            <button className="text-sm text-orange-600 font-medium hover:text-orange-700 flex items-center gap-1">
+                                <Icons.FileSpreadsheet size={16}/> Export CSV
+                            </button>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-slate-600">
+                                <thead className="text-xs text-slate-700 uppercase bg-orange-50 border-b border-orange-200">
+                                    <tr>
+                                        <th className="px-6 py-4 font-bold text-orange-800">อำเภอ</th>
+                                        <th className="px-6 py-4 text-right">ผลงานปี 68</th>
+                                        <th className="px-6 py-4 text-right">ผลงานปี 69</th>
+                                        <th className="px-6 py-4 text-center">น้ำหนัก (%)</th>
+                                        <th className="px-6 py-4 text-right bg-orange-100 text-orange-900">เป้า 6 เดือน</th>
+                                        <th className="px-6 py-4 text-right">เป้า 12 เดือน</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {processedData.map((item, index) => (
+                                        <tr key={index} className="bg-white border-b hover:bg-orange-50 transition-colors">
+                                            <td className="px-6 py-4 font-medium text-slate-900">{item.name}</td>
+                                            <td className="px-6 py-4 text-right font-mono">{formatNumber(item.value68)}</td>
+                                            <td className="px-6 py-4 text-right font-mono text-orange-600 font-bold">{formatNumber(item.value69)}</td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className="bg-slate-100 text-slate-800 py-1 px-3 rounded-full text-xs font-bold">
+                                                    {item.compositeWeight.toFixed(2)}%
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-bold bg-orange-50 text-orange-700">{formatCurrency(item.target6m)}</td>
+                                            <td className="px-6 py-4 text-right">{formatCurrency(item.target12m)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
+
+                    <Card>
+                        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <Icons.AlertCircle size={20} className="text-blue-500"/>
+                            บทวิเคราะห์รายอำเภอ (AI Insights)
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
+                                <h4 className="font-bold text-orange-800 mb-2 flex items-center gap-2"><Icons.TrendingUp size={16}/> อำเภอที่มีศักยภาพสูง</h4>
+                                <ul className="list-disc list-inside text-sm text-orange-900 space-y-1">
+                                    <li><strong>เมืองสมุทรปราการ:</strong> ครองสัดส่วนสูงสุดถึง {processedData[0].compositeWeight.toFixed(2)}% เป็นแกนหลักของจังหวัด</li>
+                                    <li><strong>พระประแดง:</strong> มีผลงานปี 69 โดดเด่น (สัดส่วน 22.5%) ทำให้ได้รับเป้าหมายเพิ่มขึ้นอย่างมีนัยสำคัญ</li>
+                                </ul>
+                            </div>
+                            <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
+                                <h4 className="font-bold text-amber-800 mb-2 flex items-center gap-2"><Icons.AlertCircle size={16}/> อำเภอที่ต้องติดตาม</h4>
+                                <ul className="list-disc list-inside text-sm text-amber-900 space-y-1">
+                                    <li><strong>บางพลี:</strong> แม้ฐานปี 68 จะสูง แต่ผลงานปี 69 ลดลงเหลือเพียง {processedData.find(d => d.name === 'บางพลี').share69.toFixed(2)}% ควรตรวจสอบการบันทึกข้อมูล</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+            );
+
+            const MethodView = () => (
+                <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <Card>
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="p-3 bg-purple-100 rounded-lg text-purple-600">
+                                <Icons.Calculator size={32} />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-bold text-slate-800">วิธีการคำนวณเป้าหมาย (Methodology)</h2>
+                                <p className="text-slate-500">รูปแบบการจัดสรรตามสัดส่วนผลงาน (Proportional Performance-Based Allocation)</p>
+                            </div>
+                        </div>
+                        
+                        <div className="prose prose-slate max-w-none">
+                            <p className="text-lg text-slate-600 mb-6">
+                                การจัดสรรเป้าหมายปี 2569 ใช้หลักการ <strong>"Weighted Moving Average"</strong> เพื่อลดความผันผวนของข้อมูลและสะท้อนศักยภาพที่แท้จริง โดยมีสัดส่วนดังนี้:
+                            </p>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                                <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 text-center">
+                                    <h3 className="text-4xl font-bold text-blue-600 mb-2">40%</h3>
+                                    <p className="text-blue-800 font-medium">น้ำหนักจากผลงานปี 2568</p>
+                                    <p className="text-xs text-blue-500 mt-2">เพื่อเป็นฐานข้อมูลย้อนหลัง (Historical Baseline)</p>
+                                </div>
+                                <div className="bg-orange-50 p-6 rounded-xl border border-orange-100 text-center">
+                                    <h3 className="text-4xl font-bold text-orange-600 mb-2">60%</h3>
+                                    <p className="text-orange-800 font-medium">น้ำหนักจากผลงานปี 2569</p>
+                                    <p className="text-xs text-orange-500 mt-2">เพื่อสะท้อนสถานการณ์ปัจจุบัน (Current Performance)</p>
+                                </div>
+                            </div>
+
+                            <h3 className="text-xl font-bold text-slate-800 mb-4">ตัวอย่างการคำนวณ: อำเภอเมือง</h3>
+                            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 font-mono text-sm space-y-3">
+                                <div className="flex justify-between border-b pb-2">
+                                    <span>1. ส่วนแบ่งปี 68 (Share 68)</span>
+                                    <span>= 11.0M / 23.7M = <span className="text-blue-600 font-bold">46.52%</span></span>
+                                </div>
+                                <div className="flex justify-between border-b pb-2">
+                                    <span>2. ส่วนแบ่งปี 69 (Share 69)</span>
+                                    <span>= 2.7M / 6.2M = <span className="text-orange-600 font-bold">43.44%</span></span>
+                                </div>
+                                <div className="flex justify-between border-b pb-2 bg-purple-50 p-2 rounded">
+                                    <span className="font-bold text-purple-800">3. น้ำหนักสุทธิ (Composite Weight)</span>
+                                    <span className="font-bold text-purple-800">= (46.52% × 0.4) + (43.44% × 0.6) = 44.67%</span>
+                                </div>
+                                <div className="flex justify-between pt-2">
+                                    <span>4. เป้าหมาย 12 เดือน</span>
+                                    <span>= 28,381,346 × 44.67% = <span className="text-slate-900 font-bold">12,328,687 บาท</span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen flex flex-col lg:flex-row font-sans">
+                    {/* Sidebar */}
+                    <aside className={`fixed lg:static inset-y-0 left-0 z-40 bg-white border-r border-orange-100 shadow-lg transform transition-transform duration-300 w-72 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+                        <div className="p-6 border-b border-orange-100">
+                            <div className="flex items-start gap-3 text-orange-600">
+                                <div className="bg-orange-100 p-2 rounded-lg mt-1">
+                                    <Icons.LayoutDashboard size={24} />
+                                </div>
+                                <div>
+                                    <h1 className="font-bold text-md leading-tight text-slate-800">ระบบติดตามผล<br/>สมุนไพร สิทธิ UC<br/>จ.สมุทรปราการ</h1>
+                                    <p className="text-xs text-orange-500 mt-1">พัฒนาโดย<br/>ภก.จีรภัทร พลายงาม</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <nav className="p-4 space-y-2">
+                            <button 
+                                onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'dashboard' ? 'bg-orange-50 text-orange-700 font-bold shadow-sm ring-1 ring-orange-200' : 'text-slate-600 hover:bg-orange-50 hover:text-orange-600'}`}
+                            >
+                                <Icons.TrendingUp size={20}/> ภาพรวมจังหวัด
+                            </button>
+                            <button 
+                                onClick={() => { setActiveTab('district'); setIsSidebarOpen(false); }}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'district' ? 'bg-orange-50 text-orange-700 font-bold shadow-sm ring-1 ring-orange-200' : 'text-slate-600 hover:bg-orange-50 hover:text-orange-600'}`}
+                            >
+                                <Icons.Map size={20}/> ข้อมูลรายอำเภอ
+                            </button>
+                            <button 
+                                onClick={() => { setActiveTab('method'); setIsSidebarOpen(false); }}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'method' ? 'bg-orange-50 text-orange-700 font-bold shadow-sm ring-1 ring-orange-200' : 'text-slate-600 hover:bg-orange-50 hover:text-orange-600'}`}
+                            >
+                                <Icons.Calculator size={20}/> วิธีการคำนวณ
+                            </button>
+                        </nav>
+
+                        <div className="absolute bottom-0 w-full p-4 border-t border-orange-100 bg-orange-50">
+                            <div className="text-xs text-slate-500 text-center">
+                                © 2569 สำนักงานสาธารณสุขจังหวัดสมุทรปราการ<br/>
+                                <span className="font-semibold text-orange-600">ภก.จีรภัทร พลายงาม</span>
+                            </div>
+                        </div>
+                    </aside>
+
+                    {/* Main Content */}
+                    <main className="flex-1 min-w-0 overflow-y-auto">
+                        <header className="bg-white border-b border-orange-100 sticky top-0 z-30 px-6 py-4 flex justify-between items-center shadow-sm">
+                            <div className="flex items-center gap-4">
+                                <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="lg:hidden p-2 hover:bg-orange-50 text-orange-600 rounded-lg">
+                                    <Icons.Menu size={20} />
+                                </button>
+                                <h2 className="text-xl font-bold text-slate-800 hidden md:block">
+                                    {activeTab === 'dashboard' && 'Dashboard: ภาพรวมผลการดำเนินงาน'}
+                                    {activeTab === 'district' && 'เป้าหมายและรายละเอียดรายอำเภอ'}
+                                    {activeTab === 'method' && 'หลักเกณฑ์การคำนวณเป้าหมาย'}
+                                </h2>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm text-slate-500 hidden sm:block">อัปเดตล่าสุด: {lastUpdated}</span>
+                                <button 
+                                    onClick={() => setShowUpload(true)}
+                                    className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors shadow-md border border-slate-700"
+                                >
+                                    <Icons.Upload size={16}/> 
+                                    <span className="hidden sm:inline">นำเข้าข้อมูล</span>
+                                </button>
+                            </div>
+                        </header>
+
+                        <div className="p-6 max-w-7xl mx-auto">
+                            {activeTab === 'dashboard' && <OverviewView />}
+                            {activeTab === 'district' && <DistrictView />}
+                            {activeTab === 'method' && <MethodView />}
+                        </div>
+                    </main>
+
+                    <UploadModal isOpen={showUpload} onClose={() => setShowUpload(false)} onUpload={handleSimulateUpload} />
+                </div>
+            );
+        }
+
+        // New (React 17)
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
