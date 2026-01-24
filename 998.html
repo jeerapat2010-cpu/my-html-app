@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบการเบิกจ่ายผ้าอ้อมฯ - รพ.สต.ร่มโพธิ์ (Updated Stock)</title>
+    <title>ระบบการเบิกจ่ายผ้าอ้อมฯ - รพ.สต.ร่มโพธิ์ (Official Report)</title>
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -46,7 +46,6 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
-        /* Hide scrollbar for nav but allow scroll */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -360,10 +359,73 @@
                 return age;
             };
 
-            const handleExportPDF = (elementId, filename) => {
+            const handleExportPDF = (elementId, title) => {
                 const element = document.getElementById(elementId);
-                const opt = { margin: 5, filename: filename, image: { type: 'jpeg', quality: 1 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
-                html2pdf().set(opt).from(element).save();
+                const clone = element.cloneNode(true);
+                
+                // --- Clean up clone for report ---
+                const noPrints = clone.querySelectorAll('.no-print');
+                noPrints.forEach(el => el.remove());
+                
+                // Remove forms/inputs for clean data view in reports (optional refinement)
+                // Specifically for patients and inventory, we want lists not inputs
+                if (elementId === 'view-patients' || elementId === 'view-inventory') {
+                    const inputs = clone.querySelectorAll('input, select, button');
+                    inputs.forEach(el => el.remove());
+                    const forms = clone.querySelectorAll('form');
+                    forms.forEach(el => el.remove());
+                }
+
+                // Create Report Container
+                const reportContainer = document.createElement('div');
+                reportContainer.style.fontFamily = "'Sarabun', sans-serif";
+                reportContainer.style.padding = "20px";
+                reportContainer.style.width = "100%"; // HTML2PDF handles A4 scaling
+
+                // Thai Date
+                const date = new Date();
+                const thaiDate = date.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+
+                reportContainer.innerHTML = `
+                    <div style="font-family: 'Sarabun', sans-serif; color: #000;">
+                        <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 10px;">
+                            <div style="font-weight: bold; font-size: 24px;">บันทึกข้อความ</div>
+                        </div>
+                        <div style="font-size: 16px; margin-bottom: 5px;">
+                            <b>ส่วนราชการ</b> โรงพยาบาลส่งเสริมสุขภาพตำบลร่มโพธิ์ อำเภอเมือง จังหวัดสมุทรปราการ
+                        </div>
+                        <div style="font-size: 16px; margin-bottom: 5px;">
+                            <b>ที่</b> ..................................................... <b>วันที่</b> ${thaiDate}
+                        </div>
+                        <div style="font-size: 16px; margin-bottom: 15px;">
+                            <b>เรื่อง</b> รายงาน${title}
+                        </div>
+                        <hr style="border: 1px solid #000; margin-bottom: 20px;" />
+                        
+                        <div style="font-size: 14px;">
+                            ${clone.innerHTML}
+                        </div>
+
+                        <div style="margin-top: 50px; display: flex; justify-content: flex-end;">
+                            <div style="text-align: center; width: 250px;">
+                                <div style="margin-bottom: 10px;">(ลงชื่อ)...........................................................</div>
+                                <div style="font-weight: bold;">(ภก.จีรภัทร พลายงาม)</div>
+                                <div>ผู้รายงาน</div>
+                                <div>ตำแหน่ง เภสัชกรชำนาญการ</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                const opt = {
+                    margin: 15,
+                    filename: `report_${title}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                html2pdf().set(opt).from(reportContainer).save();
             };
 
             // --- Handlers ---
@@ -558,7 +620,7 @@
                 <div id="view-dashboard" className="space-y-6 animate-fade-in p-2 max-w-7xl mx-auto w-full">
                     <div className="flex justify-between items-center mb-4">
                          <h2 className={`text-2xl font-bold text-gray-800 flex items-center gap-3`}><BarChart3 className={theme.icon} size={28} /> แดชบอร์ดภาพรวม</h2>
-                         <button onClick={() => handleExportPDF('view-dashboard', 'dashboard_report.pdf')} className="no-print flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all"><Printer size={16} /> ส่งออก PDF</button>
+                         <button onClick={() => handleExportPDF('view-dashboard', 'สรุปภาพรวม')} className="no-print flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all"><Printer size={16} /> ส่งออก PDF</button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <StatCard title="ผู้ป่วยลงทะเบียน" value={`${patients.length} ราย`} icon={Users} colorClass="bg-indigo-500" />
@@ -627,7 +689,7 @@
                         <div className="flex gap-2">
                             <input type="file" accept=".csv" ref={importRef} onChange={handleImportData} className="hidden" />
                             <button onClick={() => importRef.current.click()} className="no-print flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm hover:bg-indigo-100"><Upload size={16} /> นำเข้า Excel/CSV</button>
-                            <button onClick={() => handleExportPDF('view-patients', 'patient_list.pdf')} className="no-print flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"><Printer size={16} /> ส่งออก PDF</button>
+                            <button onClick={() => handleExportPDF('view-patients', 'ทะเบียนรายชื่อผู้ป่วย')} className="no-print flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"><Printer size={16} /> ส่งออก PDF</button>
                         </div>
                     </div>
 
@@ -762,7 +824,7 @@
                 <div id="view-inventory" className="space-y-6 p-2 max-w-7xl mx-auto w-full">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3"><Package className={theme.icon} size={28}/> 2. คลังผ้าอ้อม (Stock-In)</h2>
-                        <button onClick={() => handleExportPDF('view-inventory', 'inventory_stock.pdf')} className="no-print flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"><Printer size={16} /> ส่งออก PDF</button>
+                        <button onClick={() => handleExportPDF('view-inventory', 'สถานะคงเหลือในคลัง')} className="no-print flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"><Printer size={16} /> ส่งออก PDF</button>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div className="glass-panel p-8 rounded-2xl shadow-sm">
@@ -811,7 +873,7 @@
                 <div id="view-distribution" className="space-y-6 p-2 max-w-7xl mx-auto w-full">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3"><ClipboardList className={theme.icon} size={28}/> 3. เบิกจ่ายให้ผู้ป่วย</h2>
-                        <button onClick={() => handleExportPDF('view-distribution', 'distribution_form.pdf')} className="no-print flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"><Printer size={16} /> ส่งออก PDF</button>
+                        <button onClick={() => handleExportPDF('view-distribution', 'บันทึกการเบิกจ่าย')} className="no-print flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"><Printer size={16} /> ส่งออก PDF</button>
                     </div>
 
                     <div className="glass-panel p-8 rounded-2xl shadow-lg border border-orange-100 max-w-4xl mx-auto">
@@ -887,7 +949,7 @@
                         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3"><FileSpreadsheet className={theme.icon} size={28}/> 4. บัญชีคุมวัสดุ (Stock Card)</h2>
                         <div className="flex gap-2 no-print">
                             <button onClick={handleCSV} className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm hover:bg-green-100"><Download size={16} /> Excel (CSV)</button>
-                            <button onClick={() => handleExportPDF('view-stockcard', 'stock_card.pdf')} className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"><Printer size={16} /> PDF</button>
+                            <button onClick={() => handleExportPDF('view-stockcard', 'บัญชีคุมวัสดุ (Stock Card)')} className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"><Printer size={16} /> PDF</button>
                         </div>
                     </div>
 
@@ -914,7 +976,7 @@
                         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3"><MapIcon className={theme.icon} size={28}/> 5. แผนที่ (GIS)</h2>
                         <div className="flex gap-2">
                             <div className={`flex items-center gap-2 bg-white px-3 py-1 rounded-xl border ${theme.border} shadow-sm no-print`}><span className="text-sm font-bold text-gray-500">📍 ตำบล:</span><select className={`border-none text-sm font-bold ${theme.text} focus:ring-0 cursor-pointer bg-transparent`} onChange={(e) => setSelectedTambon(TAMBONS.find(t => t.name === e.target.value))}>{TAMBONS.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}</select></div>
-                            <button onClick={() => handleExportPDF('view-map', 'map_gis_data.pdf')} className="no-print flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"><Printer size={16} /> ส่งออก PDF</button>
+                            <button onClick={() => handleExportPDF('view-map', 'แผนที่พิกัดผู้ป่วย')} className="no-print flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"><Printer size={16} /> ส่งออก PDF</button>
                         </div>
                     </div>
                     <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
