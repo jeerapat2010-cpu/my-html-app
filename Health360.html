@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Healthy Lifestyle Profile v2.1</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons (Vanilla JS version) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Google Fonts: Sarabun for Thai text -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Sarabun', sans-serif; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .animation-fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @media print {
+            .no-print { display: none !important; }
+            .print-break-inside-avoid { break-inside: avoid; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- Data & Configuration ---
+        const APP_VERSION = "2.1.0";
+        const DEVELOPER_NAME = "ภก.จีรภัทร พลายงาม";
+
+        // Helper Component to render Lucide Icons from global object
+        const LucideIcon = ({ name, size = 24, className }) => {
+            if (!window.lucide || !window.lucide.icons || !window.lucide.icons[name]) {
+                return <span className={className} style={{width: size, height: size, display: 'inline-block'}}></span>;
+            }
+
+            const iconData = window.lucide.icons[name];
+            
+            return (
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width={size}
+                    height={size}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={className}
+                >
+                    {iconData.map(([tag, attrs], i) => (
+                        React.createElement(tag, { ...attrs, key: i })
+                    ))}
+                </svg>
+            );
+        };
+
+        const SECTORS = [
+            {
+                id: 'environment',
+                title: 'Environment (สิ่งแวดล้อม)',
+                color: 'text-blue-600',
+                baseColor: '#2563eb',
+                bgLight: 'bg-blue-50',
+                borderLight: 'border-blue-100',
+                description: 'สภาพแวดล้อมรอบตัวที่มีผลต่อความปลอดภัย ความมั่นคง และความผ่อนคลายของชีวิต',
+                subDomains: [
+                    { 
+                        id: 'env_home', 
+                        label: 'ที่บ้าน (Home)', 
+                        icon: 'Home', 
+                        img: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80', // Cozy Living Room
+                        desc: 'คุณภาพการอยู่อาศัย ความปลอดภัย และความสุขในบ้าน',
+                        criteria: {
+                            good: 'บ้านเป็นพื้นที่ปลอดภัย สะอาด เป็นระเบียบ สมาชิกในบ้านมีความสัมพันธ์ที่ดี รู้สึกผ่อนคลายเมื่อกลับบ้าน',
+                            fair: 'มีปัญหาเรื่องสภาพแวดล้อมบ้าง เช่น เสียงดัง รก หรือมีความขัดแย้งเล็กน้อย แต่ยังพอจัดการได้',
+                            poor: 'สภาพบ้านไม่ปลอดภัย สกปรก แออัด หรือมีความขัดแย้งรุนแรง รู้สึกเครียดเมื่อต้องกลับบ้าน'
+                        },
+                        advice: {
+                            good: 'รักษาบรรยากาศที่ดี จัดบ้านให้โล่งโปร่งเสมอเพื่อส่งเสริมสุขภาพจิต',
+                            fair: 'เริ่มจากการจัดระเบียบพื้นที่ส่วนตัว (Declutter) และพูดคุยกับสมาชิกเพื่อลดความขัดแย้ง',
+                            poor: 'จำเป็นต้องปรับปรุงสภาพแวดล้อมเร่งด่วน หรือปรึกษาผู้เชี่ยวชาญด้านครอบครัว/ที่อยู่อาศัย'
+                        }
+                    },
+                    { 
+                        id: 'env_work', 
+                        label: 'ที่ทำงาน (Work)', 
+                        icon: 'Briefcase', 
+                        img: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=800&q=80', // Office space
+                        desc: 'ความพึงพอใจในงาน ภาระงาน และเพื่อนร่วมงาน',
+                        criteria: {
+                            good: 'มีความสุขกับงาน ภาระงานเหมาะสม เพื่อนร่วมงานดี มีความก้าวหน้าและสมดุลชีวิต (Work-Life Balance)',
+                            fair: 'งานหนักเป็นบางช่วง มีความเครียดบ้าง หรือรู้สึกเบื่อหน่าย แต่ยังพอทนไหว',
+                            poor: 'เครียดจัดจากงาน (Burnout) ถูกเอาเปรียบ สภาพแวดล้อมเป็นพิษ (Toxic) หรือตกงาน'
+                        },
+                        advice: {
+                            good: 'พัฒนาทักษะใหม่ๆ เสมอ และรักษาขอบเขตเวลาทำงานให้สมดุล',
+                            fair: 'จัดลำดับความสำคัญงาน (Prioritize) และหาเวลาพักเบรกสั้นๆ ระหว่างวัน',
+                            poor: 'ประเมินทางเลือกใหม่ ปรึกษา HR หรือพิจารณาเปลี่ยนงานเพื่อสุขภาพจิต'
+                        }
+                    },
+                    { 
+                        id: 'env_social', 
+                        label: 'สังคม (Social)', 
+                        icon: 'Users', 
+                        img: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=800&q=80', // Friends group
+                        desc: 'เครือข่ายสนับสนุนทางสังคม ความเหงา และความสัมพันธ์',
+                        criteria: {
+                            good: 'มีเพื่อนหรือครอบครัวที่ปรึกษาได้เสมอ มีกิจกรรมสังคมสม่ำเสมอ ไม่รู้สึกโดดเดี่ยว',
+                            fair: 'มีเพื่อนบ้างแต่ไม่ค่อยได้เจอกัน หรือรู้สึกเหงาเป็นบางครั้ง',
+                            poor: 'แยกตัวจากสังคม (Isolation) ไม่มีใครให้ปรึกษา รู้สึกโดดเดี่ยวเรื้อรัง หรือมีความสัมพันธ์ที่เป็นพิษ'
+                        },
+                        advice: {
+                            good: 'รักษาความสัมพันธ์โดยการนัดเจอหรือพูดคุยอย่างสม่ำเสมอ เป็นผู้ฟังที่ดี',
+                            fair: 'ริเริ่มทักทายเพื่อนเก่า หรือเข้าร่วมชมรมตามความสนใจเพื่อสร้างเครือข่ายใหม่',
+                            poor: 'ควรปรึกษาจิตแพทย์หรือนักจิตวิทยาเพื่อก้าวข้ามความโดดเดี่ยว และลองเปิดใจคุยกับคนใกล้ตัว'
+                        }
+                    },
+                    { 
+                        id: 'env_finance', 
+                        label: 'การเงิน (Finance)', 
+                        icon: 'DollarSign', 
+                        img: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=800&q=80', // Finance/Calculator
+                        desc: 'ความมั่นคงทางการเงิน ภาระหนี้สิน และการออม',
+                        criteria: {
+                            good: 'มีเงินออมเผื่อฉุกเฉิน รายรับมากกว่ารายจ่าย ไม่มีหนี้เสีย มีแผนเกษียณชัดเจน',
+                            fair: 'มีเงินพอใช้เดือนชนเดือน (Paycheck to paycheck) มีหนี้บ้างแต่ยังผ่อนไหว',
+                            poor: 'หนี้สินล้นพ้นตัว รายจ่ายมากกว่ารายรับ ไม่มีเงินออม เครียดเรื่องเงินตลอดเวลา'
+                        },
+                        advice: {
+                            good: 'ศึกษาการลงทุนเพื่อเพิ่มความมั่งคั่ง และตรวจสอบแผนประกันสุขภาพ',
+                            fair: 'ทำบัญชีรายรับ-รายจ่าย ลดค่าใช้จ่ายที่ไม่จำเป็น และเริ่มเก็บเงินสำรองฉุกเฉิน',
+                            poor: 'หยุดก่อหนี้เพิ่ม ปรึกษาคลินิกแก้หนี้ หรือผู้เชี่ยวชาญด้านการวางแผนการเงินทันที'
+                        }
+                    },
+                ]
+            },
+            {
+                id: 'body',
+                title: 'Body (ร่างกาย)',
+                color: 'text-emerald-600',
+                baseColor: '#059669',
+                bgLight: 'bg-emerald-50',
+                borderLight: 'border-emerald-100',
+                description: 'สภาวะทางกายภาพ รวมถึงผลเลือด รูปร่าง และระบบการทำงานของอวัยวะ',
+                subDomains: [
+                    { 
+                        id: 'body_med', 
+                        label: 'สุขภาพ (Medical)', 
+                        icon: 'Stethoscope', 
+                        img: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80', // Stethoscope
+                        desc: 'ผลตรวจสุขภาพ ความดัน ไขมัน และน้ำตาล',
+                        criteria: {
+                            good: 'ผลตรวจเลือดปกติ (ความดัน <120/80, น้ำตาล <100, ไขมันปกติ) ไม่มีโรคประจำตัว',
+                            fair: 'มีความเสี่ยง เช่น ความดันสูงเล็กน้อย หรือน้ำตาลปริ่มๆ (Pre-diabetes) หรือมีอาการเจ็บป่วยเล็กน้อย',
+                            poor: 'มีโรคเรื้อรังที่คุมไม่ได้ (NCDs) เช่น เบาหวาน ความดันสูงมาก ต้องกินยาจำนวนมาก'
+                        },
+                        advice: {
+                            good: 'ตรวจสุขภาพประจำปีอย่างต่อเนื่อง และฉีดวัคซีนตามเกณฑ์',
+                            fair: 'ปรับพฤติกรรมด่วน (ลดเค็ม/หวาน/มัน) และติดตามผลเลือดทุก 3-6 เดือน',
+                            poor: 'ปฏิบัติตามแผนการรักษาของแพทย์อย่างเคร่งครัด ห้ามขาดยา และปรับวิถีชีวิตทันที'
+                        }
+                    },
+                    { 
+                        id: 'body_comp', 
+                        label: 'รูปร่าง (Composition)', 
+                        icon: 'Scale', 
+                        img: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=800&q=80', // Tape Measure
+                        desc: 'น้ำหนักตัว ดัชนีมวลกาย (BMI) และรอบเอว',
+                        criteria: {
+                            good: 'BMI 18.5-22.9 (เอเชีย) รอบเอวปกติ (ช<90ซม, ญ<80ซม) มีมวลกล้ามเนื้อเหมาะสม',
+                            fair: 'น้ำหนักเกิน (BMI 23-24.9) หรือผอมเกินไป หรือมีพุงเล็กน้อย (Skinny Fat)',
+                            poor: 'โรคอ้วน (BMI >25) หรือรอบเอวเกินเกณฑ์มาตรฐานมาก เสี่ยงต่อโรคเมตาบอลิก'
+                        },
+                        advice: {
+                            good: 'รักษามวลกล้ามเนื้อด้วยเวทเทรนนิ่ง และทานโปรตีนให้เพียงพอ',
+                            fair: 'ควบคุมแคลอรี่และเพิ่มกิจกรรมทางกาย เน้นลดไขมันหน้าท้อง',
+                            poor: 'ตั้งเป้าลดน้ำหนัก 5-10% ใน 3-6 เดือน ปรึกษานักกำหนดอาหารหากทำเองไม่สำเร็จ'
+                        }
+                    },
+                    { 
+                        id: 'body_fit', 
+                        label: 'สมรรถภาพ (Fitness)', 
+                        icon: 'Activity', 
+                        img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=800&q=80', // Gym/Fitness
+                        desc: 'ความแข็งแรง ความทนทาน และความยืดหยุ่น',
+                        criteria: {
+                            good: 'ออกกำลังกายระดับปานกลาง-หนัก 150-300 นาที/สัปดาห์ ไม่เหนื่อยง่าย ยืดหยุ่นดี',
+                            fair: 'ออกกำลังกายบ้างแต่ไม่สม่ำเสมอ (1-2 ครั้ง/สัปดาห์) รู้สึกเหนื่อยเมื่อขึ้นบันได',
+                            poor: 'ไม่ออกกำลังกายเลย เหนื่อยง่ายมากแม้ทำกิจกรรมเบาๆ ปวดเมื่อยเรื้อรัง'
+                        },
+                        advice: {
+                            good: 'ท้าทายตัวเองด้วยกีฬาใหม่ๆ หรือเพิ่มความเข้มข้น (HIIT) เพื่อหัวใจที่แข็งแรงขึ้น',
+                            fair: 'หางานอดิเรกที่ได้ขยับตัว เช่น เดินเร็ว ปั่นจักรยาน ให้ได้อย่างน้อย 30 นาที/วัน',
+                            poor: 'เริ่มจาก "แค่ขยับเท่ากับออกกำลังกาย" เดินแกว่งแขน อย่านั่งนานเกิน 1 ชม.'
+                        }
+                    },
+                    { 
+                        id: 'body_gen', 
+                        label: 'ระบบร่างกาย (Systems)', 
+                        icon: 'HeartPulse', 
+                        img: 'https://images.unsplash.com/photo-1541781777629-1229a1fe43ed?auto=format&fit=crop&w=800&q=80', // Sleep/Bed
+                        desc: 'การนอนหลับ การขับถ่าย และระบบย่อยอาหาร',
+                        criteria: {
+                            good: 'นอนหลับ 7-8 ชม. ตื่นมาสดชื่น ขับถ่ายปกติทุกวัน ไม่ท้องอืด',
+                            fair: 'นอนไม่พอเป็นบางวัน หลับๆ ตื่นๆ หรือมีปัญหาท้องผูก/ท้องเสียบ้าง',
+                            poor: 'นอนไม่หลับเรื้อรัง กรนเสียงดัง (เสี่ยงหยุดหายใจ) ท้องผูกสลับท้องเสียรุนแรง'
+                        },
+                        advice: {
+                            good: 'รักษาวงจรการนอน (Sleep Hygiene) ให้ตรงเวลา หลีกเลี่ยงแสงสีฟ้าก่อนนอน',
+                            fair: 'งดกาแฟบ่าย ปรับสภาพห้องนอนให้มืดสนิท และเพิ่มไฟเบอร์ในอาหาร',
+                            poor: 'ปรึกษาแพทย์เรื่อง Sleep Test หรือตรวจระบบทางเดินอาหารหากมีอาการเรื้อรัง'
+                        }
+                    },
+                ]
+            },
+            {
+                id: 'thinking',
+                title: 'Thinking & Feeling (ความคิด & ความรู้สึก)',
+                color: 'text-purple-600',
+                baseColor: '#7c3aed',
+                bgLight: 'bg-purple-50',
+                borderLight: 'border-purple-100',
+                description: 'สุขภาวะทางจิต อารมณ์ พลังงานชีวิต และความสามารถทางสมอง',
+                subDomains: [
+                    { 
+                        id: 'mind_stress', 
+                        label: 'ความเครียด (Stress)', 
+                        icon: 'AlertTriangle', 
+                        img: 'https://images.unsplash.com/photo-1474418397713-7ede21d49118?auto=format&fit=crop&w=800&q=80', // Peaceful Lake (New)
+                        desc: 'ระดับความกดดันและการรับมือกับปัญหา',
+                        criteria: {
+                            good: 'จัดการความเครียดได้ดี มองโลกในแง่บวก มีวิธีผ่อนคลายที่ได้ผล',
+                            fair: 'เครียดสะสมเป็นช่วงๆ รู้สึกกดดัน หงุดหงิดง่าย แต่ยังพอควบคุมได้',
+                            poor: 'เครียดรุนแรงจนส่งผลต่อร่างกาย (ปวดหัว, นอนไม่หลับ) วิตกกังวลตลอดเวลา'
+                        },
+                        advice: {
+                            good: 'ฝึกสติ (Mindfulness) หรือสมาธิสั้นๆ เพื่อเพิ่มภูมิต้านทานทางใจ',
+                            fair: 'ฝึกหายใจลึกๆ (Deep Breathing) เมื่อรู้สึกกดดัน และหางานอดิเรกที่ผ่อนคลาย',
+                            poor: 'ต้องการการพักผ่อนอย่างจริงจัง ปรึกษาผู้เชี่ยวชาญเพื่อทำจิตบำบัด (CBT)'
+                        }
+                    },
+                    { 
+                        id: 'mind_mood', 
+                        label: 'อารมณ์ (Mood)', 
+                        icon: 'Smile', 
+                        img: 'https://images.unsplash.com/photo-1545310834-cd6a8a0884b8?auto=format&fit=crop&w=800&q=80', // Happy/Smile
+                        desc: 'สภาวะทางอารมณ์โดยรวมและความพึงพอใจในชีวิต',
+                        criteria: {
+                            good: 'อารมณ์มั่นคง มีความสุขกับสิ่งเล็กๆ น้อยๆ ได้ง่าย ไม่เหวี่ยงวีน',
+                            fair: 'อารมณ์แปรปรวนตามสถานการณ์ รู้สึกเบื่อหน่าย หรือเศร้าเป็นพักๆ',
+                            poor: 'ซึมเศร้า หมดอาลัยตายอยาก ไม่มีความสุขกับสิ่งที่เคยชอบ (Anhedonia)'
+                        },
+                        advice: {
+                            good: 'ฝึกขอบคุณสิ่งดีๆ (Gratitude Journal) ทุกวันเพื่อรักษาพลังบวก',
+                            fair: 'สังเกตตัวกระตุ้นอารมณ์ (Triggers) และหลีกเลี่ยงสถานการณ์ที่เป็นพิษ',
+                            poor: 'ประเมินภาวะซึมเศร้ากับแพทย์ อย่าเก็บไว้คนเดียว สายด่วนสุขภาพจิตช่วยได้'
+                        }
+                    },
+                    { 
+                        id: 'mind_cog', 
+                        label: 'ความคิด (Cognition)', 
+                        icon: 'Brain', 
+                        img: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&q=80', // Planning/Brain
+                        desc: 'ความจำ สมาธิ และการตัดสินใจ',
+                        criteria: {
+                            good: 'สมองแล่น จำแม่น ตัดสินใจเฉียบขาด มีสมาธิจดจ่อได้นาน',
+                            fair: 'ขี้ลืมบ้าง หัวตื้อๆ (Brain fog) ตัดสินใจลังเลเมื่อพักผ่อนน้อย',
+                            poor: 'หลงลืมรุนแรง สมาธิสั้นทำงานไม่จบ ตัดสินใจผิดพลาดบ่อยครั้ง'
+                        },
+                        advice: {
+                            good: 'เรียนรู้ทักษะใหม่ๆ เช่น ภาษาหรือดนตรี เพื่อกระตุ้น Neuroplasticity',
+                            fair: 'นอนให้พอ ดื่มน้ำให้ถึง และจดบันทึกช่วยจำ (To-do list) ลด Multi-tasking',
+                            poor: 'ตรวจเช็คภาวะสมองเสื่อม หรือขาดวิตามิน B12/ไทรอยด์ หากมีอาการต่อเนื่อง'
+                        }
+                    },
+                    { 
+                        id: 'mind_energy', 
+                        label: 'พลังงาน (Energy)', 
+                        icon: 'Zap', 
+                        img: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80', // Active/Energy (New)
+                        desc: 'ระดับพลังงานในชีวิตประจำวัน ความกระตือรือร้น',
+                        criteria: {
+                            good: 'ตื่นตัวตลอดวัน มีแรงทำกิจกรรมต่างๆ จนจบวันโดยไม่เพลียจัด',
+                            fair: 'ง่วงเหงาหาวนอนช่วงบ่าย หรือต้องใช้กาแฟกระตุ้นตลอดเวลา',
+                            poor: 'อ่อนเพลียเรื้อรัง (Chronic Fatigue) ไม่มีแรงแม้ทำกิจวัตรประจำวัน'
+                        },
+                        advice: {
+                            good: 'รักษาจังหวะชีวิต (Circadian Rhythm) ให้คงที่',
+                            fair: 'ลดน้ำตาลและแป้งขัดขาวมื้อเที่ยง ขยับตัวทุกชม.เพื่อปลุกร่างกาย',
+                            poor: 'ตรวจเลือดหาภาวะโลหิตจาง หรือต่อมหมวกไตล้า (Adrenal Fatigue)'
+                        }
+                    },
+                ]
+            },
+            {
+                id: 'behavior',
+                title: 'Behavior (พฤติกรรม)',
+                color: 'text-orange-600',
+                baseColor: '#ea580c',
+                bgLight: 'bg-orange-50',
+                borderLight: 'border-orange-100',
+                description: 'ไลฟ์สไตล์และนิสัยประจำวันที่ส่งผลโดยตรงต่อสุขภาพ',
+                subDomains: [
+                    { 
+                        id: 'beh_diet', 
+                        label: 'โภชนาการ (Diet)', 
+                        icon: 'Utensils', 
+                        img: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=800&q=80', // Healthy Salad
+                        desc: 'คุณภาพอาหาร ปริมาณผักผลไม้ และการคุมน้ำตาล/โซเดียม',
+                        criteria: {
+                            good: 'กินผักผลไม้ 400g/วัน เลี่ยงของทอด/หวาน/เค็ม ดื่มน้ำเปล่าเป็นหลัก',
+                            fair: 'กินผักบ้างแต่น้อย ติดหวานหรือติดเค็ม ชอบกินอาหารแปรรูป/แช่แข็ง',
+                            poor: 'กินแต่แป้ง/ไขมัน/น้ำตาล ไม่กินผักเลย ดื่มน้ำอัดลม/ชานมแทนน้ำเปล่า'
+                        },
+                        advice: {
+                            good: 'เน้นความหลากหลายของสีผัก (Rainbow Diet) และเลือกธัญพืชไม่ขัดสี',
+                            fair: 'เริ่มจากลดเครื่องดื่มหวานเหลือครึ่งหนึ่ง และเพิ่มผักในทุกมื้อ',
+                            poor: 'ปรับพฤติกรรมด่วน! "ลดหวาน มัน เค็ม" เพื่อเลี่ยงโรค NCDs ในอนาคต'
+                        }
+                    },
+                    { 
+                        id: 'beh_alc', 
+                        label: 'แอลกอฮอล์ (Alcohol)', 
+                        icon: 'Wine', 
+                        img: 'https://images.unsplash.com/photo-1510626176961-4b57d4fbad03?auto=format&fit=crop&w=800&q=80', // Wine/Drink
+                        desc: 'ปริมาณและความถี่ในการดื่มเครื่องดื่มแอลกอฮอล์',
+                        criteria: {
+                            good: 'ไม่ดื่มเลย หรือดื่มตามเกณฑ์ (ชาย<2 หน่วย, หญิง<1 หน่วย/วัน) ไม่เมา',
+                            fair: 'ดื่มสังสรรค์บ้างบางครั้ง (Social Drinker) แต่บางทีก็ดื่มหนัก (Binge)',
+                            poor: 'ดื่มทุกวัน หรือดื่มหนักจนขาดสติ (Alcoholism) ส่งผลต่อตับและงาน'
+                        },
+                        advice: {
+                            good: 'ดีมาก! หากดื่มควรมีวันพักตับอย่างน้อย 2 วัน/สัปดาห์',
+                            fair: 'จำกัดปริมาณ ดื่มน้ำเปล่าตามมากๆ และไม่ขับขี่ยานพาหนะ',
+                            poor: 'เข้ารับการบำบัดเลิกสุรา และตรวจค่าตับ (Liver Function Test) ทันที'
+                        }
+                    },
+                    { 
+                        id: 'beh_smoke', 
+                        label: 'การสูบ (Smoking)', 
+                        icon: 'Wind', 
+                        img: 'https://images.unsplash.com/photo-1445499348736-29b6cdfc03b9?auto=format&fit=crop&w=800&q=80', // Fresh Air/Mountain
+                        desc: 'การสูบบุหรี่ บุหรี่ไฟฟ้า หรือการได้รับควันมือสอง',
+                        criteria: {
+                            good: 'ไม่สูบบุหรี่เลย และหลีกเลี่ยงสถานที่ที่มีควันบุหรี่',
+                            fair: 'สูบบ้างเป็นครั้งคราว (Social Smoker) หรือเลิกแล้วแต่ยังสูบบุหรี่ไฟฟ้า',
+                            poor: 'สูบจัดประจำวัน หรือได้รับควันบุหรี่มือสองตลอดเวลา'
+                        },
+                        advice: {
+                            good: 'หลีกเลี่ยงมลภาวะ PM2.5 ด้วยการใส่หน้ากากเมื่อค่าอากาศแย่',
+                            fair: 'บุหรี่ไฟฟ้าก็มีอันตรายต่อปอดและหัวใจ ควรตั้งเป้าเลิกถาวร',
+                            poor: 'ปรึกษาคลินิกฟ้าใส/สายด่วนเลิกบุหรี่ 1600 ปอดของคุณจะขอบคุณ'
+                        }
+                    },
+                    { 
+                        id: 'beh_act', 
+                        label: 'พฤติกรรมเนือยนิ่ง (Sedentary)', 
+                        icon: 'Sofa', 
+                        img: 'https://images.unsplash.com/photo-1593062096033-9a26b09da705?auto=format&fit=crop&w=800&q=80', // Sofa/Work from home (New)
+                        desc: 'ระยะเวลาที่นั่งติดต่อกัน และการขยับร่างกายระหว่างวัน',
+                        criteria: {
+                            good: 'มีกิจกรรมทางกายตลอดวัน เดินเยอะ ไม่นั่งนานเกิน 1 ชม. ติดต่อกัน',
+                            fair: 'นั่งทำงานนาน 2-3 ชม. ค่อยลุกทีนึง กลับบ้านก็นอนดูซีรีส์ยาว',
+                            poor: 'นั่งหรือนอนทั้งวัน (Sedentary Lifestyle) ขยับตัวน้อยมาก เสี่ยงออฟฟิศซินโดรม'
+                        },
+                        advice: {
+                            good: 'ใช้โต๊ะทำงานที่ปรับยืนได้ (Standing Desk) สลับนั่งเพื่อสุขภาพหลัง',
+                            fair: 'ตั้งนาฬิกาเตือนลุกขยับทุก 1 ชม. ยืดเหยียดกล้ามเนื้อคอบ่าไหล่',
+                            poor: 'พฤติกรรมนี้เสี่ยงตายเร็วเท่าบุหรี่! ต้องลุกเดินทุกครั้งที่มีโอกาส'
+                        }
+                    }, 
+                ]
+            }
+        ];
+
+        const SCORE_COLORS = {
+            unset: '#e5e7eb', // gray-200
+            good: '#22c55e',  // green-500
+            fair: '#f97316',  // orange-500
+            poor: '#ef4444'   // red-500
+        };
+
+        const SCORE_LABELS = {
+            good: 'Healthy',
+            fair: 'Mixed',
+            poor: 'Unhealthy'
+        };
+
+        // --- Components ---
+
+        const ProfileWheel = ({ scores, onSegmentClick }) => {
+            const radius = 160;
+            const innerRadius = 90;
+            const center = 200;
+            
+            const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
+                const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+                return {
+                    x: centerX + (radius * Math.cos(angleInRadians)),
+                    y: centerY + (radius * Math.sin(angleInRadians))
+                };
+            };
+
+            const segments = [];
+            const totalSubDomains = 16;
+            const anglePerSegment = 360 / totalSubDomains;
+            let currentAngle = 270; 
+
+            SECTORS.forEach((quadrant) => {
+                quadrant.subDomains.forEach((sub) => {
+                    const startAngle = currentAngle;
+                    const endAngle = currentAngle + anglePerSegment;
+                    
+                    const p1 = polarToCartesian(center, center, radius, endAngle);
+                    const p2 = polarToCartesian(center, center, radius, startAngle);
+                    const p3 = polarToCartesian(center, center, innerRadius, startAngle);
+                    const p4 = polarToCartesian(center, center, innerRadius, endAngle);
+
+                    const d = `M ${p1.x} ${p1.y} A ${radius} ${radius} 0 0 0 ${p2.x} ${p2.y} L ${p3.x} ${p3.y} A ${innerRadius} ${innerRadius} 0 0 1 ${p4.x} ${p4.y} Z`;
+
+                    const midAngle = startAngle + (anglePerSegment / 2);
+                    const iconPos = polarToCartesian(center, center, (radius + innerRadius) / 2, midAngle);
+                    const score = scores[sub.id] || 'unset';
+                    const fill = SCORE_COLORS[score];
+
+                    segments.push({
+                        path: d,
+                        color: fill,
+                        data: sub,
+                        quadrant: quadrant,
+                        iconX: iconPos.x,
+                        iconY: iconPos.y
+                    });
+
+                    currentAngle += anglePerSegment;
+                });
+            });
+
+            return (
+                <div className="relative w-full max-w-[320px] sm:max-w-[400px] mx-auto aspect-square flex items-center justify-center">
+                    <svg viewBox="0 0 400 400" className="w-full h-full drop-shadow-lg transform transition-transform duration-500 ease-out hover:scale-105">
+                        <circle cx="200" cy="200" r={radius} fill="#f9fafb" />
+                        {segments.map((seg, i) => {
+                            const isUnset = scores[seg.data.id] === undefined;
+                            return (
+                                <g key={i} onClick={() => onSegmentClick(seg.quadrant.id, seg.data.id)} className="cursor-pointer group">
+                                    <path d={seg.path} fill={seg.color} stroke="white" strokeWidth="2" className="transition-all duration-300 group-hover:opacity-80" />
+                                    <foreignObject x={seg.iconX - 12} y={seg.iconY - 12} width="24" height="24" className="pointer-events-none">
+                                        <div className={`flex items-center justify-center w-full h-full ${isUnset ? 'text-gray-400' : 'text-white'}`}>
+                                            <LucideIcon name={seg.data.icon} size={16} />
+                                        </div>
+                                    </foreignObject>
+                                    <title>{seg.data.label}</title>
+                                </g>
+                            );
+                        })}
+                        <circle cx="200" cy="200" r={innerRadius - 5} fill="white" className="drop-shadow-inner" />
+                        <text x="200" y="190" textAnchor="middle" className="text-sm font-semibold fill-gray-400 uppercase tracking-widest">My</text>
+                        <text x="200" y="215" textAnchor="middle" className="text-2xl font-black fill-gray-800 tracking-tighter">Profile</text>
+                    </svg>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [scores, setScores] = useState({});
+            const [activeTab, setActiveTab] = useState('environment');
+            const [showReport, setShowReport] = useState(false);
+            const [expandedItem, setExpandedItem] = useState(null);
+
+            const handleScoreChange = (id, value) => {
+                setScores(prev => ({ ...prev, [id]: value }));
+            };
+
+            const calculateOverall = () => {
+                const total = Object.keys(scores).length;
+                if (total === 0) return 0;
+                const points = { good: 100, fair: 50, poor: 0 };
+                const sum = Object.values(scores).reduce((acc, curr) => acc + (points[curr] || 0), 0);
+                return Math.round(sum / 16); 
+            };
+
+            const isComplete = Object.keys(scores).length === 16;
+            const currentSector = SECTORS.find(s => s.id === activeTab);
+
+            // Report View
+            if (showReport) {
+                const overallScore = calculateOverall();
+                const scoreColor = overallScore >= 80 ? 'text-green-600' : overallScore >= 50 ? 'text-orange-600' : 'text-red-600';
+                const scoreLevel = overallScore >= 80 ? 'ดีเยี่ยม (Healthy Lifestyle)' : overallScore >= 50 ? 'ปานกลาง (Needs Improvement)' : 'ต้องปรับปรุง (Unhealthy)';
+
+                return (
+                    <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
+                        <div className="flex-grow p-4 sm:p-8">
+                            <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-3xl overflow-hidden print:shadow-none">
+                                <div className="bg-slate-900 text-white p-8 flex justify-between items-center print:bg-white print:text-black print:border-b">
+                                    <div>
+                                        <h1 className="text-3xl font-bold mb-2">รายงานผลวิเคราะห์สุขภาพรายบุคคล</h1>
+                                        <p className="opacity-80">Personal Healthy Lifestyle Profile Report</p>
+                                    </div>
+                                    <button onClick={() => window.print()} className="bg-white/10 hover:bg-white/20 p-3 rounded-full no-print">
+                                        <LucideIcon name="Printer" size={24} />
+                                    </button>
+                                </div>
+
+                                <div className="p-8">
+                                    <div className="flex flex-col md:flex-row items-center gap-8 mb-12 border-b border-gray-100 pb-8">
+                                        <div className="w-48 flex-shrink-0">
+                                            <ProfileWheel scores={scores} onSegmentClick={() => {}} />
+                                        </div>
+                                        <div className="flex-1 text-center md:text-left">
+                                            <h2 className="text-gray-500 uppercase tracking-wide text-sm font-bold mb-1">คะแนนรวมของคุณ</h2>
+                                            <div className={`text-5xl font-black mb-2 ${scoreColor}`}>{overallScore}%</div>
+                                            <div className="text-xl font-medium text-gray-700 mb-4">{scoreLevel}</div>
+                                            <p className="text-gray-600 leading-relaxed">
+                                                จากการประเมินรอบด้าน 360 องศา ทั้งสิ่งแวดล้อม ร่างกาย จิตใจ และพฤติกรรม 
+                                                พบว่าคุณมีจุดแข็งที่น่าชื่นชม แต่ยังมีบางจุดที่สามารถพัฒนาเพื่อคุณภาพชีวิตที่ดียิ่งขึ้นได้
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                                        <LucideIcon name="FileText" className="text-blue-600" />
+                                        คำแนะนำเจาะลึกรายด้าน
+                                    </h3>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:block">
+                                        {SECTORS.map(sector => {
+                                            const improvementItems = sector.subDomains.filter(sub => scores[sub.id] === 'fair' || scores[sub.id] === 'poor');
+                                            const goodItems = sector.subDomains.filter(sub => scores[sub.id] === 'good');
+                                            
+                                            if (improvementItems.length === 0 && goodItems.length === 0) return null;
+
+                                            return (
+                                                <div key={sector.id} className="mb-6 print-break-inside-avoid">
+                                                    <h4 className={`font-bold text-lg mb-3 ${sector.color} border-b pb-1`}>{sector.title}</h4>
+                                                    
+                                                    {goodItems.length > 0 && (
+                                                        <div className="mb-3">
+                                                            <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">จุดแข็ง (Strengths)</span>
+                                                            <ul className="mt-2 space-y-1">
+                                                                {goodItems.map(sub => (
+                                                                    <li key={sub.id} className="text-sm text-gray-600 flex items-start gap-2">
+                                                                        <LucideIcon name="CheckCircle" size={14} className="text-green-500 mt-1 flex-shrink-0" />
+                                                                        <span><b>{sub.label}:</b> {sub.advice.good}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+
+                                                    {improvementItems.length > 0 && (
+                                                        <div>
+                                                            <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-full">สิ่งที่ควรพัฒนา (Areas to Improve)</span>
+                                                            <ul className="mt-2 space-y-3">
+                                                                {improvementItems.map(sub => (
+                                                                    <li key={sub.id} className="text-sm bg-gray-50 p-3 rounded-lg border-l-4 border-orange-400">
+                                                                        <div className="flex items-center gap-2 mb-1">
+                                                                            <LucideIcon name={sub.icon} size={16} className="text-gray-700" />
+                                                                            <span className="font-bold text-gray-800">{sub.label}</span>
+                                                                            <span className={`text-xs px-2 py-0.5 rounded text-white ${scores[sub.id] === 'poor' ? 'bg-red-500' : 'bg-orange-400'}`}>
+                                                                                {scores[sub.id] === 'poor' ? 'Unhealthy' : 'Mixed'}
+                                                                            </span>
+                                                                        </div>
+                                                                        <p className="text-gray-700 mt-1">{sub.advice[scores[sub.id]]}</p>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div className="mt-12 text-center no-print">
+                                        <button 
+                                            onClick={() => setShowReport(false)}
+                                            className="px-8 py-3 bg-gray-800 text-white rounded-xl hover:bg-gray-700 font-semibold shadow-lg transition-all"
+                                        >
+                                            กลับไปแก้ไขข้อมูล
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {/* Footer in Report */}
+                        <footer className="bg-white border-t py-6 mt-auto no-print">
+                            <div className="max-w-6xl mx-auto px-4 text-center">
+                                <p className="text-gray-600 font-medium">Developed by {DEVELOPER_NAME}</p>
+                                <p className="text-gray-400 text-sm mt-1">Version {APP_VERSION}</p>
+                            </div>
+                        </footer>
+                    </div>
+                );
+            }
+
+            // Assessment View
+            return (
+                <div className="min-h-screen bg-gray-50 font-sans text-gray-800 flex flex-col">
+                    <header className="bg-white shadow-sm sticky top-0 z-20">
+                        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-orange-100 p-2 rounded-lg">
+                                    <LucideIcon name="Activity" className="text-orange-600" size={24} />
+                                </div>
+                                <div>
+                                    <h1 className="text-lg md:text-xl font-extrabold text-gray-900 tracking-tight">Personal Healthy Lifestyle Profile</h1>
+                                    <p className="text-xs text-gray-500 font-medium">360° Holistic Health Assessment</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="hidden md:flex flex-col items-end">
+                                    <span className="text-xs text-gray-400 uppercase font-bold">Progress</span>
+                                    <div className="text-sm font-bold text-blue-600">{Object.keys(scores).length} / 16</div>
+                                </div>
+                                {isComplete && (
+                                    <button 
+                                        onClick={() => setShowReport(true)}
+                                        className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-blue-700 transition-all animate-pulse"
+                                    >
+                                        <span>สรุปผล</span>
+                                        <LucideIcon name="ArrowRight" size={16} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 flex-grow">
+                        
+                        <div className="lg:col-span-4 flex flex-col gap-6">
+                            <div className="bg-white p-6 rounded-3xl shadow-lg border border-gray-100 relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-orange-500"></div>
+                                <h2 className="text-center font-bold text-gray-800 mb-6">ภาพรวมสุขภาพของคุณ</h2>
+                                <ProfileWheel 
+                                    scores={scores} 
+                                    onSegmentClick={(quadId, subId) => {
+                                        setActiveTab(quadId);
+                                        setTimeout(() => {
+                                            const el = document.getElementById(subId);
+                                            if(el) {
+                                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                setExpandedItem(subId);
+                                            }
+                                        }, 100);
+                                    }} 
+                                />
+                                <div className="mt-6 flex justify-center gap-3 text-xs font-semibold">
+                                    <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-50 text-green-700 border border-green-100"><div className="w-2 h-2 rounded-full bg-green-500"></div>Healthy</span>
+                                    <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100"><div className="w-2 h-2 rounded-full bg-orange-500"></div>Mixed</span>
+                                    <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-red-700 border border-red-100"><div className="w-2 h-2 rounded-full bg-red-500"></div>Unhealthy</span>
+                                </div>
+                            </div>
+
+                            <div className="hidden lg:block bg-white rounded-2xl shadow-sm border border-gray-100 p-2 sticky top-28">
+                                {SECTORS.map((sector) => (
+                                    <button
+                                        key={sector.id}
+                                        onClick={() => setActiveTab(sector.id)}
+                                        className={`w-full text-left px-4 py-4 rounded-xl mb-1 flex items-center justify-between transition-all ${
+                                            activeTab === sector.id 
+                                                ? `${sector.bgLight} ${sector.color} font-bold shadow-inner` 
+                                                : 'hover:bg-gray-50 text-gray-600'
+                                        }`}
+                                    >
+                                        <span>{sector.title}</span>
+                                        {activeTab === sector.id && <LucideIcon name="ChevronDown" size={16} />}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="lg:col-span-8">
+                            <div className="lg:hidden flex overflow-x-auto gap-2 pb-4 mb-2 scrollbar-hide">
+                                {SECTORS.map((sector) => (
+                                    <button
+                                        key={sector.id}
+                                        onClick={() => setActiveTab(sector.id)}
+                                        className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold border ${
+                                            activeTab === sector.id 
+                                            ? `${sector.bgLight} ${sector.color} ${sector.borderLight}` 
+                                            : 'bg-white border-gray-200 text-gray-500'
+                                        }`}
+                                    >
+                                        {sector.title.split(' ')[0]}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="space-y-6">
+                                <div className={`p-6 rounded-3xl ${currentSector.bgLight} border ${currentSector.borderLight}`}>
+                                    <h2 className={`text-2xl font-black mb-2 ${currentSector.color}`}>{currentSector.title}</h2>
+                                    <p className="text-gray-600">{currentSector.description}</p>
+                                </div>
+
+                                {currentSector.subDomains.map((item) => {
+                                    const isExpanded = expandedItem === item.id;
+                                    const currentScore = scores[item.id];
+                                    
+                                    return (
+                                        <div 
+                                            key={item.id} 
+                                            id={item.id} 
+                                            className={`bg-white rounded-2xl shadow-sm border transition-all duration-300 overflow-hidden ${
+                                                isExpanded ? 'ring-2 ring-blue-100 border-blue-300 shadow-md' : 'border-gray-100 hover:border-gray-200'
+                                            }`}
+                                        >
+                                            <div 
+                                                className="relative cursor-pointer"
+                                                onClick={() => setExpandedItem(isExpanded ? null : item.id)}
+                                            >
+                                                {/* Image Banner */}
+                                                <div className="h-32 w-full relative overflow-hidden">
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
+                                                    <img 
+                                                        src={item.img} 
+                                                        alt={item.label} 
+                                                        className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
+                                                        onError={(e) => {
+                                                            e.target.onerror = null; 
+                                                            e.target.style.display = 'none';
+                                                            e.target.parentNode.style.backgroundColor = '#ddd';
+                                                        }}
+                                                    />
+                                                    <div className="absolute bottom-3 left-4 z-20 flex items-center gap-3 text-white">
+                                                        <LucideIcon name={item.icon} size={24} className="drop-shadow-md" />
+                                                        <h3 className="text-xl font-bold drop-shadow-md">{item.label}</h3>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="p-4 flex items-center justify-between">
+                                                    <p className="text-sm text-gray-500 line-clamp-1">{item.desc}</p>
+                                                    <div className="flex items-center gap-3">
+                                                         {currentScore && (
+                                                            <span className={`text-xs font-bold px-2 py-1 rounded uppercase ${
+                                                                currentScore === 'good' ? 'bg-green-100 text-green-700' :
+                                                                currentScore === 'fair' ? 'bg-orange-100 text-orange-700' :
+                                                                'bg-red-100 text-red-700'
+                                                            }`}>
+                                                                {SCORE_LABELS[currentScore]}
+                                                            </span>
+                                                        )}
+                                                        <div className="text-gray-300">
+                                                            {isExpanded ? <LucideIcon name="ChevronUp" size={20} /> : <LucideIcon name="ChevronDown" size={20} />}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {isExpanded && (
+                                                <div className="px-5 pb-6 pt-0 border-t border-gray-50 animation-fade-in">
+                                                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider my-4">Select the option that best describes you:</p>
+                                                    
+                                                    <div className="space-y-3">
+                                                        <button 
+                                                            onClick={() => handleScoreChange(item.id, 'good')}
+                                                            className={`w-full text-left p-4 rounded-xl border-2 transition-all flex gap-3 ${
+                                                                currentScore === 'good' 
+                                                                ? 'bg-green-50 border-green-500 ring-1 ring-green-500' 
+                                                                : 'bg-white border-gray-100 hover:border-green-200 hover:bg-green-50/30'
+                                                            }`}
+                                                        >
+                                                            <div className="mt-0.5"><LucideIcon name="CheckCircle" size={20} className={currentScore === 'good' ? 'text-green-600' : 'text-gray-300'} /></div>
+                                                            <div>
+                                                                <div className={`font-bold text-sm ${currentScore === 'good' ? 'text-green-800' : 'text-gray-700'}`}>Healthy (ดี)</div>
+                                                                <div className="text-sm text-gray-600 mt-1">{item.criteria.good}</div>
+                                                            </div>
+                                                        </button>
+
+                                                        <button 
+                                                            onClick={() => handleScoreChange(item.id, 'fair')}
+                                                            className={`w-full text-left p-4 rounded-xl border-2 transition-all flex gap-3 ${
+                                                                currentScore === 'fair' 
+                                                                ? 'bg-orange-50 border-orange-500 ring-1 ring-orange-500' 
+                                                                : 'bg-white border-gray-100 hover:border-orange-200 hover:bg-orange-50/30'
+                                                            }`}
+                                                        >
+                                                            <div className="mt-0.5"><LucideIcon name="AlertCircle" size={20} className={currentScore === 'fair' ? 'text-orange-600' : 'text-gray-300'} /></div>
+                                                            <div>
+                                                                <div className={`font-bold text-sm ${currentScore === 'fair' ? 'text-orange-800' : 'text-gray-700'}`}>In-between (ปานกลาง)</div>
+                                                                <div className="text-sm text-gray-600 mt-1">{item.criteria.fair}</div>
+                                                            </div>
+                                                        </button>
+
+                                                        <button 
+                                                            onClick={() => handleScoreChange(item.id, 'poor')}
+                                                            className={`w-full text-left p-4 rounded-xl border-2 transition-all flex gap-3 ${
+                                                                currentScore === 'poor' 
+                                                                ? 'bg-red-50 border-red-500 ring-1 ring-red-500' 
+                                                                : 'bg-white border-gray-100 hover:border-red-200 hover:bg-red-50/30'
+                                                            }`}
+                                                        >
+                                                            <div className="mt-0.5"><LucideIcon name="XCircle" size={20} className={currentScore === 'poor' ? 'text-red-600' : 'text-gray-300'} /></div>
+                                                            <div>
+                                                                <div className={`font-bold text-sm ${currentScore === 'poor' ? 'text-red-800' : 'text-gray-700'}`}>Unhealthy (ควรปรับปรุง)</div>
+                                                                <div className="text-sm text-gray-600 mt-1">{item.criteria.poor}</div>
+                                                            </div>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="mt-8 flex justify-end">
+                                {isComplete ? (
+                                    <button 
+                                        onClick={() => setShowReport(true)}
+                                        className="bg-blue-600 text-white text-lg font-bold px-8 py-4 rounded-2xl shadow-xl hover:bg-blue-700 hover:scale-105 transition-all w-full md:w-auto text-center"
+                                    >
+                                        ดูผลวิเคราะห์ของคุณ
+                                    </button>
+                                ) : (
+                                    <div className="text-gray-400 text-sm italic">
+                                        *ตอบให้ครบทุกข้อเพื่อดูผลวิเคราะห์
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </main>
+
+                    <footer className="bg-white border-t py-6 mt-auto">
+                        <div className="max-w-6xl mx-auto px-4 text-center">
+                            <p className="text-gray-600 font-medium">Developed by {DEVELOPER_NAME}</p>
+                            <p className="text-gray-400 text-sm mt-1">Version {APP_VERSION}</p>
+                        </div>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
