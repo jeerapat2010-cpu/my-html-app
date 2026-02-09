@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบติดตามรายงานกัญชา (ภท.27/28) - สมุทรปราการ</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- PapaParse for CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Google Fonts: Prompt -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #f3f4f6;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background-color: white; }
+            .page-break { page-break-before: always; }
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555; 
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        // --- Mock Data (ตัวอย่างข้อมูลเริ่มต้น) ---
+        const MOCK_DATA = [
+            { timestamp: "2/8/2026 20:57:28", license: "สป-03-25/2565", shopName: "กรีนทอยช็อป สาขาริมคลอง", idCard: "1104700035487", phone: "0834265544", district: "อ.เมือง สมุทรปราการ", link27: "https://drive.google.com/open?id=mock1", link28: "https://drive.google.com/open?id=mock2", owner: "นาย ณภาดล ธนาวรัทนนท์" },
+            { timestamp: "2/8/2026 20:54:20", license: "สป-03-27/2565", shopName: "โกเด้นลีฟ คาเฟ่", idCard: "1104700035487", phone: "0834265544", district: "อ.เมือง สมุทรปราการ", link27: "https://drive.google.com/open?id=mock3", link28: "", owner: "นาย ณภาดล ธนาวรัทนนท์" },
+            { timestamp: "3/30/2023 14:49:40", license: "สป-3-86/2566", shopName: "ร้านเอ-กี้", idCard: "1779900051744", phone: "0915265544", district: "อ.พระสมุทรเจดีย์", link27: "https://drive.google.com/open?id=mock4", link28: "https://drive.google.com/open?id=mock5", owner: "นางสาวธนัท แต้ชูตระกูล" },
+            { timestamp: "3/29/2023 10:00:00", license: "สป-3-86/2566", shopName: "ร้านเอ-กี้", idCard: "1779900051744", phone: "0915265544", district: "อ.พระสมุทรเจดีย์", link27: "", link28: "https://drive.google.com/open?id=mock5_old", owner: "นางสาวธนัท แต้ชูตระกูล" }, // History Record
+            { timestamp: "4/15/2023 09:30:15", license: "สป-1-12/2566", shopName: "สมุนไพรไทย บางพลี", idCard: "3100500123456", phone: "0899998888", district: "อ.บางพลี", link27: "", link28: "https://drive.google.com/open?id=mock6", owner: "นายสมชาย ใจดี" },
+        ];
+
+        // --- Helper Function ---
+        const parseDate = (str) => {
+            if (!str) return new Date(0);
+            return new Date(str);
+        };
+
+        const Card = ({ title, value, icon, colorClass, subText }) => (
+            <div className={`bg-white p-6 rounded-xl shadow-md border-l-4 ${colorClass} flex items-center justify-between`}>
+                <div>
+                    <p className="text-gray-500 text-sm font-medium">{title}</p>
+                    <h3 className="text-xl md:text-2xl font-bold text-gray-800 mt-1">{value}</h3>
+                    {subText && <p className="text-xs text-gray-400 mt-1">{subText}</p>}
+                </div>
+                <div className={`p-3 rounded-full bg-opacity-20 ${colorClass.replace('border-', 'bg-')}`}>
+                    {icon}
+                </div>
+            </div>
+        );
+
+        const ChartBar = ({ label, value, max, color }) => {
+            const width = max > 0 ? (value / max) * 100 : 0;
+            return (
+                <div className="mb-3">
+                    <div className="flex justify-between text-sm mb-1">
+                        <span className="font-medium text-gray-700">{label}</span>
+                        <span className="text-gray-500 font-bold">{value}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div className={`h-2.5 rounded-full ${color}`} style={{ width: `${width}%` }}></div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Main App Component ---
+        const App = () => {
+            // State
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [passcode, setPasscode] = useState("");
+            const [loginError, setLoginError] = useState("");
+            
+            const [data, setData] = useState(MOCK_DATA);
+            const [view, setView] = useState("dashboard"); // dashboard, report27, report28, search
+            
+            // Search & Filter State
+            const [selectedDistrictFilter, setSelectedDistrictFilter] = useState("ทั้งหมด");
+            const [selectedShopGroup, setSelectedShopGroup] = useState(null); // Array of records for the selected shop
+            
+            // CSV Upload Handler
+            const handleFileUpload = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        const parsedData = results.data.map(row => ({
+                            timestamp: row['ประทับเวลา'] || "",
+                            license: row['เลขที่ใบอนุญาต'] || "",
+                            shopName: row['ชื่อสถานที่จำหน่าย'] || "",
+                            idCard: row['เลขที่บัตรประจำตัวประชาชน 13 หลัก หรือเลขนิติบุคคล'] || "",
+                            phone: row['เบอร์โทรศัพท์'] || "",
+                            district: row['สถานที่ตั้ง'] || "",
+                            link27: row['รายงานภท 27 '] || row['รายงานภท 27'] || "", 
+                            link28: row['รายงานภท 28'] || "",
+                            owner: row['ชื่อและนามสกุลของผู้ขออนุญาต'] || ""
+                        })).filter(item => item.license !== "");
+                        
+                        setData(parsedData);
+                        alert(`นำเข้าข้อมูลสำเร็จ ${parsedData.length} รายการ`);
+                    },
+                    error: (err) => {
+                        alert("เกิดข้อผิดพลาดในการอ่านไฟล์: " + err.message);
+                    }
+                });
+            };
+
+            // Login Logic
+            const handleLogin = (e) => {
+                if (e) e.preventDefault();
+                if (passcode.trim() === "13579") {
+                    setIsLoggedIn(true);
+                } else {
+                    setLoginError("รหัสผ่านไม่ถูกต้อง");
+                }
+            };
+            
+            const handleKeyDown = (e) => {
+                if (e.key === 'Enter') {
+                    handleLogin();
+                }
+            };
+
+            // --- Processing Data Logic ---
+            const processData = (type = 'all') => {
+                let filteredData = data;
+                if (type === '27') filteredData = data.filter(d => d.link27 && d.link27.length > 5);
+                if (type === '28') filteredData = data.filter(d => d.link28 && d.link28.length > 5);
+
+                const total = filteredData.length;
+
+                // Group by District
+                const byDistrict = filteredData.reduce((acc, curr) => {
+                    const dist = curr.district || "ไม่ระบุ";
+                    acc[dist] = (acc[dist] || 0) + 1;
+                    return acc;
+                }, {});
+
+                // Latest Timestamp
+                const latestDate = filteredData.reduce((max, curr) => {
+                    const d = parseDate(curr.timestamp);
+                    return d > max ? d : max;
+                }, new Date(0));
+
+                const latestDateStr = latestDate.getTime() === 0 ? "-" : latestDate.toLocaleString('th-TH');
+
+                // Group by Month/Year (For Table)
+                const byMonthYear = filteredData.reduce((acc, curr) => {
+                    try {
+                        const datePart = curr.timestamp.split(' ')[0];
+                        const parts = datePart.split('/');
+                        if (parts.length === 3) {
+                            const month = parts[0];
+                            const year = parts[2];
+                            const key = `${month}/${year}`;
+                            acc[key] = (acc[key] || 0) + 1;
+                        }
+                    } catch (e) {}
+                    return acc;
+                }, {});
+
+                return { total, byDistrict, byMonthYear, latestDateStr };
+            };
+
+            const stats = useMemo(() => processData(
+                view === 'report27' ? '27' : view === 'report28' ? '28' : 'all'
+            ), [data, view]);
+
+            // --- Views ---
+
+            const LoginScreen = () => (
+                <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-teal-400">
+                    <div className="bg-white p-8 rounded-2xl shadow-2xl w-96 text-center">
+                        <div className="mb-6 flex justify-center text-teal-600">
+                            <i data-lucide="lock" className="w-16 h-16"></i>
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-800 mb-2">เข้าสู่ระบบ</h2>
+                        <p className="text-gray-500 mb-6 text-sm">ระบบติดตามรายงานกัญชา สมุทรปราการ</p>
+                        <div className="space-y-4">
+                            <input 
+                                type="password" 
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-center text-lg"
+                                placeholder="รหัสผ่าน (13579)"
+                                value={passcode}
+                                onChange={(e) => setPasscode(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                autoFocus
+                            />
+                            {loginError && <p className="text-red-500 text-sm">{loginError}</p>}
+                            <button 
+                                onClick={handleLogin}
+                                className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg transition duration-300 shadow-lg cursor-pointer"
+                            >
+                                เข้าใช้งาน
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const Sidebar = () => (
+                <div className="w-64 bg-white shadow-lg fixed h-full z-10 hidden md:flex flex-col no-print">
+                    <div className="p-6 border-b border-gray-100">
+                        <h1 className="text-xl font-bold text-teal-700 flex items-center gap-2">
+                            <i data-lucide="database" className="w-6 h-6"></i>
+                            Cannabis Data
+                        </h1>
+                        <p className="text-xs text-gray-400 mt-1">สมุทรปราการ Dashboard</p>
+                    </div>
+                    <nav className="flex-1 p-4 space-y-2">
+                        <button onClick={() => {setView('dashboard'); setSelectedShopGroup(null);}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${view === 'dashboard' ? 'bg-teal-50 text-teal-700 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
+                            <i data-lucide="layout-dashboard" className="w-5 h-5"></i> ภาพรวม (Overview)
+                        </button>
+                        <button onClick={() => {setView('report27'); setSelectedShopGroup(null);}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${view === 'report27' ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
+                            <i data-lucide="file-text" className="w-5 h-5"></i> รายงาน ภท.27
+                        </button>
+                        <button onClick={() => {setView('report28'); setSelectedShopGroup(null);}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${view === 'report28' ? 'bg-purple-50 text-purple-700 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
+                            <i data-lucide="file-check" className="w-5 h-5"></i> รายงาน ภท.28
+                        </button>
+                        <button onClick={() => {setView('search'); setSelectedShopGroup(null);}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${view === 'search' ? 'bg-orange-50 text-orange-700 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
+                            <i data-lucide="search" className="w-5 h-5"></i> ค้นหารายร้าน / พิมพ์
+                        </button>
+                    </nav>
+                    <div className="p-4 border-t border-gray-100">
+                        <label className="flex items-center gap-2 cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition text-sm justify-center">
+                            <i data-lucide="upload-cloud" className="w-4 h-4"></i> อัปโหลด CSV
+                            <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
+                        </label>
+                         <a href="https://docs.google.com/forms/d/1sTCBH0Gdo_SIm_x04t5wScDT16gVIbs-GxWwo0ZDNec/edit#responses" target="_blank" className="mt-2 flex items-center gap-2 justify-center text-xs text-blue-500 hover:underline">
+                            <i data-lucide="external-link" className="w-3 h-3"></i> ไปที่ Google Form
+                        </a>
+                    </div>
+                </div>
+            );
+
+            const DashboardContent = ({ title, colorTheme, icon }) => {
+                const maxVal = Math.max(...Object.values(stats.byDistrict), 0) || 1;
+                
+                return (
+                    <div className="p-8">
+                        <header className="mb-8 flex justify-between items-center">
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                                    {icon} {title}
+                                </h2>
+                                <p className="text-gray-500 text-sm mt-1">ข้อมูล ณ วันที่ {new Date().toLocaleDateString('th-TH')}</p>
+                            </div>
+                        </header>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <Card 
+                                title="จำนวนรายงานที่ส่ง" 
+                                value={stats.total} 
+                                subText="รายการทั้งหมดในฐานข้อมูล"
+                                icon={<i data-lucide="file-bar-chart" className={`w-8 h-8 ${colorTheme.text}`}></i>}
+                                colorClass={colorTheme.border}
+                            />
+                            <Card 
+                                title="อำเภอที่ส่งมากสุด" 
+                                value={Object.keys(stats.byDistrict).reduce((a, b) => stats.byDistrict[a] > stats.byDistrict[b] ? a : b, "-")} 
+                                subText="Based on frequency"
+                                icon={<i data-lucide="map-pin" className={`w-8 h-8 ${colorTheme.text}`}></i>}
+                                colorClass="border-yellow-400"
+                            />
+                            <Card 
+                                title="ข้อมูลอัปเดตล่าสุด" 
+                                value={stats.latestDateStr} 
+                                subText="จากเวลาที่ส่งรายงาน"
+                                icon={<i data-lucide="clock" className={`w-8 h-8 ${colorTheme.text}`}></i>}
+                                colorClass="border-green-400"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* District Stats */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                                <h3 className="text-lg font-bold text-gray-700 mb-4 border-b pb-2">แยกตามอำเภอ</h3>
+                                <div className="space-y-4">
+                                    {Object.entries(stats.byDistrict)
+                                        .sort(([,a], [,b]) => b - a)
+                                        .map(([district, count]) => (
+                                        <ChartBar 
+                                            key={district} 
+                                            label={district} 
+                                            value={count} 
+                                            max={maxVal} 
+                                            color={colorTheme.bg} 
+                                        />
+                                    ))}
+                                    {Object.keys(stats.byDistrict).length === 0 && <p className="text-gray-400 text-center py-4">ไม่มีข้อมูล</p>}
+                                </div>
+                            </div>
+
+                            {/* Monthly Stats (Simple Table for now) */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                                <h3 className="text-lg font-bold text-gray-700 mb-4 border-b pb-2">แยกตามเดือน/ปี</h3>
+                                <div className="overflow-y-auto max-h-80">
+                                    <table className="w-full text-sm text-left text-gray-500">
+                                        <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                            <tr>
+                                                <th className="px-6 py-3">เดือน/ปี</th>
+                                                <th className="px-6 py-3 text-right">จำนวน</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {Object.entries(stats.byMonthYear)
+                                                .sort()
+                                                .reverse() // Newest first
+                                                .map(([date, count]) => (
+                                                <tr key={date} className="bg-white border-b hover:bg-gray-50">
+                                                    <td className="px-6 py-4 font-medium text-gray-900">{date}</td>
+                                                    <td className="px-6 py-4 text-right">{count}</td>
+                                                </tr>
+                                            ))}
+                                            {Object.keys(stats.byMonthYear).length === 0 && <tr><td colSpan="2" className="text-center py-4">ไม่มีข้อมูล</td></tr>}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const SearchAndPrintView = () => {
+                // Get Unique Districts
+                const districts = useMemo(() => {
+                    const d = [...new Set(data.map(item => item.district))].filter(Boolean).sort();
+                    return ["ทั้งหมด", ...d];
+                }, [data]);
+
+                // Filter data by district first to create shop options
+                const shopOptions = useMemo(() => {
+                    let filtered = data;
+                    if (selectedDistrictFilter !== "ทั้งหมด") {
+                        filtered = data.filter(d => d.district === selectedDistrictFilter);
+                    }
+                    
+                    // Group unique shops by License (or Name)
+                    const uniqueShops = {};
+                    filtered.forEach(item => {
+                        // Use license as key, but if missing, use shopName
+                        const key = item.license || item.shopName;
+                        if (!uniqueShops[key] && key) {
+                            uniqueShops[key] = {
+                                license: item.license,
+                                shopName: item.shopName,
+                                district: item.district
+                            };
+                        }
+                    });
+
+                    // Sort: Shop Name (A-Z) -> License (A-Z)
+                    return Object.values(uniqueShops).sort((a, b) => {
+                        const nameCompare = a.shopName.localeCompare(b.shopName);
+                        if (nameCompare !== 0) return nameCompare;
+                        return (a.license || "").localeCompare(b.license || "");
+                    });
+
+                }, [data, selectedDistrictFilter]);
+
+                // Handle Shop Selection (Dropdown)
+                const handleShopSelect = (e) => {
+                    const selectedLicense = e.target.value;
+                    if (!selectedLicense) {
+                        setSelectedShopGroup(null);
+                        return;
+                    }
+
+                    // Find ALL records for this license (or name if license is missing/dup)
+                    // Robust matching: Match by License if available, else Name
+                    const records = data.filter(d => 
+                        (d.license && d.license === selectedLicense) || 
+                        (!d.license && d.shopName === e.target.options[e.target.selectedIndex].text.split(' (')[0])
+                    );
+
+                    // Sort records by timestamp descending (newest first)
+                    records.sort((a, b) => parseDate(b.timestamp) - parseDate(a.timestamp));
+
+                    if (records.length > 0) {
+                        setSelectedShopGroup(records);
+                    }
+                };
+
+                const handlePrint = () => {
+                    window.print();
+                };
+
+                // Detail View (If a shop is selected)
+                if (selectedShopGroup) {
+                    const latestInfo = selectedShopGroup[0]; // Use the latest record for header info
+
+                    return (
+                        <div className="p-8 bg-white min-h-screen">
+                            <div className="flex justify-between items-start mb-6 no-print">
+                                <button onClick={() => setSelectedShopGroup(null)} className="text-gray-500 hover:text-gray-800 flex items-center gap-1">
+                                    <i data-lucide="arrow-left" className="w-4 h-4"></i> กลับไปหน้าค้นหา
+                                </button>
+                                <button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow">
+                                    <i data-lucide="printer" className="w-4 h-4"></i> สั่งพิมพ์ (A4)
+                                </button>
+                            </div>
+
+                            {/* Print Layout */}
+                            <div className="border p-8 max-w-4xl mx-auto shadow-sm print:shadow-none print:border-0">
+                                <div className="flex justify-between items-center border-b-2 border-gray-800 pb-4 mb-6">
+                                    <div>
+                                        <h1 className="text-2xl font-bold text-gray-900">รายงานข้อมูลร้านจำหน่ายกัญชา</h1>
+                                        <p className="text-sm text-gray-600">สำนักงานสาธารณสุขจังหวัดสมุทรปราการ</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-xs text-gray-400">ข้อมูลอัปเดตถึง</div>
+                                        <div className="font-medium">{latestInfo.timestamp.split(' ')[0]}</div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-6 mb-6">
+                                    <div>
+                                        <label className="block text-xs text-gray-500 uppercase">ชื่อร้านค้า</label>
+                                        <div className="text-lg font-bold text-gray-800">{latestInfo.shopName}</div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 uppercase">เลขที่ใบอนุญาต</label>
+                                        <div className="text-lg font-bold text-teal-700">{latestInfo.license}</div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 uppercase">ผู้ขออนุญาต</label>
+                                        <div className="text-gray-800">{latestInfo.owner}</div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 uppercase">โทรศัพท์</label>
+                                        <div className="text-gray-800">{latestInfo.phone}</div>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="block text-xs text-gray-500 uppercase">ที่อยู่</label>
+                                        <div className="text-gray-800">{latestInfo.district}</div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-8">
+                                    <h3 className="font-bold text-gray-800 mb-4 border-l-4 border-teal-500 pl-3">ประวัติการส่งรายงานทั้งหมด ({selectedShopGroup.length} ครั้ง)</h3>
+                                    <table className="w-full text-sm text-left text-gray-500 border">
+                                        <thead className="text-xs text-gray-700 uppercase bg-gray-100">
+                                            <tr>
+                                                <th className="px-4 py-2 border w-1/3">วัน/เวลาที่ส่ง</th>
+                                                <th className="px-4 py-2 border text-center">ภท.27</th>
+                                                <th className="px-4 py-2 border text-center">ภท.28</th>
+                                                <th className="px-4 py-2 border text-center no-print">เปิดไฟล์</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {selectedShopGroup.map((record, idx) => (
+                                                <tr key={idx} className="bg-white border-b">
+                                                    <td className="px-4 py-3 border font-medium text-gray-900">{record.timestamp}</td>
+                                                    <td className="px-4 py-3 border text-center">
+                                                        {record.link27 ? (
+                                                            <span className="text-green-600 font-bold flex items-center justify-center gap-1">
+                                                                <i data-lucide="check-circle" className="w-4 h-4"></i> ส่ง
+                                                            </span>
+                                                        ) : <span className="text-red-300">-</span>}
+                                                    </td>
+                                                    <td className="px-4 py-3 border text-center">
+                                                        {record.link28 ? (
+                                                            <span className="text-green-600 font-bold flex items-center justify-center gap-1">
+                                                                <i data-lucide="check-circle" className="w-4 h-4"></i> ส่ง
+                                                            </span>
+                                                        ) : <span className="text-red-300">-</span>}
+                                                    </td>
+                                                    <td className="px-4 py-3 border text-center no-print flex gap-2 justify-center">
+                                                        {record.link27 && <a href={record.link27} target="_blank" className="text-blue-600 hover:underline text-xs">ภท.27</a>}
+                                                        {record.link28 && <a href={record.link28} target="_blank" className="text-purple-600 hover:underline text-xs">ภท.28</a>}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className="p-8">
+                        <header className="mb-6">
+                            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                                <i data-lucide="search" className="w-6 h-6 text-orange-500"></i> ค้นหาและดูรายงานรายร้าน
+                            </h2>
+                        </header>
+
+                        {/* Search & Filter Controls */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* District Filter */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">
+                                        <i data-lucide="map-pin" className="w-3 h-3 inline mr-1"></i> 1. เลือกอำเภอ
+                                    </label>
+                                    <select 
+                                        value={selectedDistrictFilter} 
+                                        onChange={(e) => {
+                                            setSelectedDistrictFilter(e.target.value);
+                                            setSelectedShopGroup(null); // Reset shop selection
+                                        }}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white cursor-pointer"
+                                    >
+                                        {districts.map(d => (
+                                            <option key={d} value={d}>{d}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Shop Dropdown */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">
+                                        <i data-lucide="store" className="w-3 h-3 inline mr-1"></i> 2. เลือกร้านค้า
+                                    </label>
+                                    <div className="relative">
+                                        <select 
+                                            onChange={handleShopSelect}
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white cursor-pointer appearance-none"
+                                            defaultValue=""
+                                        >
+                                            <option value="" disabled>-- กรุณาเลือกร้านค้า --</option>
+                                            {shopOptions.map((shop, idx) => (
+                                                <option key={idx} value={shop.license}>
+                                                    {shop.shopName} {shop.license ? `(${shop.license})` : ''}
+                                                </option>
+                                            ))}
+                                            {shopOptions.length === 0 && <option disabled>ไม่มีร้านค้าในอำเภอนี้</option>}
+                                        </select>
+                                        <i data-lucide="chevron-down" className="absolute right-3 top-3.5 text-gray-400 w-5 h-5 pointer-events-none"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Initial List (Optional - Show default message) */}
+                        <div className="bg-orange-50 border border-orange-200 rounded-xl p-8 text-center text-orange-800">
+                            <i data-lucide="search-check" className="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+                            <p className="font-medium">กรุณาเลือก อำเภอ และ ร้านค้า เพื่อดูประวัติการส่งรายงานทั้งหมด</p>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Effect to load icons
+            useEffect(() => {
+                lucide.createIcons();
+            });
+
+            if (!isLoggedIn) return <LoginScreen />;
+
+            return (
+                <div className="flex bg-gray-50 min-h-screen">
+                    <Sidebar />
+                    <div className="flex-1 md:ml-64 transition-all">
+                        {/* Mobile Header */}
+                        <div className="md:hidden bg-white p-4 shadow flex justify-between items-center sticky top-0 z-20">
+                            <span className="font-bold text-teal-700">Cannabis Report</span>
+                            <button onClick={() => alert('Please use Desktop for full menu')}><i data-lucide="menu"></i></button>
+                        </div>
+
+                        {view === 'dashboard' && <DashboardContent title="สรุปภาพรวม (Overview)" colorTheme={{text: 'text-teal-600', border: 'border-teal-500', bg: 'bg-teal-500'}} icon={<i data-lucide="layout-dashboard" className="w-6 h-6 text-teal-600"></i>} />}
+                        {view === 'report27' && <DashboardContent title="สรุปรายงาน ภท.27" colorTheme={{text: 'text-blue-600', border: 'border-blue-500', bg: 'bg-blue-500'}} icon={<i data-lucide="file-text" className="w-6 h-6 text-blue-600"></i>} />}
+                        {view === 'report28' && <DashboardContent title="สรุปรายงาน ภท.28" colorTheme={{text: 'text-purple-600', border: 'border-purple-500', bg: 'bg-purple-500'}} icon={<i data-lucide="file-check" className="w-6 h-6 text-purple-600"></i>} />}
+                        {view === 'search' && <SearchAndPrintView />}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
