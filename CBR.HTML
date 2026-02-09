@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>โปรแกรมตรวจสอบการรายงาน ช่อดอกกัญชา สมุทรปราการ</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons (Vanilla JS Version) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- PapaParse for CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <!-- Google Fonts: Prompt & Sarabun -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f0f2f5;
+        }
+        h1, h2, h3, h4, h5, h6, button, .font-title {
+            font-family: 'Prompt', sans-serif;
+        }
+        
+        /* Glassmorphism Effect */
+        .glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background-color: white; }
+            .page-break { page-break-before: always; }
+            /* Hide Sidebar and Mobile Header when printing */
+            nav, .sidebar, .mobile-header { display: none !important; }
+            /* Reset margins for print */
+            .main-content { margin-left: 0 !important; padding: 0 !important; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        // --- Configuration & Version ---
+        const APP_INFO = {
+            name: "โปรแกรมตรวจสอบการรายงาน ช่อดอกกัญชา",
+            org: "สมุทรปราการ",
+            dev: "ภก.จีรภัทร พลายงาม",
+            version: `v.${new Date().getFullYear()}.${(new Date().getMonth() + 1).toString().padStart(2, '0')}.${new Date().getDate().toString().padStart(2, '0')}`,
+        };
+
+        // --- Mock Data ---
+        const MOCK_DATA = [
+            { timestamp: "2/8/2026 20:57:28", license: "สป-03-25/2565", shopName: "กรีนทอยช็อป สาขาริมคลอง", idCard: "1104700035487", phone: "0834265544", district: "อ.เมือง สมุทรปราการ", link27: "https://drive.google.com/open?id=mock1", link28: "https://drive.google.com/open?id=mock2", owner: "นาย ณภาดล ธนาวรัทนนท์" },
+            { timestamp: "2/8/2026 20:54:20", license: "สป-03-27/2565", shopName: "โกเด้นลีฟ คาเฟ่", idCard: "1104700035487", phone: "0834265544", district: "อ.เมือง สมุทรปราการ", link27: "https://drive.google.com/open?id=mock3", link28: "", owner: "นาย ณภาดล ธนาวรัทนนท์" },
+            { timestamp: "3/30/2023 14:49:40", license: "สป-3-86/2566", shopName: "ร้านเอ-กี้", idCard: "1779900051744", phone: "0915265544", district: "อ.พระสมุทรเจดีย์", link27: "https://drive.google.com/open?id=mock4", link28: "https://drive.google.com/open?id=mock5", owner: "นางสาวธนัท แต้ชูตระกูล" },
+            { timestamp: "3/29/2023 10:00:00", license: "สป-3-86/2566", shopName: "ร้านเอ-กี้", idCard: "1779900051744", phone: "0915265544", district: "อ.พระสมุทรเจดีย์", link27: "", link28: "https://drive.google.com/open?id=mock5_old", owner: "นางสาวธนัท แต้ชูตระกูล" },
+            { timestamp: "4/15/2023 09:30:15", license: "สป-1-12/2566", shopName: "สมุนไพรไทย บางพลี", idCard: "3100500123456", phone: "0899998888", district: "อ.บางพลี", link27: "", link28: "https://drive.google.com/open?id=mock6", owner: "นายสมชาย ใจดี" },
+        ];
+
+        // --- Utility Functions ---
+        const parseDate = (str) => {
+            if (!str) return new Date(0);
+            return new Date(str);
+        };
+
+        // --- Helper Component for Lucide Icons ---
+        const LucideIcon = ({ name, size = 24, className = "" }) => {
+            return <i data-lucide={name} className={className} style={{ width: size, height: size, display: 'inline-block' }}></i>;
+        };
+
+        // --- Components ---
+        
+        const StatCard = ({ title, value, iconName, colorFrom, colorTo, subText }) => (
+            <div className={`relative overflow-hidden rounded-2xl shadow-lg bg-white p-6 border-b-4 border-${colorFrom}-500 group hover:shadow-xl transition-all duration-300`}>
+                <div className={`absolute top-0 right-0 p-4 opacity-10 rounded-bl-3xl bg-gradient-to-br from-${colorFrom}-400 to-${colorTo}-600`}>
+                    <LucideIcon name={iconName} size={64} />
+                </div>
+                <div className="relative z-10">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className={`p-2 rounded-lg bg-${colorFrom}-100 text-${colorFrom}-600`}>
+                            <LucideIcon name={iconName} size={20} />
+                        </div>
+                        <h3 className="text-gray-500 text-sm font-medium font-title">{title}</h3>
+                    </div>
+                    <div className="text-3xl font-bold text-gray-800 font-title mb-1">{value}</div>
+                    {subText && <p className="text-xs text-gray-400">{subText}</p>}
+                </div>
+            </div>
+        );
+
+        const ChartBar = ({ label, value, max, colorClass }) => {
+            const width = max > 0 ? (value / max) * 100 : 0;
+            return (
+                <div className="mb-4">
+                    <div className="flex justify-between text-sm mb-1">
+                        <span className="font-medium text-gray-700">{label}</span>
+                        <span className="font-bold text-gray-900 bg-gray-100 px-2 rounded-full text-xs py-0.5">{value}</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-3 shadow-inner">
+                        <div className={`h-3 rounded-full ${colorClass} transition-all duration-1000 ease-out`} style={{ width: `${width}%` }}></div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Main App ---
+        const App = () => {
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [passcode, setPasscode] = useState("");
+            const [loginError, setLoginError] = useState("");
+            
+            const [data, setData] = useState(MOCK_DATA);
+            const [view, setView] = useState("dashboard");
+            
+            const [selectedDistrictFilter, setSelectedDistrictFilter] = useState("ทั้งหมด");
+            const [selectedShopGroup, setSelectedShopGroup] = useState(null);
+
+            // Re-run lucide icons creation whenever the DOM updates significantly
+            useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, [view, data, selectedShopGroup, isLoggedIn]);
+
+            // --- Handlers ---
+            const handleFileUpload = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        const parsedData = results.data.map(row => ({
+                            timestamp: row['ประทับเวลา'] || "",
+                            license: row['เลขที่ใบอนุญาต'] || "",
+                            shopName: row['ชื่อสถานที่จำหน่าย'] || "",
+                            idCard: row['เลขที่บัตรประจำตัวประชาชน 13 หลัก หรือเลขนิติบุคคล'] || "",
+                            phone: row['เบอร์โทรศัพท์'] || "",
+                            district: row['สถานที่ตั้ง'] || "",
+                            link27: row['รายงานภท 27 '] || row['รายงานภท 27'] || "", 
+                            link28: row['รายงานภท 28'] || "",
+                            owner: row['ชื่อและนามสกุลของผู้ขออนุญาต'] || ""
+                        })).filter(item => item.license !== "");
+                        
+                        setData(parsedData);
+                        alert(`นำเข้าข้อมูลสำเร็จ ${parsedData.length} รายการ`);
+                    },
+                    error: (err) => {
+                        alert("เกิดข้อผิดพลาดในการอ่านไฟล์: " + err.message);
+                    }
+                });
+            };
+
+            const handleLogin = (e) => {
+                if (e) e.preventDefault();
+                if (passcode.trim() === "13579") setIsLoggedIn(true);
+                else setLoginError("รหัสผ่านไม่ถูกต้อง");
+            };
+
+            // --- Data Processing ---
+            const stats = useMemo(() => {
+                let filteredData = data;
+                if (view === 'report27') filteredData = data.filter(d => d.link27 && d.link27.length > 5);
+                if (view === 'report28') filteredData = data.filter(d => d.link28 && d.link28.length > 5);
+
+                const total = filteredData.length;
+                const byDistrict = filteredData.reduce((acc, curr) => {
+                    const dist = curr.district || "ไม่ระบุ";
+                    acc[dist] = (acc[dist] || 0) + 1;
+                    return acc;
+                }, {});
+
+                const latestDate = filteredData.reduce((max, curr) => {
+                    const d = parseDate(curr.timestamp);
+                    return d > max ? d : max;
+                }, new Date(0));
+                
+                const byMonthYear = filteredData.reduce((acc, curr) => {
+                    try {
+                        const [m, d, y] = curr.timestamp.split(' ')[0].split('/');
+                        if (y) acc[`${m}/${y}`] = (acc[`${m}/${y}`] || 0) + 1;
+                    } catch (e) {}
+                    return acc;
+                }, {});
+
+                return { total, byDistrict, byMonthYear, latestDateStr: latestDate.getTime() === 0 ? "-" : latestDate.toLocaleString('th-TH') };
+            }, [data, view]);
+
+            // --- Sub-Components ---
+            const Sidebar = () => (
+                <div className="sidebar w-72 bg-white shadow-2xl fixed h-full z-30 hidden md:flex flex-col no-print border-r border-gray-100">
+                    <div className="p-6 bg-gradient-to-br from-teal-600 to-teal-800 text-white shadow-md">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+                                <LucideIcon name="cannabis" size={28} />
+                            </div>
+                            <div>
+                                <h1 className="text-lg font-bold font-title leading-tight">Cannabis Monitor</h1>
+                                <p className="text-xs text-teal-100 opacity-80">{APP_INFO.org}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+                        <p className="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-2">เมนูหลัก</p>
+                        
+                        {[
+                            { id: 'dashboard', label: 'ภาพรวม (Overview)', icon: 'layout-dashboard', color: 'teal' },
+                            { id: 'report27', label: 'รายงาน ภท.27', icon: 'file-text', color: 'blue' },
+                            { id: 'report28', label: 'รายงาน ภท.28', icon: 'file-check', color: 'purple' },
+                            { id: 'search', label: 'ค้นหา / พิมพ์รายงาน', icon: 'search', color: 'orange' }
+                        ].map((item) => (
+                            <button 
+                                key={item.id}
+                                onClick={() => {setView(item.id); setSelectedShopGroup(null);}} 
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
+                                    ${view === item.id 
+                                        ? `bg-${item.color}-50 text-${item.color}-700 shadow-sm border border-${item.color}-100 font-bold` 
+                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
+                            >
+                                <LucideIcon name={item.icon} size={20} className={view === item.id ? `text-${item.color}-600` : 'text-gray-400 group-hover:text-gray-600'} />
+                                <span className="font-title">{item.label}</span>
+                            </button>
+                        ))}
+
+                        <div className="mt-8 pt-6 border-t border-gray-100">
+                            <p className="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">จัดการข้อมูล</p>
+                            <label className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-xl cursor-pointer transition border border-gray-200 hover:border-gray-300">
+                                <LucideIcon name="upload-cloud" size={18} className="text-gray-500" />
+                                <span>นำเข้าไฟล์ CSV</span>
+                                <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
+                            </label>
+                            <a href="https://docs.google.com/forms/d/1sTCBH0Gdo_SIm_x04t5wScDT16gVIbs-GxWwo0ZDNec/edit#responses" target="_blank" className="mt-3 flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl transition border border-blue-100">
+                                <LucideIcon name="external-link" size={18} />
+                                <span>Google Form Admin</span>
+                            </a>
+                        </div>
+                    </nav>
+
+                    <div className="p-4 bg-gray-50 border-t border-gray-200 text-center">
+                        <div className="text-xs text-gray-500 font-medium">พัฒนาโดย</div>
+                        <div className="text-sm font-bold text-teal-700 font-title">{APP_INFO.dev}</div>
+                        <div className="text-[10px] text-gray-400 mt-1 font-mono">{APP_INFO.version}</div>
+                    </div>
+                </div>
+            );
+
+            // --- Login Screen ---
+            if (!isLoggedIn) return (
+                <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+                    <div className="absolute inset-0 z-0">
+                        <img 
+                            src="https://images.unsplash.com/photo-1629196914168-3a1c7f99992f?q=80&w=2000&auto=format&fit=crop" 
+                            className="w-full h-full object-cover opacity-80" 
+                            alt="Medical Cannabis Background"
+                        />
+                        <div className="absolute inset-0 bg-teal-900/40 backdrop-blur-sm"></div>
+                    </div>
+                    <div className="relative z-10 w-full max-w-md p-4">
+                        <div className="glass rounded-3xl p-8 shadow-2xl border border-white/20">
+                            <div className="text-center mb-8">
+                                <div className="bg-white/90 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg text-teal-600">
+                                    <LucideIcon name="cannabis" size={40} />
+                                </div>
+                                <h2 className="text-2xl font-bold text-gray-800 font-title mb-1">{APP_INFO.name}</h2>
+                                <p className="text-teal-700 font-medium">{APP_INFO.org}</p>
+                            </div>
+                            <form onSubmit={handleLogin} className="space-y-4">
+                                <div className="relative">
+                                    <span className="absolute left-4 top-3.5 text-gray-400">
+                                        <LucideIcon name="key-round" size={20} />
+                                    </span>
+                                    <input 
+                                        type="password" 
+                                        className="w-full pl-12 pr-4 py-3 bg-white/80 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition text-center text-lg tracking-widest placeholder:tracking-normal font-bold text-gray-700"
+                                        placeholder="รหัสผ่านเข้าสู่ระบบ"
+                                        value={passcode}
+                                        onChange={(e) => setPasscode(e.target.value)}
+                                        autoFocus
+                                    />
+                                </div>
+                                {loginError && <p className="text-red-600 text-sm text-center bg-red-50 py-2 rounded-lg font-medium animate-pulse">{loginError}</p>}
+                                <button className="w-full bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold py-3.5 rounded-xl transition duration-300 shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                                    <span>เข้าสู่ระบบ</span>
+                                    <LucideIcon name="log-in" size={20} />
+                                </button>
+                            </form>
+                            <div className="mt-8 text-center border-t border-gray-200/50 pt-4">
+                                <p className="text-xs text-gray-500">System Version: <span className="font-mono">{APP_INFO.version}</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // Main Content Renderer
+            const renderContent = () => {
+                // Case 1: Search Detail View
+                if (view === 'search' && selectedShopGroup) {
+                    const latestInfo = selectedShopGroup[0];
+                    return (
+                        <div className="w-full">
+                             <div className="flex justify-between items-start mb-6 no-print">
+                                <button onClick={() => setSelectedShopGroup(null)} className="text-gray-500 hover:text-gray-800 flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow-sm hover:shadow transition">
+                                    <LucideIcon name="arrow-left" size={18} /> กลับ
+                                </button>
+                                <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-lg transition font-medium">
+                                    <LucideIcon name="printer" size={18} /> สั่งพิมพ์ (A4)
+                                </button>
+                            </div>
+
+                            <div className="bg-white p-10 rounded-none md:rounded-xl shadow-lg print:shadow-none print:p-0 print:w-full">
+                                {/* Header Report */}
+                                <div className="flex justify-between items-end border-b-2 border-gray-800 pb-4 mb-8">
+                                    <div className="flex gap-4 items-center">
+                                        <div className="bg-teal-700 text-white p-3 rounded-lg print:hidden">
+                                            <LucideIcon name="file-text" size={32} />
+                                        </div>
+                                        <div>
+                                            <h1 className="text-2xl font-bold text-gray-900 font-title">{APP_INFO.name}</h1>
+                                            <p className="text-gray-600">{APP_INFO.org}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-xs text-gray-400 uppercase tracking-wider">วันที่พิมพ์รายงาน</div>
+                                        <div className="font-bold text-gray-800 text-lg">{new Date().toLocaleDateString('th-TH', { dateStyle: 'long' })}</div>
+                                    </div>
+                                </div>
+
+                                {/* Shop Info Card */}
+                                <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 mb-8 print:bg-white print:border-gray-300">
+                                    <div className="grid grid-cols-2 gap-y-6 gap-x-8">
+                                        <div>
+                                            <label className="text-xs text-gray-500 uppercase font-semibold">ชื่อร้านค้า / สถานที่จำหน่าย</label>
+                                            <div className="text-xl font-bold text-teal-800 mt-1">{latestInfo.shopName}</div>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-gray-500 uppercase font-semibold">เลขที่ใบอนุญาต</label>
+                                            <div className="text-xl font-bold text-gray-800 mt-1 font-mono tracking-wide">{latestInfo.license}</div>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-gray-500 uppercase font-semibold">ผู้รับอนุญาต</label>
+                                            <div className="text-gray-800 font-medium mt-1">{latestInfo.owner}</div>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-gray-500 uppercase font-semibold">เบอร์โทรศัพท์</label>
+                                            <div className="text-gray-800 font-medium mt-1">{latestInfo.phone}</div>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <label className="text-xs text-gray-500 uppercase font-semibold">ที่ตั้ง</label>
+                                            <div className="text-gray-800 font-medium mt-1 flex items-center gap-2">
+                                                <LucideIcon name="map-pin" size={16} className="text-gray-400" />
+                                                {latestInfo.district}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Table */}
+                                <h3 className="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2">
+                                    <span className="text-teal-600"><LucideIcon name="history" size={20} /></span>
+                                    ประวัติการส่งรายงาน ({selectedShopGroup.length} รายการ)
+                                </h3>
+                                <div className="overflow-hidden border rounded-lg mb-8">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="text-xs text-gray-700 uppercase bg-gray-100 font-bold">
+                                            <tr>
+                                                <th className="px-6 py-3">วัน/เวลาที่ส่ง</th>
+                                                <th className="px-6 py-3 text-center">รายงาน ภท.27</th>
+                                                <th className="px-6 py-3 text-center">รายงาน ภท.28</th>
+                                                <th className="px-6 py-3 text-center no-print">ตรวจสอบ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {selectedShopGroup.map((record, idx) => (
+                                                <tr key={idx} className="bg-white hover:bg-gray-50">
+                                                    <td className="px-6 py-3 font-medium text-gray-900 font-mono">{record.timestamp}</td>
+                                                    <td className="px-6 py-3 text-center">
+                                                        {record.link27 ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">ส่งแล้ว</span> : <span className="text-gray-300">-</span>}
+                                                    </td>
+                                                    <td className="px-6 py-3 text-center">
+                                                        {record.link28 ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">ส่งแล้ว</span> : <span className="text-gray-300">-</span>}
+                                                    </td>
+                                                    <td className="px-6 py-3 text-center no-print flex justify-center gap-2">
+                                                        {record.link27 && <a href={record.link27} target="_blank" className="text-blue-600 hover:text-blue-800 hover:underline text-xs flex items-center gap-1"><LucideIcon name="external-link" size={12}/>ภท.27</a>}
+                                                        {record.link28 && <a href={record.link28} target="_blank" className="text-purple-600 hover:text-purple-800 hover:underline text-xs flex items-center gap-1"><LucideIcon name="external-link" size={12}/>ภท.28</a>}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <div className="border-t pt-4 mt-8 flex justify-between items-end text-xs text-gray-400 no-print">
+                                     <div>
+                                        <p>{APP_INFO.name} ({APP_INFO.org})</p>
+                                        <p>{APP_INFO.version}</p>
+                                     </div>
+                                     <div className="text-right">
+                                        <p>พัฒนาโดย {APP_INFO.dev}</p>
+                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+
+                // Case 2: Standard Views (Dashboard, Search Filter)
+                const colorTheme = view === 'report27' ? 'blue' 
+                                 : view === 'report28' ? 'purple' 
+                                 : 'teal';
+
+                return (
+                    <div className="w-full">
+                         {/* Hero Banner (Infographic Style) */}
+                         {view !== 'search' && (
+                            <div className="mb-8 relative rounded-3xl overflow-hidden shadow-xl bg-gray-900 text-white h-48 md:h-64 flex items-center">
+                                <img 
+                                    src={
+                                        view === 'report27' ? "https://images.unsplash.com/photo-1576091160550-2187d80a1844?q=80&w=2070&auto=format&fit=crop" :
+                                        view === 'report28' ? "https://images.unsplash.com/photo-1555685812-4b943f3db990?q=80&w=2070&auto=format&fit=crop" :
+                                        "https://images.unsplash.com/photo-1603909223429-69bb7df993a2?q=80&w=2000&auto=format&fit=crop"
+                                    } 
+                                    className="absolute inset-0 w-full h-full object-cover opacity-60"
+                                    alt="Banner"
+                                />
+                                <div className="relative z-10 px-8 md:px-12 w-full">
+                                    <div className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-medium mb-3 border border-white/30">
+                                        {APP_INFO.version}
+                                    </div>
+                                    <h2 className="text-3xl md:text-4xl font-bold font-title mb-2 text-shadow">
+                                        {view === 'dashboard' ? 'ภาพรวมการรายงาน' : 
+                                         view === 'report27' ? 'สรุปรายงาน ภท.27 (จำหน่าย)' : 
+                                         view === 'report28' ? 'สรุปรายงาน ภท.28 (สมุนไพร)' : ''}
+                                    </h2>
+                                    <p className="text-gray-200 text-lg max-w-2xl text-shadow-sm">
+                                        ระบบติดตามและตรวจสอบข้อมูลกัญชาทางการแพทย์ {APP_INFO.org}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'search' ? (
+                            <div>
+                                <div className="mb-8 text-center md:text-left">
+                                    <h2 className="text-3xl font-bold text-gray-800 font-title">ค้นหาและพิมพ์รายงาน</h2>
+                                    <p className="text-gray-500 mt-2">เลือกอำเภอและร้านค้าเพื่อดูประวัติการส่งรายงานอย่างละเอียด</p>
+                                </div>
+                                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden relative">
+                                    <div className="h-2 bg-gradient-to-r from-orange-400 to-red-500"></div>
+                                    <div className="p-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                                    <span className="w-6 h-6 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xs">1</span>
+                                                    เลือกอำเภอ
+                                                </label>
+                                                <div className="relative">
+                                                    <select 
+                                                        value={selectedDistrictFilter} 
+                                                        onChange={(e) => { setSelectedDistrictFilter(e.target.value); setSelectedShopGroup(null); }}
+                                                        className="w-full pl-4 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:bg-white transition appearance-none cursor-pointer"
+                                                    >
+                                                        {["ทั้งหมด", ...new Set(data.map(d => d.district).filter(Boolean).sort())].map(d => (
+                                                            <option key={d} value={d}>{d}</option>
+                                                        ))}
+                                                    </select>
+                                                    <span className="absolute right-4 top-3.5 text-gray-400 pointer-events-none"><LucideIcon name="chevron-down" size={18}/></span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                                    <span className="w-6 h-6 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xs">2</span>
+                                                    เลือกร้านค้า
+                                                </label>
+                                                <div className="relative">
+                                                    <select 
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            if(!val) return;
+                                                            const records = data.filter(d => (d.license === val) || (!d.license && d.shopName === e.target.options[e.target.selectedIndex].text.split(' (')[0]));
+                                                            records.sort((a,b) => parseDate(b.timestamp) - parseDate(a.timestamp));
+                                                            if(records.length) setSelectedShopGroup(records);
+                                                        }}
+                                                        className="w-full pl-4 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:bg-white transition appearance-none cursor-pointer"
+                                                        defaultValue=""
+                                                    >
+                                                        <option value="" disabled>-- กรุณาเลือกร้านค้า --</option>
+                                                        {(() => {
+                                                            let filtered = selectedDistrictFilter === "ทั้งหมด" ? data : data.filter(d => d.district === selectedDistrictFilter);
+                                                            const unique = {};
+                                                            filtered.forEach(i => { if(i.license || i.shopName) unique[i.license || i.shopName] = i; });
+                                                            const sorted = Object.values(unique).sort((a,b) => a.shopName.localeCompare(b.shopName));
+                                                            
+                                                            return sorted.length ? sorted.map((s,i) => (
+                                                                <option key={i} value={s.license}>{s.shopName} {s.license ? `(${s.license})` : ''}</option>
+                                                            )) : <option disabled>ไม่มีข้อมูลร้านค้า</option>
+                                                        })()}
+                                                    </select>
+                                                    <span className="absolute right-4 top-3.5 text-gray-400 pointer-events-none"><LucideIcon name="chevron-down" size={18}/></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-orange-50 p-6 flex flex-col items-center justify-center text-center">
+                                        <span className="text-orange-300 mb-2"><LucideIcon name="search-check" size={48} /></span>
+                                        <p className="text-orange-800 font-medium">ระบบพร้อมใช้งาน</p>
+                                        <p className="text-orange-600 text-sm">กรุณาเลือกข้อมูลเพื่อดูรายงานฉบับเต็ม</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-8">
+                                {/* Stats Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <StatCard 
+                                        title="จำนวนรายงานทั้งหมด" 
+                                        value={stats.total.toLocaleString()} 
+                                        iconName="file-bar-chart" 
+                                        colorFrom={colorTheme} colorTo="emerald"
+                                        subText="ฉบับ"
+                                    />
+                                    <StatCard 
+                                        title="อำเภอที่ส่งมากที่สุด" 
+                                        value={Object.keys(stats.byDistrict).length ? Object.keys(stats.byDistrict).reduce((a, b) => stats.byDistrict[a] > stats.byDistrict[b] ? a : b) : "-"} 
+                                        iconName="map-pin" 
+                                        colorFrom="amber" colorTo="orange"
+                                        subText="Based on frequency"
+                                    />
+                                    <StatCard 
+                                        title="อัปเดตล่าสุด" 
+                                        value={stats.latestDateStr.split(' ')[0]} 
+                                        iconName="clock" 
+                                        colorFrom="rose" colorTo="pink"
+                                        subText={stats.latestDateStr.split(' ')[1] || "ไม่มีข้อมูล"}
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                    {/* Chart Section */}
+                                    <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                        <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2 font-title">
+                                            <span className={`text-${colorTheme}-600`}><LucideIcon name="bar-chart-2" size={20} /></span> 
+                                            สถิติแยกตามอำเภอ
+                                        </h3>
+                                        <div className="space-y-1">
+                                            {Object.entries(stats.byDistrict)
+                                                .sort(([,a], [,b]) => b - a)
+                                                .map(([k, v]) => (
+                                                    <ChartBar 
+                                                        key={k} label={k} value={v} 
+                                                        max={Math.max(...Object.values(stats.byDistrict))} 
+                                                        colorClass={`bg-${colorTheme}-500`} 
+                                                    />
+                                            ))}
+                                            {!Object.keys(stats.byDistrict).length && <p className="text-center py-10 text-gray-400">ไม่มีข้อมูล</p>}
+                                        </div>
+                                    </div>
+
+                                    {/* Activity Feed */}
+                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+                                        <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2 font-title">
+                                            <span className="text-gray-600"><LucideIcon name="calendar" size={20} /></span> 
+                                            กิจกรรมรายเดือน
+                                        </h3>
+                                        <div className="flex-1 overflow-y-auto pr-2 max-h-[300px]">
+                                            {Object.entries(stats.byMonthYear)
+                                                .sort(([dateA], [dateB]) => {
+                                                    const [mA, yA] = dateA.split('/').map(Number);
+                                                    const [mB, yB] = dateB.split('/').map(Number);
+                                                    if (yA !== yB) return yB - yA; // Year descending
+                                                    return mB - mA; // Month descending
+                                                })
+                                                .map(([date, count]) => (
+                                                <div key={date} className="flex items-center justify-between p-3 mb-3 bg-gray-50 rounded-xl border border-gray-100 hover:bg-white hover:shadow-md transition">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-2 h-2 rounded-full bg-${colorTheme}-500`}></div>
+                                                        <span className="font-medium text-gray-700">{date}</span>
+                                                    </div>
+                                                    <span className="text-sm font-bold text-gray-900 bg-white px-2 py-1 rounded border shadow-sm">{count} รายการ</span>
+                                                </div>
+                                            ))}
+                                            {!Object.keys(stats.byMonthYear).length && <p className="text-center py-10 text-gray-400">ไม่มีข้อมูล</p>}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+            
+            // --- Main Return ---
+            return (
+                <div className="flex bg-[#f0f2f5] min-h-screen">
+                    <Sidebar />
+                    <div className="flex-1 md:ml-72 transition-all flex flex-col main-content">
+                        {/* Mobile Header */}
+                        <div className="mobile-header md:hidden bg-white p-4 shadow flex justify-between items-center sticky top-0 z-40">
+                            <span className="font-bold text-teal-700 font-title">{APP_INFO.name}</span>
+                            <button onClick={() => alert('Please use Desktop for full experience')}><LucideIcon name="menu" /></button>
+                        </div>
+
+                        {/* Content Content */}
+                        <div className="p-4 md:p-8 max-w-7xl mx-auto w-full flex-1">
+                            {renderContent()}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
