@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบติดตามผลการดำเนินงานสมุนไพร สิทธิ UC จ.สมุทรปราการ - พัฒนาโดย ภก.จีรภัทร พลายงาม</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- UMD Guard -->
+    <script>
+        window.module = undefined;
+        window.exports = undefined;
+        window.define = undefined;
+    </script>
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.production.min.js"></script>
+    
+    <!-- Dependencies for Recharts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/classnames/2.3.2/index.min.js"></script>
+
+    <!-- Recharts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.1.12/Recharts.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Lodash -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+
+    <!-- html2pdf.js for PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+        }
+        /* Custom Scrollbar (Blue Theme) */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f0f9ff; /* sky-50 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #7dd3fc; /* sky-300 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #38bdf8; /* sky-400 */
+        }
+
+        /* Print Styles for PDF Generation */
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; }
+            .card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+            .page-break { page-break-after: always; }
+        }
+        .print-only { display: none; }
+    </style>
+</head>
+<body class="bg-sky-50 text-slate-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useRef } = React;
+        const _ = window._;
+        
+        const RechartsLib = window.Recharts || (window.Recharts && window.Recharts.default);
+        const { 
+            PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, Legend, ResponsiveContainer, LineChart, Line, ComposedChart, RadialBarChart, RadialBar 
+        } = RechartsLib;
+
+        // --- Icons ---
+        const ICONS = {
+            Dashboard: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>,
+            Map: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>,
+            Hospital: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 6V4"/><path d="M16.5 4h-9"/><path d="M18 22v-5"/><path d="M6 22v-5"/><path d="M12 12v5"/><path d="M12 17h-5"/><path d="M12 17h5"/><rect x="4" y="8" width="16" height="14" rx="2"/></svg>,
+            Calculator: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>,
+            Upload: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>,
+            Menu: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>,
+            TrendingUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>,
+            CheckCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>,
+            AlertCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>,
+            Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>,
+            Search: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>,
+            Lightbulb: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-1 1.5-2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>,
+            Award: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>,
+            Printer: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>,
+            Star: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+            CheckSquare: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
+            ChevronRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>,
+            Globe: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
+            Leaf: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>,
+            Analytics: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        };
+
+        const COLORS = ['#0EA5E9', '#3B82F6', '#06B6D4', '#6366F1', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+        
+        // --- DATA SECTION UPDATED 18/2/69 (PER PDF 654.pdf) ---
+        const NATIONAL_DATA = {
+            levels: [
+                { name: 'ระดับประเทศ', target: 2000000000, value: 622666081, percent: 31.13 },
+                { name: 'เขตสุขภาพที่ 6', target: 1650000000, value: 47288810, percent: 28.66 },
+                { name: 'จ.สมุทรปราการ', target: 28381346, value: 8470036, percent: 29.84 }
+            ],
+            region6: [
+                { name: 'ฉะเชิงเทรา', target: 23712068, value: 10138903.5, percent: 42.76 },
+                { name: 'ระยอง', target: 20541037, value: 7453387, percent: 36.29 },
+                { name: 'สมุทรปราการ', target: 28381346, value: 8470036, percent: 29.84 },
+                { name: 'ชลบุรี', target: 35000000, value: 8500000, percent: 24.28 },
+                { name: 'ปราจีนบุรี', target: 25000000, value: 5500000, percent: 22.00 },
+                { name: 'สระแก้ว', target: 20000000, value: 4000000, percent: 20.00 },
+                { name: 'จันทบุรี', target: 18000000, value: 2500000, percent: 13.88 },
+                { name: 'ตราด', target: 12000000, value: 726483.5, percent: 6.05 }
+            ]
+        };
+
+        // NEW DATA: Top 15 Herbal Drugs
+        const TOP_HERBAL_DRUGS_DATA = [
+            { name: "ยาไพล", count: 24710, price: 65, total: 1606150 },
+            { name: "แก้ไอมะขามป้อม", count: 17374, price: 84, total: 1459416 },
+            { name: "ประสะมะแว้ง", count: 24994, price: 50, total: 1249700 },
+            { name: "ฟ้าทะลายโจร", count: 8450, price: 92, total: 777400 },
+            { name: "แก้ไอผสมมะขามป้อม สูตร 1", count: 6498, price: 84, total: 545832 },
+            { name: "หอมเทพจิตร", count: 6623, price: 70, total: 463610 },
+            { name: "ขมิ้นชัน", count: 6670, price: 67, total: 446890 },
+            { name: "อมมะแว้ง", count: 6558, price: 50, total: 327900 },
+            { name: "ยาประคบ", count: 2257, price: 100, total: 225700 },
+            { name: "สหัศธารา", count: 2883, price: 73, total: 210459 },
+            { name: "มะขามแขก", count: 5816, price: 31, total: 180296 },
+            { name: "น้ำมันไพล", count: 2195, price: 65, total: 142675 },
+            { name: "เถาวัลย์เปรียง", count: 1452, price: 84, total: 121968 },
+            { name: "ศุขไสยาศน์", count: 166, price: 420, total: 69720 },
+            { name: "ยากระเจี๊ยบแดง", count: 797, price: 85, total: 67745 }
+        ];
+
+        // Updated Data from 654.pdf
+        const PROVINCIAL_DATA_FIXED = [
+            { name: 'เมือง', value68: 11048897, value69: 3494583, weight: 44.67, target6m: 6531542, target10m: 9605208, target12m: 12678875 }, 
+            { name: 'พระประแดง', value68: 2204389, value69: 1994681, weight: 17.22, target6m: 2517563, target10m: 3702299, target12m: 4887035 }, 
+            { name: 'บางพลี', value68: 4731862, value69: 790499, weight: 13.62, target6m: 1990947, target10m: 2927863, target12m: 3864780 }, 
+            { name: 'บางบ่อ', value68: 3421324, value69: 1082899, weight: 13.52, target6m: 1976928, target10m: 2907247, target12m: 3837566 },
+            { name: 'พระสมุทรเจดีย์', value68: 1595167, value69: 499834, weight: 5.81, target6m: 848766, target10m: 1248185, target12m: 1647604 },
+            { name: 'บางเสาธง', value68: 747135, value69: 607540, weight: 5.16, target6m: 754946, target10m: 1110215, target12m: 1465484 } 
+        ];
+
+        const PROVINCIAL_TARGETS = {
+            month6: 14620692, 
+            month10: 21501017,
+            month12: 28381344
+        };
+
+        const QUALITY_DATA = {
+            overall: [
+                { id: 1, name: 'การให้บริการสุขภาพ (CPG & ยาทดแทน)', score: 100, max: 100 },
+                { id: 2, name: 'กำลังคนการให้บริการ (การอบรม)', score: 100, max: 100 },
+                { id: 3, name: 'ความถูกต้องในการบันทึกรหัสยา 24 หลัก', score: 92.68, max: 100 },
+                { id: 4, name: 'คุณภาพ/มาตรฐานการผลิตยาสมุนไพร (GMP)', score: 94.17, max: 100 },
+            ],
+            drugCodeAccuracy: [
+                { name: 'บางบ่อ', score: 88.61 },
+                { name: 'บางพลี', score: 97.73 },
+                { name: 'บางเสาธง', score: 93.94 },
+                { name: 'พระประแดง', score: 90.58 },
+                { name: 'พระสมุทรเจดีย์', score: 86.60 },
+                { name: 'เมือง', score: 90.79 },
+            ]
+        };
+
+        const INITIAL_UNIT_DATA_FROM_CSV = [
+            // เมือง (Target Sum: 3,494,583) - Source: 193.xlsx & 1911.csv
+            { district: 'เมือง', code: '00933', name: 'รพสต.สำโรงเหนือ', value68: 254592, value69: 195704, weight: 1.00, target6m: 147578, percent6m: 0 },
+            { district: 'เมือง', code: '00934', name: 'รพสต.บางเมือง', value68: 104771, value69: 71977, weight: 0.71, target6m: 104021, percent6m: 0 },
+            { district: 'เมือง', code: '00935', name: 'สถานีอนามัยเฉลิมพระเกียรติฯ (บางปิ้ง)', value68: 252528, value69: 316282.5, weight: 2.52, target6m: 368139, percent6m: 0 },
+            { district: 'เมือง', code: '00936', name: 'รพสต.บางปูใหม่', value68: 124732, value69: 116047, weight: 1.08, target6m: 157378, percent6m: 0 },
+            { district: 'เมือง', code: '00937', name: 'รพสต.แพรกษา', value68: 301506, value69: 120108, weight: 1.46, target6m: 213052, percent6m: 0 },
+            { district: 'เมือง', code: '100938', name: 'รพสต.บางโปรง', value68: 67047, value69: 72868, weight: 0.62, target6m: 91229, percent6m: 0 },
+            { district: 'เมือง', code: '00939', name: 'รพสต.บางปู', value68: 83277, value69: 88999, weight: 0.90, target6m: 130693, percent6m: 0 },
+            { district: 'เมือง', code: '00940', name: 'รพสต.บางด้วน', value68: 49057, value69: 20653, weight: 0.24, target6m: 35447, percent6m: 0 },
+            { district: 'เมือง', code: '00941', name: 'รพสต.บางเมืองใหม่', value68: 349114, value69: 52582, weight: 0.96, target6m: 140315, percent6m: 0 },
+            { district: 'เมือง', code: '00942', name: 'รพสต.เทพารักษ์', value68: 404607, value69: 165759, weight: 2.03, target6m: 296147, percent6m: 0 },
+            { district: 'เมือง', code: '00943', name: 'รพสต.ท้ายบ้านใหม่', value68: 527296, value69: 127099, weight: 1.84, target6m: 268697, percent6m: 0 },
+            { district: 'เมือง', code: '00944', name: 'รพสต.แพรกษาใหม่', value68: 295066, value69: 140449, weight: 1.72, target6m: 250936, percent6m: 0 },
+            { district: 'เมือง', code: '10685', name: 'โรงพยาบาลสมุทรปราการ', value68: 7458559, value69: 1538107.5, weight: 24.96, target6m: 3643853, percent6m: 0 }, 
+            { district: 'เมือง', code: '13812', name: 'รพสต.ท้ายบ้าน', value68: 73916, value69: 54593, weight: 0.62, target6m: 90944, percent6m: 0 },
+            { district: 'เมือง', code: '15048', name: 'ศสช. โรงพยาบาลสมุทรปราการ', value68: 28784, value69: 14177, weight: 0.18, target6m: 25568, percent6m: 0 },
+            { district: 'เมือง', code: '23945', name: 'สถานีอนามัยเฉลิมพระเกียรติฯ (วัดบางปิ้ง)', value68: 109445, value69: 12988, weight: 0.30, target6m: 43735, percent6m: 0 },
+            { district: 'เมือง', code: '24027', name: 'รพสต.พุทธรักษา', value68: 117409, value69: 91932, weight: 1.01, target6m: 147308, percent6m: 0 },
+            { district: 'เมือง', code: '24028', name: 'รพสต.ร่มโพธิ', value68: 109259, value69: 23412, weight: 0.39, target6m: 57027, percent6m: 0 },
+            { district: 'เมือง', code: '24029', name: 'รพสต.บุญศิริ', value68: 22215, value69: 15286, weight: 0.17, target6m: 25171, percent6m: 0 },
+            { district: 'เมือง', code: '24702', name: 'รพสต.เทศบาลตำบลสำโรงเหนือ', value68: 48189, value69: 33814, weight: 0.38, target6m: 55407, percent6m: 0 },
+            { district: 'เมือง', code: '28826', name: 'รพ.สต.มังกรทอง', value68: 254059, value69: 90059, weight: 1.23, target6m: 178839, percent6m: 0 },
+
+            // อำเภอพระประแดง (Target Sum: 1,994,681) - Source: 1911.csv
+            { district: 'พระประแดง', code: '00964', name: 'รพสต.บางพึ่ง', value68: 95086, value69: 10816, weight: 0.26, target6m: 37314, percent6m: 0 },
+            { district: 'พระประแดง', code: '00965', name: 'รพสต.บางจาก', value68: 28795, value69: 39868, weight: 0.40, target6m: 58468, percent6m: 0 },
+            { district: 'พระประแดง', code: '00966', name: 'รพสต.บางครุ', value68: 91258, value69: 73381, weight: 0.80, target6m: 116999, percent6m: 0 },
+            { district: 'พระประแดง', code: '00967', name: 'รพสต.บางหญ้าแพรก', value68: 112270, value69: 73623, weight: 0.84, target6m: 122481, percent6m: 0 },
+            { district: 'พระประแดง', code: '00968', name: 'รพสต.บางหัวเสือ', value68: 23558, value69: 579704, weight: 4.63, target6m: 675224, percent6m: 0 }, 
+            { district: 'พระประแดง', code: '00969', name: 'รพสต.บางยอ', value68: 182485, value69: 51928, weight: 0.77, target6m: 111794, percent6m: 0 },
+            { district: 'พระประแดง', code: '00970', name: 'รพสต.บางกะเจ้า', value68: 50807, value69: 39686, weight: 0.44, target6m: 63629, percent6m: 0 },
+            { district: 'พระประแดง', code: '00971', name: 'รพสต.บางน้ำผึ้ง', value68: 32692, value69: 29013, weight: 0.31, target6m: 45415, percent6m: 0 },
+            { district: 'พระประแดง', code: '00972', name: 'รพสต.บางกระสอบ', value68: 58465, value69: 27663, weight: 0.34, target6m: 50020, percent6m: 0 },
+            { district: 'พระประแดง', code: '00973', name: 'รพสต.บางกอบัว', value68: 73088, value69: 31952, weight: 0.41, target6m: 59136, percent6m: 0 },
+            { district: 'พระประแดง', code: '00974', name: 'รพสต.บางกอ', value68: 22902, value69: 11360, weight: 0.14, target6m: 20271, percent6m: 0 },
+            { district: 'พระประแดง', code: '00975', name: 'รพสต.ทรงคนอง', value68: 169940, value69: 49755, weight: 0.73, target6m: 105912, percent6m: 0 },
+            { district: 'พระประแดง', code: '00976', name: 'รพสต.สำโรง', value68: 41137, value69: 57367, weight: 0.58, target6m: 84033, percent6m: 0 },
+            { district: 'พระประแดง', code: '00977', name: 'รพสต.สำโรงกลาง', value68: 44034, value69: 64834, weight: 0.65, target6m: 94361, percent6m: 0 },
+            { district: 'พระประแดง', code: '00978', name: 'รพสต.สำโรงใต้', value68: 58911, value69: 35388, weight: 0.41, target6m: 60086, percent6m: 0 },
+            { district: 'พระประแดง', code: '10754', name: 'โรงพยาบาลบางจาก', value68: 1079436, value69: 359196, weight: 5.10, target6m: 743821, percent6m: 0 },
+            { district: 'พระประแดง', code: '23944', name: 'รพสต.อยู่เจริญ', value68: 39527, value69: 37497.5, weight: 0.39, target6m: 56811, percent6m: 0 },
+
+            // อำเภอบางบ่อ (Target Sum: 1,082,899) - Source: 193.xlsx
+            { district: 'บางบ่อ', code: '00945', name: 'รพสต.บางบ่อ', value68: 121492, value69: 47794, weight: 0.63, target6m: 91454, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00946', name: 'รพสต.บ้านระกาศ หมู่ 3', value68: 132302, value69: 25141, weight: 0.44, target6m: 64937, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00947', name: 'รพสต.บ้านระกาศ หมู่ 8', value68: 408397, value69: 75369, weight: 1.35, target6m: 197568, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00948', name: 'รพสต.บางพลีน้อย หมู่ที่ 3', value68: 219135, value69: 92484, weight: 1.19, target6m: 173052, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00949', name: 'รพสต.บางพลีน้อย หมู่ที่ 5', value68: 84530, value69: 31742, weight: 0.42, target6m: 61688, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00950', name: 'รพสต.บางพลีน้อย หมู่ที่ 8', value68: 59246, value69: 20257, weight: 0.28, target6m: 40669, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00951', name: 'รพสต.บางเพรียง', value68: 245369, value69: 78415, weight: 1.11, target6m: 161394, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00952', name: 'รพสต.คลองด่าน หมู่ที่ 1', value68: 306667, value69: 60623, weight: 1.05, target6m: 153544, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00953', name: 'รพสต.คลองด่าน หมู่ที่ 13', value68: 126798, value69: 55263, weight: 0.70, target6m: 102391, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00954', name: 'รพสต.คลองสวน', value68: 96457, value69: 60572, weight: 0.70, target6m: 101763, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00955', name: 'รพสต.เปร็ง', value68: 127618, value69: 64455, weight: 0.78, target6m: 114427, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00956', name: 'รพสต.นิยมยาตรา', value68: 155008, value69: 73600, weight: 0.83, target6m: 120832, percent6m: 0 },
+            { district: 'บางบ่อ', code: '10752', name: 'โรงพยาบาลบางบ่อ', value68: 1155310, value69: 132194, weight: 2.85, target6m: 416221, percent6m: 0 },
+            { district: 'บางบ่อ', code: '23032', name: 'ศสช.รพ.บางบ่อ', value68: 20468, value69: 33019, weight: 0.23, target6m: 34189, percent6m: 0 },
+            { district: 'บางบ่อ', code: '23911', name: 'รพสต.คลองด่าน หมู่ 7', value68: 162530, value69: 37888, weight: 0.52, target6m: 75485, percent6m: 0 },
+            { district: 'บางบ่อ', code: '99999', name: 'สถานพยาบาลเรือนจำกลางสมุทรปราการ', value68: 0, value69: 79609, weight: 0.00, target6m: 0, percent6m: 0.00 }, // New Unit
+
+            // อำเภอบางพลี (Target Sum: 790,499) - Source: 193.xlsx
+            { district: 'บางพลี', code: '00957', name: 'รพสต.บางแก้ว', value68: 302124, value69: 106027, weight: 1.40, target6m: 204851, percent6m: 0 },
+            { district: 'บางพลี', code: '00958', name: 'รพสต.วัดสลุด', value68: 32771, value69: 24450, weight: 0.23, target6m: 34112, percent6m: 0 },
+            { district: 'บางพลี', code: '00959', name: 'รพสต.บางปลา', value68: 24395, value69: 22832, weight: 0.21, target6m: 31261, percent6m: 0 },
+            { district: 'บางพลี', code: '00960', name: 'รพสต.คลองสี่', value68: 43534, value69: 14852, weight: 0.20, target6m: 29040, percent6m: 0 },
+            { district: 'บางพลี', code: '00961', name: 'รพสต.บางโฉลง', value68: 67577, value69: 61369, weight: 0.66, target6m: 97002, percent6m: 0 },
+            { district: 'บางพลี', code: '00962', name: 'รพสต.ราชาเทวะ', value68: 92727, value69: 63772, weight: 0.64, target6m: 92769, percent6m: 0 },
+            { district: 'บางพลี', code: '00963', name: 'รพสต.หนองปรือ', value68: 32248, value69: 27632, weight: 0.26, target6m: 37720, percent6m: 0 },
+            { district: 'บางพลี', code: '10753', name: 'โรงพยาบาลบางพลี', value68: 4085593, value69: 438047, weight: 9.79, target6m: 1428631, percent6m: 0 },
+            { district: 'บางพลี', code: '23034', name: 'ศพช.วัดบางพลีใหญ่กลาง', value68: 6800, value69: 18830, weight: 0.15, target6m: 21382, percent6m: 0 },
+            { district: 'บางพลี', code: '24675', name: 'รพ.สต.บัวเกราะ', value68: 44095, value69: 12288, weight: 0.17, target6m: 24428, percent6m: 0 },
+
+            // อำเภอพระสมุทรเจดีย์ (Target Sum: 499,834) - Source: 1911.csv (Updated 18/2/69)
+            { district: 'พระสมุทรเจดีย์', code: '00979', name: 'รพสต.บ้านขุนสมุทรไทย', value68: 21079, value69: 2673, weight: 0.05, target6m: 7064, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '00980', name: 'รพสต.นาเกลือ', value68: 179217, value69: 29505, weight: 0.49, target6m: 71846, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '00981', name: 'รพสต.บ้านคลองทะเล', value68: 56166, value69: 19572, weight: 0.23, target6m: 34071, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '00982', name: 'รพสต.บ้านคลองสวน', value68: 100265, value69: 28830, weight: 0.31, target6m: 44762, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '00983', name: 'รพสต.แหลมฟ้าผ่า', value68: 220385, value69: 53367, weight: 0.81, target6m: 118819, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '00984', name: 'รพสต.บ้านขุนสมุทร', value68: 15071, value69: 3726, weight: 0.06, target6m: 8795, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '00985', name: 'รพสต.ในคลองบางปลากด', value68: 196259, value69: 102487, weight: 1.09, target6m: 159412, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '00986', name: 'รพสต.บ้านคู่สร้าง', value68: 333752, value69: 57531, weight: 1.03, target6m: 149852, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '10755', name: 'รพ.พระสมุทรเจดีย์สวาทยานนท์', value68: 262004, value69: 137436, weight: 1.04, target6m: 152146, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '24410', name: 'รพสต.บ้านคลองนาเกลือน้อย', value68: 136755, value69: 35616, weight: 0.49, target6m: 70952, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '24559', name: 'รพสต.คลองกระออม', value68: 74216, value69: 27954, weight: 0.37, target6m: 54071, percent6m: 0 },
+
+            // อำเภอบางเสาธง (Target Sum: 607,540) - Source: 1911.csv
+            { district: 'บางเสาธง', code: '00987', name: 'รพสต.เมืองใหม่บางพลี', value68: 105548, value69: 46337, weight: 0.57, target6m: 83061, percent6m: 0 },
+            { district: 'บางเสาธง', code: '00988', name: 'รพสต.เสาธงกลาง', value68: 55667, value69: 42967, weight: 0.40, target6m: 57776, percent6m: 0 },
+            { district: 'บางเสาธง', code: '00989', name: 'รพสต.บางเสาธง', value68: 0, value69: 0, weight: 0.00, target6m: 0, percent6m: 0.00 },
+            { district: 'บางเสาธง', code: '00990', name: 'รพสต.ศรีษะจระเข้น้อย', value68: 58904, value69: 67389, weight: 0.48, target6m: 70569, percent6m: 0 },
+            { district: 'บางเสาธง', code: '00991', name: 'รพสต.ศีรษะจรเข้ใหญ่', value68: 21626, value69: 10515, weight: 0.10, target6m: 14741, percent6m: 0 },
+            { district: 'บางเสาธง', code: '00992', name: 'รพสต.วัดศรีวารีน้อย', value68: 158459, value69: 251767, weight: 2.09, target6m: 305482, percent6m: 0 },
+            { district: 'บางเสาธง', code: '24411', name: 'รพสต.เจริญราษฎร์', value68: 84072, value69: 93847, weight: 0.67, target6m: 98087, percent6m: 0 },
+            { district: 'บางเสาธง', code: '24412', name: 'รพสต.กัลปพฤกษ์', value68: 28910, value69: 35649, weight: 0.27, target6m: 39043, percent6m: 0 },
+            { district: 'บางเสาธง', code: '28785', name: 'โรงพยาบาลบางเสาธง', value68: 233949, value69: 62127, weight: 0.74, target6m: 107776, percent6m: 0 }
+        ];
+
+        // --- Helpers ---
+        const formatCurrency = (val) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 2 }).format(val);
+        const formatNumber = (val) => new Intl.NumberFormat('th-TH').format(val);
+
+        // --- Components ---
+        const Card = ({ children, className = "" }) => (
+            <div className={`bg-white rounded-xl shadow-sm border border-sky-100 p-6 ${className}`}>
+                {children}
+            </div>
+        );
+
+        const KPICard = ({ title, value, subtext, icon: Icon, colorClass }) => (
+            <Card className="relative overflow-hidden hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <p className="text-slate-500 text-sm font-medium mb-1">{title}</p>
+                        <h3 className="text-2xl font-bold text-slate-800">{value}</h3>
+                        {subtext && <p className="text-xs text-slate-400 mt-2">{subtext}</p>}
+                    </div>
+                    <div className={`p-3 rounded-lg ${colorClass} bg-opacity-10`}>
+                        <Icon />
+                    </div>
+                </div>
+            </Card>
+        );
+
+        // --- Main App Logic ---
+        function App() {
+            const [activeTab, setActiveTab] = useState('national'); // Default to National Dashboard
+            const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+            const [lastUpdated] = useState('18 กุมภาพันธ์ 2569');
+
+            // 1. Process District Data (Use FIXED DATA directly to match Excel exactly)
+            const processedDistrictData = useMemo(() => {
+                return PROVINCIAL_DATA_FIXED.sort((a,b) => b.weight - a.weight);
+            }, []);
+
+            // 2. Use Unit Data from CSV directly
+            const processedUnitData = useMemo(() => {
+                return INITIAL_UNIT_DATA_FROM_CSV.map(u => ({
+                    ...u,
+                    target12m: u.weight / 100 * PROVINCIAL_TARGETS.month12, // Recalculate 12m target based on weight
+                    percentAchieved6m: u.target6m > 0 ? (u.value69 / u.target6m) * 100 : 0
+                }));
+            }, []);
+
+            // Group Units by District
+            const groupedUnits = useMemo(() => {
+                return _.groupBy(processedUnitData, 'district');
+            }, [processedUnitData]);
+
+            // Views
+            const DashboardView = () => {
+                const totalUsage = processedDistrictData.reduce((acc, cur) => acc + cur.value69, 0);
+                const progress = (totalUsage / PROVINCIAL_TARGETS.month6) * 100;
+
+                return (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <KPICard title="ยอดใช้จริงปี 2569 (สะสม)" value={formatCurrency(totalUsage)} subtext={`ข้อมูล ณ วันที่ ${lastUpdated}`} icon={ICONS.TrendingUp} colorClass="text-blue-600 bg-blue-600" />
+                            <KPICard title="เป้าหมายจังหวัด (6 เดือน)" value={formatCurrency(PROVINCIAL_TARGETS.month6)} subtext="ปีงบประมาณ 2569" icon={ICONS.Map} colorClass="text-sky-600 bg-sky-600" />
+                            <KPICard title="ความก้าวหน้าเทียบเป้า 6 เดือน" value={`${progress.toFixed(2)}%`} subtext="ของยอดรวมจังหวัด" icon={progress >= 50 ? ICONS.CheckCircle : ICONS.AlertCircle} colorClass={progress >= 50 ? "text-emerald-500 bg-emerald-500" : "text-amber-500 bg-amber-500"} />
+                            <KPICard title="เป้าหมายรวม (12 เดือน)" value={formatCurrency(PROVINCIAL_TARGETS.month12)} subtext="เป้าหมายสิ้นปี" icon={ICONS.Calculator} colorClass="text-indigo-600 bg-indigo-600" />
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                             <Card>
+                                <h3 className="text-lg font-bold text-slate-800 mb-6">สัดส่วนเป้าหมายรายอำเภอ (%)</h3>
+                                <div className="h-72">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie data={processedDistrictData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="target12m">
+                                                {processedDistrictData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Pie>
+                                            <RechartsTooltip formatter={(value) => formatCurrency(value)} />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </Card>
+                            <Card>
+                                <h3 className="text-lg font-bold text-slate-800 mb-6">ผลงานจริง vs เป้าหมาย 6 เดือน (รายอำเภอ)</h3>
+                                <div className="h-72">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <ComposedChart data={processedDistrictData} margin={{top:20, right:20, bottom:20, left:20}}>
+                                            <CartesianGrid stroke="#f5f5f5" strokeDasharray="3 3" vertical={false}/>
+                                            <XAxis dataKey="name" fontSize={12} scale="point" padding={{left:10, right:10}} />
+                                            <YAxis fontSize={12} tickFormatter={(val)=>`${(val/1000000).toFixed(1)}M`} />
+                                            <RechartsTooltip formatter={(value) => formatCurrency(value)} />
+                                            <Legend />
+                                            <Bar dataKey="value69" name="ผลงานจริง 69" barSize={20} fill="#0EA5E9" radius={[4,4,0,0]} />
+                                            <Line type="monotone" dataKey="target6m" name="เป้า 6 เดือน" stroke="#EF4444" strokeWidth={2} dot={{r:4}} />
+                                        </ComposedChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </Card>
+                        </div>
+                    </div>
+                );
+            };
+
+            const NationalView = () => (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <Card>
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="p-3 bg-indigo-100 rounded-lg text-indigo-600">
+                                <ICONS.Globe />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-bold text-slate-800">Dashboard ระดับประเทศ / เขตสุขภาพ</h2>
+                                <p className="text-slate-500">เปรียบเทียบผลการดำเนินงานในระดับมหภาค</p>
+                            </div>
+                        </div>
+
+                        {/* KPI Cards Level */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            {NATIONAL_DATA.levels.map((item, index) => (
+                                <div key={index} className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <p className="text-sm font-medium text-slate-500 mb-1">{item.name}</p>
+                                            <h3 className="text-3xl font-bold text-slate-800">{item.percent.toFixed(2)}%</h3>
+                                        </div>
+                                        <div className={`p-2 rounded-lg ${index === 0 ? 'bg-blue-100 text-blue-600' : index === 1 ? 'bg-purple-100 text-purple-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                            <ICONS.TrendingUp />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-xs text-slate-600">
+                                            <span>ผลงาน (บาท):</span>
+                                            <span className="font-mono font-bold">{formatNumber(item.value)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs text-slate-600">
+                                            <span>เป้าหมาย (บาท):</span>
+                                            <span className="font-mono">{formatNumber(item.target)}</span>
+                                        </div>
+                                        <div className="w-full bg-slate-100 rounded-full h-2 mt-2">
+                                            <div className={`h-2 rounded-full ${index === 0 ? 'bg-blue-500' : index === 1 ? 'bg-purple-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(item.percent, 100)}%` }}></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Chart Section */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-800 mb-4 border-l-4 border-indigo-500 pl-3">
+                                    เปรียบเทียบ % ผลงาน 8 จังหวัดในเขตสุขภาพที่ 6
+                                </h3>
+                                <div className="h-96 bg-slate-50 rounded-xl p-4 border border-slate-200">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={NATIONAL_DATA.region6.sort((a,b) => b.percent - a.percent)} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                            <XAxis type="number" domain={[0, 100]} />
+                                            <YAxis dataKey="name" type="category" width={100} fontSize={14} fontWeight={500} />
+                                            <RechartsTooltip formatter={(val) => `${val.toFixed(2)}%`} cursor={{fill: 'transparent'}} />
+                                            <Legend />
+                                            <Bar dataKey="percent" name="% ผลงาน" fill="#6366F1" radius={[0, 4, 4, 0]} barSize={25}>
+                                                {NATIONAL_DATA.region6.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.name === 'สมุทรปราการ' ? '#10B981' : '#6366F1'} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-800 mb-4 border-l-4 border-emerald-500 pl-3">
+                                    รายละเอียดข้อมูลรายจังหวัด (เขต 6)
+                                </h3>
+                                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                                    <table className="w-full text-sm text-left text-slate-600">
+                                        <thead className="text-xs text-slate-700 uppercase bg-slate-100">
+                                            <tr>
+                                                <th className="px-4 py-3">จังหวัด</th>
+                                                <th className="px-4 py-3 text-right">เป้าหมาย (บาท)</th>
+                                                <th className="px-4 py-3 text-right">ผลงาน (บาท)</th>
+                                                <th className="px-4 py-3 text-center">% ผลงาน</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {NATIONAL_DATA.region6.sort((a,b) => b.percent - a.percent).map((item, index) => (
+                                                <tr key={index} className={`border-b ${item.name === 'สมุทรปราการ' ? 'bg-emerald-50' : 'bg-white'}`}>
+                                                    <td className="px-4 py-3 font-medium text-slate-900">{item.name}</td>
+                                                    <td className="px-4 py-3 text-right font-mono text-xs">{formatNumber(item.target)}</td>
+                                                    <td className="px-4 py-3 text-right font-mono text-xs text-blue-600 font-bold">{formatNumber(item.value)}</td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${item.percent >= 35 ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
+                                                            {item.percent.toFixed(2)}%
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+            );
+
+            const TopDrugsView = () => {
+                const sortedDrugs = [...TOP_HERBAL_DRUGS_DATA].sort((a, b) => b.total - a.total);
+                const top5Drugs = sortedDrugs.slice(0, 5);
+                
+                return (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <Card>
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="p-3 bg-green-100 rounded-lg text-green-600">
+                                    <ICONS.Leaf />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-slate-800">สรุปมูลค่าการใช้ยาสมุนไพร 15 อันดับแรก</h2>
+                                    <p className="text-slate-500">วิเคราะห์ข้อมูลการเบิกจ่ายตามมูลค่ารวม (บาท)</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                                <div className="h-96">
+                                    <h3 className="text-lg font-bold text-slate-800 mb-4 border-l-4 border-green-500 pl-3">
+                                        กราฟแสดงมูลค่าการใช้ยา 15 อันดับแรก
+                                    </h3>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={sortedDrugs} layout="vertical" margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
+                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                            <XAxis type="number" tickFormatter={(val) => `${(val/1000).toFixed(0)}k`} />
+                                            <YAxis dataKey="name" type="category" width={150} fontSize={12} />
+                                            <RechartsTooltip formatter={(value) => formatCurrency(value)} cursor={{fill: 'transparent'}} />
+                                            <Bar dataKey="total" name="มูลค่ารวม (บาท)" fill="#10B981" radius={[0, 4, 4, 0]} barSize={20} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div className="h-96">
+                                    <h3 className="text-lg font-bold text-slate-800 mb-4 border-l-4 border-blue-500 pl-3">
+                                        สัดส่วนมูลค่าของยา 5 อันดับแรก
+                                    </h3>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie data={top5Drugs} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="total" nameKey="name" label>
+                                                {top5Drugs.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Pie>
+                                            <RechartsTooltip formatter={(value) => formatCurrency(value)} />
+                                            <Legend layout="vertical" verticalAlign="middle" align="right" />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            <div className="overflow-x-auto rounded-xl border border-slate-200">
+                                <table className="w-full text-sm text-left text-slate-600">
+                                    <thead className="text-xs text-slate-700 uppercase bg-green-50">
+                                        <tr>
+                                            <th className="px-4 py-3 text-center">อันดับ</th>
+                                            <th className="px-4 py-3">รายการยา</th>
+                                            <th className="px-4 py-3 text-right">จำนวนครั้ง</th>
+                                            <th className="px-4 py-3 text-right">ราคา/คอร์ส (บาท)</th>
+                                            <th className="px-4 py-3 text-right">มูลค่ารวม (บาท)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {sortedDrugs.map((item, index) => (
+                                            <tr key={index} className="border-b bg-white hover:bg-slate-50 transition-colors">
+                                                <td className="px-4 py-3 text-center font-bold text-slate-500">{index + 1}</td>
+                                                <td className="px-4 py-3 font-medium text-slate-900">{item.name}</td>
+                                                <td className="px-4 py-3 text-right font-mono">{formatNumber(item.count)}</td>
+                                                <td className="px-4 py-3 text-right font-mono">{formatNumber(item.price)}</td>
+                                                <td className="px-4 py-3 text-right font-mono text-green-600 font-bold">{formatNumber(item.total)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div className="mt-8 bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <ICONS.Search /> บทวิเคราะห์และข้อเสนอแนะ (Strategic Analysis)
+                                </h3>
+                                <ul className="list-disc list-inside space-y-2 text-slate-700 text-sm">
+                                    <li><strong>ยาไพล</strong> ครองแชมป์อันดับ 1 ด้วยมูลค่าการใช้สูงสุดถึง {formatNumber(sortedDrugs[0].total)} บาท สะท้อนถึงความนิยมในการใช้บรรเทาอาการปวดเมื่อยกล้ามเนื้อ</li>
+                                    <li>กลุ่มยารักษาโรคระบบทางเดินหายใจ (แก้ไอมะขามป้อม, ฟ้าทะลายโจร) ติดอันดับต้นๆ ซึ่งสอดคล้องกับสถานการณ์สุขภาพปัจจุบัน</li>
+                                    <li>ยา 3 อันดับแรก (ยาไพล, แก้ไอมะขามป้อม, ประสะมะแว้ง) มีมูลค่ารวมกันสูงถึง {formatCurrency(sortedDrugs[0].total + sortedDrugs[1].total + sortedDrugs[2].total)} คิดเป็นสัดส่วนหลักของงบประมาณ</li>
+                                    <li><strong>ข้อเสนอแนะ:</strong> ควรบริหารจัดการสต็อกยากลุ่ม Top 5 อย่างใกล้ชิดเพื่อป้องกันภาวะยาขาดคราว และพิจารณาส่งเสริมการใช้ยารายการอื่นที่มีสรรพคุณทดแทนกันได้แต่มีราคาย่อมเยากว่าในบางกรณี</li>
+                                </ul>
+                            </div>
+                        </Card>
+                    </div>
+                );
+            };
+
+            const UnitAnalysisView = () => {
+                const [selectedDistrict, setSelectedDistrict] = useState('All');
+                
+                // Use the main processedUnitData
+                const filteredUnits = useMemo(() => {
+                    return selectedDistrict === 'All' 
+                        ? processedUnitData 
+                        : processedUnitData.filter(u => u.district === selectedDistrict);
+                }, [selectedDistrict, processedUnitData]);
+
+                // Calculate summary stats
+                const summary = useMemo(() => {
+                    const totalTarget = filteredUnits.reduce((acc, u) => acc + u.target6m, 0);
+                    const totalPerf = filteredUnits.reduce((acc, u) => acc + u.value69, 0);
+                    const avgPercent = totalTarget > 0 ? (totalPerf / totalTarget) * 100 : 0;
+                    return { totalTarget, totalPerf, avgPercent };
+                }, [filteredUnits]);
+
+                // Sort for Top/Bottom
+                const sortedByPercent = useMemo(() => {
+                    // Filter out units with 0 target to avoid infinity
+                    return [...filteredUnits].filter(u => u.target6m > 0).sort((a, b) => b.percentAchieved6m - a.percentAchieved6m);
+                }, [filteredUnits]);
+
+                const top3 = sortedByPercent.slice(0, 3);
+                const bottom3 = sortedByPercent.slice(-3).reverse(); // Reverse to show lowest first
+
+                return (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <Card>
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-indigo-100 rounded-lg text-indigo-600">
+                                        <ICONS.Analytics />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-slate-800">วิเคราะห์ข้อมูลรายหน่วยบริการ</h2>
+                                        <p className="text-slate-500">เจาะลึกประสิทธิภาพรายหน่วยงานและรายอำเภอ</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-slate-600">เลือกพื้นที่:</span>
+                                    <select 
+                                        value={selectedDistrict} 
+                                        onChange={(e) => setSelectedDistrict(e.target.value)}
+                                        className="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2.5 w-48"
+                                    >
+                                        <option value="All">ทั้งหมด (ทั้งจังหวัด)</option>
+                                        {Object.keys(groupedUnits).map(d => <option key={d} value={d}>{d}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Summary Cards */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                    <p className="text-xs text-slate-500 mb-1">จำนวนหน่วยบริการ</p>
+                                    <p className="text-2xl font-bold text-slate-800">{filteredUnits.length} แห่ง</p>
+                                </div>
+                                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                                    <p className="text-xs text-indigo-600 mb-1">เป้าหมายรวม (6 เดือน)</p>
+                                    <p className="text-xl font-bold text-indigo-900">{formatNumber(summary.totalTarget)}</p>
+                                </div>
+                                <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-200">
+                                    <p className="text-xs text-emerald-600 mb-1">ผลงานรวม (ปี 69)</p>
+                                    <p className="text-xl font-bold text-emerald-900">{formatNumber(summary.totalPerf)}</p>
+                                </div>
+                                <div className={`p-4 rounded-lg border ${summary.avgPercent >= 50 ? 'bg-green-100 border-green-300' : summary.avgPercent >= 35 ? 'bg-yellow-100 border-yellow-300' : 'bg-red-100 border-red-300'}`}>
+                                    <p className={`text-xs mb-1 ${summary.avgPercent >= 50 ? 'text-green-800' : summary.avgPercent >= 35 ? 'text-yellow-800' : 'text-red-800'}`}>% ความก้าวหน้าเฉลี่ย</p>
+                                    <p className={`text-2xl font-bold ${summary.avgPercent >= 50 ? 'text-green-900' : summary.avgPercent >= 35 ? 'text-yellow-900' : 'text-red-900'}`}>{summary.avgPercent.toFixed(2)}%</p>
+                                </div>
+                            </div>
+
+                            {/* Data Table */}
+                            <div className="overflow-x-auto rounded-lg border border-slate-200 mb-8 max-h-[400px]">
+                                <table className="w-full text-sm text-left text-slate-600">
+                                    <thead className="text-xs text-slate-700 uppercase bg-slate-100 sticky top-0 z-10">
+                                        <tr>
+                                            <th className="px-4 py-3">อำเภอ</th>
+                                            <th className="px-4 py-3">หน่วยบริการ</th>
+                                            <th className="px-4 py-3 text-right">เป้าหมาย 6 เดือน</th>
+                                            <th className="px-4 py-3 text-right">ผลงานปี 69</th>
+                                            <th className="px-4 py-3 text-center">% ผลงาน</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredUnits.sort((a,b) => b.percentAchieved6m - a.percentAchieved6m).map((u, idx) => (
+                                            <tr key={idx} className="bg-white border-b hover:bg-slate-50">
+                                                <td className="px-4 py-2 font-medium text-slate-500 text-xs">{u.district}</td>
+                                                <td className="px-4 py-2 text-slate-900">{u.name}</td>
+                                                <td className="px-4 py-2 text-right font-mono text-xs">{formatNumber(u.target6m)}</td>
+                                                <td className="px-4 py-2 text-right font-mono text-indigo-600 font-bold">{formatNumber(u.value69)}</td>
+                                                <td className="px-4 py-2 text-center">
+                                                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${u.percentAchieved6m >= 50 ? 'bg-green-100 text-green-700' : u.percentAchieved6m >= 35 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                                                        {u.percentAchieved6m.toFixed(2)}%
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Smart Analysis Footer */}
+                            <div className="bg-slate-800 text-white p-6 rounded-xl shadow-lg">
+                                <h3 className="text-lg font-bold text-sky-400 mb-4 flex items-center gap-2">
+                                    <ICONS.Lightbulb /> บทวิเคราะห์อัตโนมัติ (Smart Analysis: {selectedDistrict === 'All' ? 'ภาพรวมจังหวัด' : `อำเภอ${selectedDistrict}`})
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <h4 className="text-sm font-bold text-green-400 mb-2 flex items-center gap-2"><ICONS.Award /> Top Performers (ผลงานโดดเด่น)</h4>
+                                        <ul className="space-y-1 text-sm text-slate-300">
+                                            {top3.map((u, i) => (
+                                                <li key={i} className="flex justify-between">
+                                                    <span>{i+1}. {u.name}</span>
+                                                    <span className="font-mono text-green-300">{u.percentAchieved6m.toFixed(2)}%</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-red-400 mb-2 flex items-center gap-2"><ICONS.AlertCircle /> Opportunities (ควรเร่งรัด)</h4>
+                                        <ul className="space-y-1 text-sm text-slate-300">
+                                            {bottom3.map((u, i) => (
+                                                <li key={i} className="flex justify-between">
+                                                    <span>{i+1}. {u.name}</span>
+                                                    <span className="font-mono text-red-300">{u.percentAchieved6m.toFixed(2)}%</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-slate-700 text-xs text-slate-400">
+                                    <strong>ข้อเสนอแนะ:</strong> 
+                                    {summary.avgPercent >= 50 
+                                        ? " ภาพรวมอยู่ในเกณฑ์ดีเยี่ยม (Excellent). ควรถอดบทเรียนความสำเร็จจากกลุ่มผู้นำเพื่อขยายผลไปยังหน่วยงานอื่น"
+                                        : summary.avgPercent >= 35 
+                                        ? " ภาพรวมอยู่ในเกณฑ์ปานกลาง (Average). ควรติดตามหน่วยบริการกลุ่ม Opportunities อย่างใกล้ชิดเพื่อหาสาเหตุและแนวทางแก้ไข" 
+                                        : " ภาพรวมต้องได้รับการปรับปรุงเร่งด่วน (Critical). ควรจัดทีมลงพื้นที่นิเทศงานเพื่อวิเคราะห์ปัญหาอุปสรรคและวางแผนแก้ไขรายสัปดาห์"}
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+                );
+            };
+
+            const DistrictView = () => {
+                const totalRow = useMemo(() => {
+                    return processedDistrictData.reduce((acc, curr) => {
+                        return {
+                            value68: acc.value68 + curr.value68,
+                            value69: acc.value69 + curr.value69,
+                            weight: acc.weight + curr.weight,
+                            target6m: acc.target6m + curr.target6m,
+                            target12m: acc.target12m + curr.target12m
+                        };
+                    }, { value68: 0, value69: 0, weight: 0, target6m: 0, target12m: 0 });
+                }, [processedDistrictData]);
+
+                // Calculate achievement % for summary
+                const summaryAchieved6m = totalRow.target6m > 0 ? (totalRow.value69 / totalRow.target6m * 100) : 0;
+
+                // --- NEW ANALYSIS FUNCTION FOR MENU 2 ---
+                const analyzeDistrictPerformance = (data) => {
+                    const sorted = [...data].map(d => ({
+                        ...d,
+                        percent: (d.value69 / d.target6m) * 100
+                    })).sort((a,b) => b.percent - a.percent);
+
+                    const stars = sorted.filter(d => d.percent >= 50);
+                    const cashCows = sorted.filter(d => d.percent >= 35 && d.percent < 50);
+                    const questionMarks = sorted.filter(d => d.percent < 35);
+
+                    return { stars, cashCows, questionMarks };
+                };
+
+                const analysis = analyzeDistrictPerformance(processedDistrictData);
+
+                return (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                        <Card className="overflow-hidden">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-lg font-bold text-slate-800">ตารางรายละเอียดรายอำเภอ (ข้อมูล 18/2/69)</h3>
+                                <button className="flex items-center gap-2 text-sm text-blue-600 font-bold hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors">
+                                    <ICONS.Download /> Export CSV
+                                </button>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left text-slate-600">
+                                    <thead className="text-xs text-slate-700 uppercase bg-sky-50 border-b border-sky-200">
+                                        <tr>
+                                            <th className="px-6 py-4 font-bold text-sky-900">อำเภอ</th>
+                                            <th className="px-6 py-4 text-right">ผลงานปี 68</th>
+                                            <th className="px-6 py-4 text-right">ผลงานปี 69</th>
+                                            <th className="px-6 py-4 text-center">น้ำหนักรวม (%)</th>
+                                            <th className="px-6 py-4 text-right bg-sky-100 text-sky-900 font-bold border-l border-r border-sky-200">เป้า 6 เดือน</th>
+                                            <th className="px-6 py-4 text-center font-bold text-emerald-700">คิดเป็น % ของเป้า 6ด.</th> 
+                                            <th className="px-6 py-4 text-right">เป้า 12 เดือน</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {processedDistrictData.map((item, index) => {
+                                            const percentAchieved = (item.value69 / item.target6m) * 100; // Calculation logic updated here
+                                            return (
+                                                <tr key={index} className="bg-white border-b hover:bg-sky-50 transition-colors">
+                                                    <td className="px-6 py-4 font-medium text-slate-900">{item.name}</td>
+                                                    <td className="px-6 py-4 text-right font-mono">{formatNumber(item.value68)}</td>
+                                                    <td className="px-6 py-4 text-right font-mono text-blue-600 font-bold">{formatNumber(item.value69)}</td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <span className="bg-slate-100 text-slate-800 py-1 px-3 rounded-full text-xs font-bold shadow-sm">
+                                                            {item.weight.toFixed(2)}%
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right font-bold text-blue-700 bg-sky-50 border-l border-r border-sky-100">{formatCurrency(item.target6m)}</td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <span className={`px-2 py-1 rounded text-xs font-bold ${percentAchieved >= 35 ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
+                                                            {percentAchieved.toFixed(2)}%
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">{formatCurrency(item.target12m)}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                    <tfoot className="bg-sky-100 font-bold text-sky-900 border-t-2 border-sky-300">
+                                        <tr>
+                                            <td className="px-6 py-4 text-right">รวมทั้งสิ้น</td>
+                                            <td className="px-6 py-4 text-right">{formatNumber(totalRow.value68)}</td>
+                                            <td className="px-6 py-4 text-right">{formatNumber(totalRow.value69)}</td>
+                                            <td className="px-6 py-4 text-center">{Math.round(totalRow.weight)}%</td>
+                                            <td className="px-6 py-4 text-right border-l border-r border-sky-300">{formatCurrency(totalRow.target6m)}</td>
+                                            <td className="px-6 py-4 text-center text-emerald-800">{summaryAchieved6m.toFixed(2)}%</td>
+                                            <td className="px-6 py-4 text-right">{formatCurrency(totalRow.target12m)}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </Card>
+                    </div>
+                );
+            };
+
+            const UnitView = () => {
+                const [selectedDistrict, setSelectedDistrict] = useState('All');
+                const printRef = useRef();
+
+                // Export to PDF function
+                const handleExportPDF = () => {
+                    const element = printRef.current;
+                    if (!element) return;
+
+                    // Temporary style for printing
+                    const originalStyle = element.style.cssText;
+                    element.classList.add('print-mode');
+
+                    const opt = {
+                        margin: [10, 10, 10, 10], // top, left, bottom, right in mm
+                        filename: `Herbal_Report_${selectedDistrict}_${new Date().toISOString().split('T')[0]}.pdf`,
+                        image: { type: 'jpeg', quality: 0.98 },
+                        html2canvas: { scale: 2, useCORS: true },
+                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } // Landscape for wide tables
+                    };
+
+                    // Use html2pdf to generate PDF
+                    html2pdf().set(opt).from(element).save().then(() => {
+                         element.classList.remove('print-mode');
+                    });
+                };
+                
+                // Helper component for District Analysis Box
+                const DistrictAnalysisBox = ({ units, districtName }) => {
+                    const sortedUnits = [...units].sort((a, b) => b.percentAchieved6m - a.percentAchieved6m);
+                    const topUnit = sortedUnits[0];
+                    const bottomUnit = sortedUnits.filter(u => u.target6m > 0).pop(); 
+                    const avgProgress = units.reduce((acc, u) => acc + u.percentAchieved6m, 0) / units.length;
+                    
+                    return (
+                        <div className="mt-4 bg-sky-50 p-4 rounded-lg border border-sky-200 break-inside-avoid">
+                            <h4 className="font-bold text-blue-800 flex items-center gap-2 mb-3">
+                                <ICONS.Lightbulb /> บทวิเคราะห์และข้อเสนอแนะ: อำเภอ{districtName}
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <p className="mb-2"><span className="font-semibold text-emerald-600">🏆 ผลงานดีเด่น:</span> {topUnit?.name} (ทำได้ {topUnit?.percentAchieved6m.toFixed(1)}% ของเป้า)</p>
+                                    <p><span className="font-semibold text-red-500">⚠️ ต้องเร่งรัด:</span> {bottomUnit?.name} (ทำได้ {bottomUnit?.percentAchieved6m.toFixed(1)}% ของเป้า)</p>
+                                </div>
+                                <div className="bg-white p-3 rounded border border-sky-100 text-slate-600 text-xs leading-relaxed">
+                                    <strong>ข้อเสนอแนะ:</strong> ภาพรวมหน่วยบริการในอำเภอนี้มีความก้าวหน้าเฉลี่ยอยู่ที่ {avgProgress.toFixed(1)}% 
+                                    {avgProgress < 30 
+                                        ? " ควรเร่งติดตามหน่วยบริการที่มีผลงานต่ำกว่าเกณฑ์ เพื่อค้นหาปัญหาอุปสรรคและสนับสนุนทรัพยากร" 
+                                        : " ถือว่าอยู่ในเกณฑ์ที่ดี ควรสนับสนุนให้หน่วยบริการต้นแบบขยายผลการดำเนินงานไปยังพื้นที่ข้างเคียง"}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                };
+
+                return (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        {/* Control Bar */}
+                        <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl border border-sky-100 shadow-sm gap-4 no-print">
+                            <div className="flex items-center gap-4 w-full md:w-auto">
+                                <div className="flex items-center gap-2">
+                                    <ICONS.Hospital />
+                                    <span className="font-bold text-slate-700">กรองข้อมูลรายอำเภอ:</span>
+                                </div>
+                                <select 
+                                    value={selectedDistrict} 
+                                    onChange={(e) => setSelectedDistrict(e.target.value)}
+                                    className="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full md:w-64 p-2.5"
+                                >
+                                    <option value="All">ทั้งหมด (ทุกอำเภอ)</option>
+                                    {Object.keys(groupedUnits).map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>
+                            </div>
+                            
+                            <button 
+                                onClick={handleExportPDF}
+                                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow-sm transition-colors font-medium text-sm w-full md:w-auto justify-center"
+                            >
+                                <ICONS.Printer /> ส่งออกเป็น PDF (A4)
+                            </button>
+                        </div>
+
+                        {/* Analysis Charts for Units (Hidden in PDF to save space or keep if needed, currently kept) */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 no-print">
+                             <Card>
+                                <h3 className="text-lg font-bold text-slate-800 mb-6">สัดส่วนเป้าหมาย (Top 10 หน่วยบริการ)</h3>
+                                <div className="h-64">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie data={
+                                                (selectedDistrict === 'All' ? processedUnitData : processedUnitData.filter(u => u.district === selectedDistrict))
+                                                .sort((a,b) => b.value69 - a.value69).slice(0, 10)
+                                            } cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="target6m">
+                                                {COLORS.map((color, index) => (
+                                                    <Cell key={`cell-${index}`} fill={color} />
+                                                ))}
+                                            </Pie>
+                                            <RechartsTooltip formatter={(value) => formatCurrency(value)} />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </Card>
+                            <Card>
+                                <h3 className="text-lg font-bold text-slate-800 mb-6">ผลงานจริง vs เป้า 6 เดือน (Top 10 หน่วยบริการ)</h3>
+                                <div className="h-64">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={
+                                            (selectedDistrict === 'All' ? processedUnitData : processedUnitData.filter(u => u.district === selectedDistrict))
+                                            .sort((a,b) => b.value69 - a.value69).slice(0, 10)
+                                        } layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                            <XAxis type="number" fontSize={10} tickFormatter={(val) => `${(val/1000).toFixed(0)}k`} />
+                                            <YAxis dataKey="name" type="category" width={100} fontSize={12} />
+                                            <RechartsTooltip formatter={(value) => formatCurrency(value)} cursor={{fill: 'transparent'}} />
+                                            <Legend />
+                                            <Bar dataKey="value69" name="ผลงานจริง 69" fill="#0EA5E9" radius={[0, 4, 4, 0]} barSize={10} />
+                                            <Bar dataKey="target6m" name="เป้า 6 เดือน" fill="#CBD5E1" radius={[0, 4, 4, 0]} barSize={10} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </Card>
+                        </div>
+
+                        {/* Printable Area */}
+                        <div id="print-area" ref={printRef} className="print-container bg-white p-4">
+                            {/* Report Header for PDF Only */}
+                            <div className="hidden print-only mb-6 text-center">
+                                <h1 className="text-2xl font-bold text-slate-900">รายงานสรุปผลการดำเนินงานสมุนไพร สิทธิ UC รายหน่วยบริการ</h1>
+                                <p className="text-slate-600">สำนักงานสาธารณสุขจังหวัดสมุทรปราการ | ข้อมูล ณ วันที่ {lastUpdated}</p>
+                                {selectedDistrict !== 'All' && <p className="text-blue-600 font-bold mt-2">พื้นที่: อำเภอ{selectedDistrict}</p>}
+                            </div>
+
+                            {/* Grouped Tables */}
+                            {Object.keys(groupedUnits).map(districtName => {
+                                 if (selectedDistrict !== 'All' && selectedDistrict !== districtName) return null;
+                                 
+                                 const units = groupedUnits[districtName];
+                                 const sum68 = units.reduce((acc, u) => acc + u.value68, 0);
+                                 const sum69 = units.reduce((acc, u) => acc + u.value69, 0);
+                                 const sumTarget6m = units.reduce((acc, u) => acc + u.target6m, 0);
+                                 const sumTarget12m = units.reduce((acc, u) => acc + u.target12m, 0);
+                                 
+                                 // Calculate % achieved for summary
+                                 const sumPercent6m = sumTarget6m > 0 ? (sum69 / sumTarget6m) * 100 : 0;
+
+                                 return (
+                                    <div key={districtName} className="mb-8 break-inside-avoid"> {/* Changed Card to div for better print control */}
+                                        <div className="border border-sky-200 rounded-xl overflow-hidden shadow-none">
+                                            <div className="bg-sky-50 px-6 py-4 border-b border-sky-100 flex justify-between items-center">
+                                                <h3 className="text-lg font-bold text-blue-800 flex items-center gap-2">
+                                                    <ICONS.Map /> อำเภอ{districtName} <span className="text-sm font-normal text-slate-500">({units.length} แห่ง)</span>
+                                                </h3>
+                                            </div>
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-sm text-left text-slate-600">
+                                                    <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-200">
+                                                        <tr>
+                                                            <th className="px-4 py-3">รหัส</th>
+                                                            <th className="px-4 py-3">หน่วยบริการ</th>
+                                                            <th className="px-4 py-3 text-right">ผลงานปี 68</th>
+                                                            <th className="px-4 py-3 text-right">ผลงานปี 69</th>
+                                                            <th className="px-4 py-3 text-center">น้ำหนักรวม (%)</th>
+                                                            <th className="px-4 py-3 text-right bg-sky-50 text-sky-900">เป้าหมาย 6 เดือน</th>
+                                                            <th className="px-4 py-3 text-center text-emerald-700 font-bold">% ของเป้า 6ด.</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {units.map((u, idx) => (
+                                                            <tr key={idx} className="bg-white border-b hover:bg-slate-50">
+                                                                <td className="px-4 py-2 font-mono text-xs text-slate-400">{u.code}</td>
+                                                                <td className="px-4 py-2 font-medium text-slate-900">{u.name}</td>
+                                                                <td className="px-4 py-2 text-right font-mono text-xs">{formatNumber(u.value68)}</td>
+                                                                <td className="px-4 py-2 text-right font-mono text-blue-600 font-bold">{formatNumber(u.value69)}</td>
+                                                                <td className="px-4 py-2 text-center">
+                                                                    <span className="bg-slate-100 text-slate-600 py-0.5 px-2 rounded-full text-xs">
+                                                                        {u.weight.toFixed(2)}%
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-4 py-2 text-right font-bold text-blue-700 bg-sky-50">{formatCurrency(u.target6m)}</td>
+                                                                <td className="px-4 py-2 text-center">
+                                                                    <span className={`px-2 py-1 rounded text-xs font-bold ${u.percentAchieved6m >= 35 ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
+                                                                        {u.percentAchieved6m.toFixed(2)}%
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                        {/* Summary Row */}
+                                                        <tr className="bg-sky-100 font-bold text-sky-900">
+                                                            <td colSpan="2" className="px-4 py-3 text-right">รวมอำเภอ{districtName}</td>
+                                                            <td className="px-4 py-3 text-right">{formatNumber(sum68)}</td>
+                                                            <td className="px-4 py-3 text-right">{formatNumber(sum69)}</td>
+                                                            <td className="px-4 py-3 text-center">-</td>
+                                                            <td className="px-4 py-3 text-right border-t border-sky-300">{formatCurrency(sumTarget6m)}</td>
+                                                            <td className="px-4 py-3 text-center border-t border-sky-300">{sumPercent6m.toFixed(2)}%</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            
+                                            {/* Analysis Box */}
+                                            <div className="p-4 border-t border-sky-100 bg-white">
+                                                <DistrictAnalysisBox units={units} districtName={districtName} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                 );
+                            })}
+                            
+                            {/* Report Footer */}
+                            <div className="hidden print-only mt-8 pt-4 border-t border-slate-300 text-center text-xs text-slate-500">
+                                <p>รายงานนี้สร้างโดยอัตโนมัติจากระบบ Samut Prakan Herbal Strategy (SPHS)</p>
+                                <p>พัฒนาโดย ภก.จีรภัทร พลายงาม | สำนักงานสาธารณสุขจังหวัดสมุทรปราการ</p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // --- ADDED QualitativeView Component ---
+            const QualitativeView = () => {
+                return (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <Card>
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="p-3 bg-purple-100 rounded-lg text-purple-600">
+                                    <ICONS.Star />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-slate-800">สรุปผลลัพธ์เชิงคุณภาพ (Quality & Standards)</h2>
+                                    <p className="text-slate-500">การประเมินมาตรฐานการให้บริการและคุณภาพข้อมูล</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                {/* Overall Scores */}
+                                <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                    <h3 className="text-lg font-bold text-slate-800 mb-4 border-l-4 border-purple-500 pl-3">คะแนนภาพรวมรายด้าน</h3>
+                                    <div className="space-y-4">
+                                        {QUALITY_DATA.overall.map((item, index) => (
+                                            <div key={index} className="space-y-1">
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-slate-700 font-medium">{item.name}</span>
+                                                    <span className="font-bold text-purple-600">{item.score}/{item.max}</span>
+                                                </div>
+                                                <div className="w-full bg-slate-100 rounded-full h-2.5">
+                                                    <div 
+                                                        className={`h-2.5 rounded-full ${item.score === 100 ? 'bg-emerald-500' : 'bg-purple-500'}`} 
+                                                        style={{ width: `${(item.score / item.max) * 100}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Drug Code Accuracy Chart */}
+                                <div className="h-80">
+                                    <h3 className="text-lg font-bold text-slate-800 mb-4 border-l-4 border-pink-500 pl-3">ความถูกต้องของรหัสยา 24 หลัก (รายอำเภอ)</h3>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart 
+                                            data={QUALITY_DATA.drugCodeAccuracy.sort((a,b) => b.score - a.score)} 
+                                            layout="vertical" 
+                                            margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                                        >
+                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                            <XAxis type="number" domain={[0, 100]} />
+                                            <YAxis dataKey="name" type="category" width={100} fontSize={12} />
+                                            <RechartsTooltip formatter={(val) => `${val}%`} cursor={{fill: 'transparent'}} />
+                                            <Bar dataKey="score" name="ความถูกต้อง (%)" fill="#8B5CF6" radius={[0, 4, 4, 0]} barSize={20}>
+                                                {QUALITY_DATA.drugCodeAccuracy.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.score >= 90 ? '#10B981' : entry.score >= 80 ? '#F59E0B' : '#EF4444'} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                            
+                            {/* Analysis Text */}
+                             <div className="bg-purple-50 p-6 rounded-xl border border-purple-100">
+                                <h3 className="text-lg font-bold text-purple-900 mb-2 flex items-center gap-2">
+                                    <ICONS.CheckCircle /> บทสรุปคุณภาพ
+                                </h3>
+                                <p className="text-purple-800 text-sm leading-relaxed">
+                                    ภาพรวมคุณภาพการให้บริการและมาตรฐานการผลิต (GMP) อยู่ในเกณฑ์ดีเยี่ยม (100% และ 94.17%) 
+                                    อย่างไรก็ตาม ในส่วนของความถูกต้องในการบันทึกรหัสยา 24 หลัก ยังมีความแตกต่างกันในแต่ละพื้นที่ 
+                                    โดยเฉพาะบางอำเภอที่คะแนนต่ำกว่า 90% ควรเน้นย้ำการตรวจสอบความถูกต้องของรหัสยา (TMT Code) 
+                                    เพื่อประสิทธิภาพในการเบิกจ่ายและวิเคราะห์ข้อมูล
+                                </p>
+                            </div>
+                        </Card>
+                    </div>
+                );
+            };
+
+            const MethodView = () => (
+                <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                     <Card>
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="p-3 bg-indigo-100 rounded-lg text-indigo-600">
+                                <ICONS.Calculator />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-bold text-slate-800">วิธีการคำนวณเป้าหมาย (Methodology)</h2>
+                                <p className="text-slate-500">รูปแบบการจัดสรรตามสัดส่วนผลงาน (Proportional Performance-Based Allocation)</p>
+                            </div>
+                        </div>
+                        <div className="prose prose-slate max-w-none text-slate-600">
+                            <p className="mb-4">
+                                การจัดสรรเป้าหมายปี 2569 ใช้หลักการ <strong>"Weighted Moving Average"</strong> เพื่อลดความผันผวนของข้อมูลและสะท้อนศักยภาพที่แท้จริง โดยมีสัดส่วนดังนี้:
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                                <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 text-center">
+                                    <h3 className="text-4xl font-bold text-blue-600 mb-2">40%</h3>
+                                    <p className="text-blue-800 font-medium">น้ำหนักจากผลงานปี 2568</p>
+                                    <p className="text-xs text-blue-500 mt-2">Historical Baseline</p>
+                                </div>
+                                <div className="bg-sky-50 p-6 rounded-xl border border-sky-100 text-center">
+                                    <h3 className="text-4xl font-bold text-sky-600 mb-2">60%</h3>
+                                    <p className="text-sky-800 font-medium">น้ำหนักจากผลงานปี 2569</p>
+                                    <p className="text-xs text-sky-500 mt-2">Current Performance</p>
+                                </div>
+                            </div>
+                            <p className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <strong>สูตรคำนวณรายหน่วยบริการ:</strong> ใช้หลักการเดียวกับรายอำเภอ โดยนำยอดผลงานของหน่วยบริการเทียบกับยอดรวมทั้งจังหวัด เพื่อหาสัดส่วน (Share) แล้วนำไปคูณกับเป้าหมายจังหวัด
+                            </p>
+                            
+                            {/* --- NEW CALCULATION EXAMPLES SECTION --- */}
+                            <div className="mt-8 space-y-6">
+                                <h3 className="text-xl font-bold text-slate-800 border-b pb-2">ตัวอย่างการคำนวณอย่างละเอียด (Calculation Examples)</h3>
+                                
+                                {/* Example 1: District Level */}
+                                <div className="bg-white p-6 rounded-xl border border-sky-200 shadow-sm">
+                                    <h4 className="text-lg font-bold text-blue-700 mb-3 flex items-center gap-2">
+                                        <span className="bg-blue-100 text-blue-800 w-6 h-6 flex items-center justify-center rounded-full text-xs">1</span> 
+                                        การคำนวณน้ำหนักรายอำเภอ (ตัวอย่าง: อำเภอเมือง)
+                                    </h4>
+                                    <div className="space-y-2 text-sm text-slate-700">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="bg-slate-50 p-3 rounded">
+                                                <p className="font-semibold text-slate-900 mb-1">ข้อมูลตั้งต้น (Input Data):</p>
+                                                <ul className="list-disc list-inside text-xs space-y-1">
+                                                    <li>ผลงานปี 68 ของอำเภอเมือง = <strong>11,048,897</strong> บาท</li>
+                                                    <li>ยอดรวมทั้งจังหวัดปี 68 = <strong>23,748,774</strong> บาท</li>
+                                                    <li>ผลงานปี 69 ของอำเภอเมือง = <strong>3,494,583</strong> บาท</li>
+                                                    <li>ยอดรวมทั้งจังหวัดปี 69 = <strong>8,470,036</strong> บาท</li>
+                                                </ul>
+                                            </div>
+                                            <div className="bg-blue-50 p-3 rounded">
+                                                <p className="font-semibold text-blue-900 mb-1">ขั้นตอนการคำนวณ (Steps):</p>
+                                                <ol className="list-decimal list-inside text-xs space-y-1">
+                                                    <li><strong>หาสัดส่วนปี 68 (Share 68):</strong> <br/>11,048,897 ÷ 23,748,774 = <strong>46.52%</strong></li>
+                                                    <li><strong>หาสัดส่วนปี 69 (Share 69):</strong> <br/>3,494,583 ÷ 8,470,036 = <strong>41.26%</strong></li>
+                                                    <li><strong>คำนวณน้ำหนักรวม (Composite Weight):</strong> <br/>(46.52% × 0.4) + (41.26% × 0.6) <br/>= 18.61% + 24.76% = <strong>43.37%</strong></li>
+                                                </ol>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded text-green-800 text-xs font-semibold">
+                                            สรุป: อำเภอเมืองจะได้รับจัดสรรเป้าหมายคิดเป็น ~43-45% ของเป้าจังหวัดรวม
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* General Formula */}
+                                <div className="bg-slate-800 text-white p-6 rounded-xl shadow-lg">
+                                    <h4 className="text-lg font-bold text-sky-400 mb-3 flex items-center gap-2">
+                                        <ICONS.Calculator /> สูตรคำนวณมาตรฐาน (General Formula)
+                                    </h4>
+                                    <div className="font-mono text-sm space-y-4">
+                                        <div className="p-3 bg-slate-700 rounded border border-slate-600">
+                                            <p className="text-slate-400 text-xs mb-1">สมการน้ำหนักรวม (Composite Weight Equation):</p>
+                                            <p className="text-emerald-400">Weight = (Share<sub>2568</sub> × 0.4) + (Share<sub>2569</sub> × 0.6)</p>
+                                        </div>
+                                        <div className="p-3 bg-slate-700 rounded border border-slate-600">
+                                            <p className="text-slate-400 text-xs mb-1">สมการเป้าหมาย (Target Allocation Equation):</p>
+                                            <p className="text-yellow-400">Target<sub>Unit</sub> = Target<sub>Province</sub> × Weight<sub>Unit</sub></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen flex flex-col lg:flex-row font-sans">
+                    {/* Sidebar */}
+                    <aside className={`fixed lg:static inset-y-0 left-0 z-40 bg-white border-r border-sky-100 shadow-lg transform transition-transform duration-300 w-72 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+                        <div className="p-6 border-b border-sky-100">
+                            <div className="flex items-start gap-3 text-blue-600">
+                                <div className="bg-sky-100 p-2 rounded-lg mt-1">
+                                    <ICONS.Dashboard />
+                                </div>
+                                <div>
+                                    <h1 className="font-bold text-md leading-tight text-slate-800">ระบบติดตามผล<br/>สมุนไพร สิทธิ UC<br/>จ.สมุทรปราการ</h1>
+                                    <p className="text-xs text-blue-500 mt-1">พัฒนาโดย<br/>ภก.จีรภัทร พลายงาม</p>
+                                </div>
+                            </div>
+                        </div>
+                        <nav className="p-4 space-y-2">
+                            <button onClick={() => { setActiveTab('national'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'national' ? 'bg-sky-50 text-blue-700 font-bold shadow-sm ring-1 ring-sky-200' : 'text-slate-600 hover:bg-sky-50 hover:text-blue-600'}`}>
+                                <ICONS.Globe /> ข้อมูลระดับประเทศ/เขต
+                            </button>
+                            <button onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'dashboard' ? 'bg-sky-50 text-blue-700 font-bold shadow-sm ring-1 ring-sky-200' : 'text-slate-600 hover:bg-sky-50 hover:text-blue-600'}`}>
+                                <ICONS.TrendingUp /> ภาพรวมจังหวัด
+                            </button>
+                            <button onClick={() => { setActiveTab('district'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'district' ? 'bg-sky-50 text-blue-700 font-bold shadow-sm ring-1 ring-sky-200' : 'text-slate-600 hover:bg-sky-50 hover:text-blue-600'}`}>
+                                <ICONS.Map /> ข้อมูลรายอำเภอ
+                            </button>
+                            <button onClick={() => { setActiveTab('unit'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'unit' ? 'bg-sky-50 text-blue-700 font-bold shadow-sm ring-1 ring-sky-200' : 'text-slate-600 hover:bg-sky-50 hover:text-blue-600'}`}>
+                                <ICONS.Hospital /> ข้อมูลรายหน่วยบริการ
+                            </button>
+                            <button onClick={() => { setActiveTab('unitAnalysis'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'unitAnalysis' ? 'bg-sky-50 text-indigo-700 font-bold shadow-sm ring-1 ring-sky-200' : 'text-slate-600 hover:bg-sky-50 hover:text-blue-600'}`}>
+                                <ICONS.Analytics /> วิเคราะห์ข้อมูลรายหน่วยบริการ
+                            </button>
+                            <button onClick={() => { setActiveTab('topDrugs'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'topDrugs' ? 'bg-sky-50 text-green-700 font-bold shadow-sm ring-1 ring-sky-200' : 'text-slate-600 hover:bg-sky-50 hover:text-blue-600'}`}>
+                                <ICONS.Leaf /> 15 อันดับยาสมุนไพร
+                            </button>
+                            <button onClick={() => { setActiveTab('quality'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'quality' ? 'bg-sky-50 text-purple-700 font-bold shadow-sm ring-1 ring-sky-200' : 'text-slate-600 hover:bg-sky-50 hover:text-blue-600'}`}>
+                                <ICONS.Star /> ข้อมูลเชิงคุณภาพ
+                            </button>
+                            <button onClick={() => { setActiveTab('method'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'method' ? 'bg-sky-50 text-blue-700 font-bold shadow-sm ring-1 ring-sky-200' : 'text-slate-600 hover:bg-sky-50 hover:text-blue-600'}`}>
+                                <ICONS.Calculator /> วิธีการคำนวณ
+                            </button>
+                        </nav>
+                        <div className="absolute bottom-0 w-full p-4 border-t border-sky-100 bg-sky-50">
+                            <div className="text-xs text-slate-500 text-center">
+                                © 2569 สำนักงานสาธารณสุขจังหวัดสมุทรปราการ<br/>
+                                <span className="font-semibold text-blue-600">ภก.จีรภัทร พลายงาม</span>
+                            </div>
+                        </div>
+                    </aside>
+
+                    {/* Main Content */}
+                    <main className="flex-1 min-w-0 overflow-y-auto">
+                        <header className="bg-white border-b border-sky-100 sticky top-0 z-30 px-6 py-4 flex justify-between items-center shadow-sm no-print">
+                            <div className="flex items-center gap-4">
+                                <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="lg:hidden p-2 hover:bg-sky-50 text-blue-600 rounded-lg"><ICONS.Menu /></button>
+                                <h2 className="text-xl font-bold text-slate-800 hidden md:block">
+                                    {activeTab === 'dashboard' && 'Dashboard: ภาพรวมผลการดำเนินงาน'}
+                                    {activeTab === 'national' && 'Dashboard: ระดับประเทศและเขตสุขภาพ'}
+                                    {activeTab === 'district' && 'เป้าหมายและรายละเอียดรายอำเภอ'}
+                                    {activeTab === 'unit' && 'ข้อมูลและเป้าหมาย รายหน่วยบริการ'}
+                                    {activeTab === 'unitAnalysis' && 'วิเคราะห์ข้อมูลรายหน่วยบริการ'}
+                                    {activeTab === 'topDrugs' && 'สรุปมูลค่าการใช้ยาสมุนไพร 15 อันดับแรก'}
+                                    {activeTab === 'quality' && 'สรุปผลลัพธ์เชิงคุณภาพ (Qualitative)'}
+                                    {activeTab === 'method' && 'หลักเกณฑ์การคำนวณเป้าหมาย'}
+                                </h2>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm text-slate-500 hidden sm:block">อัปเดตล่าสุด: {lastUpdated}</span>
+                                <button className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors shadow-md border border-slate-700">
+                                    <ICONS.Upload /> <span className="hidden sm:inline">นำเข้าข้อมูล</span>
+                                </button>
+                            </div>
+                        </header>
+                        <div className="p-6 max-w-7xl mx-auto">
+                            {activeTab === 'dashboard' && <DashboardView />}
+                            {activeTab === 'national' && <NationalView />}
+                            {activeTab === 'district' && <DistrictView />}
+                            {activeTab === 'unit' && <UnitView />}
+                            {activeTab === 'unitAnalysis' && <UnitAnalysisView />}
+                            {activeTab === 'topDrugs' && <TopDrugsView />}
+                            {activeTab === 'quality' && <QualitativeView />}
+                            {activeTab === 'method' && <MethodView />}
+                        </div>
+                    </main>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
