@@ -1,0 +1,1679 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบติดตามผลการดำเนินงานสมุนไพร สิทธิ UC จ.สมุทรปราการ (Stable & Bug-Free Edition)</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- UMD Guard -->
+    <script>
+        window.module = undefined;
+        window.exports = undefined;
+        window.define = undefined;
+    </script>
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.production.min.js"></script>
+    
+    <!-- Recharts Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/classnames/2.3.2/index.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.1.12/Recharts.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Lodash -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+
+    <!-- html2pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f8fafc; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        .delay-100 { animation-delay: 0.1s; }
+        .delay-200 { animation-delay: 0.2s; }
+        .delay-300 { animation-delay: 0.3s; }
+        
+        /* Print Styles */
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; -webkit-print-color-adjust: exact; }
+            .card-print { break-inside: avoid; border: 1px solid #ddd; box-shadow: none !important; }
+        }
+        .print-only { display: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useRef, useEffect } = React;
+        const _ = window._;
+        const { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, Legend, ResponsiveContainer, LineChart, Line, ComposedChart } = window.Recharts;
+
+        // --- ICONS ---
+        const ICONS = {
+            Dashboard: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>,
+            Map: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>,
+            Hospital: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 6V4"/><path d="M16.5 4h-9"/><path d="M18 22v-5"/><path d="M6 22v-5"/><path d="M12 12v5"/><path d="M12 17h-5"/><path d="M12 17h5"/><rect x="4" y="8" width="16" height="14" rx="2"/></svg>,
+            Calculator: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>,
+            Upload: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>,
+            Menu: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>,
+            TrendingUp: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>,
+            CheckCircle: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>,
+            AlertCircle: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>,
+            Download: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>,
+            Search: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>,
+            Lightbulb: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-1 1.5-2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>,
+            Award: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>,
+            Printer: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>,
+            Star: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+            CheckSquare: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
+            Globe: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
+            Leaf: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>,
+            Analytics: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+            ClipboardList: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/><path d="M16 13h-3"/><path d="M16 17h-3"/><path d="M10 13h.01"/><path d="M10 17h.01"/></svg>,
+            ArrowRight: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>,
+            Switch: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="M16 21l4-4-4-4"/><path d="M20 17H4"/></svg>,
+            Database: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
+            ExternalLink: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        };
+
+        // --- THEMES ---
+        const THEMES = {
+            dashboard: { primary: 'blue', bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', gradient: 'from-blue-600 to-indigo-600', light: 'bg-blue-100', icon: ICONS.Dashboard },
+            national: { primary: 'indigo', bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-200', gradient: 'from-indigo-600 to-violet-600', light: 'bg-indigo-100', icon: ICONS.Globe },
+            district: { primary: 'teal', bg: 'bg-teal-50', text: 'text-teal-600', border: 'border-teal-200', gradient: 'from-teal-500 to-emerald-600', light: 'bg-teal-100', icon: ICONS.Map },
+            unit: { primary: 'amber', bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', gradient: 'from-amber-500 to-orange-600', light: 'bg-amber-100', icon: ICONS.Hospital },
+            unitAnalysis: { primary: 'rose', bg: 'bg-rose-50', text: 'text-rose-600', border: 'border-rose-200', gradient: 'from-rose-500 to-pink-600', light: 'bg-rose-100', icon: ICONS.Analytics },
+            topDrugs: { primary: 'emerald', bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-200', gradient: 'from-emerald-500 to-green-600', light: 'bg-emerald-100', icon: ICONS.Leaf },
+            quality: { primary: 'fuchsia', bg: 'bg-fuchsia-50', text: 'text-fuchsia-600', border: 'border-fuchsia-200', gradient: 'from-fuchsia-600 to-purple-600', light: 'bg-fuchsia-100', icon: ICONS.Star },
+            replacement: { primary: 'orange', bg: 'bg-orange-50', text: 'text-orange-600', border: 'border-orange-200', gradient: 'from-orange-500 to-amber-500', light: 'bg-orange-100', icon: ICONS.Switch },
+            supportingData: { primary: 'stone', bg: 'bg-stone-50', text: 'text-stone-600', border: 'border-stone-200', gradient: 'from-stone-500 to-gray-500', light: 'bg-stone-200', icon: ICONS.Database },
+            problem: { primary: 'cyan', bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', gradient: 'from-cyan-500 to-blue-500', light: 'bg-cyan-100', icon: ICONS.ClipboardList },
+            method: { primary: 'slate', bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200', gradient: 'from-slate-600 to-gray-700', light: 'bg-slate-100', icon: ICONS.Calculator },
+        };
+
+        // --- DATA SECTION ---
+        const NATIONAL_DATA = {
+            levels: [
+                { name: 'ระดับประเทศ', target: 2000000000, value: 622666081, percent: 31.13 },
+                { name: 'เขตสุขภาพที่ 6', target: 1650000000, value: 47288810, percent: 28.66 },
+                { name: 'จ.สมุทรปราการ', target: 28381346, value: 8470036, percent: 29.84 }
+            ],
+            region6: [
+                { name: 'ฉะเชิงเทรา', target: 23712068, value: 10138903.5, percent: 42.76 },
+                { name: 'ระยอง', target: 20541037, value: 7453387, percent: 36.29 },
+                { name: 'สมุทรปราการ', target: 28381346, value: 8470036, percent: 29.84 },
+                { name: 'ชลบุรี', target: 35000000, value: 8500000, percent: 24.28 },
+                { name: 'ปราจีนบุรี', target: 25000000, value: 5500000, percent: 22.00 },
+                { name: 'สระแก้ว', target: 20000000, value: 4000000, percent: 20.00 },
+                { name: 'จันทบุรี', target: 18000000, value: 2500000, percent: 13.88 },
+                { name: 'ตราด', target: 12000000, value: 726483.5, percent: 6.05 }
+            ]
+        };
+
+        const TOP_HERBAL_DRUGS_DATA = [
+            { name: "ยาไพล", count: 24710, price: 65, total: 1606150 },
+            { name: "แก้ไอมะขามป้อม", count: 17374, price: 84, total: 1459416 },
+            { name: "ประสะมะแว้ง", count: 24994, price: 50, total: 1249700 },
+            { name: "ฟ้าทะลายโจร", count: 8450, price: 92, total: 777400 },
+            { name: "แก้ไอผสมมะขามป้อม สูตร 1", count: 6498, price: 84, total: 545832 },
+            { name: "หอมเทพจิตร", count: 6623, price: 70, total: 463610 },
+            { name: "ขมิ้นชัน", count: 6670, price: 67, total: 446890 },
+            { name: "อมมะแว้ง", count: 6558, price: 50, total: 327900 },
+            { name: "ยาประคบ", count: 2257, price: 100, total: 225700 },
+            { name: "สหัศธารา", count: 2883, price: 73, total: 210459 },
+            { name: "มะขามแขก", count: 5816, price: 31, total: 180296 },
+            { name: "น้ำมันไพล", count: 2195, price: 65, total: 142675 },
+            { name: "เถาวัลย์เปรียง", count: 1452, price: 84, total: 121968 },
+            { name: "ศุขไสยาศน์", count: 166, price: 420, total: 69720 },
+            { name: "ยากระเจี๊ยบแดง", count: 797, price: 85, total: 67745 }
+        ];
+
+        const HERBAL_CATEGORIES = {
+            'musculoskeletal': { label: 'กลุ่มกล้ามเนื้อและกระดูก', items: ['ยาไพล', 'ยาประคบ', 'น้ำมันไพล', 'เถาวัลย์เปรียง', 'สหัศธารา'] },
+            'respiratory': { label: 'กลุ่มระบบทางเดินหายใจ', items: ['แก้ไอมะขามป้อม', 'แก้ไอผสมมะขามป้อม สูตร 1', 'ฟ้าทะลายโจร', 'ประสะมะแว้ง', 'อมมะแว้ง'] },
+            'gastrointestinal': { label: 'กลุ่มระบบทางเดินอาหาร', items: ['ขมิ้นชัน', 'มะขามแขก'] },
+            'cardiovascular': { label: 'กลุ่มบำรุงหัวใจ', items: ['หอมเทพจิตร'] },
+            'urinary': { label: 'กลุ่มระบบทางเดินปัสสาวะ', items: ['ยากระเจี๊ยบแดง'] },
+            'cannabis': { label: 'กลุ่มตำรับกัญชา', items: ['ศุขไสยาศน์'] }
+        };
+
+        const PROVINCIAL_TARGETS = {
+            month6: 14620692, 
+            month10: 21501017,
+            month12: 28381344
+        };
+
+        const REPLACEMENT_DRUGS_DETAIL_DATA = [
+            { hospital: 'โรงพยาบาลบางเสาธง', modern: 'Analgesic balm', herbal: 'ครีมไพล', indication: 'บรรเทาอาการปวดกล้ามเนื้อ', date: '30 ธันวาคม พ.ศ. 2568' },
+            { hospital: 'โรงพยาบาลบางเสาธง', modern: 'M.tussis', herbal: 'ยาแก้ไอน้ำมะขามป้อม', indication: 'บรรเทาอาการไอ แก้ระคายคอ', date: '30 ธันวาคม พ.ศ. 2568' },
+            { hospital: 'โรงพยาบาลบางเสาธง', modern: 'M.Carminative', herbal: 'ยาธาตุอบเชย', indication: 'ขับลม แก้ท้องอืด ท้องเฟ้อ', date: '30 ธันวาคม พ.ศ. 2568' },
+            { hospital: 'โรงพยาบาลบางเสาธง', modern: 'Daflon, Sidual', herbal: 'ยาสมุนไพรเพชรสังฆาต', indication: 'บรรเทาอาการริดสีดวงทวารหนัก', date: '30 ธันวาคม พ.ศ. 2568' },
+            { hospital: 'โรงพยาบาลบางจาก', modern: 'Analgesic balm', herbal: 'ครีมไพล', indication: 'บรรเทาอาการปวดกล้ามเนื้อ', date: '19 เมษายน พ.ศ. 2564' },
+            { hospital: 'โรงพยาบาลบางจาก', modern: 'Acyclovir cream', herbal: 'พญายอครีม', indication: 'รักษาโรคเริม และงูสวัด', date: '19 เมษายน พ.ศ. 2564' },
+            { hospital: 'โรงพยาบาลบางจาก', modern: 'M.tussis', herbal: 'ยาแก้ไอน้ำมะขามป้อม', indication: 'บรรเทาอาการไอ แก้ระคายคอ', date: '19 เมษายน พ.ศ. 2564' },
+            { hospital: 'โรงพยาบาลบางจาก', modern: 'Bisacodyl', herbal: 'ยามะขามแขก', indication: 'ยาระบาย แก้ท้องผูก', date: '19 เมษายน พ.ศ. 2564' },
+            { hospital: 'โรงพยาบาลบางบ่อ', modern: 'M.Carminative', herbal: 'ขมิ้นชัน', indication: 'บรรเทาอาการแน่น จุกเสียด ท้องอืด ท้องเฟ้อ', date: '2 เมษายน พ.ศ. 2568' },
+            { hospital: 'โรงพยาบาลบางบ่อ', modern: 'Calamine Lotion', herbal: 'พญายอครีม', indication: 'บรรเทาอาการผดผื่นคัน ตุ่มคัน', date: '2 เมษายน พ.ศ. 2568' },
+            { hospital: 'โรงพยาบาลบางบ่อ', modern: 'M.tussis', herbal: 'ยาแก้ไอน้ำมะขามป้อม', indication: 'บรรเทาอาการไอ ขับเสมหะ', date: '2 เมษายน พ.ศ. 2568' },
+            { hospital: 'โรงพยาบาลบางพลี', modern: 'Analgesic balm', herbal: 'ครีมไพล (30 กรัม)', indication: 'บรรเทาอาการปวดกล้ามเนื้อ', date: '9 เมษายน พ.ศ. 2568' },
+            { hospital: 'โรงพยาบาลบางพลี', modern: 'M.tussis', herbal: 'ยาแก้ไอน้ำมะขามป้อม (120 ซีซี)', indication: 'บรรเทาอาการไอ แก้ระคายคอ', date: '9 เมษายน พ.ศ. 2568' },
+            { hospital: 'โรงพยาบาลบางพลี', modern: 'Senoside', herbal: 'ยามะขามแขก', indication: 'ยาระบาย แก้ท้องผูก', date: '9 เมษายน พ.ศ. 2568' },
+            { hospital: 'โรงพยาบาลพระสมุทรเจดีย์สวาทยานนท์', modern: 'Acyclovir cream', herbal: 'พญายอครีม', indication: 'รักษาโรคเริมและงูสวัด', date: '5 มกราคม พ.ศ. 2569' },
+            { hospital: 'โรงพยาบาลพระสมุทรเจดีย์สวาทยานนท์', modern: 'M.tussis', herbal: 'ยาแก้ไอน้ำมะขามป้อม', indication: 'บรรเทาอาการไอ แก้ระคายคอ', date: '5 มกราคม พ.ศ. 2569' },
+            { hospital: 'โรงพยาบาลพระสมุทรเจดีย์สวาทยานนท์', modern: 'Bisacodyl', herbal: 'ยามะขามแขก', indication: 'ยาระบาย แก้ท้องผูก', date: '5 มกราคม พ.ศ. 2569' },
+            { hospital: 'โรงพยาบาลพระสมุทรเจดีย์สวาทยานนท์', modern: 'Daflon', herbal: 'ยาสมุนไพรเพชรสังฆาต', indication: 'รักษาอาการริดสีดวงทวาร', date: '5 มกราคม พ.ศ. 2569' },
+            { hospital: 'โรงพยาบาลสมุทรปราการ', modern: 'Neotica balm', herbal: 'ครีมไพล', indication: 'บรรเทาอาการปวดกล้ามเนื้อ', date: '12 มกราคม พ.ศ. 2569' },
+            { hospital: 'โรงพยาบาลสมุทรปราการ', modern: 'Acyclovir', herbal: 'พญายอครีม', indication: 'รักษาโรคเริม และงูสวัด', date: '12 มกราคม พ.ศ. 2569' },
+            { hospital: 'โรงพยาบาลสมุทรปราการ', modern: 'M.tussis', herbal: 'ยาแก้ไอน้ำมะขามป้อม', indication: 'บรรเทาอาการไอ', date: '12 มกราคม พ.ศ. 2569' },
+            { hospital: 'โรงพยาบาลสมุทรปราการ', modern: 'Senokot (ยาระบาย)', herbal: 'ยาสมุนไพรมะขามแขก', indication: 'ยาระบาย', date: '12 มกราคม พ.ศ. 2569' },
+            { hospital: 'โรงพยาบาลสมุทรปราการ', modern: 'ยาอมแก้ไอ', herbal: 'ยาอมแก้ไอมะแว้ง', indication: 'บรรเทาอาการไอ', date: '12 มกราคม พ.ศ. 2569' },
+            { hospital: 'โรงพยาบาลสมุทรปราการ', modern: 'Diclofenac Spray', herbal: 'สเปรย์กระดูกไก่ดำ', indication: 'บรรเทาอาการปวดอักเสบ', date: '12 มกราคม พ.ศ. 2569' }
+        ];
+
+        const REPLACEMENT_DRUGS_SUMMARY_DATA = [
+            { modernDrug: 'M.tussis (ยาน้ำแก้ไอ)', herbalDrug: 'ยาแก้ไอน้ำมะขามป้อม', value: 2005248 },
+            { modernDrug: 'Analgesic balm', herbalDrug: 'ครีมไพล / ยาไพล', value: 1606150 },
+            { modernDrug: 'M.Carminative', herbalDrug: 'ขมิ้นชัน / ยาธาตุอบเชย', value: 446890 },
+            { modernDrug: 'ยาอมแก้ไอ', herbalDrug: 'ยาอมแก้ไอมะแว้ง', value: 327900 },
+            { modernDrug: 'Bisacodyl / Senokot', herbalDrug: 'ยามะขามแขก', value: 180296 },
+            { modernDrug: 'Diclofenac Spray', herbalDrug: 'สเปรย์กระดูกไก่ดำ', value: 150000 },
+            { modernDrug: 'Acyclovir cream / Calamine', herbalDrug: 'พญายอครีม', value: 125400 },
+            { modernDrug: 'Daflon, Sidual', herbalDrug: 'ยาสมุนไพรเพชรสังฆาต', value: 85600 }
+        ];
+
+        const QUALITY_DATA = {
+            overall: [
+                { id: 1, name: 'การให้บริการสุขภาพ (CPG & ยาทดแทน)', score: 100, max: 100 },
+                { id: 2, name: 'กำลังคนการให้บริการ (การอบรม)', score: 100, max: 100 },
+                { id: 3, name: 'ความถูกต้องในการบันทึกรหัสยา 24 หลัก', score: 92.68, max: 100 },
+                { id: 4, name: 'คุณภาพ/มาตรฐานการผลิตยาสมุนไพร (GMP)', score: 94.17, max: 100 },
+            ],
+            drugCodeAccuracy: [
+                { name: 'บางบ่อ', score: 88.61 },
+                { name: 'บางพลี', score: 97.73 },
+                { name: 'บางเสาธง', score: 93.94 },
+                { name: 'พระประแดง', score: 90.58 },
+                { name: 'พระสมุทรเจดีย์', score: 86.60 },
+                { name: 'เมือง', score: 90.79 },
+            ]
+        };
+
+        const INITIAL_UNIT_DATA_FROM_CSV = [
+            // เมือง
+            { district: 'เมือง', code: '00933', name: 'รพสต.สำโรงเหนือ', value68: 254592, value69: 195704, weight: 1.00, target6m: 147578, percent6m: 0 },
+            { district: 'เมือง', code: '00934', name: 'รพสต.บางเมือง', value68: 104771, value69: 71977, weight: 0.71, target6m: 104021, percent6m: 0 },
+            { district: 'เมือง', code: '00935', name: 'สถานีอนามัยเฉลิมพระเกียรติฯ (บางปิ้ง)', value68: 252528, value69: 316282.5, weight: 2.52, target6m: 368139, percent6m: 0 },
+            { district: 'เมือง', code: '00936', name: 'รพสต.บางปูใหม่', value68: 124732, value69: 116047, weight: 1.08, target6m: 157378, percent6m: 0 },
+            { district: 'เมือง', code: '00937', name: 'รพสต.แพรกษา', value68: 301506, value69: 120108, weight: 1.46, target6m: 213052, percent6m: 0 },
+            { district: 'เมือง', code: '00938', name: 'รพสต.บางโปรง', value68: 67047, value69: 72868, weight: 0.62, target6m: 91229, percent6m: 0 },
+            { district: 'เมือง', code: '00939', name: 'รพสต.บางปู', value68: 83277, value69: 88999, weight: 0.90, target6m: 130693, percent6m: 0 },
+            { district: 'เมือง', code: '00940', name: 'รพสต.บางด้วน', value68: 49057, value69: 20653, weight: 0.24, target6m: 35447, percent6m: 0 },
+            { district: 'เมือง', code: '00941', name: 'รพสต.บางเมืองใหม่', value68: 349114, value69: 52582, weight: 0.96, target6m: 140315, percent6m: 0 },
+            { district: 'เมือง', code: '00942', name: 'รพสต.เทพารักษ์', value68: 404607, value69: 165759, weight: 2.03, target6m: 296147, percent6m: 0 },
+            { district: 'เมือง', code: '00943', name: 'รพสต.ท้ายบ้านใหม่', value68: 527296, value69: 127099, weight: 1.84, target6m: 268697, percent6m: 0 },
+            { district: 'เมือง', code: '00944', name: 'รพสต.แพรกษาใหม่', value68: 295066, value69: 140449, weight: 1.72, target6m: 250936, percent6m: 0 },
+            { district: 'เมือง', code: '10685', name: 'โรงพยาบาลสมุทรปราการ', value68: 7458559, value69: 1538107.5, weight: 24.96, target6m: 3643853, percent6m: 0 }, 
+            { district: 'เมือง', code: '13812', name: 'รพสต.ท้ายบ้าน', value68: 73916, value69: 65810, weight: 0.62, target6m: 90944, percent6m: 0 },
+            { district: 'เมือง', code: '15048', name: 'ศสช. โรงพยาบาลสมุทรปราการ', value68: 28784, value69: 15154, weight: 0.18, target6m: 25568, percent6m: 0 },
+            { district: 'เมือง', code: '23945', name: 'สถานีอนามัยเฉลิมพระเกียรติฯ (วัดบางปิ้ง)', value68: 109445, value69: 13871, weight: 0.30, target6m: 43735, percent6m: 0 },
+            { district: 'เมือง', code: '24027', name: 'รพสต.พุทธรักษา', value68: 117409, value69: 98111, weight: 1.01, target6m: 147308, percent6m: 0 },
+            { district: 'เมือง', code: '24028', name: 'รพสต.ร่มโพธิ', value68: 109259, value69: 26572, weight: 0.39, target6m: 57027, percent6m: 0 },
+            { district: 'เมือง', code: '24029', name: 'รพสต.บุญศิริ', value68: 22215, value69: 28353, weight: 0.17, target6m: 25171, percent6m: 0 },
+            { district: 'เมือง', code: '24702', name: 'รพสต.เทศบาลตำบลสำโรงเหนือ', value68: 48189, value69: 195704, weight: 0.38, target6m: 55407, percent6m: 0 },
+            { district: 'เมือง', code: '28826', name: 'รพ.สต.มังกรทอง', value68: 254059, value69: 101885, weight: 1.23, target6m: 178839, percent6m: 0 },
+
+            // พระประแดง
+            { district: 'พระประแดง', code: '00964', name: 'รพสต.บางพึ่ง', value68: 95086, value69: 46976, weight: 0.26, target6m: 37314, percent6m: 0 },
+            { district: 'พระประแดง', code: '00965', name: 'รพสต.บางจาก', value68: 28795, value69: 110572, weight: 0.40, target6m: 58468, percent6m: 0 },
+            { district: 'พระประแดง', code: '00966', name: 'รพสต.บางครุ', value68: 91258, value69: 118186, weight: 0.80, target6m: 116999, percent6m: 0 },
+            { district: 'พระประแดง', code: '00967', name: 'รพสต.บางหญ้าแพรก', value68: 112270, value69: 82956, weight: 0.84, target6m: 122481, percent6m: 0 },
+            { district: 'พระประแดง', code: '00968', name: 'รพสต.บางหัวเสือ', value68: 23558, value69: 569110, weight: 4.63, target6m: 675224, percent6m: 0 }, 
+            { district: 'พระประแดง', code: '00969', name: 'รพสต.บางยอ', value68: 182485, value69: 51201, weight: 0.77, target6m: 111794, percent6m: 0 },
+            { district: 'พระประแดง', code: '00970', name: 'รพสต.บางกะเจ้า', value68: 50807, value69: 50728, weight: 0.44, target6m: 63629, percent6m: 0 },
+            { district: 'พระประแดง', code: '00971', name: 'รพสต.บางน้ำผึ้ง', value68: 32692, value69: 48472, weight: 0.31, target6m: 45415, percent6m: 0 },
+            { district: 'พระประแดง', code: '00972', name: 'รพสต.บางกระสอบ', value68: 58465, value69: 28421, weight: 0.34, target6m: 50020, percent6m: 0 },
+            { district: 'พระประแดง', code: '00973', name: 'รพสต.บางกอบัว', value68: 73088, value69: 37491, weight: 0.41, target6m: 59136, percent6m: 0 },
+            { district: 'พระประแดง', code: '00974', name: 'รพสต.บางกอ', value68: 22902, value69: 13868, weight: 0.14, target6m: 20271, percent6m: 0 },
+            { district: 'พระประแดง', code: '00975', name: 'รพสต.ทรงคนอง', value68: 169940, value69: 54261, weight: 0.73, target6m: 105912, percent6m: 0 },
+            { district: 'พระประแดง', code: '00976', name: 'รพสต.สำโรง', value68: 41137, value69: 60174, weight: 0.58, target6m: 84033, percent6m: 0 },
+            { district: 'พระประแดง', code: '00977', name: 'รพสต.สำโรงกลาง', value68: 44034, value69: 73723, weight: 0.65, target6m: 94361, percent6m: 0 },
+            { district: 'พระประแดง', code: '00978', name: 'รพสต.สำโรงใต้', value68: 58911, value69: 42414, weight: 0.41, target6m: 60086, percent6m: 0 },
+            { district: 'พระประแดง', code: '10754', name: 'โรงพยาบาลบางจาก', value68: 1079436, value69: 492014, weight: 5.10, target6m: 743821, percent6m: 0 },
+            { district: 'พระประแดง', code: '23944', name: 'รพสต.อยู่เจริญ', value68: 39527, value69: 43018, weight: 0.39, target6m: 56811, percent6m: 0 },
+
+            // บางบ่อ
+            { district: 'บางบ่อ', code: '00945', name: 'รพสต.บางบ่อ', value68: 121492, value69: 55162, weight: 0.63, target6m: 91454, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00946', name: 'รพสต.บ้านระกาศ หมู่ 3', value68: 132302, value69: 32327, weight: 0.44, target6m: 64937, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00947', name: 'รพสต.บ้านระกาศ หมู่ 8', value68: 408397, value69: 86790, weight: 1.35, target6m: 197568, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00948', name: 'รพสต.บางพลีน้อย หมู่ที่ 3', value68: 219135, value69: 104460, weight: 1.19, target6m: 173052, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00949', name: 'รพสต.บางพลีน้อย หมู่ที่ 5', value68: 84530, value69: 38483, weight: 0.42, target6m: 61688, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00950', name: 'รพสต.บางพลีน้อย หมู่ที่ 8', value68: 59246, value69: 23766, weight: 0.28, target6m: 40669, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00951', name: 'รพสต.บางเพรียง', value68: 245369, value69: 91013, weight: 1.11, target6m: 161394, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00952', name: 'รพสต.คลองด่าน หมู่ที่ 1', value68: 306667, value69: 94386, weight: 1.05, target6m: 153544, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00953', name: 'รพสต.คลองด่าน หมู่ที่ 13', value68: 126798, value69: 64674, weight: 0.70, target6m: 102391, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00954', name: 'รพสต.คลองสวน', value68: 96457, value69: 63240, weight: 0.70, target6m: 101763, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00955', name: 'รพสต.เปร็ง', value68: 127618, value69: 70140, weight: 0.78, target6m: 114427, percent6m: 0 },
+            { district: 'บางบ่อ', code: '00956', name: 'รพสต.นิยมยาตรา', value68: 155008, value69: 73600, weight: 0.83, target6m: 120832, percent6m: 0 },
+            { district: 'บางบ่อ', code: '10752', name: 'โรงพยาบาลบางบ่อ', value68: 1155310, value69: 132194, weight: 2.85, target6m: 416221, percent6m: 0 },
+            { district: 'บางบ่อ', code: '23032', name: 'ศสช.รพ.บางบ่อ', value68: 20468, value69: 33019, weight: 0.23, target6m: 34189, percent6m: 0 },
+            { district: 'บางบ่อ', code: '23911', name: 'รพสต.คลองด่าน หมู่ 7', value68: 162530, value69: 37888, weight: 0.52, target6m: 75485, percent6m: 0 },
+            { district: 'บางบ่อ', code: '99999', name: 'สถานพยาบาลเรือนจำกลางสมุทรปราการ', value68: 0, value69: 79609, weight: 0.00, target6m: 0, percent6m: 0.00 },
+
+            // บางพลี
+            { district: 'บางพลี', code: '00957', name: 'รพสต.บางแก้ว', value68: 302124, value69: 106027, weight: 1.40, target6m: 204851, percent6m: 0 },
+            { district: 'บางพลี', code: '00958', name: 'รพสต.วัดสลุด', value68: 32771, value69: 24450, weight: 0.23, target6m: 34112, percent6m: 0 },
+            { district: 'บางพลี', code: '00959', name: 'รพสต.บางปลา', value68: 24395, value69: 22832, weight: 0.21, target6m: 31261, percent6m: 0 },
+            { district: 'บางพลี', code: '00960', name: 'รพสต.คลองสี่', value68: 43534, value69: 14852, weight: 0.20, target6m: 29040, percent6m: 0 },
+            { district: 'บางพลี', code: '00961', name: 'รพสต.บางโฉลง', value68: 67577, value69: 61369, weight: 0.66, target6m: 97002, percent6m: 0 },
+            { district: 'บางพลี', code: '00962', name: 'รพสต.ราชาเทวะ', value68: 92727, value69: 63772, weight: 0.64, target6m: 92769, percent6m: 0 },
+            { district: 'บางพลี', code: '00963', name: 'รพสต.หนองปรือ', value68: 32248, value69: 27632, weight: 0.26, target6m: 37720, percent6m: 0 },
+            { district: 'บางพลี', code: '10753', name: 'โรงพยาบาลบางพลี', value68: 4085593, value69: 438047, weight: 9.79, target6m: 1428631, percent6m: 0 },
+            { district: 'บางพลี', code: '23034', name: 'ศพช.วัดบางพลีใหญ่กลาง', value68: 6800, value69: 18830, weight: 0.15, target6m: 21382, percent6m: 0 },
+            { district: 'บางพลี', code: '24675', name: 'รพ.สต.บัวเกราะ', value68: 44095, value69: 11241, weight: 0.17, target6m: 24428, percent6m: 0 },
+
+            // พระสมุทรเจดีย์
+            { district: 'พระสมุทรเจดีย์', code: '00979', name: 'รพสต.บ้านขุนสมุทรไทย', value68: 21079, value69: 3801, weight: 0.05, target6m: 7064, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '00980', name: 'รพสต.นาเกลือ', value68: 179217, value69: 26437, weight: 0.49, target6m: 71846, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '00981', name: 'รพสต.บ้านคลองทะเล', value68: 56166, value69: 18102, weight: 0.23, target6m: 34071, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '00982', name: 'รพสต.บ้านคลองสวน', value68: 100265, value69: 29880, weight: 0.31, target6m: 44762, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '00983', name: 'รพสต.แหลมฟ้าผ่า', value68: 220385, value69: 53367, weight: 0.81, target6m: 118819, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '00984', name: 'รพสต.บ้านขุนสมุทร', value68: 15071, value69: 3726, weight: 0.06, target6m: 8795, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '00985', name: 'รพสต.ในคลองบางปลากด', value68: 196259, value69: 102487, weight: 1.09, target6m: 159412, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '00986', name: 'รพสต.บ้านคู่สร้าง', value68: 333752, value69: 57531, weight: 1.03, target6m: 149852, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '10755', name: 'รพ.พระสมุทรเจดีย์สวาทยานนท์', value68: 262004, value69: 137436, weight: 1.04, target6m: 152146, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '24410', name: 'รพสต.บ้านคลองนาเกลือน้อย', value68: 136755, value69: 35616, weight: 0.49, target6m: 70952, percent6m: 0 },
+            { district: 'พระสมุทรเจดีย์', code: '24559', name: 'รพสต.คลองกระออม', value68: 74216, value69: 30349, weight: 0.37, target6m: 54071, percent6m: 0 },
+
+            // บางเสาธง
+            { district: 'บางเสาธง', code: '00987', name: 'รพสต.เมืองใหม่บางพลี', value68: 105548, value69: 70292, weight: 0.57, target6m: 83061, percent6m: 0 },
+            { district: 'บางเสาธง', code: '00988', name: 'รพสต.เสาธงกลาง', value68: 55667, value69: 31051, weight: 0.40, target6m: 57776, percent6m: 0 },
+            { district: 'บางเสาธง', code: '00989', name: 'รพสต.บางเสาธง', value68: 0, value69: 0, weight: 0.00, target6m: 0, percent6m: 0.00 },
+            { district: 'บางเสาธง', code: '00990', name: 'รพสต.ศรีษะจระเข้น้อย', value68: 58904, value69: 67385, weight: 0.48, target6m: 70569, percent6m: 0 },
+            { district: 'บางเสาธง', code: '00991', name: 'รพสต.ศีรษะจรเข้ใหญ่', value68: 21626, value69: 34298, weight: 0.10, target6m: 14741, percent6m: 0 },
+            { district: 'บางเสาธง', code: '00992', name: 'รพสต.วัดศรีวารีน้อย', value68: 158459, value69: 224423, weight: 2.09, target6m: 305482, percent6m: 0 },
+            { district: 'บางเสาธง', code: '24411', name: 'รพสต.เจริญราษฎร์', value68: 84072, value69: 78884, weight: 0.67, target6m: 98087, percent6m: 0 },
+            { district: 'บางเสาธง', code: '24412', name: 'รพสต.กัลปพฤกษ์', value68: 28910, value69: 39070, weight: 0.27, target6m: 39043, percent6m: 0 },
+            { district: 'บางเสาธง', code: '28785', name: 'โรงพยาบาลบางเสาธง', value68: 233949, value69: 61233, weight: 0.74, target6m: 107776, percent6m: 0 }
+        ];
+
+        // --- HELPERS ---
+        const formatCurrency = (val) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0 }).format(val);
+        const formatNumber = (val) => new Intl.NumberFormat('th-TH').format(val);
+
+        // --- SHARED COMPONENTS ---
+        const Card = ({ children, className = "", theme }) => (
+            <div className={`bg-white rounded-xl shadow-sm border ${theme ? theme.border : 'border-slate-100'} p-6 transition-all duration-300 hover:shadow-lg card-print ${className}`}>
+                {children}
+            </div>
+        );
+
+        const Header = ({ title, subtitle, icon: Icon, theme }) => (
+            <div className={`mb-8 p-6 rounded-2xl bg-gradient-to-r ${theme.gradient} text-white shadow-lg animate-fade-in`}>
+                <div className="flex items-start md:items-center gap-4">
+                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+                        <Icon width={24} height={24} />
+                    </div>
+                    <div className="flex-1">
+                        <h1 className="text-2xl font-bold">{title}</h1>
+                        <p className="text-white/80 mb-1">{subtitle}</p>
+                        <div className="inline-block bg-black/10 rounded px-2 py-0.5 mt-1">
+                            <p className="text-[10px] text-white/90 font-light flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                ข้อมูล update วันที่ 18/2/2026 จากโปรแกรมฐานข้อมูล THAIPADI ที่อิงจาก HDC.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const KPICard = ({ title, value, subtext, icon: Icon, theme, progress }) => (
+            <div className={`bg-white rounded-xl p-6 border-l-4 ${theme.border} shadow-sm hover:scale-105 transition-transform duration-300 group`}>
+                <div className="flex justify-between items-start mb-4">
+                    <div>
+                        <p className="text-slate-500 text-sm font-medium mb-1">{title}</p>
+                        <h3 className={`text-2xl font-bold ${theme.text} group-hover:scale-110 transition-transform origin-left`}>{value}</h3>
+                    </div>
+                    <div className={`p-3 rounded-xl ${theme.light} ${theme.text}`}>
+                        <Icon width={24} height={24} />
+                    </div>
+                </div>
+                {progress !== undefined && (
+                    <div className="w-full bg-slate-100 rounded-full h-2 mb-2 overflow-hidden">
+                        <div className={`h-full rounded-full bg-gradient-to-r ${theme.gradient} transition-all duration-1000`} style={{ width: `${Math.min(progress, 100)}%` }}></div>
+                    </div>
+                )}
+                {subtext && <p className="text-xs text-slate-400">{subtext}</p>}
+            </div>
+        );
+
+        const MethodInfographic = ({ theme }) => (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 my-8 relative">
+                <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-100 -z-10 hidden md:block transform -translate-y-1/2"></div>
+                {[
+                    { title: "รวบรวมข้อมูล", desc: "นำเข้ายอดใช้จริงปี 68 และ 69", icon: "📊", step: "01" },
+                    { title: "คำนวณสัดส่วน", desc: "หา % Share ของแต่ละหน่วยเทียบจังหวัด", icon: "➗", step: "02" },
+                    { title: "Weighted Average", desc: "ถ่วงน้ำหนัก (68=40%, 69=60%)", icon: "⚖️", step: "03" }
+                ].map((step, idx) => (
+                    <div key={idx} className="bg-white p-6 rounded-2xl border border-slate-200 text-center relative hover:-translate-y-2 transition-transform duration-300">
+                        <div className={`w-12 h-12 ${theme.bg} ${theme.text} rounded-full flex items-center justify-center font-bold text-lg mx-auto mb-4 border-4 border-white shadow-lg`}>
+                            {step.step}
+                        </div>
+                        <div className="text-4xl mb-2">{step.icon}</div>
+                        <h3 className="font-bold text-slate-800 mb-1">{step.title}</h3>
+                        <p className="text-sm text-slate-500">{step.desc}</p>
+                    </div>
+                ))}
+            </div>
+        );
+
+        const TopDrugsPodium = ({ data }) => {
+            const sorted = [...data].sort((a,b) => b.total - a.total).slice(0,3);
+            return (
+                <div className="flex items-end justify-center gap-4 h-64 mb-12 px-4">
+                    {/* 2nd Place */}
+                    <div className="w-1/3 max-w-[150px] flex flex-col items-center animate-fade-in delay-200">
+                        <div className="text-center mb-2">
+                            <span className="text-2xl">🥈</span>
+                            <p className="font-bold text-xs md:text-sm text-slate-700 truncate w-full">{sorted[1].name}</p>
+                            <p className="text-xs text-slate-500">{formatNumber(sorted[1].total)}฿</p>
+                        </div>
+                        <div className="w-full bg-slate-200 rounded-t-lg shadow-inner h-32 flex items-end justify-center pb-4 text-4xl font-bold text-white/50">2</div>
+                    </div>
+                    {/* 1st Place */}
+                    <div className="w-1/3 max-w-[150px] flex flex-col items-center animate-fade-in z-10">
+                        <div className="text-center mb-2">
+                            <span className="text-4xl">👑</span>
+                            <p className="font-bold text-sm md:text-base text-emerald-700 truncate w-full">{sorted[0].name}</p>
+                            <p className="text-xs font-bold text-emerald-600">{formatNumber(sorted[0].total)}฿</p>
+                        </div>
+                        <div className="w-full bg-gradient-to-t from-emerald-500 to-green-400 rounded-t-lg shadow-lg h-48 flex items-end justify-center pb-4 text-6xl font-bold text-white/30">1</div>
+                    </div>
+                    {/* 3rd Place */}
+                    <div className="w-1/3 max-w-[150px] flex flex-col items-center animate-fade-in delay-300">
+                        <div className="text-center mb-2">
+                            <span className="text-2xl">🥉</span>
+                            <p className="font-bold text-xs md:text-sm text-amber-700 truncate w-full">{sorted[2].name}</p>
+                            <p className="text-xs text-amber-500">{formatNumber(sorted[2].total)}฿</p>
+                        </div>
+                        <div className="w-full bg-amber-100 rounded-t-lg shadow-inner h-24 flex items-end justify-center pb-4 text-4xl font-bold text-amber-900/20">3</div>
+                    </div>
+                </div>
+            );
+        };
+
+        const RegionRaceBar = ({ data, theme }) => (
+            <div className="space-y-4">
+                {data.sort((a,b) => b.percent - a.percent).map((item, index) => (
+                    <div key={index} className="relative">
+                        <div className="flex justify-between text-sm mb-1">
+                            <span className={`font-bold ${item.name === 'สมุทรปราการ' ? 'text-emerald-600' : 'text-slate-600'}`}>
+                                {index + 1}. {item.name}
+                            </span>
+                            <span className="font-mono">{item.percent.toFixed(2)}%</span>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-4 overflow-hidden shadow-inner">
+                            <div 
+                                className={`h-full rounded-full transition-all duration-1000 ease-out flex items-center justify-end pr-2 text-[10px] text-white font-bold
+                                ${item.name === 'สมุทรปราการ' ? 'bg-gradient-to-r from-emerald-500 to-green-400' : `bg-gradient-to-r ${theme.gradient} opacity-70`}`}
+                                style={{ width: `${Math.min(item.percent, 100)}%` }}
+                            >
+                                {item.percent > 10 && formatNumber(item.value)}
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+
+        // --- PAGE VIEWS ---
+
+        const DashboardView = ({ processedDistrictData, currentTheme }) => {
+            const totalUsage = processedDistrictData.reduce((acc, cur) => acc + cur.value69, 0);
+            const progress = (totalUsage / PROVINCIAL_TARGETS.month6) * 100;
+            
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                    <Header title="Dashboard ภาพรวมจังหวัด" subtitle="ติดตามสถานการณ์การเบิกจ่ายยาสมุนไพรแบบ Real-time" icon={currentTheme.icon} theme={currentTheme} />
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <KPICard title="ยอดใช้จริงปี 69" value={formatCurrency(totalUsage)} subtext="สะสมถึงปัจจุบัน" icon={ICONS.TrendingUp} theme={currentTheme} progress={progress} />
+                        <KPICard title="เป้าหมาย 6 เดือน" value={formatCurrency(PROVINCIAL_TARGETS.month6)} subtext="Target ระยะสั้น" icon={ICONS.Map} theme={currentTheme} />
+                        <KPICard title="ความก้าวหน้า" value={`${progress.toFixed(2)}%`} subtext="เทียบเป้า 6 เดือน" icon={progress >= 50 ? ICONS.CheckCircle : ICONS.AlertCircle} theme={currentTheme} />
+                        <KPICard title="เป้าหมายทั้งปี" value={formatCurrency(PROVINCIAL_TARGETS.month12)} subtext="Target สิ้นปีงบฯ" icon={ICONS.Calculator} theme={currentTheme} />
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Card theme={currentTheme}>
+                            <h3 className={`text-lg font-bold mb-4 ${currentTheme.text}`}>สัดส่วนเป้าหมายรายอำเภอ (Target Proportion)</h3>
+                            <div className="h-80">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie 
+                                            data={processedDistrictData} 
+                                            cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={2} 
+                                            dataKey="target12m" nameKey="name"
+                                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(2)}%`}
+                                        >
+                                            {processedDistrictData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#6366F1'][index % 6]} strokeWidth={2} stroke="#fff" />
+                                            ))}
+                                        </Pie>
+                                        <RechartsTooltip formatter={(val) => formatCurrency(val)} />
+                                        <Legend verticalAlign="bottom" height={36}/>
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </Card>
+                        <Card theme={currentTheme}>
+                            <h3 className={`text-lg font-bold mb-4 ${currentTheme.text}`}>ผลงานสะสมเปรียบเทียบเป้าหมาย</h3>
+                            <div className="h-80">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ComposedChart data={processedDistrictData} layout="vertical" margin={{top: 5, right: 30, left: 40, bottom: 5}}>
+                                        <CartesianGrid stroke="#f1f5f9" horizontal={false} />
+                                        <XAxis type="number" hide />
+                                        <YAxis dataKey="name" type="category" width={100} tick={{fontSize: 12}} />
+                                        <RechartsTooltip formatter={(val) => formatCurrency(val)} />
+                                        <Bar dataKey="value69" barSize={15} fill="#3B82F6" radius={[0, 10, 10, 0]} background={{ fill: '#f1f5f9' }} />
+                                        <Bar dataKey="target6m" barSize={5} fill="#cbd5e1" radius={[0, 10, 10, 0]} />
+                                    </ComposedChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </Card>
+                    </div>
+
+                    <Card theme={currentTheme} className="border-2 border-blue-200">
+                        <div className="flex items-center gap-3 mb-6 border-b border-blue-100 pb-4">
+                            <div className={`p-3 rounded-lg bg-blue-600 text-white shadow-lg`}>
+                                <ICONS.Award width={24} height={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-blue-800">สรุปผลการตรวจราชการ (Inspection Summary)</h3>
+                                <p className="text-sm text-blue-500">ผลการประเมินตามตัวชี้วัดสาธารณสุข</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-6">
+                                <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
+                                    <h4 className="font-bold text-blue-900 mb-4 flex items-center gap-2">
+                                        <span className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center text-xs">1</span> 
+                                        เชิงปริมาณ (Quantitative)
+                                    </h4>
+                                    <div className="flex justify-between items-center text-sm mb-2">
+                                        <span className="text-slate-600">ตัวชี้วัด:</span><span className="font-medium">มูลค่าสมุนไพรสิทธิ UC</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm mb-2">
+                                        <span className="text-slate-600">สัดส่วน (Weight):</span><span className="font-medium">ร้อยละ 70</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm mb-2">
+                                        <span className="text-slate-600">คะแนนที่ได้ (Raw Score):</span><span className="font-bold text-blue-600">5.00</span>
+                                    </div>
+                                    <div className="mt-3 pt-3 border-t border-blue-200 flex justify-between items-center">
+                                        <span className="font-bold text-blue-800">คะแนนรวม (Weighted):</span><span className="font-bold text-2xl text-blue-700">3.50</span>
+                                    </div>
+                                </div>
+
+                                <div className="bg-purple-50 rounded-xl p-5 border border-purple-100">
+                                    <h4 className="font-bold text-purple-900 mb-4 flex items-center gap-2">
+                                        <span className="w-6 h-6 rounded-full bg-purple-200 flex items-center justify-center text-xs">2</span> 
+                                        เชิงคุณภาพ (Qualitative/Outcome)
+                                    </h4>
+                                    <div className="flex justify-between items-center text-sm mb-2">
+                                        <span className="text-slate-600">ตัวชี้วัด:</span><span className="font-medium">คุณภาพบริการ & มาตรฐาน</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm mb-2">
+                                        <span className="text-slate-600">สัดส่วน (Weight):</span><span className="font-medium">ร้อยละ 30</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm mb-2">
+                                        <span className="text-slate-600">ระดับคะแนนที่ได้:</span><span className="font-bold text-purple-600">93.50</span>
+                                    </div>
+                                    <div className="mt-3 pt-3 border-t border-purple-200 flex justify-between items-center">
+                                        <span className="font-bold text-purple-800">คะแนนรวม (Weighted):</span><span className="font-bold text-2xl text-purple-700">2.81</span>
+                                    </div>
+                                </div>
+
+                                <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl p-6 text-white shadow-lg flex justify-between items-center">
+                                    <div>
+                                        <h4 className="font-bold text-lg mb-1">รวมคะแนนทั้งสิ้น</h4>
+                                        <p className="text-emerald-100 text-sm">Total Performance Score</p>
+                                    </div>
+                                    <div className="text-5xl font-bold">6.31</div>
+                                </div>
+                                
+                                <div className="text-xs text-slate-500 italic bg-slate-50 p-3 rounded border border-slate-200">
+                                    <strong>หมายเหตุ:</strong> คะแนนรวม 6.31 มาจากผลรวมของคะแนนเชิงปริมาณ (3.50) และคะแนนเชิงคุณภาพ (2.81) ซึ่งสะท้อนผลการดำเนินงานภาพรวมทั้งจังหวัด
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <ICONS.CheckSquare width={20} height={20} /> ตารางคะแนนเชิงคุณภาพ (Outcome Detail)
+                                </h4>
+                                <div className="overflow-hidden rounded-xl border border-slate-200">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="text-xs uppercase bg-slate-100 text-slate-600">
+                                            <tr>
+                                                <th className="px-4 py-3">เกณฑ์การประเมิน</th>
+                                                <th className="px-4 py-3 text-center">คะแนนเต็ม</th>
+                                                <th className="px-4 py-3 text-center">ได้</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {QUALITY_DATA.overall.map((item, index) => (
+                                                <tr key={index} className="hover:bg-slate-50">
+                                                    <td className="px-4 py-3 text-slate-700">{item.name}</td>
+                                                    <td className="px-4 py-3 text-center text-slate-500">{item.max}</td>
+                                                    <td className="px-4 py-3 text-center font-bold text-purple-600">{item.score}</td>
+                                                </tr>
+                                            ))}
+                                            <tr className="bg-purple-50 font-bold text-purple-900">
+                                                <td className="px-4 py-3 text-right">ค่าเฉลี่ยรวม</td>
+                                                <td className="px-4 py-3 text-center">100</td>
+                                                <td className="px-4 py-3 text-center">93.50</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+            );
+        };
+
+        const NationalView = ({ currentTheme }) => (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                <Header title="ระดับประเทศ & เขตสุขภาพ" subtitle="เปรียบเทียบสมรรถนะในระดับมหภาค" icon={currentTheme.icon} theme={currentTheme} />
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    {NATIONAL_DATA.levels.map((item, index) => (
+                        <div key={index} className="bg-white p-6 rounded-2xl shadow-sm border border-indigo-100 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-4 -translate-y-4 group-hover:scale-150 transition-transform duration-500">
+                                <ICONS.Globe width={100} height={100} />
+                            </div>
+                            <h3 className="text-slate-500 font-medium mb-2">{item.name}</h3>
+                            <div className="text-4xl font-bold text-indigo-900 mb-4">{item.percent.toFixed(2)}%</div>
+                            <div className="w-full bg-slate-100 rounded-full h-2">
+                                <div className="h-full bg-indigo-500 rounded-full" style={{width: `${Math.min(item.percent, 100)}%`}}></div>
+                            </div>
+                            <div className="mt-4 flex justify-between text-xs text-slate-500">
+                                <span>ผลงาน: {formatNumber(item.value)}</span>
+                                <span>เป้า: {formatNumber(item.target)}</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <Card theme={currentTheme}>
+                    <h3 className="text-xl font-bold text-indigo-900 mb-6 flex items-center gap-2">
+                        <span className="bg-indigo-100 p-1 rounded">🏆</span> อันดับผลงานในเขตสุขภาพที่ 6
+                    </h3>
+                    <RegionRaceBar data={NATIONAL_DATA.region6} theme={currentTheme} />
+                </Card>
+            </div>
+        );
+
+        const DistrictView = ({ processedDistrictData, processedUnitData, currentTheme }) => {
+            const breakdownData = useMemo(() => {
+                const hospitalCodes = ['10685', '10754', '10752', '10753', '10755', '28785'];
+                const groupedUnits = _.groupBy(processedUnitData, 'district');
+                
+                return Object.keys(groupedUnits).map(district => {
+                    const units = groupedUnits[district];
+                    const hospitalUnits = units.filter(u => hospitalCodes.includes(u.code));
+                    const pcuUnits = units.filter(u => !hospitalCodes.includes(u.code));
+                    
+                    const hospitalVal = _.sumBy(hospitalUnits, 'value69');
+                    const pcuVal = _.sumBy(pcuUnits, 'value69');
+                    const total = hospitalVal + pcuVal;
+                    
+                    return {
+                        district,
+                        hospitalVal,
+                        pcuVal,
+                        total,
+                        hospitalPercent: total > 0 ? (hospitalVal / total) * 100 : 0,
+                        pcuPercent: total > 0 ? (pcuVal / total) * 100 : 0,
+                        hospitalName: hospitalUnits.length > 0 ? hospitalUnits[0].name : 'ไม่มี รพ.อำเภอ'
+                    };
+                });
+            }, [processedUnitData]);
+
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                    <Header title="ข้อมูลรายอำเภอ" subtitle="เจาะลึกรายละเอียดรายพื้นที่" icon={currentTheme.icon} theme={currentTheme} />
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                        {processedDistrictData.map((d, i) => (
+                            <div key={i} className="bg-white rounded-xl shadow-sm border border-teal-100 overflow-hidden hover:shadow-md transition-shadow">
+                                <div className={`h-2 w-full bg-gradient-to-r ${d.achievement >= 50 ? 'from-emerald-400 to-green-500' : d.achievement >= 35 ? 'from-amber-400 to-orange-500' : 'from-red-400 to-rose-500'}`}></div>
+                                <div className="p-5">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <h3 className="font-bold text-lg text-slate-800">{d.name}</h3>
+                                        <span className={`px-2 py-1 rounded text-xs font-bold ${d.achievement >= 50 ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
+                                            {d.achievement.toFixed(2)}%
+                                        </span>
+                                    </div>
+                                    <div className="space-y-3 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-500">ผลงานปี 69</span>
+                                            <span className="font-bold text-teal-700">{formatNumber(d.value69)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-500">เป้า 6 เดือน</span>
+                                            <span className="font-mono text-slate-600">{formatNumber(d.target6m)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <Card theme={currentTheme}>
+                        <h3 className="font-bold text-teal-900 mb-4">ตารางสรุปข้อมูลละเอียด</h3>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-slate-600">
+                                <thead className="text-xs text-white uppercase bg-teal-600">
+                                    <tr>
+                                        <th className="px-6 py-3 rounded-tl-lg">อำเภอ</th>
+                                        <th className="px-6 py-3 text-right">ผลงาน 69</th>
+                                        <th className="px-6 py-3 text-right">เป้า 6 เดือน</th>
+                                        <th className="px-6 py-3 text-center rounded-tr-lg">% Achievement</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {processedDistrictData.map((d, i) => (
+                                        <tr key={i} className="border-b hover:bg-teal-50">
+                                            <td className="px-6 py-4 font-medium">{d.name}</td>
+                                            <td className="px-6 py-4 text-right font-mono text-teal-700 font-bold">{formatNumber(d.value69)}</td>
+                                            <td className="px-6 py-4 text-right font-mono">{formatNumber(d.target6m)}</td>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="w-full bg-slate-200 rounded-full h-2.5">
+                                                    <div className={`h-2.5 rounded-full ${d.achievement >= 50 ? 'bg-emerald-500' : 'bg-orange-500'}`} style={{width: `${Math.min(d.achievement, 100)}%`}}></div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
+
+                    <Card theme={currentTheme}>
+                        <h3 className="font-bold text-teal-900 mb-6 flex items-center gap-2">
+                            <ICONS.Analytics width={20} height={20} /> บทวิเคราะห์สัดส่วนบริการ: โรงพยาบาลแม่ข่าย vs รพ.สต./เครือข่าย
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {breakdownData.map((d, i) => (
+                                <div key={i} className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h4 className="font-bold text-slate-800 text-lg">อ.{d.district}</h4>
+                                        <span className="text-xs text-slate-500">รวม: {formatNumber(d.total)}฿</span>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <div className="flex justify-between text-xs mb-1">
+                                                <span className="text-teal-700 font-semibold">{d.hospitalName}</span>
+                                                <span className="text-teal-700">{d.hospitalPercent.toFixed(1)}%</span>
+                                            </div>
+                                            <div className="w-full bg-white rounded-full h-3 border border-slate-100">
+                                                <div className="h-full bg-teal-500 rounded-full" style={{width: `${d.hospitalPercent}%`}}></div>
+                                            </div>
+                                            <p className="text-[10px] text-slate-400 mt-1 text-right">{formatNumber(d.hospitalVal)}฿</p>
+                                        </div>
+                                        <div>
+                                            <div className="flex justify-between text-xs mb-1">
+                                                <span className="text-amber-700 font-semibold">เครือข่าย รพ.สต.</span>
+                                                <span className="text-amber-700">{d.pcuPercent.toFixed(1)}%</span>
+                                            </div>
+                                            <div className="w-full bg-white rounded-full h-3 border border-slate-100">
+                                                <div className="h-full bg-amber-500 rounded-full" style={{width: `${d.pcuPercent}%`}}></div>
+                                            </div>
+                                            <p className="text-[10px] text-slate-400 mt-1 text-right">{formatNumber(d.pcuVal)}฿</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
+                </div>
+            );
+        };
+
+        const UnitView = ({ processedUnitData, currentTheme }) => {
+            const [selectedDistrict, setSelectedDistrict] = useState('All');
+            const groupedUnits = useMemo(() => _.groupBy(processedUnitData, 'district'), [processedUnitData]);
+            
+            const getAnalysisText = (units) => {
+                const total = units.length;
+                const pass = units.filter(u => u.percentAchieved6m >= 50).length;
+                const zero = units.filter(u => u.value69 === 0).length;
+                
+                return (
+                    <div className="bg-amber-50 p-6 rounded-xl border border-amber-200 mt-8">
+                        <h3 className="text-lg font-bold text-amber-800 mb-3 flex items-center gap-2">
+                            <ICONS.Lightbulb width={20} height={20} /> บทวิเคราะห์รายหน่วยบริการ (Automated Analysis)
+                        </h3>
+                        <ul className="space-y-2 text-sm text-slate-700">
+                            <li className="flex gap-2">
+                                <span className="text-amber-500">•</span>
+                                <span>ภาพรวมมีหน่วยบริการทั้งหมด <strong>{total} แห่ง</strong> ในพื้นที่ที่เลือก</span>
+                            </li>
+                            <li className="flex gap-2">
+                                <span className="text-green-500">•</span>
+                                <span>มีหน่วยบริการที่ผ่านเกณฑ์เป้าหมาย (50%+) จำนวน <strong className="text-green-600">{pass} แห่ง</strong> คิดเป็น {((pass/total)*100).toFixed(1)}%</span>
+                            </li>
+                            {zero > 0 && (
+                                <li className="flex gap-2">
+                                    <span className="text-red-500">•</span>
+                                    <span>พบหน่วยบริการที่ยังไม่มีการเบิกจ่าย (Zero Active) จำนวน <strong className="text-red-600">{zero} แห่ง</strong> ควรเร่งตรวจสอบและติดตามปัญหาอุปสรรค</span>
+                                </li>
+                            )}
+                            <li className="flex gap-2">
+                                <span className="text-blue-500">•</span>
+                                <span><strong>ข้อเสนอแนะ:</strong> ควรมุ่งเน้นการสนับสนุนหน่วยบริการกลุ่มที่มีผลงานต่ำกว่า 35% ให้สามารถเบิกจ่ายได้ตามเกณฑ์มาตรฐาน และขยายผลความสำเร็จจากกลุ่ม Top Performers</span>
+                            </li>
+                        </ul>
+                    </div>
+                );
+            };
+
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                    <Header title="ข้อมูลรายหน่วยบริการ" subtitle="ติดตามผลงานระดับปฏิบัติการ (รพ./รพ.สต.)" icon={currentTheme.icon} theme={currentTheme} />
+                    
+                    <div className="flex justify-between items-center bg-amber-50 p-4 rounded-xl border border-amber-200 mb-6">
+                        <div className="flex items-center gap-3">
+                            <span className="font-bold text-amber-900">เลือกพื้นที่:</span>
+                            <select 
+                                className="bg-white border border-amber-300 text-amber-900 text-sm rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-amber-500"
+                                value={selectedDistrict}
+                                onChange={(e) => setSelectedDistrict(e.target.value)}
+                            >
+                                <option value="All">ทั้งหมด</option>
+                                {Object.keys(groupedUnits).map(d => <option key={d} value={d}>{d}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-amber-100 shadow-sm overflow-hidden">
+                        {Object.keys(groupedUnits).map(district => {
+                            if (selectedDistrict !== 'All' && selectedDistrict !== district) return null;
+                            const units = groupedUnits[district];
+                            return (
+                                <div key={district} className="mb-8 last:mb-0">
+                                    <div className="bg-amber-100 px-6 py-3 font-bold text-amber-800 flex justify-between">
+                                        <span>อำเภอ{district}</span>
+                                        <span className="text-xs bg-white px-2 py-1 rounded-full text-amber-600">{units.length} หน่วย</span>
+                                    </div>
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-slate-50 text-xs text-slate-500 uppercase border-b">
+                                            <tr>
+                                                <th className="px-6 py-3 text-left">หน่วยบริการ</th>
+                                                <th className="px-6 py-3 text-right">ผลงาน 69</th>
+                                                <th className="px-6 py-3 text-right">เป้า 6 เดือน</th>
+                                                <th className="px-6 py-3 text-center">% ผลงาน</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {units.map((u, i) => (
+                                                <tr key={i} className="border-b hover:bg-amber-50/50 transition-colors">
+                                                    <td className="px-6 py-3 font-medium text-slate-700">{u.name}</td>
+                                                    <td className="px-6 py-3 text-right font-mono text-amber-700">{formatNumber(u.value69)}</td>
+                                                    <td className="px-6 py-3 text-right font-mono text-slate-500">{formatNumber(u.target6m)}</td>
+                                                    <td className="px-6 py-3 text-center">
+                                                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${u.percentAchieved6m >= 50 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                            {u.percentAchieved6m.toFixed(2)}%
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )
+                        })}
+                    </div>
+                    
+                    {getAnalysisText(selectedDistrict === 'All' ? processedUnitData : processedUnitData.filter(u => u.district === selectedDistrict))}
+                </div>
+            );
+        };
+
+        const UnitAnalysisView = ({ processedUnitData, currentTheme }) => {
+            const [selectedDistrict, setSelectedDistrict] = useState('All');
+            
+            const filteredUnits = useMemo(() => {
+                return selectedDistrict === 'All' 
+                    ? processedUnitData 
+                    : processedUnitData.filter(u => u.district === selectedDistrict);
+            }, [selectedDistrict, processedUnitData]);
+
+            const stats = useMemo(() => {
+                const totalTarget = filteredUnits.reduce((a, b) => a + b.target6m, 0);
+                const totalResult = filteredUnits.reduce((a, b) => a + b.value69, 0);
+                const avgPercent = totalTarget > 0 ? (totalResult / totalTarget) * 100 : 0;
+                return { totalTarget, totalResult, avgPercent };
+            }, [filteredUnits]);
+
+            const typeStats = useMemo(() => {
+                const hospitalCodes = ['10685', '10754', '10752', '10753', '10755', '28785'];
+                
+                const hospitalVal = filteredUnits.reduce((acc, u) => hospitalCodes.includes(u.code) ? acc + u.value69 : acc, 0);
+                const pcuVal = filteredUnits.reduce((acc, u) => !hospitalCodes.includes(u.code) ? acc + u.value69 : acc, 0);
+                const total = hospitalVal + pcuVal;
+
+                return {
+                    hospitalVal,
+                    pcuVal,
+                    total,
+                    hospitalPercent: total > 0 ? (hospitalVal / total) * 100 : 0,
+                    pcuPercent: total > 0 ? (pcuVal / total) * 100 : 0,
+                    hospitalCount: filteredUnits.filter(u => hospitalCodes.includes(u.code)).length,
+                    pcuCount: filteredUnits.filter(u => !hospitalCodes.includes(u.code)).length
+                };
+            }, [filteredUnits]);
+
+            const generateSWOT = () => {
+                const topUnits = [...filteredUnits].sort((a,b) => b.percentAchieved6m - a.percentAchieved6m).slice(0,3);
+                const lowUnits = filteredUnits.filter(u => u.percentAchieved6m < 30);
+                
+                return (
+                    <div className="bg-white rounded-xl shadow-lg border border-rose-100 overflow-hidden mt-6">
+                        <div className="bg-gradient-to-r from-rose-500 to-pink-600 px-6 py-4 text-white flex justify-between items-center">
+                            <h3 className="font-bold text-lg flex items-center gap-2"><ICONS.Analytics width={20} height={20} /> บทวิเคราะห์เจาะลึก (Strategic Analysis)</h3>
+                            <span className="bg-white/20 px-3 py-1 rounded-full text-xs">พื้นที่: {selectedDistrict === 'All' ? 'ทั้งจังหวัด' : `อ.${selectedDistrict}`}</span>
+                        </div>
+                        <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="space-y-3">
+                                <h4 className="font-bold text-emerald-600 flex items-center gap-2 border-b border-emerald-100 pb-2">
+                                    <span className="bg-emerald-100 p-1 rounded">👍</span> จุดแข็ง (Strengths)
+                                </h4>
+                                <ul className="text-sm text-slate-600 space-y-2 list-disc list-inside">
+                                    <li>ภาพรวมทำผลงานได้ {stats.avgPercent.toFixed(2)}% ของเป้าหมาย</li>
+                                    <li>มีหน่วยบริการต้นแบบ (Top 3) ได้แก่ {topUnits.map(u => u.name.split('รพสต.')[1] || u.name).join(', ')}</li>
+                                    <li>ศักยภาพในการให้บริการสมุนไพรยังมีความต่อเนื่องในกลุ่มผู้นำ</li>
+                                </ul>
+                            </div>
+                            <div className="space-y-3">
+                                <h4 className="font-bold text-rose-600 flex items-center gap-2 border-b border-rose-100 pb-2">
+                                    <span className="bg-rose-100 p-1 rounded">👎</span> ข้อจำกัด (Weaknesses)
+                                </h4>
+                                <ul className="text-sm text-slate-600 space-y-2 list-disc list-inside">
+                                    <li>พบหน่วยบริการ {lowUnits.length} แห่ง ที่มีผลงานต่ำกว่า 30%</li>
+                                    <li>การกระจายตัวของการเบิกจ่ายยังกระจุกตัวในบางหน่วยบริการ</li>
+                                    {stats.avgPercent < 50 && <li>ภาพรวมยังไม่ถึงเกณฑ์ 50% อาจส่งผลต่อตัวชี้วัดสิ้นปี</li>}
+                                </ul>
+                            </div>
+                            <div className="space-y-3">
+                                <h4 className="font-bold text-blue-600 flex items-center gap-2 border-b border-blue-100 pb-2">
+                                    <span className="bg-blue-100 p-1 rounded">🚀</span> แนวทางพัฒนา (Development)
+                                </h4>
+                                <ul className="text-sm text-slate-600 space-y-2 list-disc list-inside">
+                                    <li>จัดเวทีแลกเปลี่ยนเรียนรู้ (KM) ระหว่างหน่วยบริการ Top 3 กับกลุ่มเป้าหมาย</li>
+                                    <li>ลงพื้นที่นิเทศติดตามหน่วยบริการที่ผลงานต่ำกว่าเกณฑ์เพื่อวิเคราะห์ปัญหาหน้างาน</li>
+                                    <li>สนับสนุนรายการยาที่มีการใช้สูง (Top Drugs) ให้เพียงพอต่อความต้องการ</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                    <Header title="วิเคราะห์ข้อมูลเชิงลึกแบบละเอียด" subtitle="Deep Dive Analysis & Strategic Planning" icon={currentTheme.icon} theme={currentTheme} />
+                    
+                    <div className="flex justify-end mb-6">
+                        <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-lg border border-rose-200 shadow-sm">
+                            <span className="text-sm font-bold text-rose-700">เลือกพื้นที่วิเคราะห์:</span>
+                            <select 
+                                className="bg-rose-50 border-none text-sm font-medium text-rose-900 rounded focus:ring-0 cursor-pointer"
+                                value={selectedDistrict}
+                                onChange={(e) => setSelectedDistrict(e.target.value)}
+                            >
+                                <option value="All">ทั้งหมด (Overview)</option>
+                                {Object.keys(_.groupBy(processedUnitData, 'district')).map(d => <option key={d} value={d}>{d}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white p-5 rounded-xl border-l-4 border-rose-400 shadow-sm">
+                            <p className="text-slate-500 text-xs uppercase font-bold">เป้าหมายรวม (6 เดือน)</p>
+                            <h3 className="text-2xl font-bold text-slate-800 mt-1">{formatNumber(stats.totalTarget)}</h3>
+                        </div>
+                        <div className="bg-white p-5 rounded-xl border-l-4 border-pink-500 shadow-sm">
+                            <p className="text-slate-500 text-xs uppercase font-bold">ผลงานรวม (69)</p>
+                            <h3 className="text-2xl font-bold text-pink-600 mt-1">{formatNumber(stats.totalResult)}</h3>
+                        </div>
+                        <div className="bg-white p-5 rounded-xl border-l-4 border-rose-600 shadow-sm flex justify-between items-center">
+                            <div>
+                                <p className="text-slate-500 text-xs uppercase font-bold">% ความก้าวหน้า</p>
+                                <h3 className={`text-3xl font-bold mt-1 ${stats.avgPercent >= 50 ? 'text-green-500' : 'text-rose-600'}`}>{stats.avgPercent.toFixed(2)}%</h3>
+                            </div>
+                            <div className="h-12 w-12 rounded-full border-4 border-slate-100 flex items-center justify-center text-xs font-bold text-slate-400">
+                                KPI
+                            </div>
+                        </div>
+                    </div>
+
+                    {generateSWOT()}
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                        <Card theme={currentTheme}>
+                            <h3 className="font-bold text-rose-800 flex items-center gap-2 mb-4">
+                                <ICONS.Hospital width={20} height={20} /> สัดส่วนผลงาน: รพ.อำเภอ vs รพ.สต.
+                            </h3>
+                            <div className="flex flex-col md:flex-row items-center gap-6">
+                                <div className="w-48 h-48 relative">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie 
+                                                data={[{ name: 'โรงพยาบาลอำเภอ', value: typeStats.hospitalVal }, { name: 'รพ.สต./เครือข่าย', value: typeStats.pcuVal }]} 
+                                                cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={5} dataKey="value"
+                                            >
+                                                <Cell fill="#F43F5E" />
+                                                <Cell fill="#FBBF24" />
+                                            </Pie>
+                                            <RechartsTooltip formatter={(val) => formatCurrency(val)} />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <div className="text-center">
+                                            <p className="text-xs text-slate-400">Total</p>
+                                            <p className="text-sm font-bold text-slate-700">100%</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex-1 space-y-4">
+                                    <div>
+                                        <div className="flex justify-between items-center text-sm mb-1">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-3 h-3 rounded-full bg-rose-500"></div>
+                                                <span className="text-slate-600 font-medium">โรงพยาบาลอำเภอ ({typeStats.hospitalCount} แห่ง)</span>
+                                            </div>
+                                            <span className="font-bold text-rose-600">{typeStats.hospitalPercent.toFixed(1)}%</span>
+                                        </div>
+                                        <div className="w-full bg-slate-100 rounded-full h-2">
+                                            <div className="bg-rose-500 h-2 rounded-full" style={{ width: `${typeStats.hospitalPercent}%` }}></div>
+                                        </div>
+                                        <p className="text-right text-xs text-slate-400 mt-1">{formatNumber(typeStats.hospitalVal)} บาท</p>
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between items-center text-sm mb-1">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-3 h-3 rounded-full bg-amber-400"></div>
+                                                <span className="text-slate-600 font-medium">รพ.สต./เครือข่าย ({typeStats.pcuCount} แห่ง)</span>
+                                            </div>
+                                            <span className="font-bold text-amber-600">{typeStats.pcuPercent.toFixed(1)}%</span>
+                                        </div>
+                                        <div className="w-full bg-slate-100 rounded-full h-2">
+                                            <div className="bg-amber-400 h-2 rounded-full" style={{ width: `${typeStats.pcuPercent}%` }}></div>
+                                        </div>
+                                        <p className="text-right text-xs text-slate-400 mt-1">{formatNumber(typeStats.pcuVal)} บาท</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </Card>
+                        
+                        <div className="bg-rose-50 p-6 rounded-xl border border-rose-100 flex flex-col justify-center">
+                            <h4 className="font-bold text-rose-900 mb-3 text-lg">บทวิเคราะห์โครงสร้างบริการ</h4>
+                            <p className="text-slate-700 text-sm leading-relaxed mb-4">
+                                {typeStats.hospitalPercent > 70 
+                                    ? "การให้บริการส่วนใหญ่กระจุกตัวอยู่ที่โรงพยาบาลอำเภอ (มากกว่า 70%) สะท้อนถึงภาระงานที่หนักอึ้งของ รพ.แม่ข่าย ควรมีมาตรการกระจายผู้ป่วยหรือสนับสนุนยาสมุนไพรลงสู่ รพ.สต. ให้มากขึ้น เพื่อเพิ่มการเข้าถึงระดับปฐมภูมิ"
+                                    : typeStats.pcuPercent > 60
+                                    ? "เครือข่าย รพ.สต. มีความเข้มแข็งมาก สามารถทำผลงานได้เกิน 60% ของภาพรวม ช่วยลดความแออัดในโรงพยาบาลได้ดีเยี่ยม เป็นต้นแบบการกระจายบริการที่มีประสิทธิภาพ"
+                                    : "สัดส่วนการให้บริการมีการกระจายตัวที่ดีระหว่างโรงพยาบาลและ รพ.สต. (Balanced Mix) ซึ่งเป็นสัญญาณที่ดีของการบริหารจัดการเครือข่ายสุขภาพอำเภอ"}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-rose-600 bg-white/50 p-2 rounded-lg w-fit">
+                                <ICONS.CheckCircle width={16} height={16} /> 
+                                <span>ข้อมูล ณ {selectedDistrict === 'All' ? 'ภาพรวมจังหวัด' : `อำเภอ${selectedDistrict}`}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                        <Card theme={currentTheme} className="bg-gradient-to-br from-green-50 to-emerald-50 border-emerald-200">
+                            <h3 className="font-bold text-emerald-800 flex items-center gap-2 mb-4">
+                                <span className="bg-emerald-200 p-1 rounded">🌟</span> Top Performers (สูงสุด 5 อันดับ)
+                            </h3>
+                            <ul className="space-y-3">
+                                {filteredUnits.sort((a,b) => b.percentAchieved6m - a.percentAchieved6m).slice(0,5).map((u, i) => (
+                                    <li key={i} className="bg-white p-3 rounded-lg shadow-sm flex justify-between items-center">
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-bold text-emerald-500 text-lg">#{i+1}</span>
+                                            <span className="text-sm font-medium">{u.name}</span>
+                                        </div>
+                                        <span className="font-bold text-emerald-600">{u.percentAchieved6m.toFixed(0)}%</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </Card>
+
+                        <Card theme={currentTheme} className="bg-gradient-to-br from-red-50 to-rose-50 border-rose-200">
+                            <h3 className="font-bold text-rose-800 flex items-center gap-2 mb-4">
+                                <span className="bg-rose-200 p-1 rounded">⚡</span> Critical Attention (ต่ำสุด 5 อันดับ)
+                            </h3>
+                            <ul className="space-y-3">
+                                {filteredUnits.filter(u => u.target6m > 0).sort((a,b) => a.percentAchieved6m - b.percentAchieved6m).slice(0,5).map((u, i) => (
+                                    <li key={i} className="bg-white p-3 rounded-lg shadow-sm flex justify-between items-center">
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-bold text-rose-500 text-lg">!</span>
+                                            <span className="text-sm font-medium">{u.name}</span>
+                                        </div>
+                                        <span className="font-bold text-rose-600">{u.percentAchieved6m.toFixed(0)}%</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </Card>
+                    </div>
+                </div>
+            );
+        };
+
+        const ProblemAnalysisView = ({ districtData, unitData, currentTheme }) => {
+            const [selectedDistrict, setSelectedDistrict] = useState('All');
+
+            const analysisData = useMemo(() => {
+                const filteredUnits = selectedDistrict === 'All' 
+                    ? unitData 
+                    : unitData.filter(u => u.district === selectedDistrict);
+                
+                const hospitalCodes = ['10685', '10754', '10752', '10753', '10755', '28785'];
+                
+                const totalTarget = filteredUnits.reduce((a,b) => a + b.target6m, 0);
+                const totalResult = filteredUnits.reduce((a,b) => a + b.value69, 0);
+                const percent = totalTarget > 0 ? (totalResult / totalTarget) * 100 : 0;
+                
+                const hospitalVal = filteredUnits.reduce((acc, u) => hospitalCodes.includes(u.code) ? acc + u.value69 : acc, 0);
+                const totalVal = totalResult || 1;
+                const hospitalRatio = (hospitalVal / totalVal) * 100;
+
+                const status = percent >= 50 ? 'High' : percent >= 35 ? 'Medium' : 'Low';
+                const structure = hospitalRatio > 70 ? 'Hospital-Heavy' : 'Balanced';
+
+                const contextName = selectedDistrict === 'All' ? 'ภาพรวมจังหวัด' : `อำเภอ${selectedDistrict}`;
+
+                return {
+                    metrics: { totalTarget, totalResult, percent, status },
+                    dimensions: [
+                        {
+                            id: 'product',
+                            title: 'มิติที่ 1: ตัวผลิตภัณฑ์ (Product)',
+                            icon: ICONS.Leaf,
+                            data: [
+                                {
+                                    topic: 'ราคาและต้นทุน (Price & Cost)',
+                                    problem: status === 'High' 
+                                        ? `ในพื้นที่${contextName} มีการใช้ยามูลค่าสูงกระจุกตัว อาจส่งผลต่องบประมาณระยะยาว` 
+                                        : `หน่วยบริการใน${contextName} กังวลเรื่อง Unit Cost ยาสมุนไพรที่สูงกว่ายาแผนปัจจุบัน`,
+                                    action: status === 'High'
+                                        ? 'เจรจาต่อรองราคากลาง (Volume Discount) และตรวจสอบความสมเหตุสมผลของการใช้ยาแพง'
+                                        : 'สนับสนุนงบประมาณ On-top หรือจัดหายาราคาประหยัดให้หน่วยบริการขนาดเล็ก',
+                                    ofi: 'สามารถลดต้นทุนยาได้ 5-10% หากมีการบริหารจัดการคลังยาร่วมกัน (Shared Inventory)'
+                                },
+                                {
+                                    topic: 'มาตรฐานการผลิต (GMP)',
+                                    problem: selectedDistrict === 'พระประแดง' || selectedDistrict === 'บางพลี'
+                                        ? 'โรงงานผลิตยาในพื้นที่ต้องเร่งปรับปรุงตามมาตรฐาน GMP ฉบับใหม่'
+                                        : 'บางหน่วยบริการยังขาดความมั่นใจในคุณภาพยาที่ผลิตจากแหล่งผลิตต่างพื้นที่',
+                                    action: 'จัดทีมเภสัชกรพี่เลี้ยง (Coaching) ลงพื้นที่ตรวจสอบคุณภาพยาสม่ำเสมอ',
+                                    ofi: 'ยกระดับสมุนไพรในพื้นที่สู่ Premium Grade สร้างความเชื่อมั่น 100%'
+                                }
+                            ]
+                        },
+                        {
+                            id: 'usage',
+                            title: 'มิติที่ 2: การใช้และผู้รับบริการ (Usage & Knowledge)',
+                            icon: ICONS.Hospital,
+                            data: [
+                                {
+                                    topic: 'รูปแบบการสั่งใช้ยา (Prescribing Pattern)',
+                                    problem: structure === 'Hospital-Heavy'
+                                        ? `ภาระงานกระจุกตัวที่ รพ.อำเภอ (${hospitalRatio.toFixed(0)}%) แพทย์แผนไทยอาจดูแลไม่ทั่วถึง`
+                                        : 'รพ.สต. มีศักยภาพสูง แต่อาจขาดแคลนรายการยาบางชนิดที่จำเป็น',
+                                    action: structure === 'Hospital-Heavy'
+                                        ? 'เร่งกระจายยาและผู้ป่วยลงสู่ รพ.สต. (Decentralization) พร้อมจัดทำระบบส่งต่อ'
+                                        : 'สนับสนุนให้ รพ.สต. เป็น Node การจ่ายยาเฉพาะทาง (Specialized Herbal Clinic)',
+                                    ofi: structure === 'Hospital-Heavy'
+                                        ? 'ลดความแออัดใน รพ. ได้ 20% หากกระจายงานสำเร็จ'
+                                        : 'พัฒนา รพ.สต. ต้นแบบด้านการแพทย์แผนไทยระดับเขต'
+                                },
+                                {
+                                    topic: 'การยอมรับของผู้ป่วย (Patient Acceptance)',
+                                    problem: status === 'Low'
+                                        ? `ประชาชนใน${contextName} ยังติดภาพลักษณ์ว่าสมุนไพร "หายช้า-ยุ่งยาก"`
+                                        : 'ผู้ป่วยมีความต้องการใช้ยาสูงจนบางช่วงเวลาเกิดปัญหายาขาดคราว (Shortage)',
+                                    action: status === 'Low'
+                                        ? 'จัดมหกรรมสมุนไพรสัญจร และให้ อสม. เคาะประตูบ้านแนะนำผลิตภัณฑ์'
+                                        : 'วางแผนการจัดซื้อล่วงหน้า (Pre-order) ตามสถิติการใช้ยา',
+                                    ofi: 'ขยายฐานผู้ใช้บริการไปยังกลุ่มวัยทำงานและ Office Syndrome'
+                                }
+                            ]
+                        },
+                        {
+                            id: 'system',
+                            title: 'มิติที่ 3: ระบบข้อมูลและการตรวจสอบ (System & Data)',
+                            icon: ICONS.Calculator,
+                            data: [
+                                {
+                                    topic: 'รหัสยาและการบันทึก (TMT Code)',
+                                    problem: `พบข้อมูล Error ในระบบ HDC ของ${contextName} บางส่วน (รหัสยาไม่ตรง/บันทึกไม่ครบ)`,
+                                    action: `ทีม IT ลงพื้นที่ ${contextName} เพื่อ Mapping รหัสยาในระบบ HIS ใหม่ทั้งหมด`,
+                                    ofi: 'ข้อมูลมีความถูกต้องแม่นยำ > 95% ภายในไตรมาสถัดไป'
+                                },
+                                {
+                                    topic: 'การกำกับติดตาม (Monitoring)',
+                                    problem: 'ผู้บริหารระดับอำเภอยังเข้าถึงข้อมูล Real-time ได้ยาก',
+                                    action: 'ใช้ Dashboard นี้ในการประชุม คปสอ. ทุกเดือน เพื่อติดตามความก้าวหน้า',
+                                    ofi: 'สามารถแก้ปัญหาหน้างานได้ทันที (Proactive Management)'
+                                }
+                            ]
+                        }
+                    ]
+                };
+            }, [selectedDistrict, unitData]);
+
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                    <Header title="วิเคราะห์ปัญหาและข้อเสนอแนะ" subtitle="Problem Analysis & Opportunity for Improvement (CAR/PAR/OFI Model)" icon={currentTheme.icon} theme={currentTheme} />
+
+                    <div className="flex justify-end">
+                        <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-lg border border-cyan-200 shadow-sm">
+                            <span className="text-sm font-bold text-cyan-700">เลือกพื้นที่วิเคราะห์:</span>
+                            <select 
+                                className="bg-cyan-50 border-none text-sm font-medium text-cyan-900 rounded focus:ring-0 cursor-pointer"
+                                value={selectedDistrict}
+                                onChange={(e) => setSelectedDistrict(e.target.value)}
+                            >
+                                <option value="All">ภาพรวมทั้งจังหวัด</option>
+                                {Object.keys(_.groupBy(unitData, 'district')).map(d => <option key={d} value={d}>อำเภอ{d}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white p-5 rounded-xl border-l-4 border-cyan-500 shadow-sm">
+                            <p className="text-slate-500 text-xs uppercase font-bold">สถานะพื้นที่</p>
+                            <h3 className={`text-2xl font-bold mt-1 ${analysisData.metrics.status === 'High' ? 'text-green-600' : analysisData.metrics.status === 'Medium' ? 'text-amber-500' : 'text-red-500'}`}>
+                                {analysisData.metrics.status} Performance
+                            </h3>
+                        </div>
+                        <div className="bg-white p-5 rounded-xl border-l-4 border-blue-500 shadow-sm">
+                            <p className="text-slate-500 text-xs uppercase font-bold">จุดเน้นการพัฒนา</p>
+                            <h3 className="text-xl font-bold text-slate-700 mt-1">
+                                {analysisData.metrics.status === 'High' ? 'Optimization & Cost' : 'Acceleration & Usage'}
+                            </h3>
+                        </div>
+                        <div className="bg-white p-5 rounded-xl border-l-4 border-indigo-500 shadow-sm">
+                            <p className="text-slate-500 text-xs uppercase font-bold">% ความก้าวหน้า</p>
+                            <h3 className="text-2xl font-bold text-indigo-600 mt-1">{analysisData.metrics.percent.toFixed(2)}%</h3>
+                        </div>
+                    </div>
+
+                    <div className="space-y-8">
+                        {analysisData.dimensions.map((dim, idx) => {
+                            const DimIcon = dim.icon;
+                            return (
+                                <Card key={idx} theme={currentTheme} className="border-t-4 border-t-cyan-500">
+                                    <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                                        <DimIcon width={24} height={24} /> {dim.title}
+                                    </h3>
+                                    <div className="space-y-6">
+                                        {dim.data.map((item, i) => (
+                                            <div key={i} className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                                                <h4 className="font-bold text-cyan-800 mb-3 border-b border-slate-200 pb-2">{item.topic}</h4>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <div className="bg-white p-3 rounded-lg border-l-4 border-red-400 shadow-sm">
+                                                        <p className="text-xs font-bold text-red-500 uppercase mb-1">Problem / Concern</p>
+                                                        <p className="text-sm text-slate-600">{item.problem}</p>
+                                                    </div>
+                                                    <div className="bg-white p-3 rounded-lg border-l-4 border-blue-400 shadow-sm">
+                                                        <p className="text-xs font-bold text-blue-500 uppercase mb-1">Action / Intervention</p>
+                                                        <p className="text-sm text-slate-600">{item.action}</p>
+                                                    </div>
+                                                    <div className="bg-white p-3 rounded-lg border-l-4 border-green-400 shadow-sm">
+                                                        <p className="text-xs font-bold text-green-500 uppercase mb-1">Result / OFI</p>
+                                                        <p className="text-sm text-slate-600">{item.ofi}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </Card>
+                            )
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
+        const TopDrugsView = ({ currentTheme }) => {
+            const categoryData = useMemo(() => {
+                const categories = Object.keys(HERBAL_CATEGORIES);
+                return categories.map(catKey => {
+                    const category = HERBAL_CATEGORIES[catKey];
+                    const itemsInCat = TOP_HERBAL_DRUGS_DATA.filter(d => category.items.includes(d.name));
+                    const totalValue = itemsInCat.reduce((sum, item) => sum + item.total, 0);
+                    return { name: category.label, value: totalValue, items: itemsInCat };
+                }).sort((a, b) => b.value - a.value);
+            }, []);
+
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                    <Header title="15 อันดับยาสมุนไพร" subtitle="ยอดเบิกจ่ายสูงสุดประจำปีงบประมาณ" icon={currentTheme.icon} theme={currentTheme} />
+                    
+                    <TopDrugsPodium data={TOP_HERBAL_DRUGS_DATA} />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                        {TOP_HERBAL_DRUGS_DATA.slice(3).map((item, index) => (
+                            <div key={index} className="bg-white p-4 rounded-xl shadow-sm border border-emerald-100 flex items-center gap-4 hover:bg-emerald-50 transition-colors">
+                                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center font-bold text-emerald-600">
+                                    {index + 4}
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-slate-800 text-sm">{item.name}</h4>
+                                    <p className="text-xs text-slate-500">มูลค่า: {formatNumber(item.total)} บาท</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <Card theme={currentTheme}>
+                        <h3 className="font-bold text-emerald-800 mb-4 flex items-center gap-2">
+                            <ICONS.Leaf width={20} height={20} /> ตารางรายละเอียดข้อมูลยา (Detailed Data)
+                        </h3>
+                        <div className="overflow-x-auto rounded-lg border border-emerald-100">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-emerald-50 text-emerald-900 font-bold uppercase text-xs">
+                                    <tr>
+                                        <th className="px-4 py-3">อันดับ</th>
+                                        <th className="px-4 py-3">รายการยา</th>
+                                        <th className="px-4 py-3 text-right">จำนวนครั้ง (Visit)</th>
+                                        <th className="px-4 py-3 text-right">ราคา/คอร์ส (บาท)</th>
+                                        <th className="px-4 py-3 text-right">มูลค่ารวม (บาท)</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-emerald-50">
+                                    {TOP_HERBAL_DRUGS_DATA.sort((a,b) => b.total - a.total).map((item, index) => (
+                                        <tr key={index} className="hover:bg-emerald-50/50 transition-colors">
+                                            <td className="px-4 py-3 text-center font-bold text-emerald-600">{index + 1}</td>
+                                            <td className="px-4 py-3 font-medium text-slate-800">{item.name}</td>
+                                            <td className="px-4 py-3 text-right font-mono text-slate-600">{formatNumber(item.count)}</td>
+                                            <td className="px-4 py-3 text-right font-mono text-slate-600">{formatNumber(item.price)}</td>
+                                            <td className="px-4 py-3 text-right font-mono font-bold text-emerald-700">{formatNumber(item.total)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div className="mt-6 bg-slate-50 p-6 rounded-xl border border-slate-200">
+                            <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                                <ICONS.Search width={20} height={20} /> บทวิเคราะห์เชิงละเอียด (Comprehensive Analysis)
+                            </h4>
+                            <p className="text-sm text-slate-600 leading-relaxed">
+                                จากข้อมูล 15 อันดับยาสมุนไพร พบว่า <strong>ยาไพล</strong> และกลุ่มยารักษาอาการทางระบบทางเดินหายใจ (เช่น แก้ไอมะขามป้อม, ฟ้าทะลายโจร) มีปริมาณการใช้สูงสุด ซึ่งสอดคล้องกับอุบัติการณ์โรคปวดเมื่อยกล้ามเนื้อและโรคหวัดตามฤดูกาล ยาในกลุ่ม Top 5 ครองสัดส่วนมูลค่ากว่า 50% ของงบประมาณรวม สะท้อนถึงความเชื่อมั่นของผู้ป่วยและความถี่ในการสั่งใช้ยาของแพทย์แผนไทย อย่างไรก็ตาม ยาที่มีราคาสูงบางรายการ (เช่น ศุขไสยาศน์) แม้จะมีปริมาณการใช้น้อยแต่มีผลต่อมูลค่ารวม ควรมีการติดตามความสมเหตุสมผลในการใช้อย่างใกล้ชิด
+                            </p>
+                        </div>
+                    </Card>
+
+                    <Card theme={currentTheme}>
+                        <h3 className="font-bold text-emerald-800 mb-6 flex items-center gap-2">
+                            <ICONS.Analytics width={20} height={20} /> สรุปการเบิกจ่ายแยกตามกลุ่มอาการ (Therapeutic Category Analysis)
+                        </h3>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6">
+                            <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={categoryData} layout="vertical" margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                        <XAxis type="number" hide />
+                                        <YAxis dataKey="name" type="category" width={150} tick={{fontSize: 12}} />
+                                        <RechartsTooltip formatter={(val) => formatCurrency(val)} cursor={{fill: 'transparent'}} />
+                                        <Bar dataKey="value" fill="#10B981" radius={[0, 4, 4, 0]} barSize={20}>
+                                            {categoryData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#6366F1'][index % 6]} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div className="overflow-x-auto border rounded-lg border-emerald-100">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-emerald-50 text-emerald-900 font-bold uppercase text-xs">
+                                        <tr>
+                                            <th className="px-4 py-2">กลุ่มอาการ</th>
+                                            <th className="px-4 py-2 text-right">มูลค่ารวม (บาท)</th>
+                                            <th className="px-4 py-2 text-right">สัดส่วน (%)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-emerald-50">
+                                        {categoryData.map((cat, index) => {
+                                            const totalAll = categoryData.reduce((sum, c) => sum + c.value, 0);
+                                            const percent = (cat.value / totalAll) * 100;
+                                            return (
+                                                <tr key={index} className="hover:bg-emerald-50/30">
+                                                    <td className="px-4 py-2 font-medium text-slate-700">{cat.name}</td>
+                                                    <td className="px-4 py-2 text-right font-mono">{formatNumber(cat.value)}</td>
+                                                    <td className="px-4 py-2 text-right font-bold text-emerald-600">{percent.toFixed(1)}%</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div className="bg-emerald-50 p-6 rounded-xl border border-emerald-200">
+                            <h4 className="font-bold text-emerald-900 mb-2 flex items-center gap-2">
+                                <ICONS.Lightbulb width={20} height={20} /> บทวิเคราะห์กลุ่มอาการ
+                            </h4>
+                            <p className="text-sm text-slate-700 leading-relaxed">
+                                จากการวิเคราะห์ข้อมูล พบว่า <strong>{categoryData[0]?.name}</strong> มีมูลค่าการเบิกจ่ายสูงที่สุด คิดเป็นสัดส่วนหลักของงบประมาณ ซึ่งสะท้อนถึงปัญหาสุขภาพหลักของประชาชนในพื้นที่ 
+                                รองลงมาคือ <strong>{categoryData[1]?.name}</strong> และ <strong>{categoryData[2]?.name}</strong> ตามลำดับ 
+                                ข้อมูลนี้บ่งชี้ว่าควรเตรียมสำรองยาสมุนไพรในกลุ่มดังกล่าวให้เพียงพอ และอาจพิจารณาส่งเสริมการใช้ยาสมุนไพรทดแทนยาแผนปัจจุบันในกลุ่มอาการเหล่านี้ให้มากขึ้นเพื่อลดการนำเข้ายา
+                            </p>
+                        </div>
+                    </Card>
+                </div>
+            );
+        };
+
+        const ReplacementView = ({ currentTheme }) => {
+            const totalReplacementValue = REPLACEMENT_DRUGS_SUMMARY_DATA.reduce((acc, curr) => acc + curr.value, 0);
+
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                    <Header title="นโยบายยาสมุนไพรทดแทนยาแผนปัจจุบัน" subtitle="สรุปข้อมูลการใช้ยาทดแทน (First Line Therapy) จากประกาศของโรงพยาบาล" icon={currentTheme.icon} theme={currentTheme} />
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                        <div className="lg:col-span-1 bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl p-6 text-white shadow-lg flex flex-col justify-center">
+                            <p className="text-orange-100 font-medium mb-1">ผลรวมมูลค่าการใช้ยาทดแทน (บาท)</p>
+                            <h2 className="text-4xl font-bold mb-4">{formatNumber(totalReplacementValue)}</h2>
+                            <div className="bg-white/20 p-4 rounded-xl border border-white/30 backdrop-blur-sm">
+                                <h4 className="font-bold flex items-center gap-2 mb-2"><ICONS.Star width={18} height={18} /> บทวิเคราะห์ความสำเร็จ</h4>
+                                <p className="text-sm text-orange-50 leading-relaxed">
+                                    นโยบายการใช้สมุนไพรทดแทนยาแผนปัจจุบัน นำโดย <strong>ยาแก้ไอน้ำมะขามป้อม</strong> และ <strong>ครีมไพล</strong> สร้างมูลค่าเบิกจ่ายรวมกว่า {formatNumber((totalReplacementValue/1000000).toFixed(2))} ล้านบาท 
+                                    สะท้อนให้เห็นถึงศักยภาพในการลดภาระการจัดซื้อยาแผนปัจจุบัน (Cost Saving) และเพิ่มความมั่นคงทางยาของจังหวัดได้อย่างเป็นรูปธรรม
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="lg:col-span-2">
+                            <Card theme={currentTheme} className="h-full">
+                                <h3 className="font-bold text-orange-900 mb-4 flex items-center gap-2"><ICONS.TrendingUp width={20} height={20} /> สัดส่วนมูลค่าการใช้ยาทดแทน</h3>
+                                <div className="h-64">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={REPLACEMENT_DRUGS_SUMMARY_DATA.sort((a,b)=>b.value-a.value)} layout="vertical" margin={{ top: 5, right: 30, left: 140, bottom: 5 }}>
+                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                            <XAxis type="number" hide />
+                                            <YAxis dataKey="herbalDrug" type="category" width={130} tick={{fontSize: 12, fill: '#475569'}} />
+                                            <RechartsTooltip formatter={(val) => formatCurrency(val)} cursor={{fill: 'transparent'}} />
+                                            <Bar dataKey="value" fill="#f97316" radius={[0, 4, 4, 0]} barSize={20}>
+                                                {REPLACEMENT_DRUGS_SUMMARY_DATA.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={['#ea580c', '#f59e0b', '#fbbf24', '#fcd34d', '#fde68a', '#fef3c7'][index % 6]} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </Card>
+                        </div>
+                    </div>
+
+                    <Card theme={currentTheme}>
+                        <h3 className="font-bold text-orange-900 mb-4 flex items-center gap-2"><ICONS.ClipboardList width={20} height={20} /> ตารางรายการยาทดแทนตามประกาศนโยบาย</h3>
+                        <div className="overflow-x-auto rounded-xl border border-orange-100">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-orange-50 text-orange-900 font-bold uppercase text-xs">
+                                    <tr>
+                                        <th className="px-4 py-3 text-center">ลำดับ</th>
+                                        <th className="px-4 py-3">โรงพยาบาลที่ประกาศใช้</th>
+                                        <th className="px-4 py-3">รายการยาแผนปัจจุบัน</th>
+                                        <th className="px-4 py-3">ยาสมุนไพรทดแทน (100%)</th>
+                                        <th className="px-4 py-3">สรรพคุณ / ข้อบ่งใช้</th>
+                                        <th className="px-4 py-3 text-center whitespace-nowrap">วันที่ประกาศนโยบาย</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-orange-50">
+                                    {REPLACEMENT_DRUGS_DETAIL_DATA.map((item, index) => (
+                                        <tr key={index} className="hover:bg-orange-50/50 transition-colors">
+                                            <td className="px-4 py-3 text-center text-slate-500">{index + 1}</td>
+                                            <td className="px-4 py-3 font-semibold text-slate-700 whitespace-nowrap">{item.hospital}</td>
+                                            <td className="px-4 py-3 text-slate-600">{item.modern}</td>
+                                            <td className="px-4 py-3 font-bold text-orange-700">{item.herbal}</td>
+                                            <td className="px-4 py-3 text-slate-600">{item.indication}</td>
+                                            <td className="px-4 py-3 text-center text-slate-500 text-xs whitespace-nowrap">{item.date}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
+                </div>
+            );
+        };
+
+        const QualityView = ({ currentTheme }) => (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                <Header title="สรุปผลลัพธ์เชิงคุณภาพ" subtitle="Quality & Standards Monitoring" icon={currentTheme.icon} theme={currentTheme} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {QUALITY_DATA.overall.map((q, i) => (
+                        <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-fuchsia-100 relative overflow-hidden">
+                            <div className="flex justify-between items-end mb-2 relative z-10">
+                                <h3 className="font-bold text-slate-700 w-3/4">{q.name}</h3>
+                                <span className="text-3xl font-bold text-fuchsia-600">{q.score}</span>
+                            </div>
+                            <div className="w-full bg-slate-100 rounded-full h-3 relative z-10">
+                                <div className="h-full bg-gradient-to-r from-fuchsia-500 to-purple-500 rounded-full" style={{width: `${q.score}%`}}></div>
+                            </div>
+                            <div className="absolute -bottom-4 -right-4 text-fuchsia-50 opacity-50 z-0">
+                                <ICONS.CheckCircle width={100} height={100} />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                
+                <div className="flex justify-center mt-8 pt-4">
+                    <a 
+                        href="https://drive.google.com/file/d/1GkBeUV5Icx8G7LDo6FvXQQ5s6RWEwWMy/view?usp=sharing" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-transform hover:scale-105"
+                    >
+                        <ICONS.Search width={20} height={20} />
+                        <span>ดูรายละเอียดการประเมินตามเกณฑ์คุณภาพ</span>
+                    </a>
+                </div>
+            </div>
+        );
+
+        const SupportingDataView = ({ currentTheme }) => {
+            const SUPPORTING_LINKS = [
+                { id: 1, title: 'รายการยาสมุนไพร MIN MAX Interval', url: 'https://drive.google.com/file/d/1PLMlH2q_xpy9mxkQQsKLXmg3XVgCwHNW/view?usp=sharing' },
+                { id: 2, title: 'แนวทางตรวจราชการ มูลค่ายาสมุนไพรสิทธิ UC', url: 'https://drive.google.com/file/d/1GkBeUV5Icx8G7LDo6FvXQQ5s6RWEwWMy/view?usp=sharing' },
+                { id: 3, title: 'รายการยาสมุนไพรทดแทน', url: 'https://drive.google.com/file/d/1v4PNj9GNeJYwqStQFAhfHBNluPkG77FA/view?usp=sharing' },
+                { id: 4, title: 'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ', url: 'https://drive.google.com/file/d/1J3oaVe6AtlRyFtRVhVJiI1i7tv1E9bM6/view?usp=sharing' },
+                { id: 5, title: '10 กลุ่มอาการและยาสมุนไพร+รหัส ICD-10', url: 'https://drive.google.com/file/d/1T6heUtTc77anKG2F8bUlmBXBblhYLSbK/view?usp=sharing' },
+                { id: 6, title: 'ยาสมุนไพรในบัญชียาหลักแห่งชาติทดแทนยาแผนปัจจุบัน กค 67', url: 'https://drive.google.com/file/d/1uXpxYYBc6n5PruUqGuU425QgaHiMn9c0/view?usp=sharing' },
+                { id: 7, title: 'CPG แนวทางเวชปฏิบัติการใช้ยาสมุนไพร', url: 'https://drive.google.com/file/d/1udpMJxgrl-112DSetMqdFccKQZEGcZGY/view?usp=sharing' }
+            ];
+
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                    <Header title="link ข้อมูลที่เกี่ยวข้อง" subtitle="แหล่งข้อมูลอ้างอิงและเอกสารที่เกี่ยวข้องกับการดำเนินงาน" icon={currentTheme.icon} theme={currentTheme} />
+                    <Card theme={currentTheme} className="py-8">
+                        <div className="flex flex-col space-y-6 max-w-4xl mx-auto">
+                            <h3 className="text-xl font-bold text-slate-800 flex items-center gap-3 border-b pb-4">
+                                <ICONS.Database width={28} height={28} className="text-stone-500" />
+                                รวมเอกสารอ้างอิงและคู่มือการปฏิบัติงาน (7 รายการ)
+                            </h3>
+                            <div className="grid grid-cols-1 gap-4">
+                                {SUPPORTING_LINKS.map(link => (
+                                    <a 
+                                        key={link.id} 
+                                        href={link.url} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-between p-4 bg-white rounded-xl border border-stone-200 hover:bg-stone-50 hover:border-stone-400 transition-all hover:shadow-md group shadow-sm"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-stone-400 to-stone-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                                                {link.id}
+                                            </div>
+                                            <span className="font-semibold text-slate-700 group-hover:text-stone-800 text-md">{link.title}</span>
+                                        </div>
+                                        <div className="p-2 bg-stone-100 rounded-lg group-hover:bg-stone-200 transition-colors">
+                                            <ICONS.ExternalLink width={20} height={20} className="text-stone-600" />
+                                        </div>
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+            );
+        };
+
+        const MethodView = ({ currentTheme }) => (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                <Header title="วิธีการคำนวณเป้าหมาย" subtitle="Methodology & Calculation Logic" icon={currentTheme.icon} theme={currentTheme} />
+                <MethodInfographic theme={currentTheme} />
+                <div className="bg-slate-800 text-white p-8 rounded-3xl shadow-xl text-center relative overflow-hidden">
+                    <div className="relative z-10">
+                        <h3 className="text-2xl font-bold mb-6">สูตรการคำนวณ (Formula)</h3>
+                        <div className="font-mono text-lg md:text-2xl bg-white/10 p-6 rounded-xl inline-block border border-white/20">
+                            Weight = (Share<sub>68</sub> × 40%) + (Share<sub>69</sub> × 60%)
+                        </div>
+                        <p className="mt-6 text-slate-400 max-w-2xl mx-auto">
+                            การจัดสรรเป้าหมายใช้หลักการ Weighted Moving Average เพื่อลดความผันผวนของข้อมูลและสะท้อนศักยภาพปัจจุบันให้มากที่สุด
+                        </p>
+                    </div>
+                    <div className="absolute top-0 left-0 w-64 h-64 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 -translate-x-1/2 -translate-y-1/2"></div>
+                    <div className="absolute bottom-0 right-0 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 translate-x-1/2 translate-y-1/2"></div>
+                </div>
+            </div>
+        );
+
+        // --- MAIN APP COMPONENT ---
+        function App() {
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+            const processedUnitData = useMemo(() => INITIAL_UNIT_DATA_FROM_CSV.map(u => ({
+                ...u,
+                target12m: u.weight / 100 * PROVINCIAL_TARGETS.month12,
+                percentAchieved6m: u.target6m > 0 ? (u.value69 / u.target6m) * 100 : 0
+            })), []);
+
+            const processedDistrictData = useMemo(() => {
+                const grouped = _.groupBy(processedUnitData, 'district');
+                return Object.keys(grouped).map(d => {
+                    const units = grouped[d];
+                    const sumTarget6m = _.sumBy(units, 'target6m');
+                    return {
+                        name: d,
+                        value68: _.sumBy(units, 'value68'),
+                        value69: _.sumBy(units, 'value69'),
+                        weight: _.sumBy(units, 'weight'),
+                        target6m: sumTarget6m,
+                        target12m: _.sumBy(units, 'target12m'),
+                        achievement: sumTarget6m > 0 ? (_.sumBy(units, 'value69') / sumTarget6m * 100) : 0
+                    };
+                }).sort((a,b) => b.weight - a.weight);
+            }, [processedUnitData]);
+
+            const currentTheme = THEMES[activeTab] || THEMES.dashboard;
+
+            return (
+                <div className="flex min-h-screen bg-slate-50 font-sans text-slate-900">
+                    <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200 transform transition-transform duration-300 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                        <div className="p-6 border-b border-slate-100 flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${currentTheme.gradient} flex items-center justify-center text-white shadow-lg`}>
+                                <ICONS.Leaf width={24} height={24} />
+                            </div>
+                            <div>
+                                <h1 className="font-bold text-slate-800 leading-none">SPHS</h1>
+                                <p className="text-xs text-slate-400 mt-1">Herbal Strategy System</p>
+                            </div>
+                        </div>
+                        <nav className="p-4 space-y-1 overflow-y-auto h-[calc(100vh-100px)] custom-scrollbar">
+                            {[
+                                { id: 'national', label: 'ระดับประเทศ/เขต', icon: ICONS.Globe },
+                                { id: 'dashboard', label: 'ภาพรวมจังหวัด', icon: ICONS.Dashboard },
+                                { id: 'district', label: 'ข้อมูลรายอำเภอ', icon: ICONS.Map },
+                                { id: 'unit', label: 'รายหน่วยบริการ', icon: ICONS.Hospital },
+                                { id: 'unitAnalysis', label: 'วิเคราะห์เจาะลึก', icon: ICONS.Analytics },
+                                { id: 'problem', label: 'วิเคราะห์ปัญหา (Problem/OFI)', icon: ICONS.ClipboardList },
+                                { id: 'topDrugs', label: '15 อันดับยา', icon: ICONS.Leaf },
+                                { id: 'replacement', label: 'ยาทดแทนแผนปัจจุบัน', icon: ICONS.Switch },
+                                { id: 'quality', label: 'คุณภาพ (QA)', icon: ICONS.Star },
+                                { id: 'supportingData', label: 'link ข้อมูลที่เกี่ยวข้อง', icon: ICONS.Database },
+                                { id: 'method', label: 'วิธีการคำนวณ', icon: ICONS.Calculator },
+                            ].map((menu) => {
+                                const IconComponent = menu.icon;
+                                return (
+                                    <button key={menu.id} onClick={() => { setActiveTab(menu.id); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${activeTab === menu.id ? `bg-gradient-to-r ${THEMES[menu.id].gradient} text-white shadow-md` : 'text-slate-600 hover:bg-slate-50'}`}>
+                                        <div className={`${activeTab === menu.id ? 'text-white' : THEMES[menu.id].text}`}>
+                                            <IconComponent width={20} height={20} />
+                                        </div>
+                                        <span className={`font-medium ${activeTab !== menu.id && 'group-hover:text-slate-900'}`}>{menu.label}</span>
+                                        {activeTab === menu.id && <div className="ml-auto"><ICONS.ArrowRight width={16} height={16} /></div>}
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                        <div className="absolute bottom-0 w-full p-4 border-t border-slate-100 bg-white text-xs text-center text-slate-400">v3.5 Stable Ed. <br/> Dev by ภก.จีรภัทร พลายงาม</div>
+                    </aside>
+                    <main className="flex-1 lg:ml-72 min-w-0 transition-all duration-300">
+                        <div className="lg:hidden bg-white border-b p-4 flex justify-between items-center sticky top-0 z-40">
+                            <div className="font-bold text-slate-800">SPHS Mobile</div>
+                            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 bg-slate-100 rounded-lg">
+                                <ICONS.Menu width={24} height={24} />
+                            </button>
+                        </div>
+                        <div className="p-4 md:p-8 max-w-7xl mx-auto">
+                            {activeTab === 'dashboard' && <DashboardView processedDistrictData={processedDistrictData} currentTheme={currentTheme} />}
+                            {activeTab === 'national' && <NationalView currentTheme={currentTheme} />}
+                            {activeTab === 'district' && <DistrictView processedDistrictData={processedDistrictData} processedUnitData={processedUnitData} currentTheme={currentTheme} />}
+                            {activeTab === 'unit' && <UnitView processedUnitData={processedUnitData} currentTheme={currentTheme} />}
+                            {activeTab === 'unitAnalysis' && <UnitAnalysisView processedUnitData={processedUnitData} currentTheme={currentTheme} />}
+                            {activeTab === 'problem' && <ProblemAnalysisView districtData={processedDistrictData} unitData={processedUnitData} currentTheme={currentTheme} />}
+                            {activeTab === 'topDrugs' && <TopDrugsView currentTheme={currentTheme} />}
+                            {activeTab === 'replacement' && <ReplacementView currentTheme={currentTheme} />}
+                            {activeTab === 'quality' && <QualityView currentTheme={currentTheme} />}
+                            {activeTab === 'supportingData' && <SupportingDataView currentTheme={currentTheme} />}
+                            {activeTab === 'method' && <MethodView currentTheme={currentTheme} />}
+                        </div>
+                    </main>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
