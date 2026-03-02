@@ -405,6 +405,26 @@
         };
 
         // ---------------------------------------------------------
+        // ฟังก์ชันสุ่มตัวเลขแบบกำหนด Seed (เพื่อให้ได้ผลลัพธ์เหมือนเดิมถ้าเลือกค่าเดิม)
+        // ---------------------------------------------------------
+        const getSeededRandom = (seedStr) => {
+          let h = 0xdeadbeef;
+          for(let i = 0; i < seedStr.length; i++) {
+              h = Math.imul(h ^ seedStr.charCodeAt(i), 2654435761);
+          }
+          h = Math.imul(h ^ (h >>> 16), 2246822507);
+          h ^= h >>> 13;
+          
+          let seed = h >>> 0;
+          return function() {
+              seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+              let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+              t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+              return ((t ^ t >>> 14) >>> 0) / 4294967296;
+          }
+        };
+
+        // ---------------------------------------------------------
         // เมนคอมโพเนนต์หลัก
         // ---------------------------------------------------------
         function AstroForecaster() {
@@ -485,18 +505,18 @@
             });
           };
 
-          const generateIntelligentDigits = (length, astroDigits, calendarDigits, activeMethods, currentLotteryId) => {
+          const generateIntelligentDigits = (length, astroDigits, calendarDigits, activeMethods, currentLotteryId, seededRandom) => {
             let finalNum = "";
 
             if (activeMethods.includes('freq') && currentLotteryId === 'thai') {
-              const useHistoryChance = Math.random();
+              const useHistoryChance = seededRandom();
               if (length === 2 && useHistoryChance < 0.35) {
                 const frequent2D = Object.entries(THAI_LOTTERY_2D_STATS).filter(([num, count]) => count >= 3).map(([num]) => num);
-                if (frequent2D.length > 0) return frequent2D[Math.floor(Math.random() * frequent2D.length)];
+                if (frequent2D.length > 0) return frequent2D[Math.floor(seededRandom() * frequent2D.length)];
               }
               if (length === 3 && useHistoryChance < 0.30) {
                 const frequent3D = Object.keys(THAI_LOTTERY_3D_STATS);
-                return frequent3D[Math.floor(Math.random() * frequent3D.length)];
+                return frequent3D[Math.floor(seededRandom() * frequent3D.length)];
               }
             }
 
@@ -510,7 +530,7 @@
 
             const pickWeightedDigit = () => {
               let totalWeight = digitWeights.reduce((sum, w) => sum + w, 0);
-              let randomVal = Math.random() * totalWeight;
+              let randomVal = seededRandom() * totalWeight;
               for (let i = 0; i < 10; i++) {
                 randomVal -= digitWeights[i];
                 if (randomVal <= 0) return i.toString();
@@ -532,6 +552,10 @@
             setShowConfetti(false);
 
             setTimeout(() => {
+              // 1. สร้าง Seeded Random จากค่าพารามิเตอร์ที่บอสเลือก เพื่อล็อกค่าผลลัพธ์
+              const seedString = `${selectedLottery}-${drawDate}-${[...selectedMethods].sort().join('-')}`;
+              const seededRandom = getSeededRandom(seedString);
+
               const currentLottery = LOTTERY_TYPES.find(l => l.id === selectedLottery);
               const drawDateObj = new Date(drawDate);
               const dayOfWeek = drawDateObj.getDay();
@@ -546,7 +570,8 @@
                 ];
 
                 const options = levelsData.map(lvl => {
-                  const num = generateIntelligentDigits(format.digits, astroOfDay.luckyDigits, calendarData.digits, selectedMethods, currentLottery.id);
+                  // ส่งตัวสุ่มแบบ Seed เข้าไปคำนวณ
+                  const num = generateIntelligentDigits(format.digits, astroOfDay.luckyDigits, calendarData.digits, selectedMethods, currentLottery.id, seededRandom);
                   let historyCount = 0, isRealData = false, showHistory = false;
 
                   if (currentLottery.id === 'thai') {
@@ -562,9 +587,12 @@
                 return { label: format.label, options: options };
               });
 
-              const baseConfidence = Math.floor(Math.random() * (85 - 75 + 1) + 75);
+              const baseConfidence = Math.floor(seededRandom() * (85 - 75 + 1) + 75);
               const confidenceBonus = selectedMethods.length * 2;
               const finalConfidence = Math.min(99, baseConfidence + confidenceBonus);
+              
+              // สร้างรหัส Session ID แบบล็อกค่าตาม Seed
+              const staticSessionId = Math.floor(seededRandom() * 0xFFFFFF).toString(16).padStart(6, '0').toUpperCase();
 
               setResult({
                 dateStr: drawDateObj.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
@@ -577,7 +605,7 @@
                 calendarDigits: calendarData.digits.join(', '),
                 confidence: finalConfidence,
                 sets: generatedSets,
-                seed: Math.random().toString(36).substring(7).toUpperCase()
+                seed: staticSessionId
               });
 
               setIsGenerating(false);
@@ -600,7 +628,7 @@
               {/* Right Edge Warning Marquee */}
               <div className="right-edge-marquee print:hidden">
                 <div className="right-edge-text">
-                  ตัวเลขเหล่านี้ เป็นแค่การคาดคะเน แต่หากถูก อย่าลืมนึกถึงคนเขียนโปรแกรมด้วยนะคร้าฟ
+                  ตัวเลขเหล่านี้ เป็นแค่การคาดคะเน แต่หากถูก อย่าลืมนึกถึงคนเขียนโปรแกรมด้วย
                 </div>
               </div>
 
@@ -1107,5 +1135,4 @@
         root.render(<AstroForecaster />);
     </script>
 </body>
-
 </html>
