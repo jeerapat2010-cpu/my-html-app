@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>แชทบอทขออนุญาตกัญชา • สสจ.สมุทรปราการ (AI Version)</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --mint:#00c896; --mint2:#00e5ac; --mint3:#80edd0; --mint4:#d0f7ec; --mint5:#edfff9;
+    --teal:#009e7a; --teal2:#00755a;
+    --bg: #f4f7f6;
+  }
+  
+  body {
+    font-family: 'Prompt', 'Kanit', sans-serif;
+    background-color: var(--bg);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  
+  .chat-container {
+    width: 100%;
+    max-width: 480px;
+    height: 100vh;
+    background: #fff;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+  }
+  
+  @media (min-width: 500px) {
+    .chat-container {
+      height: 90vh;
+      max-height: 800px;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+  }
+
+  .header {
+    background: linear-gradient(135deg, var(--teal), var(--mint));
+    color: white;
+    padding: 20px;
+    text-align: center;
+    font-size: 1.25rem;
+    font-weight: 600;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 10;
+    position: relative;
+  }
+
+  .header span {
+    font-size: 0.85rem;
+    font-weight: 400;
+    opacity: 0.9;
+    display: block;
+    margin-top: 5px;
+  }
+  
+  .api-badge {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: rgba(255,255,255,0.2);
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    backdrop-filter: blur(5px);
+  }
+
+  .quick-menu-bar {
+    display: flex;
+    overflow-x: auto;
+    background: white;
+    padding: 10px 15px;
+    gap: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    border-bottom: 1px solid #eee;
+  }
+
+  .quick-menu-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chip {
+    background: var(--mint4);
+    color: var(--teal2);
+    border: 1px solid var(--mint3);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    font-weight: 500;
+  }
+
+  .chip:hover {
+    background: var(--mint3);
+    transform: translateY(-1px);
+  }
+
+  .chat-box {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    background: var(--mint5);
+    scroll-behavior: smooth;
+  }
+
+  .bub {
+    max-width: 85%;
+    padding: 12px 16px;
+    border-radius: 18px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    animation: fadeIn 0.3s ease;
+    word-wrap: break-word;
+  }
+
+  .bub.usr {
+    align-self: flex-end;
+    background: var(--mint);
+    color: white;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,200,150,0.2);
+  }
+
+  .bub.bot {
+    align-self: flex-start;
+    background: white;
+    color: #333;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    border: 1px solid #e0f2f1;
+  }
+
+  /* จัดการ Markdown พื้นฐานให้สวยงาม */
+  .bub.bot a { color: var(--teal); font-weight: 600; text-decoration: underline; }
+  .bub.bot strong { color: var(--teal2); }
+  .bub.bot ul, .bub.bot ol { margin: 8px 0; padding-left: 20px; }
+  .bub.bot li { margin-bottom: 4px; }
+
+  .input-area {
+    padding: 15px;
+    background: white;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 10px;
+  }
+
+  input[type="text"] {
+    flex: 1;
+    padding: 12px 18px;
+    border: 1px solid #ddd;
+    border-radius: 25px;
+    outline: none;
+    font-family: inherit;
+    font-size: 0.95rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  input[type="text"]:focus {
+    border-color: var(--mint);
+    box-shadow: 0 0 0 3px var(--mint4);
+  }
+
+  button.send-btn {
+    background: var(--teal);
+    color: white;
+    border: none;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.2s, background 0.2s;
+  }
+
+  button.send-btn:hover {
+    background: var(--teal2);
+    transform: scale(1.05);
+  }
+
+  button.send-btn svg {
+    width: 22px;
+    height: 22px;
+    fill: white;
+  }
+
+  .typing {
+    display: flex;
+    gap: 5px;
+    padding: 5px 2px;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    background: var(--teal);
+    border-radius: 50%;
+    animation: bounce 1.4s infinite ease-in-out both;
+  }
+  .dot:nth-child(1) { animation-delay: -0.32s; }
+  .dot:nth-child(2) { animation-delay: -0.16s; }
+
+  @keyframes bounce {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="chat-container">
+  <div class="header">
+    <div class="api-badge">✨ AI Powered</div>
+    🌿 แชทบอทขออนุญาตกัญชา (อัจฉริยะ)<br>
+    <span>สำนักงานสาธารณสุขจังหวัดสมุทรปราการ</span>
+  </div>
+  
+  <div class="quick-menu-bar">
+    <button class="chip" onclick="quickSend('ขอลิงก์ดาวน์โหลดฟอร์มทั้งหมดหน่อยครับ')">📥 โหลดฟอร์มรวม</button>
+    <button class="chip" onclick="quickSend('เปิดร้านใหม่ต้องใช้เอกสารอะไรบ้าง (นิติบุคคล)')">🏢 เปิดร้าน (นิติบุคคล)</button>
+    <button class="chip" onclick="quickSend('สรุปกฎหมายกัญชาใหม่ให้ฟังหน่อย')">🚨 กฎหมายใหม่</button>
+    <button class="chip" onclick="quickSend('ถ่ายรูปเพื่อขออนุญาต ต้องถ่ายจุดไหนบ้าง')">📸 ถ่ายรูปสถานที่</button>
+    <button class="chip" onclick="quickSend('ขอยกเลิกใบอนุญาต ต้องทำอย่างไร')">❌ ยกเลิกใบอนุญาต</button>
+  </div>
+
+  <div class="chat-box" id="chatbox">
+    <!-- ข้อความจะปรากฏที่นี่ -->
+  </div>
+  <div class="input-area">
+    <input type="text" id="inp" placeholder="พิมพ์ข้อความที่ต้องการสอบถาม..." onkeypress="if(event.key === 'Enter') send()" autocomplete="off">
+    <button class="send-btn" onclick="send()" aria-label="ส่งข้อความ">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+  // ==========================================
+  // 1. นำ API Key ของ Gemini ที่คัดลอกมา วางในเครื่องหมายคำพูดด้านล่างนี้เลยครับ
+  // ==========================================
+  const GEMINI_API_KEY = "AIzaSyCK6MD71wHr0XynWQ9riKgDPHyIULa03Bs"; 
+  // ==========================================
+
+  const chatbox = document.getElementById('chatbox');
+  
+  // โครงสร้างความจำของ AI (เพื่อให้จำบริบทการคุยได้)
+  let conversationHistory = [];
+
+  // ข้อมูลฝังหัว (System Instruction) บอกให้ AI รู้ตัวว่าตัวเองเป็นใคร และมีข้อมูลอะไรบ้าง
+  const systemPrompt = `
+คุณคือ "เจ้าหน้าที่ AI ผู้เชี่ยวชาญด้านการขออนุญาตกัญชา-กัญชง" ประจำสำนักงานสาธารณสุขจังหวัดสมุทรปราการ (สสจ.สมุทรปราการ)
+หน้าที่ของคุณคือ: ให้ข้อมูล ให้คำปรึกษา ตอบคำถามเรื่องกฎหมาย ระเบียบ เอกสาร และขั้นตอนต่างๆ อย่างแม่นยำ เป็นมิตร สุภาพ และเข้าใจง่าย
+ให้ใช้ภาษาไทยที่เป็นธรรมชาติ สามารถใช้ Emoji ประกอบการอธิบายได้ และจัดรูปแบบข้อความให้อ่านง่าย (ใช้ Bullet, ตัวหนา)
+
+**ฐานข้อมูลความรู้ที่คุณต้องอ้างอิง:**
+1. **กฎกระทรวงใหม่ (พ.ศ. 2568-2569):**
+- สถานประกอบการต้องยกระดับเป็น สถานพยาบาล, ร้านยา, ร้านผลิตภัณฑ์สมุนไพร หรือสถานที่หมอพื้นบ้าน เท่านั้น
+- ต้องมีกรรมสิทธิ์ในสถานที่ หรือ สัญญาเช่าที่ระบุการยินยอมให้ใช้อย่างน้อย 3 ปี พร้อมระบบควบคุมกลิ่น/ควัน
+- บุคลากร: ต้องมีวิชาชีพ (กลุ่ม 6+1 เช่น แพทย์, เภสัช, หมอพื้นบ้าน) หรือ "Budtender" ที่ผ่านการอบรมจากกรมฯ ประจำร้านตลอดเวลา
+
+2. **ข้อห้ามและบทลงโทษ:**
+- ห้ามขายทางออนไลน์ และตู้จำหน่ายอัตโนมัติเด็ดขาด
+- ห้ามโฆษณาเพื่อการค้าทุกรูปแบบ
+- ห้ามขายให้: ผู้ที่มีอายุต่ำกว่า 20 ปี, สตรีมีครรภ์, สตรีให้นมบุตร, และ "นักเรียน/นิสิต/นักศึกษา"
+- โทษเพิกถอนใบอนุญาต: หากจัดทำรายงานเท็จ, ขายให้บุคคลต้องห้าม หรือหากถูกพักใช้แล้วยังแอบเปิดร้าน
+
+3. **กฎเกณฑ์ป้ายร้านและป้ายเตือน:**
+- ป้ายชื่อร้าน: ต้องมีภาษาไทย ทำจากวัสดุถาวร (ห้ามใช้ไวนิล หรือ ผ้าใบ)
+- ป้ายข้อห้าม (สีเขียว): ต้องทำจาก "อะคริลิค" ตัวอักษรสีขาว ความสูงตัวอักษรไม่ต่ำกว่า 5 ซม.
+
+4. **การถ่ายรูปสถานที่ (ต้องพิมพ์สี 1 รูปต่อ A4):**
+- ต้องมี: อาคารมุมกว้างเห็นเลขที่บ้าน, ป้ายร้าน, ป้ายห้ามอะคริลิค
+- ภายในร้าน: เครื่องชั่งดิจิตอล, เครื่องปรับอากาศ(แอร์), พัดลมระบายอากาศ, ตู้สำหรับจัดเก็บวัตถุดิบแยก
+- บรรจุภัณฑ์: ต้องมีฉลากชื่อ/ราคา/วันผลิต และต้องมี "ซองกันชื้น" ให้เห็นชัดเจน
+
+5. **เอกสาร ภ.ท.12 (บุคคลธรรมดา และ นิติบุคคล):**
+- ต้องมีแผนผังพร้อมพิกัด Lat/Long 
+- นิติบุคคล: ต้องมีหนังสือบริคณห์สนธิ, และหนังสือแต่งตั้งผู้ดำเนินกิจการ "ติดอากรแสตมป์ 30 บาท"
+- กรณีเช่า: ต้องมีหนังสือยินยอมจาก "เจ้าบ้าน" เท่านั้น
+- ใบอนุญาตแหล่งรับช่อดอก: ต้องขอสำเนาใบอนุญาตต้นทาง พร้อมภาพแคปหน้าจอ Google Map พิกัดต้นทาง
+
+6. **การยกเลิกใบอนุญาต:**
+- ต้องคืนใบอนุญาตฉบับจริง
+- มอบอำนาจติดอากรแสตมป์ 10 บาท
+- จะไม่สามารถขอคืนค่าธรรมเนียม 3,020 บาทได้
+
+7. **การนำเข้า-ส่งออก:**
+- ส่งออกใช้แบบ ภ.ท.32 (ขอรายครั้ง), รายงานรายเดือนใช้แบบ ภ.ท.31 (ไม่มีการส่งออกก็ต้องส่ง Zero Report)
+- ปัจจุบันห้ามนำเข้าเพื่อการพาณิชย์
+
+**ลิงก์สำคัญ (จงเลือกแจกให้ตรงกับบริบทที่ผู้ใช้ถาม):**
+- ลิงก์รวมทุกฟอร์ม และ Google Drive สสจ.: https://drive.google.com/drive/folders/1DY8p_s7Ng15hFkp7VmKPzstEYM4P_zQJ?usp=sharing
+- ลิงก์ฟอร์มยกเลิกใบอนุญาต: https://drive.google.com/file/d/1VytAnKQCDCvkTxVaidWqOWL6Lwcpr82A/view?usp=drive_link
+- ลิงก์ตัวอย่างการถ่ายรูป: https://drive.google.com/file/d/1ZLh7Caf2oTwWpscOcAamwmgTvS7XQgh_/view?usp=drive_link
+- ลิงก์ตัวอย่างใบแหล่งรับกัญชา: https://drive.google.com/file/d/1dUsMMfvlbopplmD7zfrvBuIsk7dkPVXY/view?usp=drive_link
+- ลิงก์ฟอร์มหนังสือยินยอม(เจ้าบ้าน): https://drive.google.com/file/d/10OYhai9q-Hhd0MASqL-6U_Rc38yGqbxB/view?usp=drive_link
+
+หากผู้ใช้ถามนอกเหนือจากเรื่องกัญชา ให้ตอบกลับสุภาพว่าคุณเป็นผู้ช่วยด้านกัญชาของ สสจ.สมุทรปราการ เท่านั้น (โทร 02-389-5980)
+  `;
+
+  // ฟังก์ชันแปลงข้อความ Markdown เบื้องต้นให้เป็น HTML 
+  function parseMarkdown(text) {
+    let html = text
+      // ตัวหนา **text**
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      // ลิงก์ [text](url) -> แปลงเป็นแท็ก a
+      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>')
+      // ลิงก์แบบ URL เปล่าๆ (https://...)
+      .replace(/(https?:\/\/[^\s]+)/g, function(match, url) {
+         // ป้องกันการแปลงซ้ำซ้อนถ้ามันอยู่ในแท็ก <a> ไปแล้ว
+         if(match.includes('href=')) return match;
+         return `<a href="${url}" target="_blank">${url}</a>`;
+      })
+      // การขึ้นบรรทัดใหม่
+      .replace(/\n/g, '<br>');
+    return html;
+  }
+
+  function addMsgHTML(html) {
+    chatbox.insertAdjacentHTML('beforeend', html);
+    chatbox.scrollTop = chatbox.scrollHeight;
+  }
+
+  function addMsg(type, text) {
+    let content = "";
+    if(type === 'user') {
+      content = `<div class="bub usr">${text}</div>`;
+    } else {
+      content = `<div class="bub bot">${parseMarkdown(text)}</div>`;
+    }
+    addMsgHTML(content);
+  }
+
+  function showTyping() {
+    const id = 'typing-' + Date.now();
+    const html = `<div class="bub bot" id="${id}"><div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+    addMsgHTML(html);
+    return id;
+  }
+
+  function removeTyping(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  }
+
+  // เชื่อมต่อ Gemini API
+  async function callGeminiAPI(userText) {
+    if(GEMINI_API_KEY === "วาง_API_KEY_ของท่านที่นี่" || !GEMINI_API_KEY) {
+       return "⚠️ **พบข้อผิดพลาด:** ท่านยังไม่ได้กรอก API Key ครับ\n\nกรุณาเปิดไฟล์โค้ดนี้ขึ้นมาแก้ไข แล้วนำ API Key ที่ได้จาก Google AI Studio ไปวางในบรรทัดที่ `const GEMINI_API_KEY = \"...\";` แล้วรีเฟรชหน้าเว็บอีกครั้งครับ";
+    }
+
+    // เตรียมประวัติการคุยส่งให้ AI
+    let contents = [...conversationHistory, { role: "user", parts: [{ text: userText }] }];
+
+    const payload = {
+      contents: contents,
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      generationConfig: { 
+        temperature: 0.2, // ให้ตอบแบบมีความแม่นยำสูง ไม่เพ้อเจ้อ
+        topK: 40,
+        topP: 0.95 
+      }
+    };
+
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        console.error("API Error:", data.error);
+        return `⚠️ เกิดข้อผิดพลาดจาก API: ${data.error.message}`;
+      }
+
+      const botReply = data.candidates[0].content.parts[0].text;
+      
+      // บันทึกความจำ
+      conversationHistory.push({ role: "user", parts: [{ text: userText }] });
+      conversationHistory.push({ role: "model", parts: [{ text: botReply }] });
+
+      return botReply;
+
+    } catch (error) {
+      console.error("Fetch Error:", error);
+      return "⚠️ ขออภัยครับ ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ AI ได้ในขณะนี้ โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ต หรือ API Key ของท่านครับ";
+    }
+  }
+
+  async function processUserMessage(text) {
+    const typingId = showTyping();
+    const reply = await callGeminiAPI(text);
+    removeTyping(typingId);
+    addMsg('bot', reply);
+  }
+
+  function quickSend(text) {
+    addMsg('user', text);
+    processUserMessage(text);
+  }
+
+  function send() {
+    const inp = document.getElementById('inp');
+    const txt = inp.value.trim();
+    if (!txt) return;
+    inp.value = '';
+    addMsg('user', txt);
+    processUserMessage(txt);
+  }
+
+  window.onload = function() {
+    // ทักทายเมื่อเปิดหน้าจอ
+    setTimeout(() => {
+      addMsg('bot', "สวัสดีครับ! ผมคือผู้ช่วย AI ประจำ สสจ.สมุทรปราการ 🌿\nยินดีให้คำปรึกษา แนะนำเรื่องการขอใบอนุญาตกัญชา กฎหมายใหม่ และการจัดเตรียมเอกสารแบบเจาะลึกครับ\n\n*(หมายเหตุ: ระบบนี้ขับเคลื่อนด้วย Google Gemini ท่านสามารถพิมพ์ถามโต้ตอบได้เหมือนคุยกับมนุษย์เลยครับ)*");
+    }, 500);
+  };
+</script>
+</body>
+</html>
