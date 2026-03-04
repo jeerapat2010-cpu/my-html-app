@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>แชทบอทขออนุญาตกัญชา • สสจ.สมุทรปราการ (AI Version)</title>
+<title>AI แชทบอท การขออนุญาตจำหน่ายช่อดอกกัญชา • สสจ.สมุทรปราการ</title>
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -146,7 +146,8 @@
   }
 
   /* จัดการ Markdown พื้นฐานให้สวยงาม */
-  .bub.bot a { color: var(--teal); font-weight: 600; text-decoration: underline; }
+  .bub.bot a { color: #00755a; font-weight: 600; text-decoration: underline; word-break: break-all; }
+  .bub.bot a:hover { color: #009e7a; }
   .bub.bot strong { color: var(--teal2); }
   .bub.bot ul, .bub.bot ol { margin: 8px 0; padding-left: 20px; }
   .bub.bot li { margin-bottom: 4px; }
@@ -225,6 +226,16 @@
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  
+  .footer {
+    text-align: center;
+    font-size: 0.7rem;
+    color: #888;
+    padding: 8px 15px;
+    background: #fafafa;
+    border-top: 1px solid #eee;
+    line-height: 1.4;
+  }
 </style>
 </head>
 <body>
@@ -232,7 +243,7 @@
 <div class="chat-container">
   <div class="header">
     <div class="api-badge">✨ AI Powered</div>
-    🌿 แชทบอทขออนุญาตกัญชา (อัจฉริยะ)<br>
+    🌿 AI แชทบอท การขออนุญาตจำหน่ายช่อดอกกัญชา<br>
     <span>สำนักงานสาธารณสุขจังหวัดสมุทรปราการ</span>
   </div>
   
@@ -253,6 +264,10 @@
       <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
     </button>
   </div>
+  <div class="footer">
+    <strong>พัฒนาโดย:</strong> ภก.จีรภัทร พลายงาม กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก<br>
+    <em>v2.0 - อัปเดตฐานข้อมูลตามร่างกฎกระทรวงฯ กัญชาฉบับใหม่ (พ.ศ. 2568-2569)</em>
+  </div>
 </div>
 
 <script>
@@ -262,12 +277,22 @@
   const GEMINI_API_KEY = "AIzaSyCK6MD71wHr0XynWQ9riKgDPHyIULa03Bs"; 
   // ==========================================
 
+  // ==========================================
+  // 2. แผงจัดการลิงก์เอกสาร 
+  // ==========================================
+  const DOC_LINKS = {
+    all_forms: "https://drive.google.com/drive/folders/1DY8p_s7Ng15hFkp7VmKPzstEYM4P_zQJ?usp=sharing",
+    cancel_form: "https://drive.google.com/file/d/1VytAnKQCDCvkTxVaidWqOWL6Lwcpr82A/view?usp=drive_link",
+    photo_example: "https://drive.google.com/file/d/1ZLh7Caf2oTwWpscOcAamwmgTvS7XQgh_/view?usp=drive_link",
+    source_license: "https://drive.google.com/file/d/1dUsMMfvlbopplmD7zfrvBuIsk7dkPVXY/view?usp=drive_link",
+    consent_form: "https://drive.google.com/file/d/10OYhai9q-Hhd0MASqL-6U_Rc38yGqbxB/view?usp=drive_link"
+  };
+  // ==========================================
+
   const chatbox = document.getElementById('chatbox');
-  
-  // โครงสร้างความจำของ AI (เพื่อให้จำบริบทการคุยได้)
   let conversationHistory = [];
 
-  // ข้อมูลฝังหัว (System Instruction) บอกให้ AI รู้ตัวว่าตัวเองเป็นใคร และมีข้อมูลอะไรบ้าง
+  // ข้อมูลฝังหัว (System Instruction) 
   const systemPrompt = `
 คุณคือ "เจ้าหน้าที่ AI ผู้เชี่ยวชาญด้านการขออนุญาตกัญชา-กัญชง" ประจำสำนักงานสาธารณสุขจังหวัดสมุทรปราการ (สสจ.สมุทรปราการ)
 หน้าที่ของคุณคือ: ให้ข้อมูล ให้คำปรึกษา ตอบคำถามเรื่องกฎหมาย ระเบียบ เอกสาร และขั้นตอนต่างๆ อย่างแม่นยำ เป็นมิตร สุภาพ และเข้าใจง่าย
@@ -310,29 +335,31 @@
 - ปัจจุบันห้ามนำเข้าเพื่อการพาณิชย์
 
 **ลิงก์สำคัญ (จงเลือกแจกให้ตรงกับบริบทที่ผู้ใช้ถาม):**
-- ลิงก์รวมทุกฟอร์ม และ Google Drive สสจ.: https://drive.google.com/drive/folders/1DY8p_s7Ng15hFkp7VmKPzstEYM4P_zQJ?usp=sharing
-- ลิงก์ฟอร์มยกเลิกใบอนุญาต: https://drive.google.com/file/d/1VytAnKQCDCvkTxVaidWqOWL6Lwcpr82A/view?usp=drive_link
-- ลิงก์ตัวอย่างการถ่ายรูป: https://drive.google.com/file/d/1ZLh7Caf2oTwWpscOcAamwmgTvS7XQgh_/view?usp=drive_link
-- ลิงก์ตัวอย่างใบแหล่งรับกัญชา: https://drive.google.com/file/d/1dUsMMfvlbopplmD7zfrvBuIsk7dkPVXY/view?usp=drive_link
-- ลิงก์ฟอร์มหนังสือยินยอม(เจ้าบ้าน): https://drive.google.com/file/d/10OYhai9q-Hhd0MASqL-6U_Rc38yGqbxB/view?usp=drive_link
+- ลิงก์รวมทุกฟอร์มและเอกสาร สสจ.: ${DOC_LINKS.all_forms}
+- ลิงก์ฟอร์มแจ้งยกเลิกใบอนุญาต: ${DOC_LINKS.cancel_form}
+- ลิงก์ตัวอย่างการถ่ายรูปสถานที่: ${DOC_LINKS.photo_example}
+- ลิงก์ตัวอย่างใบอนุญาตแหล่งรับกัญชา: ${DOC_LINKS.source_license}
+- ลิงก์ฟอร์มหนังสือยินยอมให้ใช้สถานที่ (เจ้าบ้าน): ${DOC_LINKS.consent_form}
+
+**ข้อกำหนดในการให้ลิงก์ (สำคัญมาก):**
+- เมื่อใดก็ตามที่คุณให้ลิงก์แก่ผู้ใช้งาน ห้ามส่ง URL เปล่าๆ เด็ดขาด ให้ใช้รูปแบบ Markdown ที่คลิกได้เสมอ เช่น [คลิกที่นี่เพื่อดาวน์โหลดเอกสาร](ใส่URL) หรือ [ดูตัวอย่างการถ่ายรูปที่นี่](ใส่URL) 
 
 หากผู้ใช้ถามนอกเหนือจากเรื่องกัญชา ให้ตอบกลับสุภาพว่าคุณเป็นผู้ช่วยด้านกัญชาของ สสจ.สมุทรปราการ เท่านั้น (โทร 02-389-5980)
   `;
 
-  // ฟังก์ชันแปลงข้อความ Markdown เบื้องต้นให้เป็น HTML 
+  // ฟังก์ชันแปลงข้อความ Markdown ให้เป็น HTML พร้อมปรับปรุงลิงก์ให้สวยงาม
   function parseMarkdown(text) {
     let html = text
-      // ตัวหนา **text**
+      // แปลงตัวหนา **text**
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      // ลิงก์ [text](url) -> แปลงเป็นแท็ก a
-      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>')
-      // ลิงก์แบบ URL เปล่าๆ (https://...)
-      .replace(/(https?:\/\/[^\s]+)/g, function(match, url) {
-         // ป้องกันการแปลงซ้ำซ้อนถ้ามันอยู่ในแท็ก <a> ไปแล้ว
-         if(match.includes('href=')) return match;
-         return `<a href="${url}" target="_blank">${url}</a>`;
+      // แปลง Markdown Link [text](url) -> แท็ก <a>
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+      // แปลง URL เปล่าๆ ที่ AI อาจหลุดส่งมา ให้เป็นแท็ก <a>
+      .replace(/(^|[^"'])(https?:\/\/[^\s<]+)/g, function(match, p1, url) {
+         if(url.includes('href=')) return match;
+         return `${p1}<a href="${url}" target="_blank">${url}</a>`;
       })
-      // การขึ้นบรรทัดใหม่
+      // จัดการการขึ้นบรรทัดใหม่
       .replace(/\n/g, '<br>');
     return html;
   }
@@ -356,6 +383,7 @@
     const id = 'typing-' + Date.now();
     const html = `<div class="bub bot" id="${id}"><div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
     addMsgHTML(html);
+    chatbox.scrollTop = chatbox.scrollHeight;
     return id;
   }
 
@@ -366,8 +394,8 @@
 
   // เชื่อมต่อ Gemini API
   async function callGeminiAPI(userText) {
-    if(GEMINI_API_KEY === "วาง_API_KEY_ของท่านที่นี่" || !GEMINI_API_KEY) {
-       return "⚠️ **พบข้อผิดพลาด:** ท่านยังไม่ได้กรอก API Key ครับ\n\nกรุณาเปิดไฟล์โค้ดนี้ขึ้นมาแก้ไข แล้วนำ API Key ที่ได้จาก Google AI Studio ไปวางในบรรทัดที่ `const GEMINI_API_KEY = \"...\";` แล้วรีเฟรชหน้าเว็บอีกครั้งครับ";
+    if(!GEMINI_API_KEY || GEMINI_API_KEY.includes("วาง_API_KEY")) {
+       return "⚠️ **พบข้อผิดพลาด:** ท่านยังไม่ได้กรอก API Key ครับ\n\nกรุณาเปิดไฟล์โค้ดนี้ขึ้นมาแก้ไข แล้วนำ API Key ที่ได้จาก Google AI Studio ไปวางในโค้ดบรรทัด `const GEMINI_API_KEY = \"...\";` ให้เรียบร้อยครับ";
     }
 
     // เตรียมประวัติการคุยส่งให้ AI
@@ -399,7 +427,7 @@
 
       const botReply = data.candidates[0].content.parts[0].text;
       
-      // บันทึกความจำ
+      // บันทึกความจำ เพื่อให้ถามต่อเนื่องได้
       conversationHistory.push({ role: "user", parts: [{ text: userText }] });
       conversationHistory.push({ role: "model", parts: [{ text: botReply }] });
 
@@ -435,7 +463,7 @@
   window.onload = function() {
     // ทักทายเมื่อเปิดหน้าจอ
     setTimeout(() => {
-      addMsg('bot', "สวัสดีครับ! ผมคือผู้ช่วย AI ประจำ สสจ.สมุทรปราการ 🌿\nยินดีให้คำปรึกษา แนะนำเรื่องการขอใบอนุญาตกัญชา กฎหมายใหม่ และการจัดเตรียมเอกสารแบบเจาะลึกครับ\n\n*(หมายเหตุ: ระบบนี้ขับเคลื่อนด้วย Google Gemini ท่านสามารถพิมพ์ถามโต้ตอบได้เหมือนคุยกับมนุษย์เลยครับ)*");
+      addMsg('bot', "สวัสดีครับ! ผมคือผู้ช่วย AI ประจำ สสจ.สมุทรปราการ 🌿\nยินดีให้คำปรึกษา แนะนำเรื่องการขอใบอนุญาตกัญชา กฎหมายใหม่ และแจกแบบฟอร์มเอกสารต่างๆ ครับ\n\n*(หมายเหตุ: ระบบนี้ขับเคลื่อนด้วย Google Gemini ท่านสามารถพิมพ์ถามโต้ตอบได้เหมือนคุยกับมนุษย์เลยครับ)*");
     }, 500);
   };
 </script>
