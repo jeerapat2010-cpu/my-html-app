@@ -353,6 +353,34 @@ function ModeToggle({mode,setMode}){
 /* ══════════════════════════════════════════════════
    MAIN APP
 ══════════════════════════════════════════════════ */
+/* ── EXPENSE/INCOME SUGGESTIONS ── */
+const SUG_MY_INC=["เงินเดือน","เงินประจำตำแหน่ง","ค่าเสี่ยงภัย/พตส.","ค่าตอบแทน","รายได้เสริม","งานอาชีพอิสระ","ค่าเช่า","ปันผล","ดอกเบี้ย"];
+const SUG_SP_INC=["เงินเดือน","เงินประจำตำแหน่ง","รายได้เสริม","ค่าเช่า","ปันผล","ค่าตอบแทนพิเศษ"];
+const SUG_KID_INC=["เงินฝึกงาน","ทุนการศึกษา","รายได้พิเศษ","เงินช่วยเหลือ"];
+
+const SUG_MY_EXP=["ค่าใช้จ่ายส่วนตัว","ค่าอาหารนอกบ้าน","ค่าเสื้อผ้า/ของใช้","ค่ารักษาพยาบาล","ค่ายา/ค่าอุปกรณ์","ค่าเดินทาง/น้ำมัน","ค่าผ่อนรถ","ค่าประกันชีวิต","ค่าประกันสุขภาพ","ค่าออมเพิ่มเติม","ค่าบันเทิง/งานอดิเรก","ท่องเที่ยว/พักผ่อน","ค่าโทรศัพท์มือถือ","ค่าสมาชิก/subscription"];
+const SUG_SP_EXP=["ค่าใช้จ่ายส่วนตัว","ค่าเสื้อผ้า/เครื่องสำอาง","ค่าอาหารนอกบ้าน","ค่ารักษาพยาบาล","ค่าเดินทาง","ค่าประกันสุขภาพ","ค่าบันเทิง","ท่องเที่ยว"];
+const SUG_KID_EXP=["ค่าเล่าเรียน","ค่าหอพัก","ค่าอาหาร","ค่าหนังสือ/อุปกรณ์","ค่าเดินทาง","ค่าโทรศัพท์","ค่ากิจกรรม"];
+const SUG_SHARED_EXP=[
+  // สาธารณูปโภค
+  "ค่าไฟฟ้า","ค่าน้ำประปา","ค่าก๊าซหุงต้ม","ค่าอินเทอร์เน็ตบ้าน","ค่าโทรศัพท์บ้าน","ค่าเคเบิ้ลทีวี/streaming",
+  // อาหาร/ครัวเรือน
+  "ค่าอาหารครัวเรือน","ของชำ/ตลาด","วัสดุทำความสะอาด","ผลิตภัณฑ์ซักล้าง",
+  // บ้าน
+  "ค่าผ่อนบ้าน","ค่าเช่าบ้าน","ค่าซ่อมบำรุงบ้าน","ค่าของใช้ในบ้าน","ค่าเฟอร์นิเจอร์/อุปกรณ์","ค่าสวน/ดูแลบ้าน",
+  // ยานพาหนะ
+  "ค่าผ่อนรถ","ค่าน้ำมันรถ","ค่าประกันรถ","ค่าซ่อมรถ/บำรุง","ค่าจอดรถ","ค่า Grab/แท็กซี่",
+  // ประกัน/การเงิน
+  "ค่าประกันบ้าน","ค่าประกันชีวิตครอบครัว","ค่าภาษีที่ดิน","เงินออมครอบครัว",
+  // สุขภาพ/การศึกษา
+  "ค่าตรวจสุขภาพประจำปี","ค่ายาและสุขภาพ","ค่าเรียนพิเศษลูก","ค่ากิจกรรมลูก",
+  // บันเทิง/ท่องเที่ยว
+  "ค่าท่องเที่ยวครอบครัว","ค่าอาหารนอกบ้าน/ร้านอาหาร","ค่างานเลี้ยง/สังสรรค์","ค่าของขวัญ/เทศกาล",
+  // อื่นๆ
+  "เงินบริจาค/ทำบุญ","ค่าดูแลผู้สูงอายุ","เงินช่วยเหลือญาติ","ค่าบริการต่างๆ"
+];
+
+
 function App(){
   const[active,setActive]=useState("dashboard");
   const[sideOpen,setSideOpen]=useState(true);
@@ -516,16 +544,59 @@ function App(){
   const sideW=sideOpen?220:60;
 
   /* ── list editor component ── */
-  function ListEditor({list,setter,color}){
-    const tot=list.reduce((s,x)=>s+x.amount,0);
-    return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
-      {list.map(it=>(<div key={it.id} style={{display:"flex",gap:5,alignItems:"center"}}>
-        <input className="inp-sm" value={it.label} onChange={e=>updItem(setter,it.id,"label",e.target.value)} style={{flex:2,minWidth:0}}/>
-        <input className="inp-sm" type="number" value={it.amount} onChange={e=>updItem(setter,it.id,"amount",+e.target.value)} style={{flex:1,minWidth:0,textAlign:"right"}}/>
+  /* ── ListRow: local state prevents input bounce ── */
+  function ListRow({it,setter,color}){
+    const[lbl,setLbl]=useState(it.label);
+    const[amt,setAmt]=useState(it.amount===0?"":String(it.amount));
+    const commitLabel=v=>{setLbl(v);updItem(setter,it.id,"label",v);};
+    const commitAmt=v=>{
+      const n=v===""?0:parseFloat(v)||0;
+      updItem(setter,it.id,"amount",n);
+    };
+    // sync if external reset
+    useEffect(()=>{setLbl(it.label);},[it.label]);
+    useEffect(()=>{setAmt(it.amount===0&&amt===""?"":String(it.amount));},[]);
+    return(
+      <div style={{display:"flex",gap:5,alignItems:"center"}}>
+        <input className="inp-sm" value={lbl}
+          onChange={e=>setLbl(e.target.value)}
+          onBlur={e=>commitLabel(e.target.value)}
+          onKeyDown={e=>{if(e.key==="Enter")e.target.blur();}}
+          placeholder="ชื่อรายการ"
+          style={{flex:2,minWidth:0}}/>
+        <input className="inp-sm" value={amt}
+          onChange={e=>setAmt(e.target.value)}
+          onBlur={e=>commitAmt(e.target.value)}
+          onKeyDown={e=>{if(e.key==="Enter")e.target.blur();}}
+          placeholder="0"
+          style={{flex:1,minWidth:0,textAlign:"right",fontFamily:"'DM Mono',monospace"}}/>
         <span style={{fontSize:10,color:"#5060a0",flexShrink:0}}>฿</span>
         <button className="btn-del" onClick={()=>delItem(setter,it.id)}>✕</button>
-      </div>))}
-      <button className="btn-add" onClick={()=>addItem(setter)}>+ เพิ่มรายการ</button>
+      </div>
+    );
+  }
+
+  function ListEditor({list,setter,color,suggestions}){
+    const tot=list.reduce((s,x)=>s+x.amount,0);
+    const[showSug,setShowSug]=useState(false);
+    return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
+      {list.map(it=>(<ListRow key={it.id} it={it} setter={setter} color={color}/>))}
+      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+        <button className="btn-add" onClick={()=>addItem(setter)}>+ เพิ่มรายการ</button>
+        {suggestions&&<button className="btn-add" style={{background:"#f5f0ff",borderColor:"#9060c0",color:"#6030a0"}}
+          onClick={()=>setShowSug(!showSug)}>{showSug?"▲ ซ่อน":"▼ หัวข้อแนะนำ"}</button>}
+      </div>
+      {showSug&&suggestions&&(
+        <div style={{display:"flex",flexWrap:"wrap",gap:5,padding:"8px",background:"#f8f6ff",borderRadius:8,border:"1px solid #d0c8f0"}}>
+          {suggestions.map(s=>(
+            <button key={s} onClick={()=>{setter(a=>[...a,{id:uu(),label:s,amount:0}]);}}
+              style={{padding:"3px 9px",borderRadius:99,border:"1px solid #c0b0e0",background:"#fff",
+                color:"#5030a0",fontSize:10,cursor:"pointer",fontFamily:"'Sarabun',sans-serif"}}>
+              + {s}
+            </button>
+          ))}
+        </div>
+      )}
       <div style={{padding:"5px 10px",background:`${color}10`,borderRadius:7,display:"flex",justifyContent:"space-between",marginTop:2}}>
         <span style={{fontSize:11,color:"#5060a0"}}>รวม</span>
         <span style={{fontFamily:"'DM Mono',monospace",color,fontWeight:700}}>{fmtB(tot)}</span>
@@ -1236,17 +1307,17 @@ function App(){
         ))}
       </div>
       {incWho==="me"&&<div className="card"><div className="sec-hd" style={{color:"#1a8a5a"}}>💰 รายรับของคุณ/เดือน</div>
-        <ListEditor list={myInc} setter={setMyInc} color="#00C896"/>
+        <ListEditor list={myInc} setter={setMyInc} color="#00C896" suggestions={SUG_MY_INC}/>
         <div style={{marginTop:8}}><div style={{fontSize:11,color:"#5060a0",marginBottom:3}}>* เงินเดือนสำหรับคำนวณบำนาญ</div>
           <input className="inp" type="number" value={P.salary} onChange={e=>setP("salary",+e.target.value)}/></div>
       </div>}
       {incWho==="sp"&&<div className="card"><div className="sec-hd" style={{color:"#8a6000"}}>💰 รายรับภรรยา/เดือน</div>
-        <ListEditor list={spInc} setter={setSpInc} color="#FFB300"/>
+        <ListEditor list={spInc} setter={setSpInc} color="#FFB300" suggestions={SUG_SP_INC}/>
         <div style={{marginTop:8}}><div style={{fontSize:11,color:"#5060a0",marginBottom:3}}>* เงินเดือนสำหรับคำนวณบำนาญ</div>
           <input className="inp" type="number" value={P.spouseSalary} onChange={e=>setP("spouseSalary",+e.target.value)}/></div>
       </div>}
       {incWho==="kid"&&<div className="card"><div className="sec-hd" style={{color:"#2050c0"}}>💰 รายรับลูก/เดือน</div>
-        <ListEditor list={kidInc} setter={setKidInc} color="#60A5FA"/>
+        <ListEditor list={kidInc} setter={setKidInc} color="#60A5FA" suggestions={SUG_KID_INC}/>
       </div>}
       <div className="card card-green" style={{padding:10}}>
         <div style={{fontSize:11,color:"#1a8a5a",fontWeight:700,marginBottom:6}}>สรุปรายรับรวม</div>
@@ -1266,10 +1337,10 @@ function App(){
           <button key={t.id} className={`tab-btn ${expWho===t.id?"on":"off"}`} onClick={()=>setExpWho(t.id)}>{t.l}</button>
         ))}
       </div>
-      {expWho==="me"&&<div className="card"><div className="sec-hd" style={{color:"#c02030"}}>📤 รายจ่ายของคุณ/เดือน</div><ListEditor list={myExp} setter={setMyExp} color="#FF6B6B"/></div>}
-      {expWho==="sp"&&<div className="card"><div className="sec-hd" style={{color:"#8a5800"}}>📤 รายจ่ายภรรยา/เดือน</div><ListEditor list={spExp} setter={setSpExp} color="#F5A623"/></div>}
-      {expWho==="kid"&&<div className="card"><div className="sec-hd" style={{color:"#2050c0"}}>📤 รายจ่ายลูก/เดือน</div><ListEditor list={kidExp} setter={setKidExp} color="#60A5FA"/></div>}
-      {expWho==="shared"&&<div className="card"><div className="sec-hd" style={{color:"#5030b0"}}>📤 รายจ่ายส่วนรวม/เดือน</div><ListEditor list={sharedExp} setter={setSharedExp} color="#A78BFA"/></div>}
+      {expWho==="me"&&<div className="card"><div className="sec-hd" style={{color:"#c02030"}}>📤 รายจ่ายของคุณ/เดือน</div><ListEditor list={myExp} setter={setMyExp} color="#FF6B6B" suggestions={SUG_MY_EXP}/></div>}
+      {expWho==="sp"&&<div className="card"><div className="sec-hd" style={{color:"#8a5800"}}>📤 รายจ่ายภรรยา/เดือน</div><ListEditor list={spExp} setter={setSpExp} color="#F5A623" suggestions={SUG_SP_EXP}/></div>}
+      {expWho==="kid"&&<div className="card"><div className="sec-hd" style={{color:"#2050c0"}}>📤 รายจ่ายลูก/เดือน</div><ListEditor list={kidExp} setter={setKidExp} color="#60A5FA" suggestions={SUG_KID_EXP}/></div>}
+      {expWho==="shared"&&<div className="card"><div className="sec-hd" style={{color:"#5030b0"}}>📤 รายจ่ายส่วนรวม/เดือน</div><ListEditor list={sharedExp} setter={setSharedExp} color="#A78BFA" suggestions={SUG_SHARED_EXP}/></div>}
       <div className="card card-red" style={{padding:10}}>
         <div style={{fontSize:11,color:"#c02030",fontWeight:700,marginBottom:6}}>สรุปรายจ่ายรวม</div>
         {[{l:"คุณ",v:myExpT,c:"#FF6B6B"},{l:"ภรรยา",v:spExpT,c:"#F5A623"},{l:"ลูก",v:kidExpT,c:"#60A5FA"},
@@ -1290,13 +1361,13 @@ function App(){
       </div>
       {assets.map(a=>(<div key={a.id} className="card card-gold" style={{padding:11}}>
         <div style={{display:"flex",gap:7,alignItems:"center",marginBottom:8}}>
-          <input className="inp-sm" value={a.icon} onChange={e=>updAsset(a.id,"icon",e.target.value)} style={{width:36,textAlign:"center",fontSize:15}}/>
-          <input className="inp-sm" value={a.label} onChange={e=>updAsset(a.id,"label",e.target.value)} style={{flex:1}}/>
+          <input className="inp-sm" defaultValue={a.icon} key={a.id+"i"} onBlur={e=>updAsset(a.id,"icon",e.target.value)} style={{width:36,textAlign:"center",fontSize:15}}/>
+          <input className="inp-sm" defaultValue={a.label} key={a.id+"l"} onBlur={e=>updAsset(a.id,"label",e.target.value)} onKeyDown={e=>{if(e.key==="Enter")e.target.blur();}} style={{flex:1}}/>
           <button className="btn-del" onClick={()=>delAsset(a.id)}>✕</button>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
           <div style={{flex:1}}><div style={{fontSize:10,color:"#5060a0",marginBottom:2}}>มูลค่า (฿)</div>
-            <input className="inp-sm" type="number" value={a.value} onChange={e=>updAsset(a.id,"value",+e.target.value)}/></div>
+            <input className="inp-sm" type="number" defaultValue={a.value} key={a.id+"v"} onBlur={e=>updAsset(a.id,"value",+e.target.value)} onKeyDown={e=>{if(e.key==="Enter")e.target.blur();}} style={{fontFamily:"'DM Mono',monospace"}}/></div>
           <div style={{display:"flex",gap:4}}>
             <button onClick={()=>updAsset(a.id,"paid",true)} style={{padding:"4px 9px",borderRadius:99,border:`1.5px solid ${a.paid?"#2a9060":"#c8ccd8"}`,background:a.paid?"#e8f8f0":"#fff",color:a.paid?"#1a7040":"#8090b0",cursor:"pointer",fontSize:10,fontFamily:"'Sarabun',sans-serif"}}>✓ ชำระแล้ว</button>
             <button onClick={()=>updAsset(a.id,"paid",false)} style={{padding:"4px 9px",borderRadius:99,border:`1.5px solid ${!a.paid?"#c02020":"#c8ccd8"}`,background:!a.paid?"#fff0f0":"#fff",color:!a.paid?"#c02020":"#8090b0",cursor:"pointer",fontSize:10,fontFamily:"'Sarabun',sans-serif"}}>⚠️ ผ่อนอยู่</button>
@@ -1323,7 +1394,7 @@ function App(){
       {pets.map(p=>(<div key={p.id} className="card" style={{borderColor:"rgba(78,205,196,0.2)",padding:11}}>
         <div style={{display:"flex",gap:7,alignItems:"center",marginBottom:8}}>
           <span style={{fontSize:20}}>{p.type.split(" ")[0]}</span>
-          <input className="inp-sm" value={p.name} onChange={e=>updPet(p.id,"name",e.target.value)} placeholder="ชื่อสัตว์เลี้ยง" style={{flex:1}}/>
+          <input className="inp-sm" defaultValue={p.name} key={p.id+"n"} onBlur={e=>updPet(p.id,"name",e.target.value)} onKeyDown={e=>{if(e.key==="Enter")e.target.blur();}} placeholder="ชื่อสัตว์เลี้ยง" style={{flex:1}}/>
           <button className="btn-del" onClick={()=>delPet(p.id)}>✕</button>
         </div>
         <div style={{display:"flex",gap:8}}>
@@ -1332,7 +1403,7 @@ function App(){
               {PET_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
             </select></div>
           <div style={{flex:1}}><div style={{fontSize:10,color:"#5060a0",marginBottom:2}}>ค่าใช้จ่าย/เดือน</div>
-            <input className="inp-sm" type="number" value={p.monthly} onChange={e=>updPet(p.id,"monthly",+e.target.value)}/></div>
+            <input className="inp-sm" type="number" defaultValue={p.monthly} key={p.id+"m"} onBlur={e=>updPet(p.id,"monthly",+e.target.value)} onKeyDown={e=>{if(e.key==="Enter")e.target.blur();}} style={{fontFamily:"'DM Mono',monospace"}}/></div>
         </div>
       </div>))}
       {pets.length>0&&<div className="card" style={{padding:10,borderColor:"rgba(78,205,196,0.2)"}}>
