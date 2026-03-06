@@ -1143,99 +1143,173 @@ function App(){
 
   /* ══════ PAGE: ACTIVITIES ══════ */
   const PageActivities=()=>{
-    const cats=[...new Set(ACTIVITIES.map(a=>a.cat))];
+    const cats=["ทั้งหมด",...new Set(ACTIVITIES.map(a=>a.cat))];
     const[actCat,setActCat]=useState("ทั้งหมด");
     const filtered=actCat==="ทั้งหมด"?ACTIVITIES:ACTIVITIES.filter(a=>a.cat===actCat);
 
-    const toggleAct=(id,optIdx)=>{
-      setSelActs(s=>{const n={...s};
-        if(n[id]===optIdx)delete n[id];else n[id]=optIdx;return n;
+    /* toggle option — if same option clicked again → deselect */
+    const handleOpt=(actId,oi)=>{
+      setSelActs(prev=>{
+        const next={...prev};
+        if(next[actId]===oi){ delete next[actId]; }
+        else{ next[actId]=oi; }
+        return next;
       });
+    };
+
+    /* deselect an activity entirely */
+    const removeAct=(actId)=>{
+      setSelActs(prev=>{ const n={...prev}; delete n[actId]; return n; });
     };
 
     const selectedList=ACTIVITIES.filter(a=>selActs[a.id]!==undefined);
     const selectedMonthly=selectedList.reduce((s,a)=>{
-      const optIdx=selActs[a.id];const cost=a.options[optIdx]?.cost||0;
-      if(a.freq==="month")return s+cost;
-      if(a.freq==="trip")return s+cost*((actFreqs[a.id]||1)/12);
+      const optIdx=selActs[a.id]; const cost=a.options[optIdx]?.cost||0;
+      if(a.freq==="month") return s+cost;
+      if(a.freq==="trip")  return s+cost*((actFreqs[a.id]||1)/12);
       if(a.freq==="course")return s+cost/6;
       return s;
     },0);
 
     return(<div className="page" style={{display:"flex",flexDirection:"column",gap:12}}>
-      <div style={{padding:"8px 12px",background:"rgba(244,114,182,0.06)",border:"1px solid #e8a0c8",borderRadius:10,fontSize:12,color:"#b02878"}}>
-        ✦ เลือกกิจกรรมที่ต้องการ — ค่าใช้จ่ายจะถูกรวมในรายจ่ายโดยอัตโนมัติ
+      <div style={{padding:"8px 12px",background:"#fff0fa",border:"1.5px solid #e8a0c8",borderRadius:10,fontSize:12,color:"#902060",fontWeight:600}}>
+        ✦ คลิกที่ตัวเลือกใต้กิจกรรม เพื่อเลือก/เปลี่ยนระดับงบประมาณ — ค่าใช้จ่ายรวมในรายจ่ายอัตโนมัติ
       </div>
+
       {/* category filter */}
       <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-        {["ทั้งหมด",...cats].map(c=>(
-          <button key={c} className={`tab-btn ${actCat===c?"on":"off"}`} onClick={()=>setActCat(c)}>{c}</button>
+        {cats.map(cat=>(
+          <button key={cat} className={`tab-btn ${actCat===cat?"on":"off"}`}
+            onClick={()=>setActCat(cat)}>{cat}</button>
         ))}
       </div>
+
       {/* activity grid */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:10}}>
         {filtered.map(act=>{
           const selOpt=selActs[act.id];
           const isOn=selOpt!==undefined;
-          return(<div key={act.id} className={`act-toggle ${isOn?"on":""}`}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <span style={{fontSize:20}}>{act.e}</span>
-              <span className="tag" style={{background:"#ffe8f5",color:"#b02878",border:"1px solid #e8a0c8"}}>
-                {act.cat}
-              </span>
+          return(
+          <div key={act.id} style={{
+            borderRadius:12,border:`2px solid ${isOn?"#c0308a":"#d0d4e0"}`,
+            background:isOn?"linear-gradient(135deg,#fff0f8,#ffe6f4)":"#fff",
+            padding:12,transition:"all .2s",
+            boxShadow:isOn?"0 3px 12px rgba(192,48,138,0.15)":"0 1px 4px rgba(0,0,0,0.06)"
+          }}>
+            {/* header */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+              <div style={{display:"flex",gap:7,alignItems:"center"}}>
+                <span style={{fontSize:22}}>{act.e}</span>
+                <div>
+                  <div style={{fontWeight:700,color:isOn?"#901060":"#2a3050",fontSize:12}}>{act.name}</div>
+                  <div style={{fontSize:9,color:"#8090b0"}}>{act.cat}</div>
+                </div>
+              </div>
+              {isOn&&(
+                <button onClick={()=>removeAct(act.id)}
+                  style={{background:"#ffe0f0",border:"1px solid #e090b8",borderRadius:99,
+                    color:"#c02060",fontSize:10,padding:"2px 8px",cursor:"pointer",
+                    fontFamily:"'Sarabun',sans-serif",fontWeight:700,flexShrink:0}}>
+                  ✕ ถอด
+                </button>
+              )}
             </div>
-            <div style={{fontWeight:700,color:isOn?"#F472B6":"#d0d0e0",fontSize:12,marginBottom:3}}>{act.name}</div>
-            <div style={{fontSize:10,color:"#5060a0",marginBottom:8,lineHeight:1.5}}>{act.tip}</div>
+
+            {/* tip */}
+            <div style={{fontSize:10,color:"#6070a0",marginBottom:8,lineHeight:1.5,minHeight:28}}>{act.tip}</div>
+
             {/* option buttons */}
-            <div style={{display:"flex",flexDirection:"column",gap:3}}>
-              {act.options.map((opt,oi)=>(
-                <button key={oi} onClick={()=>toggleAct(act.id,oi)}
-                  style={{padding:"4px 8px",borderRadius:7,border:`1.5px solid ${selOpt===oi?"#c0308a":"#d0d4e0"}`,
-                    background:selOpt===oi?"#ffe8f5":"#f5f6fa",
-                    color:selOpt===oi?"#901060":"#5060a0",cursor:"pointer",fontSize:10,
-                    fontFamily:"'Sarabun',sans-serif",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span>{opt.label}</span>
-                  <span style={{fontFamily:"'DM Mono',monospace",fontWeight:700}}>
-                    {opt.cost===0?"ฟรี":`${fmt(opt.cost)} ฿`}
-                    {act.freq==="month"?"/เดือน":act.freq==="trip"?"/ทริป":"/คอร์ส"}
+            <div style={{display:"flex",flexDirection:"column",gap:4}}>
+              {act.options.map((opt,oi)=>{
+                const picked=selOpt===oi;
+                return(
+                <button key={oi}
+                  onClick={()=>handleOpt(act.id,oi)}
+                  style={{
+                    width:"100%",padding:"6px 10px",borderRadius:8,cursor:"pointer",
+                    border:`1.5px solid ${picked?"#c0308a":"#d0d4e0"}`,
+                    background:picked?"#ffd6f0":"#f8f9fc",
+                    display:"flex",justifyContent:"space-between",alignItems:"center",
+                    transition:"all .15s",fontFamily:"'Sarabun',sans-serif"
+                  }}>
+                  <span style={{fontSize:11,color:picked?"#7a1050":"#3a4060",fontWeight:picked?700:400}}>
+                    {picked?"✓ ":""}{opt.label}
+                  </span>
+                  <span style={{fontFamily:"'DM Mono',monospace",fontSize:11,fontWeight:700,
+                    color:picked?"#b02878":"#5060a0"}}>
+                    {opt.cost===0?"ฟรี":`${fmt(opt.cost)}฿`}
+                    <span style={{fontSize:9,fontWeight:400,color:"#9090b0"}}>
+                      {act.freq==="month"?"/ด.":act.freq==="trip"?"/ทริป":"/คอร์ส"}
+                    </span>
                   </span>
                 </button>
-              ))}
+              );})}
             </div>
-            {/* trip frequency */}
+
+            {/* trip frequency slider */}
             {isOn&&act.freq==="trip"&&(
-              <div style={{marginTop:8}}>
-                <div style={{fontSize:10,color:"#5060a0",marginBottom:3}}>ไป กี่ครั้ง/ปี</div>
+              <div style={{marginTop:10,padding:"8px",background:"#fff0fa",borderRadius:8,border:"1px solid #e8c0d8"}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#7a1050",marginBottom:4}}>
+                  <span>ความถี่</span>
+                  <span style={{fontWeight:700}}>{actFreqs[act.id]||1} ครั้ง/ปี ≈ {fmtB(Math.round((act.options[selOpt]?.cost||0)*(actFreqs[act.id]||1)/12))}/เดือน</span>
+                </div>
                 <input type="range" min={1} max={6} step={1} value={actFreqs[act.id]||1}
                   onChange={e=>setActFreqs(f=>({...f,[act.id]:+e.target.value}))}/>
-                <div style={{fontSize:10,color:"#b02878",textAlign:"center"}}>{actFreqs[act.id]||1} ครั้ง/ปี ≈ {fmtB(Math.round((act.options[selOpt]?.cost||0)*(actFreqs[act.id]||1)/12))}/เดือน</div>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#9090b0",marginTop:2}}>
+                  {[1,2,3,4,5,6].map(n=>(<span key={n} style={{color:(actFreqs[act.id]||1)===n?"#c0308a":"#9090b0",fontWeight:(actFreqs[act.id]||1)===n?700:400}}>{n}</span>))}
+                </div>
               </div>
             )}
-          </div>);
-        })}
+          </div>
+        );})}
       </div>
+
       {/* selected summary */}
-      {selectedList.length>0&&(<div className="card card-pink" style={{padding:12}}>
-        <div style={{fontSize:12,color:"#b02878",fontWeight:700,marginBottom:10}}>✦ กิจกรรมที่เลือก ({selectedList.length} รายการ)</div>
-        {selectedList.map(a=>{
-          const optIdx=selActs[a.id];const opt=a.options[optIdx];
-          const monthly=a.freq==="month"?opt.cost:a.freq==="trip"?opt.cost*((actFreqs[a.id]||1)/12):opt.cost/6;
-          return(<div key={a.id} className="stat-row">
-            <span style={{color:"#7080a0",fontSize:12}}>{a.e} {a.name}</span>
-            <span style={{fontSize:11,color:"#6070a0",marginRight:8}}>{opt.label}</span>
-            <span style={{fontFamily:"'DM Mono',monospace",color:"#b02878",fontSize:12}}>~{fmtB(Math.round(monthly))}/เดือน</span>
-          </div>);
-        })}
-        <div style={{marginTop:8,padding:"7px 10px",background:"rgba(244,114,182,0.1)",borderRadius:8,display:"flex",justifyContent:"space-between"}}>
-          <span style={{fontWeight:700}}>รวมค่าใช้จ่ายกิจกรรม</span>
-          <span style={{fontFamily:"'DM Mono',monospace",color:"#b02878",fontSize:15,fontWeight:700}}>{fmtB(Math.round(selectedMonthly))}/เดือน</span>
+      {selectedList.length>0&&(
+        <div className="card card-pink" style={{padding:14}}>
+          <div style={{fontSize:12,color:"#b02878",fontWeight:700,marginBottom:10}}>
+            ✦ กิจกรรมที่เลือก ({selectedList.length} รายการ)
+          </div>
+          {selectedList.map(a=>{
+            const optIdx=selActs[a.id]; const opt=a.options[optIdx];
+            const monthly=a.freq==="month"?opt.cost:a.freq==="trip"?opt.cost*((actFreqs[a.id]||1)/12):opt.cost/6;
+            return(
+            <div key={a.id} className="stat-row" style={{alignItems:"flex-start"}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:12,color:"#3a3050",fontWeight:600}}>{a.e} {a.name}</div>
+                <div style={{fontSize:10,color:"#9090b0"}}>{opt.label}</div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontFamily:"'DM Mono',monospace",color:"#b02878",fontSize:12,fontWeight:700}}>
+                  ~{fmtB(Math.round(monthly))}/เดือน
+                </div>
+                <div style={{fontSize:9,color:"#9090b0"}}>{fmtB(Math.round(monthly*12))}/ปี</div>
+              </div>
+            </div>
+          );})}
+          <div style={{marginTop:10,padding:"9px 12px",background:"rgba(192,48,138,0.08)",borderRadius:8,
+            display:"flex",justifyContent:"space-between",alignItems:"center",border:"1px solid #e8a0c8"}}>
+            <span style={{fontWeight:700,color:"#7a1050"}}>รวมค่ากิจกรรม</span>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontFamily:"'DM Mono',monospace",color:"#b02878",fontSize:16,fontWeight:700}}>{fmtB(Math.round(selectedMonthly))}/เดือน</div>
+              <div style={{fontSize:10,color:"#9090b0"}}>{fmtB(Math.round(selectedMonthly*12))}/ปี</div>
+            </div>
+          </div>
         </div>
-        <div style={{fontSize:10,color:"#5060a0",marginTop:4}}>= {fmtB(Math.round(selectedMonthly*12))} ต่อปี</div>
-      </div>)}
+      )}
+
+      {selectedList.length===0&&(
+        <div style={{textAlign:"center",padding:"30px",color:"#a0a0b8",fontSize:12,
+          background:"#f8f8fc",borderRadius:12,border:"2px dashed #d0d4e8"}}>
+          <div style={{fontSize:28,marginBottom:8}}>✦</div>
+          ยังไม่ได้เลือกกิจกรรม<br/>
+          <span style={{fontSize:10}}>คลิกที่ตัวเลือกด้านบนเพื่อเริ่มวางแผน</span>
+        </div>
+      )}
     </div>);
   };
 
-  /* ══════ PAGE: TIMELINE ══════ */
+    /* ══════ PAGE: TIMELINE ══════ */
   const PageTimeline=()=>{
     const events=[
       {y:th(NOW_CE),age:currentAge,clr:"#60A5FA",icon:"📍",title:"จุดเริ่มต้นการวางแผน",
