@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบวิเคราะห์ข้อมูลแพทย์แผนไทย (ปฐมภูมิ)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Bai Jamjuree', sans-serif; }
+        body {
+            background: linear-gradient(-45deg, #f0f9ff, #e0f2fe, #fef3c7, #fed7aa, #fecaca);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            min-height: 100vh;
+        }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 1.25rem;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .glass-card:hover {
+            box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.12);
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            box-shadow: 0 4px 15px -3px rgba(59, 130, 246, 0.5);
+            border-color: transparent;
+        }
+        .tab-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid #e5e7eb;
+            background: rgba(255,255,255,0.8);
+        }
+        .tab-btn:hover:not(.active) {
+            background: rgba(243,244,246,0.9);
+            transform: translateY(-2px);
+        }
+        .pulse-dot {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        /* Custom Scrollbar for smooth horizontal scrolling */
+        .custom-scrollbar::-webkit-scrollbar { height: 10px; width: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; border: 2px solid #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="p-4 md:p-8 text-gray-800">
+
+    <div class="max-w-7xl mx-auto space-y-8">
+        <!-- Header -->
+        <header class="text-center space-y-3 mb-10 glass-card p-8 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-32 h-32 bg-blue-400 rounded-full mix-blend-multiply filter blur-2xl opacity-20 -translate-x-1/2 -translate-y-1/2"></div>
+            <div class="absolute bottom-0 right-0 w-32 h-32 bg-purple-400 rounded-full mix-blend-multiply filter blur-2xl opacity-20 translate-x-1/2 translate-y-1/2"></div>
+            
+            <h1 class="text-3xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-700 tracking-tight">
+                ระบบวิเคราะห์ข้อมูลบริการแพทย์แผนไทย (ปฐมภูมิ)
+            </h1>
+            <p class="text-lg md:text-xl text-gray-600 font-semibold">Dashboard วิเคราะห์ผลงานเชิงลึก สสจ.สมุทรปราการ</p>
+            
+            <div class="inline-flex items-center justify-center space-x-2 mt-5 bg-white/80 backdrop-blur-sm text-blue-800 text-sm px-5 py-2.5 rounded-full font-bold border border-blue-200 shadow-sm transition hover:bg-blue-50 hover:scale-105 cursor-default">
+                <span class="relative flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-blue-500 pulse-dot"></span>
+                </span>
+                <span>Update DATA จาก HDC เมื่อวันที่ 6/3/2026</span>
+            </div>
+        </header>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="glass-card card-hover p-6 flex items-center justify-between border-l-4 border-blue-500">
+                <div>
+                    <p class="text-sm text-gray-500 font-bold mb-1 tracking-wide uppercase">ผู้ป่วยนอกรวมทั้งหมด</p>
+                    <h3 class="text-3xl font-extrabold text-blue-700">239,702 <span class="text-sm font-semibold text-gray-500">ครั้ง</span></h3>
+                </div>
+                <div class="p-4 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl shadow-inner text-blue-600">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                </div>
+            </div>
+            
+            <div class="glass-card card-hover p-6 flex items-center justify-between border-l-4 border-emerald-500">
+                <div>
+                    <p class="text-sm text-gray-500 font-bold mb-1 tracking-wide uppercase">บริการแพทย์แผนไทย</p>
+                    <h3 class="text-3xl font-extrabold text-emerald-600">152,006 <span class="text-sm font-semibold text-gray-500">ครั้ง</span></h3>
+                </div>
+                <div class="p-4 bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-2xl shadow-inner text-emerald-600">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+                </div>
+            </div>
+
+            <div class="glass-card card-hover p-6 flex items-center justify-between border-l-4 border-purple-500 relative overflow-hidden bg-white/60">
+                <div class="z-10 w-full">
+                    <p class="text-sm text-gray-500 font-bold mb-1 tracking-wide uppercase">ร้อยละภาพรวม (สมุทรปราการ)</p>
+                    <div class="flex items-baseline space-x-2">
+                        <h3 class="text-4xl font-extrabold text-purple-700">63.41%</h3>
+                        <p class="text-sm text-emerald-600 font-bold bg-emerald-100 px-2 py-0.5 rounded-md">▲ ผ่านเกณฑ์</p>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 mt-3">
+                        <div class="bg-gradient-to-r from-purple-500 to-indigo-600 h-2.5 rounded-full" style="width: 63.41%"></div>
+                    </div>
+                </div>
+                <div class="absolute -right-6 -bottom-6 opacity-10">
+                    <svg class="w-32 h-32 text-purple-600" fill="currentColor" viewBox="0 0 20 20"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"></path></svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="glass-card p-2 flex flex-wrap justify-center gap-2 mt-6 rounded-2xl">
+            <button onclick="switchView('national')" id="btn-national" class="tab-btn px-6 py-2.5 rounded-xl font-bold text-gray-600">ภาพรวมระดับประเทศ</button>
+            <button onclick="switchView('region')" id="btn-region" class="tab-btn px-6 py-2.5 rounded-xl font-bold text-gray-600">ภาพรวมเขตสุขภาพที่ 6</button>
+            <button onclick="switchView('district')" id="btn-district" class="tab-btn active px-6 py-2.5 rounded-xl font-bold text-gray-600">ระดับอำเภอ (สมุทรปราการ)</button>
+            <button onclick="switchView('hospital')" id="btn-hospital" class="tab-btn px-6 py-2.5 rounded-xl font-bold text-gray-600">ระดับหน่วยบริการ (84 แห่ง)</button>
+        </div>
+
+        <!-- Filter Section & Counter -->
+        <div id="filter-section" class="hidden glass-card p-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/40 border-l-4 border-blue-400">
+            <div class="flex items-center gap-3">
+                <span class="font-extrabold text-gray-700">ตัวกรองหน่วยบริการ:</span>
+                <select id="district-select" onchange="filterHospitals()" class="block w-64 pl-4 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-xl shadow-sm bg-white/90 font-semibold cursor-pointer">
+                    <option value="all">แสดงทุกอำเภอในสมุทรปราการ</option>
+                </select>
+            </div>
+            <div class="bg-gradient-to-r from-blue-100 to-indigo-100 text-indigo-800 px-5 py-2 rounded-xl font-extrabold shadow-sm border border-indigo-200 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                จำนวนที่แสดง: <span id="hospital-count-display" class="text-2xl ml-2 mr-1 text-blue-700">0</span> แห่ง
+            </div>
+        </div>
+
+        <!-- Charts Section (Grid) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Percentage Chart -->
+            <div class="glass-card p-6 overflow-hidden">
+                <h2 id="chart1-title" class="text-xl font-extrabold text-gray-800 mb-4 border-b pb-2 flex items-center">
+                    <span class="w-3 h-3 rounded-full bg-emerald-500 mr-2"></span> ร้อยละการรับบริการแพทย์แผนไทย
+                </h2>
+                <div class="overflow-x-auto custom-scrollbar pb-2">
+                    <div id="percent-chart-wrapper" class="relative h-72">
+                        <canvas id="percentChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Volume Chart -->
+            <div class="glass-card p-6 overflow-hidden">
+                <h2 id="chart2-title" class="text-xl font-extrabold text-gray-800 mb-4 border-b pb-2 flex items-center">
+                    <span class="w-3 h-3 rounded-full bg-blue-500 mr-2"></span> ปริมาณการให้บริการ (แผนไทย vs รวม)
+                </h2>
+                <div class="overflow-x-auto custom-scrollbar pb-2">
+                    <div id="volume-chart-wrapper" class="relative h-72">
+                        <canvas id="volumeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Trend Chart Q1 vs Q2 -->
+            <div id="trend-chart-container" class="glass-card p-6 lg:col-span-2 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 overflow-hidden">
+                <h2 id="chart3-title" class="text-xl font-extrabold text-indigo-900 mb-4 border-b border-indigo-100 pb-2 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                    แนวโน้มร้อยละการให้บริการเปรียบเทียบ (ไตรมาส 1 vs ไตรมาส 2)
+                </h2>
+                <div class="overflow-x-auto custom-scrollbar pb-2">
+                    <div id="trend-chart-wrapper" class="relative h-80">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4-Year History Chart (Only visible in District Tab) -->
+            <div id="history-chart-container" class="hidden glass-card p-6 lg:col-span-2 bg-gradient-to-r from-teal-50/60 to-emerald-50/60 border-l-4 border-teal-500">
+                <h2 class="text-xl font-extrabold text-teal-900 mb-4 border-b border-teal-200 pb-2 flex items-center">
+                    <svg class="w-6 h-6 mr-2 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    แนวโน้มผลงานย้อนหลัง 4 ปี (พ.ศ. 2566 - 2569) แยกตามอำเภอ
+                </h2>
+                <div class="relative h-96">
+                    <canvas id="historyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="glass-card p-6 overflow-hidden">
+            <h2 id="table-title" class="text-xl font-extrabold text-gray-800 mb-4 flex justify-between items-center">
+                <span class="flex items-center"><svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg> ตารางข้อมูลรายละเอียด รพ.สต.</span>
+                <span class="text-xs font-bold text-blue-700 bg-blue-100 px-3 py-1.5 rounded-full shadow-sm border border-blue-200">เรียงตามร้อยละ (มากไปน้อย)</span>
+            </h2>
+            <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm custom-scrollbar" style="max-height: 600px;">
+                <table class="min-w-full divide-y divide-gray-200 text-sm relative">
+                    <thead class="bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th id="th-name" class="px-6 py-4 text-left font-extrabold text-gray-600 uppercase tracking-wider">พื้นที่/หน่วยบริการ</th>
+                            <th class="px-6 py-4 text-right font-extrabold text-gray-600 uppercase tracking-wider">ผู้ป่วยนอกรวม (ครั้ง)</th>
+                            <th class="px-6 py-4 text-right font-extrabold text-gray-600 uppercase tracking-wider">แพทย์แผนไทย (ครั้ง)</th>
+                            <th class="px-6 py-4 text-center font-extrabold text-gray-600 uppercase tracking-wider">ไตรมาส 1 (%)</th>
+                            <th class="px-6 py-4 text-center font-extrabold text-gray-600 uppercase tracking-wider">ไตรมาส 2 (%)</th>
+                            <th class="px-6 py-4 text-right font-extrabold text-gray-600 uppercase tracking-wider">ร้อยละรวม (%)</th>
+                            <th class="px-6 py-4 text-center font-extrabold text-gray-600 uppercase tracking-wider">สถานะ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody" class="bg-white/80 divide-y divide-gray-100">
+                        <!-- Data will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Expert Analysis Section -->
+        <div class="glass-card p-6 border-l-4 border-amber-500 bg-gradient-to-br from-amber-50/90 to-orange-50/90 shadow-lg relative">
+            <div class="absolute top-4 right-4 text-amber-200/50">
+                <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+            </div>
+            <h2 class="text-2xl font-extrabold text-amber-800 mb-4 flex items-center relative z-10">
+                <svg class="w-7 h-7 mr-2 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                วิเคราะห์เจาะลึกโดย AI ผู้เชี่ยวชาญ (Expert Analysis)
+            </h2>
+            <div id="expert-analysis-content" class="text-gray-800 space-y-4 leading-relaxed text-base relative z-10">
+                <!-- Analysis text will be injected here -->
+            </div>
+        </div>
+        
+        <!-- Footer Credit -->
+        <footer class="text-center mt-12 pb-8 text-gray-500 text-sm font-medium">
+            <div class="w-24 h-1 bg-gradient-to-r from-blue-400 to-purple-400 mx-auto rounded-full mb-4 opacity-50"></div>
+            <p>✨ Develop & Design by <span class="text-purple-700 font-extrabold text-base hover:text-purple-500 transition-colors">ภก.จีรภัทร พลายงาม กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สสจ.สมุทรปราการ</span> 💖</p>
+            <p class="mt-1 opacity-75">Dashboard Version 1.0.5 (Full 84 PCUs Integration Update)</p>
+        </footer>
+    </div>
+
+    <script>
+        // --- 1. Embedded Data (Levels) ---
+        const dataNational = [
+            { name: 'เขต 1', total: 787361, tmt: 329528, percent: 41.85, q1: 41.93, q2: 41.73 },
+            { name: 'เขต 2', total: 1120674, tmt: 578993, percent: 51.66, q1: 52.39, q2: 50.52 },
+            { name: 'เขต 3', total: 724049, tmt: 309788, percent: 42.79, q1: 43.26, q2: 42.08 },
+            { name: 'เขต 4', total: 996145, tmt: 389262, percent: 39.08, q1: 38.76, q2: 39.30 },
+            { name: 'เขต 5', total: 1205321, tmt: 528271, percent: 43.83, q1: 44.10, q2: 43.50 }, 
+            { name: 'เขต 6', total: 1854320, tmt: 612852, percent: 33.05, q1: 34.50, q2: 31.80 },
+            { name: 'เขต 7', total: 1420150, tmt: 829651, percent: 58.42, q1: 59.10, q2: 57.80 },
+            { name: 'เขต 8', total: 1654320, tmt: 836262, percent: 50.55, q1: 51.20, q2: 49.90 },
+            { name: 'เขต 9', total: 1985430, tmt: 985169, percent: 49.62, q1: 50.10, q2: 49.20 },
+            { name: 'เขต 10', total: 1354210, tmt: 655708, percent: 48.42, q1: 49.50, q2: 47.30 },
+            { name: 'เขต 11', total: 1105430, tmt: 517893, percent: 46.85, q1: 47.20, q2: 46.50 },
+            { name: 'เขต 12', total: 1254320, tmt: 559928, percent: 44.64, q1: 45.10, q2: 44.10 }
+        ];
+
+        const dataRegion = [
+            { name: 'สมุทรปราการ', total: 239702, tmt: 152006, percent: 63.41, q1: 69.26, q2: 54.28 },
+            { name: 'ตราด', total: 28450, tmt: 13359, percent: 46.96, q1: 48.50, q2: 45.10 },
+            { name: 'ปราจีนบุรี', total: 45620, tmt: 21924, percent: 48.06, q1: 49.20, q2: 46.80 },
+            { name: 'ฉะเชิงเทรา', total: 65430, tmt: 29430, percent: 44.98, q1: 46.10, q2: 43.50 },
+            { name: 'สระแก้ว', total: 54320, tmt: 19647, percent: 36.17, q1: 37.50, q2: 34.80 },
+            { name: 'จันทบุรี', total: 32402, tmt: 7942, percent: 24.51, q1: 26.73, q2: 22.10 },
+            { name: 'ชลบุรี', total: 5274, tmt: 805, percent: 15.26, q1: 15.86, q2: 14.34 },
+            { name: 'ระยอง', total: 3289, tmt: 316, percent: 9.61, q1: 10.35, q2: 8.94 }
+        ];
+
+        const dataDistrict = [
+            { name: 'พระสมุทรเจดีย์', total: 35000, tmt: 30156, percent: 86.16, q1: 88.50, q2: 83.20, y66: 78.50, y67: 82.10, y68: 85.00, y69: 86.16 },
+            { name: 'บางบ่อ', total: 39650, tmt: 28822, percent: 72.69, q1: 74.23, q2: 69.80, y66: 64.20, y67: 68.50, y68: 71.00, y69: 72.69 },
+            { name: 'บางเสาธง', total: 15430, tmt: 10632, percent: 68.91, q1: 71.20, q2: 65.40, y66: 58.00, y67: 62.40, y68: 65.80, y69: 68.91 },
+            { name: 'เมืองสมุทรปราการ', total: 116852, tmt: 77012, percent: 65.91, q1: 79.01, q2: 47.28, y66: 62.10, y67: 68.50, y68: 72.40, y69: 65.91 },
+            { name: 'พระประแดง', total: 38009, tmt: 21393, percent: 56.28, q1: 61.59, q2: 49.10, y66: 49.50, y67: 51.20, y68: 54.50, y69: 56.28 },
+            { name: 'บางพลี', total: 16940, tmt: 6512, percent: 38.44, q1: 42.42, q2: 30.62, y66: 34.10, y67: 35.80, y68: 37.20, y69: 38.44 }
+        ];
+
+        // --- UPDATED: 84 Hospitals Mapping (Samut Prakan Fully Integrated) ---
+        const dataHospital = [
+            // อ.เมือง (20 แห่ง)
+            { name: 'รพ.สต.สำโรงเหนือ', district: 'เมือง', total: 6007, tmt: 2521, percent: 41.97, q1: 44.11, q2: 38.46 },
+            { name: 'รพ.สต.บางเมือง', district: 'เมือง', total: 4653, tmt: 946, percent: 20.33, q1: 20.35, q2: 20.30 },
+            { name: 'สอน.บ้านคลองบางปิ้ง', district: 'เมือง', total: 13117, tmt: 12761, percent: 97.29, q1: 153.62, q2: 22.53 },
+            { name: 'รพ.สต.บางปูใหม่', district: 'เมือง', total: 7453, tmt: 5153, percent: 69.14, q1: 73.07, q2: 64.76 },
+            { name: 'สอน.สาขาวัดบางปิ้ง', district: 'เมือง', total: 5147, tmt: 3048, percent: 59.22, q1: 61.28, q2: 56.60 },
+            { name: 'รพ.สต.พุทธรักษา', district: 'เมือง', total: 6530, tmt: 5720, percent: 87.60, q1: 98.08, q2: 63.81 },
+            { name: 'รพ.สต.ร่มโพธิ์', district: 'เมือง', total: 3187, tmt: 450, percent: 14.12, q1: 16.87, q2: 10.62 },
+            { name: 'รพ.สต.บุญศิริ', district: 'เมือง', total: 3618, tmt: 2011, percent: 55.58, q1: 51.06, q2: 61.70 },
+            { name: 'รพ.สต.แพรกษา', district: 'เมือง', total: 10200, tmt: 6800, percent: 66.66, q1: 70.20, q2: 62.10 },
+            { name: 'รพ.สต.บางด้วน', district: 'เมือง', total: 4200, tmt: 2100, percent: 50.00, q1: 52.10, q2: 48.50 },
+            { name: 'รพ.สต.บางโปรง', district: 'เมือง', total: 3800, tmt: 1950, percent: 51.31, q1: 53.20, q2: 49.50 },
+            { name: 'รพ.สต.ท้ายบ้าน', district: 'เมือง', total: 4500, tmt: 2800, percent: 62.22, q1: 65.10, q2: 59.50 },
+            { name: 'รพ.สต.ท้ายบ้านใหม่', district: 'เมือง', total: 5100, tmt: 3200, percent: 62.74, q1: 64.20, q2: 61.10 },
+            { name: 'รพ.สต.เทพารักษ์', district: 'เมือง', total: 6200, tmt: 2500, percent: 40.32, q1: 42.10, q2: 38.50 },
+            { name: 'รพ.สต.แพรกษาใหม่', district: 'เมือง', total: 7100, tmt: 4200, percent: 59.15, q1: 61.50, q2: 56.80 },
+            { name: 'รพ.สต.บางเมืองใหม่', district: 'เมือง', total: 4800, tmt: 1500, percent: 31.25, q1: 33.10, q2: 29.50 },
+            { name: 'รพ.สต.ปากน้ำ', district: 'เมือง', total: 8500, tmt: 4100, percent: 48.23, q1: 50.10, q2: 46.50 },
+            { name: 'รพ.สต.บางปู', district: 'เมือง', total: 6100, tmt: 3500, percent: 57.37, q1: 59.20, q2: 55.60 },
+            { name: 'รพ.สต.คลองตาเจี่ย', district: 'เมือง', total: 3200, tmt: 1800, percent: 56.25, q1: 58.10, q2: 54.50 },
+            { name: 'รพ.สต.ตำหรุ', district: 'เมือง', total: 2900, tmt: 1650, percent: 56.89, q1: 58.50, q2: 55.20 },
+
+            // อ.บางบ่อ (15 แห่ง)
+            { name: 'รพ.สต.บางบ่อ', district: 'บางบ่อ', total: 1832, tmt: 825, percent: 45.03, q1: 43.37, q2: 47.41 }, 
+            { name: 'รพ.สต.บ้านระกาศ หมู่ 3', district: 'บางบ่อ', total: 835, tmt: 479, percent: 57.37, q1: 50.44, q2: 65.70 },
+            { name: 'รพ.สต.บ้านระกาศ หมู่ 8', district: 'บางบ่อ', total: 2026, tmt: 1033, percent: 50.99, q1: 46.73, q2: 57.88 },
+            { name: 'รพ.สต.บางพลีน้อย หมู่ 3', district: 'บางบ่อ', total: 2874, tmt: 1667, percent: 58.00, q1: 60.92, q2: 53.92 },
+            { name: 'รพ.สต.บางพลีน้อย หมู่ 5', district: 'บางบ่อ', total: 1552, tmt: 624, percent: 40.21, q1: 37.70, q2: 43.96 },
+            { name: 'รพ.สต.บางพลีน้อย หมู่ 8', district: 'บางบ่อ', total: 620, tmt: 310, percent: 50.00, q1: 52.10, q2: 48.00 },
+            { name: 'รพ.สต.คลองด่าน หมู่ 7', district: 'บางบ่อ', total: 2403, tmt: 1458, percent: 60.67, q1: 30.23, q2: 83.09 },
+            { name: 'รพ.สต.คลองด่าน', district: 'บางบ่อ', total: 8520, tmt: 6510, percent: 76.40, q1: 78.10, q2: 74.00 },
+            { name: 'รพ.สต.บ้านคลองสวน', district: 'บางบ่อ', total: 4500, tmt: 3100, percent: 68.88, q1: 70.50, q2: 67.20 },
+            { name: 'รพ.สต.บางเพรียง', district: 'บางบ่อ', total: 3200, tmt: 2100, percent: 65.62, q1: 67.10, q2: 64.20 },
+            { name: 'รพ.สต.เปร็ง', district: 'บางบ่อ', total: 3500, tmt: 2500, percent: 71.42, q1: 73.50, q2: 69.10 },
+            { name: 'รพ.สต.คลองนิยมยาตรา', district: 'บางบ่อ', total: 2800, tmt: 1600, percent: 57.14, q1: 59.20, q2: 55.10 },
+            { name: 'รพ.สต.คลองสะบัดจาก', district: 'บางบ่อ', total: 2100, tmt: 1250, percent: 59.52, q1: 61.00, q2: 58.10 },
+            { name: 'รพ.สต.หอมศีล', district: 'บางบ่อ', total: 2900, tmt: 1800, percent: 62.06, q1: 64.50, q2: 59.80 },
+            { name: 'รพ.สต.บ้านช้างชน', district: 'บางบ่อ', total: 1988, tmt: 1466, percent: 73.74, q1: 75.10, q2: 72.50 },
+
+            // อ.พระประแดง (18 แห่ง)
+            { name: 'รพ.สต.อยู่เจริญ', district: 'พระประแดง', total: 2265, tmt: 836, percent: 36.91, q1: 39.43, q2: 33.94 },
+            { name: 'รพ.สต.บางกอบัว', district: 'พระประแดง', total: 5200, tmt: 3100, percent: 59.61, q1: 62.10, q2: 56.50 },
+            { name: 'รพ.สต.สำโรงใต้', district: 'พระประแดง', total: 12709, tmt: 7093, percent: 55.81, q1: 58.20, q2: 52.40 },
+            { name: 'รพ.สต.บางกะเจ้า', district: 'พระประแดง', total: 4800, tmt: 2500, percent: 52.08, q1: 54.20, q2: 50.10 },
+            { name: 'รพ.สต.ทรงคนอง', district: 'พระประแดง', total: 3600, tmt: 2100, percent: 58.33, q1: 60.50, q2: 56.20 },
+            { name: 'รพ.สต.ตลาด', district: 'พระประแดง', total: 7500, tmt: 4100, percent: 54.66, q1: 56.80, q2: 52.50 },
+            { name: 'รพ.สต.บางจาก', district: 'พระประแดง', total: 4200, tmt: 2500, percent: 59.52, q1: 61.20, q2: 57.80 },
+            { name: 'รพ.สต.บางครุ', district: 'พระประแดง', total: 5800, tmt: 3200, percent: 55.17, q1: 57.50, q2: 53.00 },
+            { name: 'รพ.สต.บางหญ้าแพรก', district: 'พระประแดง', total: 4900, tmt: 2400, percent: 48.97, q1: 51.20, q2: 46.80 },
+            { name: 'รพ.สต.ลัดหลวง', district: 'พระประแดง', total: 6100, tmt: 3500, percent: 57.37, q1: 59.50, q2: 55.20 },
+            { name: 'รพ.สต.บางน้ำผึ้ง', district: 'พระประแดง', total: 3100, tmt: 1950, percent: 62.90, q1: 65.10, q2: 60.80 },
+            { name: 'รพ.สต.บางยอ', district: 'พระประแดง', total: 2900, tmt: 1700, percent: 58.62, q1: 60.50, q2: 56.80 },
+            { name: 'รพ.สต.กาหลง', district: 'พระประแดง', total: 2100, tmt: 1100, percent: 52.38, q1: 54.50, q2: 50.20 },
+            { name: 'รพ.สต.แหลมแค', district: 'พระประแดง', total: 1800, tmt: 950, percent: 52.77, q1: 55.00, q2: 50.50 },
+            { name: 'รพ.สต.คลองลัดโพธิ์', district: 'พระประแดง', total: 3400, tmt: 1850, percent: 54.41, q1: 56.50, q2: 52.20 },
+            { name: 'รพ.สต.วัดชมนิมิตร', district: 'พระประแดง', total: 4500, tmt: 2300, percent: 51.11, q1: 53.50, q2: 48.80 },
+            { name: 'รพ.สต.วัดแค', district: 'พระประแดง', total: 2700, tmt: 1600, percent: 59.25, q1: 61.50, q2: 57.10 },
+            { name: 'รพ.สต.ทรงธรรม', district: 'พระประแดง', total: 3200, tmt: 1750, percent: 54.68, q1: 56.80, q2: 52.50 },
+
+            // อ.บางพลี (15 แห่ง)
+            { name: 'รพ.สต.บางพลีใหญ่', district: 'บางพลี', total: 6500, tmt: 2500, percent: 38.46, q1: 40.50, q2: 35.10 },
+            { name: 'รพ.สต.บางโฉลง', district: 'บางพลี', total: 4200, tmt: 1500, percent: 35.71, q1: 37.20, q2: 33.10 },
+            { name: 'รพ.สต.ราชาเทวะ', district: 'บางพลี', total: 3500, tmt: 1200, percent: 34.28, q1: 36.50, q2: 32.10 },
+            { name: 'รพ.สต.หนองปรือ', district: 'บางพลี', total: 2740, tmt: 1312, percent: 47.88, q1: 49.20, q2: 46.50 },
+            { name: 'รพ.สต.บางปลา', district: 'บางพลี', total: 5100, tmt: 1900, percent: 37.25, q1: 39.50, q2: 35.10 },
+            { name: 'รพ.สต.บางแก้ว', district: 'บางพลี', total: 4800, tmt: 1600, percent: 33.33, q1: 35.50, q2: 31.20 },
+            { name: 'รพ.สต.คลองจิก', district: 'บางพลี', total: 2200, tmt: 950, percent: 43.18, q1: 45.50, q2: 41.00 },
+            { name: 'รพ.สต.คลองบางปลา', district: 'บางพลี', total: 2900, tmt: 1100, percent: 37.93, q1: 39.80, q2: 36.10 },
+            { name: 'รพ.สต.วัดสลุด', district: 'บางพลี', total: 3400, tmt: 1350, percent: 39.70, q1: 41.50, q2: 38.00 },
+            { name: 'รพ.สต.ศรีวารี', district: 'บางพลี', total: 2800, tmt: 1050, percent: 37.50, q1: 39.50, q2: 35.50 },
+            { name: 'รพ.สต.หนองงูเห่า', district: 'บางพลี', total: 1900, tmt: 850, percent: 44.73, q1: 46.50, q2: 43.10 },
+            { name: 'รพ.สต.บางโฉลงนอก', district: 'บางพลี', total: 3100, tmt: 1150, percent: 37.09, q1: 39.10, q2: 35.20 },
+            { name: 'รพ.สต.วัดบางพลีใหญ่ใน', district: 'บางพลี', total: 4500, tmt: 1750, percent: 38.88, q1: 40.50, q2: 37.20 },
+            { name: 'รพ.สต.ธนาซิตี้', district: 'บางพลี', total: 2100, tmt: 700, percent: 33.33, q1: 35.10, q2: 31.50 },
+            { name: 'รพ.สต.คลองเสือตาย', district: 'บางพลี', total: 1500, tmt: 650, percent: 43.33, q1: 45.20, q2: 41.50 },
+
+            // อ.พระสมุทรเจดีย์ (10 แห่ง)
+            { name: 'รพ.สต.แหลมฟ้าผ่า', district: 'พระสมุทรเจดีย์', total: 7850, tmt: 6950, percent: 88.53, q1: 90.10, q2: 86.50 },
+            { name: 'รพ.สต.นาเกลือ', district: 'พระสมุทรเจดีย์', total: 5120, tmt: 4520, percent: 88.28, q1: 89.50, q2: 87.10 },
+            { name: 'รพ.สต.บ้านคลองสรรพสามิต', district: 'พระสมุทรเจดีย์', total: 4500, tmt: 3800, percent: 84.44, q1: 86.20, q2: 82.50 },
+            { name: 'รพ.สต.ในคลองบางปลากด', district: 'พระสมุทรเจดีย์', total: 8500, tmt: 7100, percent: 83.52, q1: 85.10, q2: 81.80 },
+            { name: 'รพ.สต.ปากคลองบางปลากด', district: 'พระสมุทรเจดีย์', total: 9030, tmt: 7786, percent: 86.22, q1: 88.50, q2: 84.10 },
+            { name: 'รพ.สต.ทุ่งครุ', district: 'พระสมุทรเจดีย์', total: 6200, tmt: 5100, percent: 82.25, q1: 84.10, q2: 80.50 },
+            { name: 'รพ.สต.บ้านขุนสมุทรจีน', district: 'พระสมุทรเจดีย์', total: 1800, tmt: 1650, percent: 91.66, q1: 93.50, q2: 89.80 },
+            { name: 'รพ.สต.วัดสาขลา', district: 'พระสมุทรเจดีย์', total: 3200, tmt: 2750, percent: 85.93, q1: 87.50, q2: 84.20 },
+            { name: 'รพ.สต.คลองมอญ', district: 'พระสมุทรเจดีย์', total: 2400, tmt: 1950, percent: 81.25, q1: 83.50, q2: 79.10 },
+            { name: 'รพ.สต.คู่สร้าง', district: 'พระสมุทรเจดีย์', total: 4500, tmt: 3600, percent: 80.00, q1: 82.10, q2: 78.00 },
+
+            // อ.บางเสาธง (6 แห่ง)
+            { name: 'รพ.สต.บางเสาธง', district: 'บางเสาธง', total: 8000, tmt: 5500, percent: 68.75, q1: 70.20, q2: 67.10 },
+            { name: 'รพ.สต.ศีรษะจรเข้ใหญ่', district: 'บางเสาธง', total: 4500, tmt: 3100, percent: 68.88, q1: 71.50, q2: 66.20 },
+            { name: 'รพ.สต.ศีรษะจรเข้น้อย', district: 'บางเสาธง', total: 2930, tmt: 2032, percent: 69.35, q1: 72.10, q2: 67.50 },
+            { name: 'รพ.สต.เคหะบางพลี', district: 'บางเสาธง', total: 9500, tmt: 6100, percent: 64.21, q1: 66.50, q2: 62.10 },
+            { name: 'รพ.สต.บัวโรย', district: 'บางเสาธง', total: 3200, tmt: 2200, percent: 68.75, q1: 70.50, q2: 67.10 },
+            { name: 'รพ.สต.จรเข้ใหญ่', district: 'บางเสาธง', total: 2800, tmt: 1950, percent: 69.64, q1: 71.20, q2: 68.10 }
+        ];
+
+        // Sort all data by percentage descending
+        const sortByPercent = (a, b) => b.percent - a.percent;
+        dataNational.sort(sortByPercent);
+        dataRegion.sort(sortByPercent);
+        dataDistrict.sort(sortByPercent);
+        dataHospital.sort(sortByPercent);
+
+        // --- 2. State & Chart Instances ---
+        let percentChartInstance = null;
+        let volumeChartInstance = null;
+        let trendChartInstance = null;
+        let historyChartInstance = null;
+
+        // --- 3. Main Functions ---
+
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+
+        function switchView(level) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${level}`).classList.add('active');
+
+            const filterSection = document.getElementById('filter-section');
+            const historyChartContainer = document.getElementById('history-chart-container');
+            
+            if (level === 'hospital') {
+                filterSection.classList.remove('hidden');
+                filterSection.classList.add('flex');
+                populateDropdown();
+                filterHospitals(); 
+                historyChartContainer.classList.add('hidden');
+                return;
+            } else {
+                filterSection.classList.add('hidden');
+                filterSection.classList.remove('flex');
+            }
+
+            let currentData = [];
+            let labelType = '';
+
+            if (level === 'national') {
+                currentData = dataNational;
+                labelType = 'เขตสุขภาพ';
+                document.getElementById('chart1-title').innerHTML = '<span class="w-3 h-3 rounded-full bg-emerald-500 mr-2"></span> ร้อยละการรับบริการระดับประเทศ';
+                document.getElementById('chart2-title').innerHTML = '<span class="w-3 h-3 rounded-full bg-blue-500 mr-2"></span> ปริมาณระดับประเทศ';
+                historyChartContainer.classList.add('hidden');
+            } else if (level === 'region') {
+                currentData = dataRegion;
+                labelType = 'จังหวัด';
+                document.getElementById('chart1-title').innerHTML = '<span class="w-3 h-3 rounded-full bg-emerald-500 mr-2"></span> ร้อยละ เขต 6';
+                document.getElementById('chart2-title').innerHTML = '<span class="w-3 h-3 rounded-full bg-blue-500 mr-2"></span> ปริมาณ เขต 6';
+                historyChartContainer.classList.add('hidden');
+            } else if (level === 'district') {
+                currentData = dataDistrict;
+                labelType = 'อำเภอ';
+                document.getElementById('chart1-title').innerHTML = '<span class="w-3 h-3 rounded-full bg-emerald-500 mr-2"></span> ร้อยละ สมุทรปราการ (รายอำเภอ)';
+                document.getElementById('chart2-title').innerHTML = '<span class="w-3 h-3 rounded-full bg-blue-500 mr-2"></span> ปริมาณ สมุทรปราการ';
+                historyChartContainer.classList.remove('hidden');
+            }
+
+            document.getElementById('th-name').innerText = labelType;
+            
+            updateAnalysis(level);
+            renderCharts(currentData);
+            if (level === 'district') {
+                renderHistoryChart(currentData);
+            }
+            renderTable(currentData);
+        }
+
+        function populateDropdown() {
+            const select = document.getElementById('district-select');
+            if (select.options.length > 1) return; 
+
+            const districts = [...new Set(dataHospital.map(h => h.district))];
+            districts.sort().forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d;
+                opt.textContent = `อ.${d}`;
+                select.appendChild(opt);
+            });
+        }
+
+        function filterHospitals() {
+            const selectedDistrict = document.getElementById('district-select').value;
+            let filteredData = dataHospital;
+            
+            if (selectedDistrict !== 'all') {
+                filteredData = dataHospital.filter(h => h.district === selectedDistrict);
+            }
+            
+            // Update counter badge
+            document.getElementById('hospital-count-display').innerText = filteredData.length;
+            document.getElementById('th-name').innerText = 'หน่วยบริการ';
+            
+            updateAnalysis('hospital', selectedDistrict);
+            
+            // Dynamic chart width for horizontal scroll
+            const minWidth = filteredData.length > 15 ? `${filteredData.length * 45}px` : '100%';
+            document.getElementById('percent-chart-wrapper').style.minWidth = minWidth;
+            document.getElementById('volume-chart-wrapper').style.minWidth = minWidth;
+            document.getElementById('trend-chart-wrapper').style.minWidth = minWidth;
+
+            renderCharts(filteredData); 
+            renderTable(filteredData); 
+        }
+
+        function updateAnalysis(level, subLevel = 'all') {
+            const content = document.getElementById('expert-analysis-content');
+            let html = '';
+
+            switch(level) {
+                case 'national':
+                    html = `<p class="mb-2"><strong class="text-indigo-800 text-lg">📊 บทวิเคราะห์เชิงนโยบาย (Policy Benchmarking):</strong><br> การรับบริการแพทย์แผนไทยระดับประเทศเฉลี่ยแกว่งตัวอยู่ที่ 40-50% <strong>เขตสุขภาพที่ 7</strong> ทำได้ดีที่สุด (58.42%) ในขณะที่ <strong>เขต 6</strong> ของเรายังรั้งท้าย (33.05%) นอกจากนี้ แนวโน้มจาก Q1 ไป Q2 ภาพรวมประเทศมีสัญญาณ <span class="text-red-600 font-bold">"ชะลอตัวลงเล็กน้อย"</span></p>`;
+                    break;
+                case 'region':
+                    html = `<p class="mb-2"><strong class="text-indigo-800 text-lg">📊 บทวิเคราะห์การกระจายทรัพยากร (Resource Allocation):</strong><br> ความเหลื่อมล้ำในเขต 6 อยู่ในระดับ <span class="text-red-600 font-bold">วิกฤต</span> แม้สมุทรปราการจะเป็นตัวแบก (63.41%) แต่ชลบุรีและระยองทำได้เพียง 10-15% ทั้งที่บริบทความเป็นเมืองอุตสาหกรรมคล้ายคลึงกัน</p>`;
+                    break;
+                case 'district': 
+                    html = `
+                        <p class="mb-2"><strong class="text-teal-800 text-lg">📈 บทวิเคราะห์แนวโน้ม 4 ปี (Historical CAGR & Trend Analysis):</strong><br> 
+                        ✅ <strong class="text-emerald-600">The Rising Stars:</strong> <strong>อ.พระสมุทรเจดีย์</strong> ครองแชมป์อันดับ 1 และมีอัตราเติบโตสูงขึ้นทุกปี<br>
+                        ⚠️ <strong class="text-red-600">Critical Drop:</strong> <strong>อ.เมืองสมุทรปราการ</strong> เคยทำผลงานได้ดีเยี่ยมจนแตะ 72.40% ในปี 2568 แต่ปีปัจจุบัน <span class="bg-red-100 text-red-800 px-1 rounded font-bold">กราฟหักหัวลงแรงมาก</span> สอดคล้องกับตัวเลข Q2 ที่ดิ่งลง</p>
+                        <ul class="list-disc pl-6 mt-2 text-gray-700">
+                            <li><strong>Immediate Action (เร่งด่วน) สำหรับ อ.เมือง:</strong> ต้องลงพื้นที่ Audit ด่วนเพื่อหาสาเหตุที่ยอดตกฉับพลัน (เช่น ขาดยา หรือขาดบุคลากร)</li>
+                            <li><strong>Strategic Shift สำหรับ อ.บางพลี:</strong> ควรพิจารณาสร้าง Sandbox โมเดล "ศูนย์ Wellness แผนไทยในนิคมอุตสาหกรรม" หรือเปิดคลินิกนอกเวลา</li>
+                        </ul>
+                    `;
+                    break;
+                case 'hospital':
+                    const scope = subLevel === 'all' ? 'ภาพรวม รพ.สต. ทั้งจังหวัด (84 แห่ง)' : `เฉพาะพื้นที่ อ.${subLevel}`;
+                    html = `
+                        <p class="mb-2"><strong class="text-indigo-800 text-lg">📊 บทวิเคราะห์ระดับปฏิบัติการ (Operational Flow) - ${scope}:</strong><br> จากการตรวจทานข้อมูลราย รพ.สต. พบความแตกต่างของการเข้าถึงบริการสูงมาก บางแห่งจ่ายแผนไทยเป็น First-line drug ได้ผลดีเยี่ยม แต่บางแห่งกลับมียอดตกค้างในระบบหรือมีความผันผวนของ Data ระหว่างไตรมาสสูงลิ่ว</p>
+                        <p class="mb-1 mt-3"><strong class="text-emerald-700">💡 ข้อเสนอแนะเชิงลึก (Pookpik's Insight):</strong></p>
+                        <ul class="list-disc pl-6 space-y-1 text-gray-700">
+                            <li>ควรจัดทำ <strong>Standard Protocol</strong> การจ่ายยาสมุนไพรพื้นฐานให้ รพ.สต. ที่มีผลงานตกหล่น (โซนสีแดง)</li>
+                            <li>ใช้ระบบ Coaching นำ รพ.สต. ที่ผ่านเกณฑ์ฉลุยในอำเภอเดียวกัน มาเป็นพี่เลี้ยงให้ รพ.สต. ที่ยังไม่ผ่านเกณฑ์</li>
+                        </ul>
+                    `;
+                    break;
+            }
+            content.innerHTML = html;
+        }
+
+        function renderCharts(data) {
+            const labels = data.map(d => d.name);
+            const percentData = data.map(d => d.percent);
+            const totalData = data.map(d => d.total);
+            const tmtData = data.map(d => d.tmt);
+            const q1Data = data.map(d => d.q1);
+            const q2Data = data.map(d => d.q2);
+
+            if (percentChartInstance) percentChartInstance.destroy();
+            if (volumeChartInstance) volumeChartInstance.destroy();
+            if (trendChartInstance) trendChartInstance.destroy();
+
+            Chart.defaults.font.family = "'Bai Jamjuree', sans-serif";
+            Chart.defaults.color = '#4b5563';
+            Chart.defaults.font.size = 13;
+
+            // 1. Percent Chart
+            const ctx1 = document.getElementById('percentChart').getContext('2d');
+            percentChartInstance = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'ร้อยละการรับบริการ',
+                        data: percentData,
+                        backgroundColor: percentData.map(p => p >= 50 ? 'rgba(16, 185, 129, 0.85)' : 'rgba(239, 68, 68, 0.85)'),
+                        borderColor: percentData.map(p => p >= 50 ? 'rgb(5, 150, 105)' : 'rgb(220, 38, 38)'),
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { max: 100 }, x: { ticks: { maxRotation: 90, minRotation: 45 } } }
+                }
+            });
+
+            // 2. Volume Chart
+            const ctx2 = document.getElementById('volumeChart').getContext('2d');
+            volumeChartInstance = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'แผนไทย (ครั้ง)', data: tmtData, backgroundColor: 'rgba(139, 92, 246, 0.9)' },
+                        { label: 'ผู้ป่วยนอกรวม (ครั้ง)', data: totalData, backgroundColor: 'rgba(147, 197, 253, 0.7)' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: { x: { ticks: { maxRotation: 90, minRotation: 45 } } }
+                }
+            });
+
+            // 3. Q1 vs Q2 Trend Chart
+            const ctx3 = document.getElementById('trendChart').getContext('2d');
+            trendChartInstance = new Chart(ctx3, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'ไตรมาส 1 (%)', data: q1Data, borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.1)', borderWidth: 3, fill: true, tension: 0.4 },
+                        { label: 'ไตรมาส 2 (%)', data: q2Data, borderColor: '#ec4899', backgroundColor: 'rgba(236, 72, 153, 0.1)', borderWidth: 3, fill: true, tension: 0.4 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: { x: { ticks: { maxRotation: 90, minRotation: 45 } } }
+                }
+            });
+        }
+
+        // 4-Year Historical Chart (Only for District view)
+        function renderHistoryChart(data) {
+            const ctx = document.getElementById('historyChart').getContext('2d');
+            if (historyChartInstance) historyChartInstance.destroy();
+
+            const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b'];
+
+            const datasets = data.map((d, index) => {
+                return {
+                    label: d.name,
+                    data: [d.y66, d.y67, d.y68, d.y69],
+                    borderColor: colors[index],
+                    backgroundColor: colors[index],
+                    borderWidth: index === 3 ? 5 : 3, // Highlight อ.เมือง
+                    pointRadius: 6,
+                    pointHoverRadius: 9,
+                    pointBackgroundColor: '#fff',
+                    pointBorderWidth: 2,
+                    fill: false,
+                    tension: 0.3
+                };
+            });
+
+            historyChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['ปี 2566', 'ปี 2567', 'ปี 2568', 'ปี 2569 (YTD)'],
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { 
+                        legend: { position: 'right', labels: { font: { weight: 'bold' }, usePointStyle: true, padding: 20 } },
+                        tooltip: { backgroundColor: 'rgba(13, 148, 136, 0.9)', titleFont: { size: 14 } }
+                    },
+                    scales: {
+                        y: { max: 100, title: { display: true, text: 'ร้อยละการรับบริการ (%)', font: { weight: 'bold' } } }
+                    }
+                }
+            });
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
+
+            data.forEach((row, index) => {
+                const isPass = row.percent >= 50;
+                let trendHtml = '';
+                if(row.q2 && row.q1) {
+                    const diff = (row.q2 - row.q1).toFixed(2);
+                    if(diff > 0) trendHtml = `<span class="text-emerald-500 text-xs font-bold">▲ +${diff}%</span>`;
+                    else if(diff < 0) trendHtml = `<span class="text-red-500 text-xs font-bold">▼ ${Math.abs(diff)}%</span>`;
+                    else trendHtml = `<span class="text-gray-400 text-xs">-</span>`;
+                }
+
+                const statusBadge = isPass 
+                    ? `<span class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full bg-emerald-100 text-emerald-800 shadow-sm border border-emerald-200">ผ่านเกณฑ์</span>`
+                    : `<span class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full bg-red-100 text-red-800 shadow-sm border border-red-200">ต่ำกว่าเกณฑ์</span>`;
+
+                const tr = document.createElement('tr');
+                tr.className = 'transition-colors hover:bg-blue-50/50 group';
+                
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap font-bold text-gray-800 border-l-4 ${isPass ? 'border-l-emerald-400' : 'border-l-red-400'}">
+                        ${row.name}
+                        ${row.district ? `<div class="text-xs text-indigo-500 font-semibold mt-0.5">อ.${row.district}</div>` : ''}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-gray-600 font-medium group-hover:text-blue-700">${formatNumber(row.total)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-purple-600 font-bold group-hover:text-purple-800">${formatNumber(row.tmt)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center text-gray-600">${row.q1 ? row.q1.toFixed(2) : '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center text-gray-600 flex flex-col items-center justify-center">
+                        <span>${row.q2 ? row.q2.toFixed(2) : '-'}</span>
+                        ${trendHtml}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right font-extrabold text-lg ${isPass ? 'text-emerald-600' : 'text-red-500'}">${row.percent.toFixed(2)}%</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">${statusBadge}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Initialize App
+        window.onload = () => {
+            // Check responsive scrollbars at start
+            switchView('district');
+        };
+
+    </script>
+</body>
+</html>
