@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-STAMP Passport งานมหกรรมแพทย์แผนไทยครั้งที่ 4</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Library สำหรับพลุ Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #f5ede4; 
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+            background-image: radial-gradient(#d4c5b3 1px, transparent 1px);
+            background-size: 20px 20px;
+            transition: background-color 0.3s ease;
+        }
+
+        /* -----------------------------------------
+           Claymorphism 3D Styles 
+           ----------------------------------------- */
+        .clay-card-green {
+            background: #b7d1a7;
+            box-shadow: inset -6px -6px 12px rgba(0, 0, 0, 0.1), 
+                        inset 6px 6px 12px rgba(255, 255, 255, 0.7), 
+                        6px 6px 15px rgba(0, 0, 0, 0.15);
+            border-radius: 24px;
+        }
+
+        .clay-card-orange {
+            background: #f7b989;
+            box-shadow: inset -6px -6px 12px rgba(0, 0, 0, 0.1), 
+                        inset 6px 6px 12px rgba(255, 255, 255, 0.6), 
+                        6px 6px 15px rgba(0, 0, 0, 0.15);
+            border-radius: 24px;
+        }
+
+        .clay-bubble {
+            background: #e2a672;
+            box-shadow: inset -4px -4px 10px rgba(0, 0, 0, 0.15), 
+                        inset 4px 4px 10px rgba(255, 255, 255, 0.5), 
+                        4px 4px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 30px;
+            position: relative;
+        }
+        
+        .clay-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            right: 40px;
+            width: 30px;
+            height: 30px;
+            background: #e2a672;
+            border-radius: 5px;
+            transform: rotate(45deg);
+            box-shadow: inset -4px -4px 10px rgba(0, 0, 0, 0.15);
+            z-index: -1;
+        }
+
+        .clay-inset {
+            background: #fdfaf6;
+            box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.15), 
+                        inset -4px -4px 8px rgba(255, 255, 255, 0.8);
+            border-radius: 20px;
+            border: 2px solid #e5d9c5;
+        }
+
+        .clay-btn {
+            background: #5d9061;
+            box-shadow: inset -4px -4px 8px rgba(0, 0, 0, 0.2), 
+                        inset 4px 4px 8px rgba(255, 255, 255, 0.3), 
+                        4px 4px 10px rgba(0, 0, 0, 0.2);
+            transition: transform 0.1s;
+        }
+        .clay-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* -----------------------------------------
+           เอฟเฟกต์แอนิเมชัน แสง สี เสียง
+           ----------------------------------------- */
+        .shake-error { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        .screen-shake { animation: screenShake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            20%, 80% { transform: translate3d(4px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+            40%, 60% { transform: translate3d(6px, 0, 0); }
+        }
+
+        @keyframes screenShake {
+            0% { transform: translate(2px, 2px) rotate(0deg); }
+            10% { transform: translate(-2px, -3px) rotate(-1deg); }
+            20% { transform: translate(-4px, 0px) rotate(1deg); }
+            30% { transform: translate(4px, 3px) rotate(0deg); }
+            40% { transform: translate(2px, -2px) rotate(1deg); }
+            50% { transform: translate(-2px, 3px) rotate(-1deg); }
+            60% { transform: translate(-4px, 2px) rotate(0deg); }
+            70% { transform: translate(4px, 2px) rotate(-1deg); }
+            80% { transform: translate(-2px, -2px) rotate(1deg); }
+            90% { transform: translate(2px, 3px) rotate(0deg); }
+            100% { transform: translate(2px, -3px) rotate(-1deg); }
+        }
+
+        .epic-stamp-anim { animation: epicStamp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes epicStamp {
+            0% { transform: scale(5) rotate(-20deg); opacity: 0; filter: drop-shadow(0 20px 20px rgba(0,0,0,0.5)); }
+            50% { transform: scale(0.8) rotate(5deg); opacity: 1; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2)); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.2)); }
+        }
+
+        /* เอฟเฟกต์ไฟกะพริบฉลอง (Grand Finale) */
+        @keyframes strobeLight {
+            0% { background-color: #f5ede4; }
+            25% { background-color: #ffe066; }
+            50% { background-color: #ffffff; }
+            75% { background-color: #b7d1a7; }
+            100% { background-color: #f5ede4; }
+        }
+        .epic-strobe {
+            animation: strobeLight 0.5s infinite;
+        }
+
+        .title-3d {
+            color: #4a7c50;
+            text-shadow: 2px 2px 0px #fff, 4px 4px 0px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body id="main-body" class="min-h-screen pb-12 text-gray-800 relative max-w-lg mx-auto">
+
+    <!-- เสียงประกอบ (SFX) โหลดเตรียมไว้ -->
+    <audio id="sfx-kawaii-pop" src="https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3" preload="auto"></audio>
+    <audio id="sfx-kawaii-chime" src="https://assets.mixkit.co/active_storage/sfx/2014/2014-preview.mp3" preload="auto"></audio>
+    <audio id="sfx-fanfare" src="https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3" preload="auto"></audio>
+    <audio id="sfx-applause" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3" preload="auto"></audio>
+
+    <!-- ส่วนหัวข้อ -->
+    <header class="pt-8 pb-4 px-4 text-center z-10 relative">
+        <!-- เปลี่ยนชื่อหัวข้อตามบรีฟของบอส -->
+        <h1 class="text-3xl font-extrabold title-3d mb-2 leading-tight">
+            E-STAMP Passport<br>
+            <span class="text-2xl">งานมหกรรมแพทย์แผนไทยครั้งที่ 4</span>
+        </h1>
+        <h2 class="text-xl font-bold text-gray-700 mb-6 drop-shadow-sm">เช็กอิน 5 โซนสุขภาพดี รับรางวัลสุดพิเศษ!</h2>
+        
+        <!-- กล่องคำพูด -->
+        <div class="clay-bubble p-4 text-white mx-auto max-w-sm mb-8 z-10">
+            <p class="font-bold text-lg drop-shadow-md">" Check-in สุขภาพดี รับฟรี! ไอเทมดูแลตัวเอง "</p>
+            <p class="text-sm mt-1 opacity-90 drop-shadow-sm">เปิดพาสปอร์ตสู่สุขภาพดีกับ 5 โซน Wellness<br>มาร่วมสนุกและสัมผัสประสบการณ์สุขภาพดีที่จับต้องได้ภายในงาน</p>
+        </div>
+    </header>
+
+    <!-- พื้นที่แสดงปุ่มแสตมป์ -->
+    <main class="px-4 relative z-20 space-y-5" id="stamp-container">
+        <!-- การ์ดโซนจะถูกสร้างด้วย Javascript -->
+    </main>
+
+    <!-- ส่วนของรางวัล -->
+    <div class="mt-10 px-4 mb-10">
+        <div class="clay-card-green p-1 pt-6 relative mt-12">
+            <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-[#5d9061] text-white px-6 py-2 rounded-full font-bold shadow-lg border-2 border-white whitespace-nowrap">
+                รางวัลสำหรับผู้พิชิต
+            </div>
+            
+            <div class="clay-card-orange m-2 p-4 rounded-[20px] text-white">
+                <h3 class="font-bold text-lg mb-2 drop-shadow-md">สะสมครบ 5 แสตมป์ รับสิทธิพิเศษทันที!</h3>
+                <ul class="text-sm space-y-2 drop-shadow-sm font-medium">
+                    <li class="flex items-start"><i data-lucide="check-square" class="w-5 h-5 mr-2 text-white shrink-0"></i> 1. ฟรี! ร่วมฝึกสาธิตทำสมุนไพรและนำกลับบ้านได้</li>
+                    <li class="flex items-start"><i data-lucide="check-square" class="w-5 h-5 mr-2 text-white shrink-0"></i> 2. สิทธิ์จับรางวัลลุ้นรับผลิตภัณฑ์สมุนไพรและของรางวัลอื่นๆ</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ตรายางแอนิเมชันใหญ่ -->
+    <div id="epic-stamp-overlay" class="fixed inset-0 pointer-events-none z-[100] hidden flex items-center justify-center">
+        <div id="epic-stamp-element" class="w-48 h-48 bg-white/90 backdrop-blur-sm rounded-full flex flex-col items-center justify-center border-8 border-[#5d9061] shadow-2xl">
+            <i data-lucide="check-circle" class="w-24 h-24 text-[#5d9061]"></i>
+            <span class="font-bold text-[#5d9061] text-2xl mt-1 tracking-wider uppercase">Stamped</span>
+        </div>
+    </div>
+
+    <!-- Modal ยินดีด้วย (Grand Finale) -->
+    <div id="success-modal" class="fixed inset-0 z-50 hidden flex-col items-center justify-center bg-gray-900/40 backdrop-blur-md px-4">
+        <div class="clay-card-green p-6 max-w-sm w-full text-center transform scale-95 transition-transform duration-300 relative overflow-hidden border-4 border-white shadow-2xl" id="modal-content">
+            <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+                <i data-lucide="award" class="w-12 h-12 text-orange-500"></i>
+            </div>
+            <h2 class="text-3xl font-extrabold text-[#3e6642] mb-2 drop-shadow-sm">คุณคือผู้พิชิต!</h2>
+            <p class="text-[#3e6642] mb-6 font-medium text-lg leading-snug">
+                ยินดีด้วยค่ะ ครบแล้วคุณสามารถเข้าร่วมกิจกรรมสาธิตทำสมุนไพร กลับบ้านได้ และรับของรางวัลที่จุดอำนวยการได้ค่ะ
+            </p>
+            <button onclick="closeModal()" class="clay-btn w-full text-white font-bold py-4 px-6 rounded-full text-xl shadow-lg">
+                ตกลง รับทราบ
+            </button>
+            <button onclick="resetStamps()" class="mt-4 text-sm text-[#3e6642] underline font-medium">รีเซ็ตแสตมป์ (ทดสอบ)</button>
+        </div>
+    </div>
+
+    <!-- Modal กรอกรหัสลับ -->
+    <div id="action-modal" class="fixed inset-0 z-40 hidden flex-col items-center justify-center bg-gray-900/60 px-4 opacity-0 transition-opacity duration-300 backdrop-blur-sm">
+        <div class="clay-card-green p-6 w-full max-w-sm transform scale-95 transition-transform duration-300 border-4 border-white relative" id="action-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-[#3e6642] drop-shadow-sm" id="action-title">โซน</h3>
+                <button onclick="closeActionModal()" class="text-[#3e6642] bg-white/50 rounded-full p-1 hover:bg-white"><i data-lucide="x"></i></button>
+            </div>
+            
+            <p class="text-[#3e6642] font-medium text-sm mb-4">กรุณากรอกรหัส 3 หลักเพื่อประทับตรา</p>
+            
+            <div class="mb-5 relative">
+                <input type="password" id="secret-code" inputmode="numeric" maxlength="3" placeholder="***" 
+                       class="w-full text-center text-4xl tracking-widest font-bold text-[#5d9061] clay-inset py-4 px-4 focus:outline-none focus:ring-4 focus:ring-orange-300 transition-all">
+                <p id="error-msg" class="absolute -bottom-6 left-0 w-full text-red-600 drop-shadow-md text-sm text-center hidden font-bold">รหัสไม่ถูกต้อง!</p>
+            </div>
+
+            <div class="flex space-x-3 mt-8">
+                <button id="btn-confirm-stamp" class="flex-1 clay-btn text-white font-bold py-3 rounded-xl text-lg flex items-center justify-center shadow-md">
+                    <i data-lucide="stamp" class="mr-2 w-5 h-5"></i> ประทับตรา
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ข้อมูลโซนต่างๆ พร้อมรหัสผ่าน 101, 202, 303, 404, 505
+        let zones = [
+            { id: 101, title: 'โซนที่ 1: Thai Wellness Clinic', desc: 'การดูแลสุขภาพแบบผสมผสาน', icon: 'stethoscope', secret: '101', style: 'clay-card-green', iconColor: 'text-[#5d9061]' },
+            { id: 102, title: 'โซนที่ 2: Wellness Experience', desc: 'สัมผัสฟีลสุขภาพแบบไลฟ์สไตล์', icon: 'coffee', secret: '202', style: 'clay-card-orange', iconColor: 'text-orange-600' },
+            { id: 103, title: 'โซนที่ 3: Wellness Workshop', desc: 'ลงมือทำ เรียนรู้ศาสตร์สมุนไพร', icon: 'leaf', secret: '303', style: 'clay-card-green', iconColor: 'text-[#5d9061]' },
+            { id: 104, title: 'โซนที่ 4: Healing Zone', desc: 'นวดไทย คลายเมื่อย ฟื้นฟูร่างกาย', icon: 'hand', secret: '404', style: 'clay-card-orange', iconColor: 'text-orange-600' },
+            { id: 105, title: 'โซนที่ 5: Wellness Market', desc: 'สนับสนุนเศรษฐกิจชุมชนและสินค้า', icon: 'shopping-basket', secret: '505', style: 'clay-card-green', iconColor: 'text-[#5d9061]' }
+        ];
+
+        let stampedZones = JSON.parse(localStorage.getItem('eStamps')) || [];
+        let selectedZoneId = null;
+        let ttsUnlocked = false; // ตัวแปรเช็คว่าปลดล็อกระบบเสียงพูดหรือยัง
+
+        lucide.createIcons();
+
+        // 1. วาดหน้าจอ UI
+        function renderGrid() {
+            const container = document.getElementById('stamp-container');
+            container.innerHTML = '';
+
+            zones.forEach((zone, index) => {
+                const isStamped = stampedZones.includes(zone.id);
+                let layoutClass = "flex-row";
+                if(index % 2 !== 0) layoutClass = "flex-row-reverse text-right";
+                if(index === 2) layoutClass = "flex-col items-center text-center";
+
+                const stampBoxHtml = isStamped ? 
+                    `<div class="clay-inset w-24 h-24 rounded-full flex flex-col items-center justify-center bg-white border-4 border-[#5d9061] transform -rotate-12">
+                        <i data-lucide="check-circle-2" class="w-10 h-10 text-[#5d9061] mb-1"></i>
+                        <span class="text-[#5d9061] text-[10px] font-bold">STAMPED</span>
+                     </div>` : 
+                    `<div class="clay-inset w-24 h-24 rounded-full flex items-center justify-center">
+                        <span class="text-gray-400 text-sm font-bold">ประทับตรา</span>
+                     </div>`;
+
+                const cardHTML = `
+                    <div id="card-${zone.id}" class="${zone.style} p-4 w-full cursor-pointer relative overflow-hidden transition-transform active:scale-95" 
+                         onclick="handleZoneClick(${zone.id})">
+                        <div class="flex ${layoutClass} gap-4 ${index === 2 ? 'items-center justify-center' : 'justify-between items-center'}">
+                            <div class="flex-1 ${index === 2 ? 'mb-3' : ''}">
+                                <div class="flex items-center gap-2 mb-1 ${index === 2 ? 'justify-center' : (index%2!==0 ? 'justify-end' : '')}">
+                                    ${index%2===0 || index===2 ? `<i data-lucide="${zone.icon}" class="w-6 h-6 ${zone.iconColor}"></i>` : ''}
+                                    <h3 class="font-bold text-gray-800 drop-shadow-sm text-sm sm:text-base">${zone.title}</h3>
+                                    ${index%2!==0 && index!==2 ? `<i data-lucide="${zone.icon}" class="w-6 h-6 ${zone.iconColor}"></i>` : ''}
+                                </div>
+                                <p class="text-xs text-gray-700 font-medium leading-tight">${zone.desc}</p>
+                            </div>
+                            <div class="shrink-0 relative">${stampBoxHtml}</div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', cardHTML);
+            });
+            lucide.createIcons();
+        }
+
+        // 2. จัดการ Modal รหัส
+        function handleZoneClick(id) {
+            if (stampedZones.includes(id)) return;
+            selectedZoneId = id;
+            const zone = zones.find(z => z.id === id);
+            
+            document.getElementById('action-title').innerText = zone.title;
+            document.getElementById('secret-code').value = ''; 
+            document.getElementById('error-msg').classList.add('hidden'); 
+            
+            const modal = document.getElementById('action-modal');
+            const content = document.getElementById('action-content');
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+                document.getElementById('secret-code').focus(); 
+            }, 10);
+        }
+
+        function closeActionModal() {
+            const modal = document.getElementById('action-modal');
+            const content = document.getElementById('action-content');
+            modal.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 300);
+        }
+
+        // --- ปลดล็อกระบบเสียง (Browser Hack) ---
+        function unlockAudioAndTTS() {
+            if (!ttsUnlocked && 'speechSynthesis' in window) {
+                const unlockSpeech = new SpeechSynthesisUtterance('');
+                unlockSpeech.volume = 0;
+                window.speechSynthesis.speak(unlockSpeech);
+                ttsUnlocked = true;
+            }
+        }
+
+        // 3. ตรวจสอบรหัส & เรียกแอนิเมชัน
+        document.getElementById('btn-confirm-stamp').addEventListener('click', processStamp);
+        document.getElementById('secret-code').addEventListener('keypress', e => { if (e.key === 'Enter') processStamp(); });
+
+        function processStamp() {
+            unlockAudioAndTTS();
+
+            if (!selectedZoneId) return;
+            const zone = zones.find(z => z.id === selectedZoneId);
+            const inputCode = document.getElementById('secret-code').value;
+            const errorMsg = document.getElementById('error-msg');
+            const inputField = document.getElementById('secret-code');
+
+            if (inputCode === zone.secret) {
+                closeActionModal();
+                triggerEpicStamp(zone.id);
+            } else {
+                errorMsg.classList.remove('hidden');
+                inputField.classList.remove('shake-error');
+                void inputField.offsetWidth; 
+                inputField.classList.add('shake-error');
+                inputField.value = '';
+                inputField.focus();
+            }
+        }
+
+        // ฟังก์ชันเล่นเสียง Kawaii แบบบังคับให้รีเซ็ตเวลาทุกครั้ง
+        function playKawaiiSound() {
+            const sfxPop = document.getElementById('sfx-kawaii-pop');
+            const sfxChime = document.getElementById('sfx-kawaii-chime');
+            
+            sfxPop.currentTime = 0;
+            sfxPop.play().catch(e => console.log(e));
+            
+            setTimeout(() => {
+                sfxChime.currentTime = 0;
+                sfxChime.play().catch(e => console.log(e));
+            }, 50);
+        }
+
+        // 4. แอนิเมชัน "การประทับตรา" และ "เสียงน่ารักๆ"
+        function triggerEpicStamp(id) {
+            const overlay = document.getElementById('epic-stamp-overlay');
+            const stampAnim = document.getElementById('epic-stamp-element');
+            
+            overlay.classList.remove('hidden');
+            stampAnim.classList.remove('epic-stamp-anim');
+            void stampAnim.offsetWidth; 
+            stampAnim.classList.add('epic-stamp-anim');
+
+            setTimeout(() => {
+                playKawaiiSound();
+
+                document.getElementById('main-body').classList.add('screen-shake');
+                
+                confetti({
+                    particleCount: 80,
+                    spread: 80,
+                    origin: { y: 0.8 },
+                    colors: ['#5d9061', '#f7b989', '#cd9a6f']
+                });
+
+                if (!stampedZones.includes(id)) {
+                    stampedZones.push(id);
+                    localStorage.setItem('eStamps', JSON.stringify(stampedZones));
+                }
+                renderGrid();
+
+            }, 300);
+
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                document.getElementById('main-body').classList.remove('screen-shake');
+                
+                if (stampedZones.length === 5) {
+                    setTimeout(triggerGrandFinale, 500);
+                }
+            }, 1000);
+        }
+
+        // 5. แอนิเมชันตอนจบ (Grand Finale) พร้อมเสียงพูดบรรยายที่รวดเร็วขึ้น
+        function triggerGrandFinale() {
+            const sfxFanfare = document.getElementById('sfx-fanfare');
+            const sfxApplause = document.getElementById('sfx-applause');
+            sfxFanfare.currentTime = 0;
+            sfxApplause.currentTime = 0;
+            
+            sfxFanfare.play().catch(e=>console.log(e));
+            setTimeout(() => sfxApplause.play().catch(e=>console.log(e)), 500);
+
+            document.getElementById('main-body').classList.add('epic-strobe');
+
+            var duration = 4 * 1000;
+            var animationEnd = Date.now() + duration;
+            var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 10000 };
+
+            function randomInRange(min, max) { return Math.random() * (max - min) + min; }
+
+            var interval = setInterval(function() {
+                var timeLeft = animationEnd - Date.now();
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    document.getElementById('main-body').classList.remove('epic-strobe');
+                    
+                    showSuccessModal();
+                    speakSuccessMessage();
+                    
+                    return;
+                }
+                var particleCount = 50 * (timeLeft / duration);
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+            }, 250);
+        }
+
+        // ฟังก์ชันระบบอ่านออกเสียง (Text-to-Speech) ปรับสปีดเร็วขึ้น
+        function speakSuccessMessage() {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                
+                const text = "ยินดีด้วยค่ะ ครบแล้วคุณสามารถเข้าร่วมกิจกรรมสาธิตทำสมุนไพร กลับบ้านได้ และรับของรางวัลที่จุดอำนวยการได้ค่ะ";
+                const utterance = new SpeechSynthesisUtterance(text);
+                
+                utterance.lang = 'th-TH'; 
+                utterance.rate = 1.15; // ความเร็วระดับที่ฟังชัดและเป็นธรรมชาติ
+                utterance.pitch = 1.05; 
+                
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function showSuccessModal() {
+            const modal = document.getElementById('success-modal');
+            const content = document.getElementById('modal-content');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => {
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+                confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
+            }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('success-modal');
+            const content = document.getElementById('modal-content');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                window.speechSynthesis.cancel(); 
+            }, 300);
+        }
+
+        function resetStamps() {
+            stampedZones = [];
+            localStorage.removeItem('eStamps');
+            closeModal();
+            renderGrid();
+        }
+
+        window.onload = () => {
+            renderGrid();
+            if(stampedZones.length === 5) {
+                setTimeout(showSuccessModal, 500);
+            }
+        };
+    </script>
+</body>
+</html>
