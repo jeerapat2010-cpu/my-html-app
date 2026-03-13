@@ -698,6 +698,32 @@
                 `;
                 tbody.appendChild(tr);
             });
+
+            // --- ส่วนที่เพิ่มใหม่: คำนวณผลรวมเฉพาะ รพ.สต. (ไม่รวม ศสช.) จากข้อมูลที่กำลังแสดงอยู่ ---
+            const pcuData = data.filter(row => !row.name.includes('ศสช.'));
+            const sumTotal = pcuData.reduce((sum, row) => sum + row.total, 0);
+            const sumTmt = pcuData.reduce((sum, row) => sum + row.tmt, 0);
+            const totalPercent = sumTotal > 0 ? (sumTmt / sumTotal * 100).toFixed(2) : 0;
+            const isTotalPass = totalPercent >= 50;
+
+            const totalRow = document.createElement('tr');
+            totalRow.className = 'bg-indigo-50 border-t-4 border-indigo-200 shadow-inner';
+            totalRow.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap font-extrabold text-indigo-900 border-l-4 border-l-indigo-600">
+                    รวมทั้งหมด (เฉพาะรายการที่แสดง)
+                    <div class="text-[11px] text-rose-500 font-bold mt-1">*หมายเหตุ: คำนวณยอดรวมเฉพาะ รพ.สต. และ สอน. (ไม่รวม ศสช.)</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-indigo-900 font-black text-base">${formatNumber(sumTotal)}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-purple-800 font-black text-base">${formatNumber(sumTmt)}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-center text-indigo-300 font-bold">-</td>
+                <td class="px-6 py-4 whitespace-nowrap text-center text-indigo-300 font-bold">-</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right font-black text-xl ${totalPercent > 100 ? 'text-amber-600' : isTotalPass ? 'text-emerald-600' : 'text-red-600'}">${totalPercent}%</td>
+                <td class="px-6 py-4 whitespace-nowrap text-center">
+                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full ${isTotalPass ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-red-100 text-red-800 border border-red-300'}">${isTotalPass ? 'ผ่านเกณฑ์' : 'ต่ำกว่าเกณฑ์'}</span>
+                </td>
+            `;
+            tbody.appendChild(totalRow);
+            // --- จบส่วนที่เพิ่มใหม่ ---
         }
 
         // Initialize App
