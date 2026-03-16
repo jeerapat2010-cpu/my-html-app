@@ -288,6 +288,45 @@ td{padding:9px 12px;font-size:12.5px;vertical-align:top;}
 .mo-ft{padding:13px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:space-between;align-items:center;position:sticky;bottom:0;background:#fff;border-radius:0 0 14px 14px;}
 .notif{position:fixed;bottom:22px;right:22px;z-index:9999;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;box-shadow:0 4px 20px rgba(0,0,0,.15);transform:translateY(80px);opacity:0;transition:all .28s;color:#fff;}
 .notif.show{transform:translateY(0);opacity:1;}
+/* Marker Tooltip */
+.map-tooltip{
+  background:rgba(15,30,50,.88) !important;
+  backdrop-filter:blur(8px);
+  color:#f1f5f9 !important;
+  border:1px solid rgba(99,179,255,.25) !important;
+  border-radius:7px !important;
+  font-family:"Noto Sans Thai","Sarabun",sans-serif !important;
+  font-size:12px !important;
+  font-weight:600 !important;
+  padding:5px 10px !important;
+  white-space:normal !important;
+  max-width:220px !important;
+  line-height:1.45 !important;
+  box-shadow:0 3px 12px rgba(0,0,0,.3) !important;
+  pointer-events:none !important;
+}
+.map-tooltip::before{
+  border-top-color:rgba(15,30,50,.88) !important;
+}
+.map-tooltip-route{
+  background:rgba(255,255,255,.95) !important;
+  backdrop-filter:blur(8px);
+  color:var(--text) !important;
+  border:1.5px solid var(--border) !important;
+  border-radius:7px !important;
+  font-family:"Noto Sans Thai","Sarabun",sans-serif !important;
+  font-size:12px !important;
+  font-weight:600 !important;
+  padding:5px 10px !important;
+  white-space:normal !important;
+  max-width:220px !important;
+  line-height:1.45 !important;
+  box-shadow:0 3px 12px rgba(0,0,0,.15) !important;
+  pointer-events:none !important;
+}
+.map-tooltip-route::before{
+  border-top-color:rgba(255,255,255,.95) !important;
+}
 .leaflet-popup-content-wrapper{background:#fff;border:1px solid var(--border);border-radius:12px;color:var(--text);box-shadow:var(--shadow-md);}
 .leaflet-popup-tip{background:#fff;}
 .pp-nm{font-weight:700;font-size:13.5px;margin-bottom:5px;}
@@ -800,7 +839,9 @@ function initViewMap(){
 
   // SSSJ marker
   const sIco=L.divIcon({html:`<div style="background:#1a6fc4;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4)">🏢</div>`,className:'',iconAnchor:[14,14]});
-  L.marker([13.5939,100.5976],{icon:sIco}).addTo(vMap).bindPopup('<div class="pp-nm">🏢 สสจ.สมุทรปราการ</div>');
+  L.marker([13.5939,100.5976],{icon:sIco}).addTo(vMap)
+    .bindPopup('<div class="pp-nm">🏢 สสจ.สมุทรปราการ</div><div class="pp-row">จุดเริ่มต้น | 1 ถ.สุขุมวิท ต.ปากน้ำ</div>')
+    .bindTooltip('<b>🏢 สสจ.สมุทรปราการ</b>',{direction:'top',offset:[0,-8],className:'map-tooltip'});
 
   buildCatToggles();
   applyMapFilter();
@@ -920,6 +961,8 @@ function applyMapFilter(){
       ${p.phone&&p.phone!='nan'&&p.phone?`<div class="pp-row"><b>โทร:</b> ${p.phone}</div>`:''}
       <button class="pp-add" onclick="addStop('${p.id}')">🚗 เพิ่มในแผนออกตรวจ</button>
       ${p.lat&&p.lng?`<a class="pp-gmaps" href="https://maps.google.com/?q=${p.lat},${p.lng}" target="_blank">🗺️ เปิด Google Maps</a>`:''}`,{maxWidth:240});
+    mk.bindTooltip(`<b>${TE[p.ประเภท]||'📍'} ${p.name||'-'}</b><br><span style="font-size:10.5px;opacity:.85;">${p.amphoe}${p.tambon?' · '+p.tambon:''}</span>`,
+      {direction:'top',offset:[0,-8],className:'map-tooltip'});
     return mk;
   };
 
@@ -1115,11 +1158,15 @@ function initRouteMap(){
   rMap=L.map('rMap').setView([13.5939,100.5976],12);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(rMap);
   const sIco=L.divIcon({html:`<div style="background:#1a6fc4;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.35)">🏢</div>`,className:'',iconAnchor:[16,16]});
-  L.marker([13.5939,100.5976],{icon:sIco}).addTo(rMap).bindPopup('<div class="pp-nm">🏢 สสจ.สมุทรปราการ</div>');
+  L.marker([13.5939,100.5976],{icon:sIco}).addTo(rMap)
+    .bindPopup('<div class="pp-nm">🏢 สสจ.สมุทรปราการ</div><div class="pp-row">จุดเริ่มต้น | 1 ถ.สุขุมวิท ต.ปากน้ำ</div>')
+    .bindTooltip('<b>🏢 สสจ.สมุทรปราการ</b>',{direction:'top',offset:[0,-8],className:'map-tooltip-route'});
   PLACES.filter(p=>p.lat&&p.lng).forEach(p=>{
     const col=getMkColor(p),em=TE[p.ประเภท]||'📍',sz=22;
     const mk=L.marker([p.lat,p.lng],{icon:L.divIcon({html:`<div style="background:${col};width:${sz}px;height:${sz}px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid rgba(255,255,255,.7);box-shadow:0 2px 7px rgba(0,0,0,.3)">${em}</div>`,className:'',iconAnchor:[sz/2,sz/2]})}).addTo(rMap);
     mk.bindPopup(`<div class="pp-nm">${p.name||'-'}</div><span style="display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;background:${col}22;color:${col};border:1px solid ${col}44;">${p.ประเภท}</span><div class="pp-row" style="margin-top:5px"><b>อำเภอ:</b> ${p.amphoe}</div>${p.phone&&p.phone!='nan'&&p.phone?`<div class="pp-row"><b>โทร:</b> ${p.phone}</div>`:''}<button class="pp-add" onclick="addFromMap('${p.id}')">➕ เพิ่มในเส้นทาง</button><a class="pp-gmaps" href="https://maps.google.com/?q=${p.lat},${p.lng}" target="_blank">🗺️ Google Maps</a>`,{maxWidth:235});
+    mk.bindTooltip(`<b>${TE[p.ประเภท]||'📍'} ${p.name||'-'}</b><br><span style="font-size:10.5px;opacity:.85;">${p.amphoe}${p.tambon?' · '+p.tambon:''}</span>`,
+      {direction:'top',offset:[0,-8],className:'map-tooltip-route'});
     rMkrs.push({id:p.id,mk});
   });
   filterRP();
