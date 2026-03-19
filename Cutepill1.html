@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cute Pill Diary 💖</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #fff1f2; /* rose-50 */
+            -webkit-tap-highlight-color: transparent;
+        }
+        @media print {
+            body { background-color: white !important; }
+            .print-hidden { display: none !important; }
+            .print-border { border: 1px solid #e5e7eb !important; box-shadow: none !important; }
+            .print-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        }
+        .pb-safe { padding-bottom: calc(5rem + env(safe-area-inset-bottom)); }
+        
+        /* Spinner Animation */
+        .spinner {
+            border: 2px solid #ec4899;
+            border-top-color: transparent;
+            border-radius: 50%;
+            width: 1rem;
+            height: 1rem;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="text-gray-800 pb-safe">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm pt-6 pb-4 px-6 rounded-b-3xl flex items-center justify-between print-hidden">
+        <div class="flex items-center gap-3">
+            <div class="bg-pink-100 p-2 rounded-full">
+                <i data-lucide="pill" class="text-pink-500 w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-pink-600">Cute Pill Diary</h1>
+                <p class="text-xs text-gray-500 font-medium">ผู้พัฒนา: ภก.จีรภัทร พลายงาม</p>
+                <p class="text-[10px] text-pink-400">ผู้ช่วย: น้องจินนี่ 💖</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-3xl mx-auto p-6 mt-4" id="main-content">
+        
+        <!-- Print Header -->
+        <div class="hidden print:block text-center mb-8">
+            <h1 class="text-2xl font-bold text-gray-800">รายงานข้อมูลการใช้ยา</h1>
+            <p class="text-gray-500">ผู้พัฒนา: ภก.จีรภัทร พลายงาม | ระบบโดย: Cute Pill Diary</p>
+        </div>
+
+        <!-- ================= TAB: ADD ================= -->
+        <div id="tab-add" class="bg-white rounded-3xl shadow-xl border border-pink-100 p-6 print-hidden transition-all duration-300">
+            <h2 class="text-lg font-bold text-gray-700 mb-6 flex items-center gap-2" id="form-title">
+                <i data-lucide="pill" class="w-5 h-5 text-pink-500" id="form-icon"></i>
+                <span id="form-title-text">เพิ่มข้อมูลยาใหม่</span>
+            </h2>
+
+            <!-- OCR Section (Hidden when editing) -->
+            <div id="ocr-section" class="mb-8 p-6 bg-pink-50/50 rounded-2xl border-2 border-dashed border-pink-200 text-center">
+                <p class="text-sm text-gray-600 mb-4">ดึงข้อมูลอัตโนมัติจากรูปถ่ายฉลากยา</p>
+                <div class="flex justify-center gap-4">
+                    <button onclick="document.getElementById('camera-upload').click()" class="flex flex-col items-center gap-2 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-all text-pink-500 hover:text-pink-600">
+                        <i data-lucide="camera" class="w-8 h-8"></i>
+                        <span class="text-xs font-semibold">ถ่ายรูป</span>
+                    </button>
+                    <button onclick="document.getElementById('gallery-upload').click()" class="flex flex-col items-center gap-2 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-all text-blue-500 hover:text-blue-600">
+                        <i data-lucide="upload" class="w-8 h-8"></i>
+                        <span class="text-xs font-semibold">อัปโหลด</span>
+                    </button>
+                    <!-- แยก Input เพื่อแก้ปัญหาการบังคับเปิดกล้อง -->
+                    <input type="file" id="camera-upload" class="hidden" accept="image/*" capture="environment" onchange="handleImageUpload(event)">
+                    <input type="file" id="gallery-upload" class="hidden" accept="image/*" onchange="handleImageUpload(event)">
+                </div>
+                <div id="ocr-loading" class="mt-4 hidden items-center justify-center gap-2 text-pink-500">
+                    <div class="spinner"></div>
+                    <span class="text-sm">น้องจินนี่กำลังอ่านฉลากยาให้ค่ะ...</span>
+                </div>
+            </div>
+
+            <!-- Validation Warning -->
+            <div id="validation-warning" class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl hidden items-start gap-3">
+                <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5"></i>
+                <div class="text-sm text-amber-800">
+                    <p class="font-bold mb-1">กฎของน้องจินนี่: ห้ามมโน!</p>
+                    <p id="missing-warning-message"></p>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <form id="med-form" onsubmit="saveMedication(event)" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-sm font-semibold text-gray-600 flex items-center gap-1"><i data-lucide="user" class="w-4 h-4"></i> ชื่อผู้ใช้ยา</label>
+                        <input type="text" id="userName" class="w-full p-3 rounded-xl border border-gray-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-200 outline-none transition-all" placeholder="เช่น คุณแม่, น้องบี" required>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-semibold text-gray-600 flex items-center gap-1"><i data-lucide="pill" class="w-4 h-4"></i> ชื่อยา</label>
+                        <input type="text" id="medName" class="w-full p-3 rounded-xl border border-gray-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-200 outline-none transition-all" placeholder="เช่น Paracetamol" required>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-sm font-semibold text-gray-600 flex items-center gap-1"><i data-lucide="info" class="w-4 h-4"></i> วิธีรับประทาน</label>
+                    <input type="text" id="dosage" class="w-full p-3 rounded-xl border border-gray-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-200 outline-none transition-all" placeholder="เช่น ครั้งละ 1 เม็ด หลังอาหารทันที">
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-sm font-semibold text-gray-600">มื้อที่ทาน (จินนี่จะใช้สำหรับแจ้งเตือนค่ะ)</label>
+                    <div class="flex flex-wrap gap-2" id="meal-options-container">
+                        <!-- Meal checkboxes injected by JS -->
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-sm font-semibold text-gray-600 flex items-center gap-1"><i data-lucide="file-text" class="w-4 h-4"></i> ข้อแนะนำเพิ่มเติม</label>
+                        <input type="text" id="recommendations" class="w-full p-3 rounded-xl border border-gray-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-200 outline-none transition-all" placeholder="เช่น ดื่มน้ำตามมากๆ">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-semibold text-gray-600 flex items-center gap-1"><i data-lucide="alert-triangle" class="w-4 h-4"></i> ข้อควรระวัง</label>
+                        <input type="text" id="precautions" class="w-full p-3 rounded-xl border border-gray-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-200 outline-none transition-all" placeholder="เช่น อาจมีอาการง่วงนอน">
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-sm font-semibold text-gray-600 flex items-center gap-1"><i data-lucide="check-circle-2" class="w-4 h-4"></i> จำนวนเม็ดยาทั้งหมด (สำคัญมาก! จินนี่ใช้คำนวณวัน)</label>
+                    <input type="number" id="totalPills" class="w-full p-3 rounded-xl border border-gray-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-200 outline-none transition-all" placeholder="ระบุตัวเลข เช่น 20">
+                </div>
+
+                <div class="pt-4 flex gap-3">
+                    <button type="submit" class="flex-1 bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-pink-200 transition-all flex justify-center items-center gap-2">
+                        <i data-lucide="save" class="w-5 h-5"></i>
+                        <span id="submit-btn-text">บันทึกข้อมูลยา</span>
+                    </button>
+                    <button type="button" id="cancel-edit-btn" onclick="cancelEdit()" class="hidden px-6 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-all">
+                        ยกเลิก
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ================= TAB: LIST ================= -->
+        <div id="tab-list" class="space-y-4 hidden print:block">
+            <div class="flex justify-between items-center mb-6 print-hidden">
+                <h2 class="text-xl font-bold text-gray-700">รายการยาที่ใช้อยู่</h2>
+                <button id="print-btn" onclick="window.print()" class="hidden items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 shadow-sm transition-all">
+                    <i data-lucide="printer" class="w-4 h-4"></i> พิมพ์
+                </button>
+            </div>
+
+            <div id="empty-list" class="text-center py-12 bg-white rounded-3xl shadow-sm border border-pink-100 print-hidden">
+                <div class="bg-pink-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="pill" class="w-10 h-10 text-pink-300"></i>
+                </div>
+                <p class="text-gray-500">ยังไม่มีข้อมูลยาเลยค่ะเจ้านาย</p>
+                <button onclick="switchTab('add')" class="mt-4 text-pink-500 font-semibold hover:text-pink-600">
+                    + เพิ่มข้อมูลยาใหม่
+                </button>
+            </div>
+
+            <div id="medications-container" class="grid gap-4 print-grid">
+                <!-- Med cards injected here -->
+            </div>
+        </div>
+
+        <!-- ================= TAB: CALENDAR ================= -->
+        <div id="tab-calendar" class="space-y-4 hidden print-hidden">
+            <div class="bg-gradient-to-r from-pink-500 to-rose-400 rounded-3xl p-6 text-white shadow-lg mb-6 flex items-start gap-4">
+                <div class="bg-white/20 p-3 rounded-2xl backdrop-blur-sm">
+                    <i data-lucide="calendar-days" class="w-8 h-8 text-white"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold">จัดการการแจ้งเตือน</h2>
+                    <p class="text-sm text-pink-100 mt-1">จินนี่ช่วยเรียงเวลาทานยาให้แล้วค่ะ เลือกรายการที่ต้องการแล้วส่งออกไปยังปฏิทินได้เลยนะคะ!</p>
+                </div>
+            </div>
+
+            <!-- Disclaimer Box -->
+            <div class="bg-amber-50 border border-amber-200 p-5 rounded-2xl shadow-sm mb-6 text-sm text-amber-900 leading-relaxed">
+                <p class="font-bold flex items-center gap-2 mb-3 text-amber-700">
+                    <i data-lucide="alert-triangle" class="w-5 h-5"></i> 
+                    คำเตือนจากผู้พัฒนา (ภก.จีรภัทร พลายงาม):
+                </p>
+                <ul class="list-none space-y-3 pl-1">
+                    <li class="flex gap-3"><span class="font-bold text-amber-600">1.</span> <span>โปรดตรวจสอบรายละเอียดของยาและข้อมูลให้ครบถ้วนก่อนส่งการแจ้งเตือนทุกครั้ง (ผู้พัฒนาโปรแกรม ไม่มีส่วนรับผิดชอบในการแจ้งเตือนหากมีความผิดพลาดเกิดขึ้น)</span></li>
+                    <li class="flex gap-3"><span class="font-bold text-amber-600">2.</span> <span>ข้อมูลของผู้ใช้ยา ไม่ได้เก็บไว้ที่ server ของผู้พัฒนาแต่อย่างใด แต่เก็บไว้ที่เครื่องและปฏิทินของผู้ใช้เท่านั้น</span></li>
+                </ul>
+            </div>
+
+            <!-- Filter Medication -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-pink-100">
+                <label class="text-sm font-semibold text-gray-600 mb-2 block">เลือกยาที่ต้องการดูตารางเตือน</label>
+                <select id="schedule-med-select" onchange="handleSelectMedForSchedule(event)" class="w-full p-3 rounded-xl border border-gray-200 focus:border-pink-400 outline-none">
+                    <option value="" disabled selected>-- กรุณาเลือกยา --</option>
+                    <!-- Options injected here -->
+                </select>
+            </div>
+
+            <div id="empty-schedule" class="text-center py-10 hidden">
+                <p class="text-gray-500 mb-4">ยังไม่ได้สร้างตารางเตือนสำหรับยานี้เลยค่ะ</p>
+                <button onclick="triggerGenerateSchedule()" class="px-6 py-2 bg-pink-100 text-pink-600 font-semibold rounded-xl hover:bg-pink-200 transition-all">
+                    ให้จินนี่คำนวณวันให้เลย!
+                </button>
+            </div>
+
+            <div id="schedule-list-container" class="space-y-6 pb-16 hidden">
+                <div class="flex flex-col sm:flex-row justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100 gap-4">
+                    <div class="text-sm text-blue-800">
+                        <strong>สถานะ:</strong> มีรายการเตรียมแจ้งเตือน <span id="selected-schedule-count">0</span> รายการ
+                    </div>
+                    <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+                        <button onclick="scheduleWebNotifications()" class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-pink-500 text-white font-bold rounded-lg hover:bg-pink-600 shadow-md transition-all text-sm">
+                            <i data-lucide="bell-ring" class="w-4 h-4"></i> เตือนผ่านเว็บ
+                        </button>
+                        <button onclick="exportDirectGoogleCalendar()" class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white font-bold rounded-lg hover:bg-blue-600 shadow-md transition-all text-sm">
+                            <i data-lucide="external-link" class="w-4 h-4"></i> เปิดปฏิทิน
+                        </button>
+                    </div>
+                </div>
+
+                <div id="schedules-render-area" class="space-y-4">
+                    <!-- Grouped schedules injected here -->
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-0 w-full bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] print-hidden z-50 pb-[env(safe-area-inset-bottom)]">
+        <div class="max-w-md mx-auto flex justify-around p-3">
+            <button onclick="switchTab('add')" id="nav-add" class="flex flex-col items-center gap-1 w-20 transition-all text-pink-500 transform -translate-y-1">
+                <div class="p-2 rounded-xl bg-pink-50 nav-icon-wrapper">
+                    <i data-lucide="camera" class="w-6 h-6"></i>
+                </div>
+                <span class="text-[10px] font-semibold">เพิ่มข้อมูล</span>
+            </button>
+            
+            <button onclick="switchTab('list')" id="nav-list" class="flex flex-col items-center gap-1 w-20 transition-all text-gray-400 hover:text-pink-300">
+                <div class="p-2 rounded-xl relative nav-icon-wrapper">
+                    <i data-lucide="file-text" class="w-6 h-6"></i>
+                    <span id="badge-list" class="absolute top-1 right-1 w-2 h-2 bg-pink-500 rounded-full hidden"></span>
+                </div>
+                <span class="text-[10px] font-semibold">ข้อมูลยา</span>
+            </button>
+
+            <button onclick="switchTab('calendar')" id="nav-calendar" class="flex flex-col items-center gap-1 w-20 transition-all text-gray-400 hover:text-pink-300">
+                <div class="p-2 rounded-xl relative nav-icon-wrapper">
+                    <i data-lucide="calendar-days" class="w-6 h-6"></i>
+                    <span id="badge-calendar" class="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full hidden"></span>
+                </div>
+                <span class="text-[10px] font-semibold">ตารางเตือน</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- State Management ---
+        let currentTab = 'add';
+        let medications = [];
+        let editingId = null;
+        let schedules = [];
+        let selectedMedIdForSchedule = null;
+        let selectedMealTimes = [];
+        const mealOptions = ['เช้า', 'กลางวัน', 'เย็น', 'ก่อนนอน'];
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            renderMealCheckboxes();
+        });
+
+        // --- Tab Management ---
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // Reset Edit state if leaving Add tab
+            if (tab !== 'add') {
+                cancelEdit(false); // false means don't force switch back
+            }
+
+            // Hide all tabs
+            document.getElementById('tab-add').style.display = 'none';
+            document.getElementById('tab-list').style.display = 'none';
+            document.getElementById('tab-calendar').style.display = 'none';
+            
+            // Show target tab
+            document.getElementById(`tab-${tab}`).style.display = 'block';
+
+            // Reset Nav styling
+            const navs = ['add', 'list', 'calendar'];
+            navs.forEach(n => {
+                const btn = document.getElementById(`nav-${n}`);
+                const iconWrapper = btn.querySelector('.nav-icon-wrapper');
+                if (n === tab) {
+                    btn.classList.add('text-pink-500', 'transform', '-translate-y-1');
+                    btn.classList.remove('text-gray-400');
+                    iconWrapper.classList.add('bg-pink-50');
+                } else {
+                    btn.classList.remove('text-pink-500', 'transform', '-translate-y-1');
+                    btn.classList.add('text-gray-400');
+                    iconWrapper.classList.remove('bg-pink-50');
+                }
+            });
+
+            // Trigger specific renders
+            if (tab === 'list') renderMedicationsList();
+            if (tab === 'calendar') {
+                updateScheduleSelect();
+                renderSchedules();
+            }
+        }
+
+        // --- Form & Meal Checkboxes ---
+        function renderMealCheckboxes() {
+            const container = document.getElementById('meal-options-container');
+            container.innerHTML = mealOptions.map(meal => {
+                const isSelected = selectedMealTimes.includes(meal);
+                const baseClass = "flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer transition-all border";
+                const activeClass = isSelected ? "bg-pink-500 text-white border-pink-500 shadow-md" : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100";
+                return `
+                    <label class="${baseClass} ${activeClass}" onclick="toggleMeal('${meal}')">
+                        ${meal}
+                    </label>
+                `;
+            }).join('');
+        }
+
+        function toggleMeal(meal) {
+            if (selectedMealTimes.includes(meal)) {
+                selectedMealTimes = selectedMealTimes.filter(m => m !== meal);
+            } else {
+                selectedMealTimes.push(meal);
+            }
+            renderMealCheckboxes();
+        }
+
+        // --- Image Upload & OCR (Gemini API) ---
+        // ฟังก์ชันใหม่: บีบอัดรูปภาพก่อนส่งให้ AI เพื่อแก้ปัญหาภาพจากกล้องมือถือใหญ่เกินไป
+        function compressImage(file, maxWidth = 1024, maxHeight = 1024, quality = 0.8) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > maxWidth || height > maxHeight) {
+                            if (width > height) {
+                                height = Math.round((height *= maxWidth / width));
+                                width = maxWidth;
+                            } else {
+                                width = Math.round((width *= maxHeight / height));
+                                height = maxHeight;
+                            }
+                        }
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                        const base64Data = dataUrl.split(',')[1];
+                        resolve({ base64Data, mimeType: 'image/jpeg' });
+                    };
+                    img.onerror = (err) => reject(err);
+                };
+                reader.onerror = (err) => reject(err);
+            });
+        }
+
+        async function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('ocr-loading').style.display = 'flex';
+            document.getElementById('validation-warning').style.display = 'none';
+            
+            // ล้างค่า input ทั้งสองอันเตรียมไว้สำหรับการใช้งานครั้งต่อไป
+            document.getElementById('camera-upload').value = '';
+            document.getElementById('gallery-upload').value = ''; 
+
+            try {
+                // บีบอัดรูปภาพก่อนส่ง (แก้ปัญหา Payload Too Large จากกล้องมือถือ)
+                const { base64Data, mimeType } = await compressImage(file);
+                const apiKey = ""; // API key will be provided by environment
+
+                const prompt = `
+                    ในฐานะเภสัชกรผู้เชี่ยวชาญ กรุณาอ่านฉลากยาจากรูปภาพนี้ และสกัดข้อมูลออกมาเป็น JSON format ตามโครงสร้างด้านล่างนี้เท่านั้น
+                    กฎเหล็ก: ห้ามเดาหรือคิดข้อมูลขึ้นมาเอง (ห้ามมโนเด็ดขาด) ถ้าข้อมูลไหนไม่มีในรูปภาพ ไม่ชัดเจน หรือถูกบัง ให้ปล่อยเป็นค่าว่าง ("")
+                    สำหรับ mealTimes ให้ดูว่าในฉลากระบุเวลาไหนบ้าง แล้วเลือกจาก array นี้เท่านั้น ["เช้า", "กลางวัน", "เย็น", "ก่อนนอน"] ถ้าไม่มีให้ส่ง array ว่าง []
+
+                    {
+                    "userName": "ชื่อผู้ป่วย (ถ้ามีระบุ)",
+                    "medName": "ชื่อยา (ภาษาอังกฤษหรือไทยก็ได้)",
+                    "dosage": "วิธีรับประทาน (เช่น ครั้งละ 1 เม็ด หลังอาหาร)",
+                    "mealTimes": ["เช้า"],
+                    "recommendations": "คำแนะนำเพิ่มเติม (เช่น ดื่มน้ำตามมากๆ)",
+                    "precautions": "ข้อควรระวัง (เช่น อาจทำให้ง่วงนอน)",
+                    "totalPills": "จำนวนเม็ดยาทั้งหมด (ดึงเฉพาะตัวเลข ถ้ามีระบุ)"
+                    }
+                `;
+
+                const payload = {
+                    contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType: mimeType, data: base64Data } }] }],
+                    generationConfig: { responseMimeType: "application/json" }
+                };
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error("API request failed");
+                const result = await response.json();
+                const extractedText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (extractedText) {
+                    const parsedData = JSON.parse(extractedText);
+                    
+                    document.getElementById('userName').value = parsedData.userName || '';
+                    document.getElementById('medName').value = parsedData.medName || '';
+                    document.getElementById('dosage').value = parsedData.dosage || '';
+                    document.getElementById('recommendations').value = parsedData.recommendations || '';
+                    document.getElementById('precautions').value = parsedData.precautions || '';
+                    document.getElementById('totalPills').value = parsedData.totalPills || '';
+                    
+                    selectedMealTimes = Array.isArray(parsedData.mealTimes) ? parsedData.mealTimes : [];
+                    renderMealCheckboxes();
+
+                    // Validation & Missing Data Check
+                    const missingFields = [];
+                    if (!parsedData.userName) missingFields.push("ชื่อผู้ป่วย");
+                    if (!parsedData.medName) missingFields.push("ชื่อยา");
+                    if (!parsedData.dosage) missingFields.push("วิธีรับประทาน");
+                    if (!parsedData.totalPills) missingFields.push("จำนวนเม็ด");
+                    if (selectedMealTimes.length === 0) missingFields.push("มื้อที่ทาน");
+                    
+                    const msgEl = document.getElementById('missing-warning-message');
+                    if (missingFields.length > 0) {
+                        msgEl.innerHTML = `จินนี่หาข้อมูลเหล่านี้ในรูปไม่เจอค่ะ (หรือภาพอาจจะไม่ชัด): <span class="text-red-500 font-bold">${missingFields.join(', ')}</span> รบกวนเจ้านายเติมให้ครบด้วยนะคะ จินนี่ไม่กล้ามโนค่ะ!`;
+                    } else {
+                        msgEl.innerText = "✨ จินนี่ดึงข้อมูลมาครบถ้วนแล้วค่ะ! แต่รบกวนเจ้านายตรวจสอบความถูกต้องอีกครั้งก่อนบันทึกนะคะ 💖";
+                        // Alert summary per user instruction
+                        setTimeout(() => alert("✨ น้องจินนี่รายงาน: ข้อมูลสกัดสำเร็จและครบถ้วน 100% ค่ะ เจ้านายกดยืนยันได้เลย!"), 100);
+                    }
+                    
+                    document.getElementById('validation-warning').style.display = 'flex';
+                }
+            } catch (error) {
+                console.error("OCR Error:", error);
+                alert("น้องจินนี่ขออภัยค่ะ มีปัญหาในการอ่านรูปภาพ รบกวนเจ้านายเช็คภาพแล้วลองใหม่อีกครั้งนะคะ");
+            } finally {
+                document.getElementById('ocr-loading').style.display = 'none';
+            }
+        }
+
+        // --- Save Medication ---
+        function saveMedication(e) {
+            e.preventDefault();
+            
+            const medData = {
+                userName: document.getElementById('userName').value,
+                medName: document.getElementById('medName').value,
+                dosage: document.getElementById('dosage').value,
+                mealTimes: [...selectedMealTimes],
+                recommendations: document.getElementById('recommendations').value,
+                precautions: document.getElementById('precautions').value,
+                totalPills: document.getElementById('totalPills').value
+            };
+
+            if (!medData.medName || !medData.userName) {
+                alert("น้องจินนี่ขอแจ้งว่า: กรุณากรอกชื่อผู้ใช้ยาและชื่อยาให้ครบถ้วนนะคะ ห้ามปล่อยว่างค่ะ!");
+                return;
+            }
+
+            if (editingId) {
+                medications = medications.map(med => med.id === editingId ? { ...medData, id: editingId } : med);
+                editingId = null;
+            } else {
+                medications = [{ ...medData, id: Date.now().toString() }, ...medications];
+            }
+            
+            // Clear form
+            document.getElementById('med-form').reset();
+            selectedMealTimes = [];
+            renderMealCheckboxes();
+            document.getElementById('validation-warning').style.display = 'none';
+            
+            updateBadges();
+            switchTab('list');
+        }
+
+        // --- Edit / Delete Medication ---
+        function editMedication(id) {
+            const med = medications.find(m => m.id === id);
+            if (!med) return;
+
+            editingId = id;
+            document.getElementById('userName').value = med.userName;
+            document.getElementById('medName').value = med.medName;
+            document.getElementById('dosage').value = med.dosage;
+            document.getElementById('recommendations').value = med.recommendations;
+            document.getElementById('precautions').value = med.precautions;
+            document.getElementById('totalPills').value = med.totalPills;
+            
+            selectedMealTimes = [...med.mealTimes];
+            renderMealCheckboxes();
+
+            // UI adjustments for edit mode
+            document.getElementById('ocr-section').style.display = 'none';
+            document.getElementById('form-title-text').innerText = 'แก้ไขข้อมูลยา';
+            document.getElementById('form-icon').setAttribute('data-lucide', 'edit');
+            document.getElementById('submit-btn-text').innerText = 'บันทึกการแก้ไข';
+            document.getElementById('cancel-edit-btn').style.display = 'block';
+            
+            lucide.createIcons();
+            switchTab('add');
+        }
+
+        function cancelEdit(switchToList = true) {
+            editingId = null;
+            document.getElementById('med-form').reset();
+            selectedMealTimes = [];
+            renderMealCheckboxes();
+            
+            document.getElementById('ocr-section').style.display = 'block';
+            document.getElementById('form-title-text').innerText = 'เพิ่มข้อมูลยาใหม่';
+            document.getElementById('form-icon').setAttribute('data-lucide', 'pill');
+            document.getElementById('submit-btn-text').innerText = 'บันทึกข้อมูลยา';
+            document.getElementById('cancel-edit-btn').style.display = 'none';
+            
+            lucide.createIcons();
+            if(switchToList) switchTab('list');
+        }
+
+        function deleteMedication(id) {
+            if(window.confirm("น้องจินนี่ถามย้ำ: เจ้านายต้องการลบข้อมูลยานี้จริงๆ ใช่ไหมคะ?")) {
+                medications = medications.filter(med => med.id !== id);
+                schedules = schedules.filter(s => s.medId !== id);
+                if(selectedMedIdForSchedule === id) selectedMedIdForSchedule = null;
+                
+                updateBadges();
+                renderMedicationsList();
+            }
+        }
+
+        // --- Render Lists & Badges ---
+        function updateBadges() {
+            const listBadge = document.getElementById('badge-list');
+            const calBadge = document.getElementById('badge-calendar');
+            const printBtn = document.getElementById('print-btn');
+            
+            if(medications.length > 0) {
+                listBadge.style.display = 'block';
+                printBtn.style.display = 'flex';
+                document.getElementById('empty-list').style.display = 'none';
+            } else {
+                listBadge.style.display = 'none';
+                printBtn.style.display = 'none';
+                document.getElementById('empty-list').style.display = 'block';
+            }
+
+            if(schedules.length > 0) calBadge.style.display = 'block';
+            else calBadge.style.display = 'none';
+        }
+
+        function renderMedicationsList() {
+            const container = document.getElementById('medications-container');
+            container.innerHTML = medications.map(med => `
+                <div class="bg-white rounded-2xl shadow-md border-l-4 border-l-pink-400 p-5 print-border transition-all hover:shadow-lg relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="font-bold text-lg text-gray-800">${med.medName}</h3>
+                            <p class="text-sm text-pink-500 font-medium">ผู้ใช้: ${med.userName}</p>
+                        </div>
+                        <div class="flex gap-1 print-hidden relative z-10">
+                            <button onclick="generateScheduleForMedId('${med.id}')" title="สร้างตารางแจ้งเตือน" class="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 font-semibold hover:bg-blue-100 rounded-lg transition-all text-xs">
+                                <i data-lucide="calendar-clock" class="w-4 h-4"></i> เตือน
+                            </button>
+                            <button onclick="editMedication('${med.id}')" title="แก้ไข" class="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-all">
+                                <i data-lucide="edit" class="w-5 h-5"></i>
+                            </button>
+                            <button onclick="deleteMedication('${med.id}')" title="ลบ" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                                <i data-lucide="trash-2" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 grid grid-cols-2 gap-y-2 text-sm text-gray-600">
+                        ${med.dosage ? `<div class="col-span-2"><strong class="text-gray-700">วิธีทาน:</strong> ${med.dosage}</div>` : ''}
+                        ${med.mealTimes.length > 0 ? `<div class="col-span-2"><strong class="text-gray-700">มื้อ:</strong> ${med.mealTimes.join(', ')}</div>` : ''}
+                        ${med.totalPills ? `<div><strong class="text-gray-700">จำนวน:</strong> ${med.totalPills} เม็ด</div>` : ''}
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // --- Schedule Generation ---
+        function generateScheduleForMedId(id) {
+            const med = medications.find(m => m.id === id);
+            if(med) generateScheduleForMed(med);
+        }
+
+        function triggerGenerateSchedule() {
+            if(!selectedMedIdForSchedule) return;
+            const med = medications.find(m => m.id === selectedMedIdForSchedule);
+            if(med) generateScheduleForMed(med);
+        }
+
+        function generateScheduleForMed(med) {
+            const pills = parseInt(med.totalPills);
+            
+            if (isNaN(pills) || pills <= 0) {
+                alert("⚠️ กฎของจินนี่: เจ้านายต้องระบุ 'จำนวนเม็ดยา' เป็นตัวเลขให้ถูกต้องนะคะ จินนี่ถึงจะคำนวณวันให้ได้ค่ะ จินนี่มโนเองไม่ได้จริงๆ!");
+                return;
+            }
+            if (!med.mealTimes || med.mealTimes.length === 0) {
+                alert("⚠️ กฎของจินนี่: เจ้านายต้องเลือก 'มื้อที่ทาน' ด้วยนะคะ ไม่งั้นจินนี่จัดตารางแจ้งเตือนไม่ถูกค่ะ!");
+                return;
+            }
+
+            const mealHours = { 'เช้า': 8, 'กลางวัน': 12, 'เย็น': 18, 'ก่อนนอน': 20 };
+            const orderedMeals = ['เช้า', 'กลางวัน', 'เย็น', 'ก่อนนอน'];
+            const sortedMedMeals = med.mealTimes.sort((a, b) => orderedMeals.indexOf(a) - orderedMeals.indexOf(b));
+
+            let currentPillCount = pills;
+            let currentDate = new Date();
+            const newSchedules = [];
+            let scheduleIdCounter = Date.now();
+
+            const currentHour = currentDate.getHours();
+            let startingMealIndex = 0;
+            
+            for (let i = 0; i < sortedMedMeals.length; i++) {
+                if (currentHour < mealHours[sortedMedMeals[i]]) {
+                    startingMealIndex = i;
+                    break;
+                }
+                if (i === sortedMedMeals.length - 1 && currentHour >= mealHours[sortedMedMeals[i]]) {
+                    currentDate.setDate(currentDate.getDate() + 1);
+                    startingMealIndex = 0;
+                }
+            }
+
+            let currentDay = new Date(currentDate);
+
+            while (currentPillCount > 0) {
+                for (let i = startingMealIndex; i < sortedMedMeals.length && currentPillCount > 0; i++) {
+                    const meal = sortedMedMeals[i];
+                    const doseDate = new Date(currentDay);
+                    doseDate.setHours(mealHours[meal], 0, 0, 0);
+
+                    newSchedules.push({
+                        id: `sch_${scheduleIdCounter++}`,
+                        medId: med.id,
+                        medName: med.medName,
+                        userName: med.userName,
+                        dosage: med.dosage,
+                        meal: meal,
+                        date: doseDate,
+                        selected: true
+                    });
+                    currentPillCount--;
+                }
+                currentDay.setDate(currentDay.getDate() + 1);
+                startingMealIndex = 0;
+            }
+
+            // Report summary to user
+            alert(`✨ จินนี่สรุปให้ค่ะ: สร้างการแจ้งเตือนสำเร็จ ${newSchedules.length} รายการ (ทานจนหมด ${pills} เม็ด) ตรวจสอบความถูกต้องครบถ้วนได้ที่หน้าตารางเลยค่ะ!`);
+
+            schedules = [...schedules.filter(s => s.medId !== med.id), ...newSchedules];
+            selectedMedIdForSchedule = med.id;
+            
+            updateBadges();
+            switchTab('calendar');
+        }
+
+        // --- Calendar & Export Logic ---
+        function updateScheduleSelect() {
+            const select = document.getElementById('schedule-med-select');
+            const currentVal = selectedMedIdForSchedule;
+            
+            let optionsHTML = '<option value="" disabled selected>-- กรุณาเลือกยา --</option>';
+            medications.forEach(med => {
+                const selectedAttr = currentVal === med.id ? 'selected' : '';
+                optionsHTML += `<option value="${med.id}" ${selectedAttr}>${med.medName} (ของผู้ใช้: ${med.userName})</option>`;
+            });
+            select.innerHTML = optionsHTML;
+            if(!currentVal && medications.length > 0) {
+                select.value = ""; // default empty
+            } else if (currentVal) {
+                select.value = currentVal;
+            }
+        }
+
+        function handleSelectMedForSchedule(e) {
+            selectedMedIdForSchedule = e.target.value;
+            renderSchedules();
+        }
+
+        function toggleScheduleSelection(id) {
+            const sch = schedules.find(s => s.id === id);
+            if(sch) sch.selected = !sch.selected;
+            renderSchedules();
+        }
+
+        function deleteScheduleItem(id) {
+            schedules = schedules.filter(s => s.id !== id);
+            renderSchedules();
+        }
+
+        function renderSchedules() {
+            const emptyState = document.getElementById('empty-schedule');
+            const listContainer = document.getElementById('schedule-list-container');
+            const renderArea = document.getElementById('schedules-render-area');
+            const countLabel = document.getElementById('selected-schedule-count');
+
+            if (!selectedMedIdForSchedule) {
+                emptyState.style.display = 'none';
+                listContainer.style.display = 'none';
+                return;
+            }
+
+            const targetSchedules = schedules.filter(s => s.medId === selectedMedIdForSchedule);
+
+            if (targetSchedules.length === 0) {
+                emptyState.style.display = 'block';
+                listContainer.style.display = 'none';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            listContainer.style.display = 'block';
+            
+            const selectedCount = targetSchedules.filter(s => s.selected).length;
+            countLabel.innerText = selectedCount;
+
+            // Group by Date
+            targetSchedules.sort((a, b) => a.date - b.date);
+            const grouped = targetSchedules.reduce((acc, curr) => {
+                const dateKey = curr.date.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+                if (!acc[dateKey]) acc[dateKey] = [];
+                acc[dateKey].push(curr);
+                return acc;
+            }, {});
+
+            let html = '';
+            for (const [dateLabel, items] of Object.entries(grouped)) {
+                html += `
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="bg-gray-50 px-4 py-3 border-b border-gray-100 font-bold text-gray-700">
+                            📅 ${dateLabel}
+                        </div>
+                        <div class="divide-y divide-gray-50">
+                            ${items.map(item => `
+                                <div class="flex items-center justify-between p-4 transition-all ${item.selected ? 'bg-pink-50/30' : 'opacity-60'}">
+                                    <div class="flex items-center gap-3 flex-1 cursor-pointer" onclick="toggleScheduleSelection('${item.id}')">
+                                        <button class="text-pink-500">
+                                            <i data-lucide="${item.selected ? 'check-square' : 'square'}" class="w-6 h-6 ${item.selected ? '' : 'text-gray-300'}"></i>
+                                        </button>
+                                        <div>
+                                            <div class="font-semibold text-gray-800 flex items-center gap-2">
+                                                <span class="bg-pink-100 text-pink-700 text-xs px-2 py-0.5 rounded-full">${item.meal}</span>
+                                                ${item.date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.
+                                            </div>
+                                            <div class="text-sm text-gray-500 mt-0.5">ทาน ${item.dosage || '1 เม็ด'}</div>
+                                        </div>
+                                    </div>
+                                    <button onclick="deleteScheduleItem('${item.id}')" class="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all ml-4" title="ลบรายการนี้">
+                                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            renderArea.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        // --- Export & Push Notification ---
+        function scheduleWebNotifications() {
+            const targetSchedules = schedules.filter(s => s.medId === selectedMedIdForSchedule && s.selected);
+            if (targetSchedules.length === 0) {
+                alert("น้องจินนี่บอกว่าเจ้านายยังไม่ได้เลือกรายการที่จะตั้งเตือนเลยค่ะ!");
+                return;
+            }
+
+            if (!("Notification" in window)) {
+                alert("⚠️ เบราว์เซอร์หรืออุปกรณ์นี้ไม่รองรับระบบการแจ้งเตือนบนหน้าจอค่ะ");
+                return;
+            }
+
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    let count = 0;
+                    targetSchedules.forEach(sched => {
+                        const now = new Date().getTime();
+                        const timeToAlert = sched.date.getTime() - now;
+                        
+                        if (timeToAlert > 0) {
+                            count++;
+                            setTimeout(() => {
+                                new Notification(`💊 ได้เวลาทานยา: ${sched.medName}`, {
+                                    body: `ผู้ใช้: ${sched.userName}\nมื้อ: ${sched.meal}\nวิธีทาน: ${sched.dosage || '-'}`,
+                                    icon: "https://cdn-icons-png.flaticon.com/512/2864/2864303.png"
+                                });
+                            }, timeToAlert);
+                        }
+                    });
+                    
+                    alert(`✨ จินนี่ตั้งค่าแจ้งเตือนบนหน้าจอ (PWA Push) ให้แล้วจำนวน ${count} รายการค่ะ!\n\n(หมายเหตุ: แนะนำให้เจ้านายกดเมนู "Add to Home Screen" และเปิดหน้าจอนี้ไว้เพื่อให้จินนี่แจ้งเตือนได้ตรงเวลานะคะ)`);
+                } else {
+                    alert("เจ้านายไม่อนุญาตสิทธิ์ให้จินนี่ส่งการแจ้งเตือนค่ะ 🥺 ลองไปตั้งค่าอนุญาตที่เบราว์เซอร์ก่อนนะคะ");
+                }
+            });
+        }
+
+        function exportDirectGoogleCalendar() {
+            const targetSchedules = schedules.filter(s => s.medId === selectedMedIdForSchedule && s.selected);
+            if (targetSchedules.length === 0) {
+                alert("น้องจินนี่บอกว่าเจ้านายยังไม่ได้เลือกรายการที่จะส่งออกเลยค่ะ!");
+                return;
+            }
+
+            if (targetSchedules.length > 5) {
+                if(!window.confirm(`⚠️ คำเตือนจากจินนี่: เจ้านายกำลังจะเปิดแท็บใหม่จำนวน ${targetSchedules.length} หน้าต่างเพื่อเพิ่มลงปฏิทินแบบ Direct Link อาจโดนเบราว์เซอร์บล็อก Pop-up ได้นะคะ เจ้านายแน่ใจไหมคะ?`)) return;
+            }
+
+            let openedCount = 0;
+            targetSchedules.forEach(sched => {
+                const pad = n => n < 10 ? '0'+n : n;
+                const d1 = sched.date;
+                const d2 = new Date(d1.getTime() + 30 * 60000);
+                
+                const str1 = `${d1.getFullYear()}${pad(d1.getMonth()+1)}${pad(d1.getDate())}T${pad(d1.getHours())}${pad(d1.getMinutes())}00`;
+                const str2 = `${d2.getFullYear()}${pad(d2.getMonth()+1)}${pad(d2.getDate())}T${pad(d2.getHours())}${pad(d2.getMinutes())}00`;
+
+                const text = encodeURIComponent(`💊 ทานยา ${sched.medName} (${sched.meal})`);
+                const details = encodeURIComponent(`ผู้ใช้: ${sched.userName}\nวิธีทาน: ${sched.dosage || '-'}\n\n*ข้อมูลถูกสร้างและส่งโดยอัตโนมัติจาก Cute Pill Diary โดยน้องจินนี่ (ภก.จีรภัทร พลายงาม)*`);
+                
+                const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${str1}/${str2}&details=${details}`;
+                
+                window.open(url, '_blank');
+                openedCount++;
+            });
+
+            if (openedCount > 0) {
+                alert(`✨ จินนี่เปิดหน้าต่าง Google Calendar ให้แล้วทั้งหมด ${openedCount} แท็บค่ะ! เจ้านายสามารถเช็คข้อมูลแล้วกด "บันทึก (Save)" ในแต่ละแท็บได้เลยค่ะ!\n(หากแท็บไม่ขึ้น แสดงว่าโดนเบราว์เซอร์บล็อก Pop-up รบกวนตั้งค่าอนุญาตให้นะคะ)`);
+            }
+        }
+    </script>
+</body>
+</html>
