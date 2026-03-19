@@ -49,11 +49,49 @@
                 <p class="text-[10px] text-pink-400">ผู้ช่วย: น้องจินนี่ 💖</p>
             </div>
         </div>
+        <div class="flex items-center gap-2 print-hidden">
+            <!-- กล่องไฟสถานะ API -->
+            <div id="api-status-container" class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-200 cursor-pointer hover:bg-gray-100 transition-all shadow-sm" onclick="openSettings()" title="ตรวจสอบสถานะ API">
+                <div id="api-status-dot" class="w-2.5 h-2.5 rounded-full bg-red-500"></div>
+                <span id="api-status-text" class="text-[10px] font-bold text-red-500 hidden sm:inline">API: รอใส่กุญแจ</span>
+            </div>
+            
+            <button onclick="openSettings()" class="p-2 text-gray-400 hover:text-pink-500 hover:bg-pink-50 rounded-full transition-all">
+                <i data-lucide="settings" class="w-6 h-6"></i>
+            </button>
+        </div>
     </header>
 
     <!-- Main Content -->
     <main class="max-w-3xl mx-auto p-6 mt-4" id="main-content">
         
+        <!-- Modal ตั้งค่า API Key -->
+        <div id="settings-modal" class="fixed inset-0 bg-black/50 z-[60] hidden items-center justify-center p-4 backdrop-blur-sm">
+            <div class="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl transform transition-all">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-pink-600 flex items-center gap-2">
+                        <i data-lucide="key" class="w-5 h-5"></i> ตั้งค่ากุญแจ AI
+                    </h2>
+                    <button onclick="closeSettings()" class="text-gray-400 hover:text-red-500 transition-all">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div class="bg-pink-50 p-3 rounded-xl text-sm text-pink-800">
+                        เจ้านายคะ! เพื่อให้จินนี่อ่านรูปบนมือถือได้ เจ้านายต้องเอา <b>Gemini API Key</b> มาใส่ตรงนี้ก่อนนะคะ (ใส่แค่ครั้งเดียว จินนี่จะจำไว้ในเครื่องให้ค่ะ!)<br>
+                        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-600 underline font-bold mt-1 inline-block">👉 กดรับ API Key ฟรีที่นี่</a>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-semibold text-gray-600">Gemini API Key</label>
+                        <input type="password" id="api-key-input" class="w-full p-3 rounded-xl border border-gray-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-200 outline-none transition-all" placeholder="AIzaSy...">
+                    </div>
+                    <button onclick="saveSettings()" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all">
+                        บันทึกกุญแจ 🗝️
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Print Header -->
         <div class="hidden print:block text-center mb-8">
             <h1 class="text-2xl font-bold text-gray-800">รายงานข้อมูลการใช้ยา</h1>
@@ -281,7 +319,74 @@
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
             renderMealCheckboxes();
+            
+            const savedKey = localStorage.getItem('cutePillApiKey');
+            if(savedKey) {
+                document.getElementById('api-key-input').value = savedKey;
+            }
+            
+            // สั่งจินนี่เช็คสถานะกุญแจทันทีที่เปิดแอป
+            checkApiStatus();
         });
+
+        // --- Settings & API Status Management ---
+        async function checkApiStatus() {
+            const dot = document.getElementById('api-status-dot');
+            const text = document.getElementById('api-status-text');
+            const savedKey = localStorage.getItem('cutePillApiKey');
+
+            // 1. ถ้ายังไม่มีกุญแจ (ไฟแดง)
+            if (!savedKey) {
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-red-500';
+                text.innerText = 'API: รอใส่กุญแจ';
+                text.className = 'text-[10px] font-bold text-red-500 hidden sm:inline';
+                return;
+            }
+
+            // 2. สถานะ: ส้ม (กำลังตรวจสอบความถูกต้อง ไม่มโน!)
+            dot.className = 'w-2.5 h-2.5 rounded-full bg-orange-400 animate-pulse';
+            text.innerText = 'API: กำลังทดสอบ...';
+            text.className = 'text-[10px] font-bold text-orange-500 hidden sm:inline';
+
+            try {
+                // ยิง API เช็คโมเดลเพื่อดูว่ากุญแจใช้ได้จริงไหม
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${savedKey}`);
+                if (response.ok) {
+                    // 3. สถานะ: เขียว (ผ่านฉลุย พร้อมใช้งาน)
+                    dot.className = 'w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]';
+                    text.innerText = 'API: พร้อมใช้งาน';
+                    text.className = 'text-[10px] font-bold text-green-600 hidden sm:inline';
+                } else {
+                    // 4. สถานะ: แดง (กุญแจผิดรูปแบบ หรือถูกปิดใช้งาน)
+                    dot.className = 'w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]';
+                    text.innerText = 'API: กุญแจไม่ถูกต้อง';
+                    text.className = 'text-[10px] font-bold text-red-500 hidden sm:inline';
+                }
+            } catch (error) {
+                // 5. สถานะ: แดง (เน็ตหลุด หรือ Google ปิดปรับปรุง)
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]';
+                text.innerText = 'API: เชื่อมต่อล้มเหลว';
+                text.className = 'text-[10px] font-bold text-red-500 hidden sm:inline';
+            }
+        }
+
+        function openSettings() {
+            document.getElementById('settings-modal').style.display = 'flex';
+        }
+
+        function closeSettings() {
+            document.getElementById('settings-modal').style.display = 'none';
+        }
+
+        function saveSettings() {
+            const key = document.getElementById('api-key-input').value.trim();
+            localStorage.setItem('cutePillApiKey', key);
+            alert("✨ น้องจินนี่รายงาน: บันทึกกุญแจ AI ลงในเครื่องเรียบร้อยแล้วค่ะ! เจ้านายสังเกตไฟสถานะที่มุมขวาบนได้เลยนะคะ ถ้าเป็น 'สีเขียว' แปลว่าพร้อมลุยค่ะ 💖");
+            closeSettings();
+            
+            // ตรวจสอบสถานะทันทีหลังเซฟ
+            checkApiStatus(); 
+        }
 
         // --- Tab Management ---
         function switchTab(tab) {
@@ -407,15 +512,17 @@
             try {
                 // บีบอัดรูปภาพก่อนส่ง (แก้ปัญหา Payload Too Large จากกล้องมือถือ)
                 const { base64Data, mimeType } = await compressImage(file);
-                const apiKey = ""; // API key will be provided by environment
+                const envApiKey = ""; // API key will be provided by environment
                 
-                // ดึงกุญแจที่เจ้านายบันทึกไว้ (ถ้ามี)
                 const savedApiKey = localStorage.getItem('cutePillApiKey');
-                const activeApiKey = savedApiKey || apiKey;
+                const activeApiKey = savedApiKey || envApiKey;
+
+                // ถ้าระบบใช้ API Key ส่วนตัวของเจ้านาย จะสลับไปใช้รุ่น gemini-1.5-flash ที่เปิดสาธารณะแทนค่ะ
+                const targetModel = savedApiKey ? 'gemini-1.5-flash' : 'gemini-2.5-flash-preview-09-2025';
 
                 if (!activeApiKey) {
                     document.getElementById('ocr-loading').style.display = 'none';
-                    alert("⚠️ น้องจินนี่แจ้งเตือน: เจ้านายยังไม่ได้ใส่ API Key ค่ะ!\nรบกวนกดที่ 'รูปเฟือง' มุมขวาบน เพื่อใส่กุญแจก่อนนะคะ จินนี่ถึงจะอ่านรูปได้ค่ะ 💖");
+                    alert("⚠️ น้องจินนี่แจ้งเตือน: เจ้านายยังไม่ได้ใส่ API Key ค่ะ!\nรบกวนกรอกกุญแจก่อนนะคะ จินนี่ถึงจะอ่านรูปได้ค่ะ 💖");
                     openSettings();
                     return;
                 }
@@ -441,7 +548,7 @@
                     generationConfig: { responseMimeType: "application/json" }
                 };
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${activeApiKey}`, {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${activeApiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
