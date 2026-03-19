@@ -381,7 +381,13 @@
                         const base64Data = dataUrl.split(',')[1];
                         resolve({ base64Data, mimeType: 'image/jpeg' });
                     };
-                    img.onerror = (err) => reject(err);
+                    img.onerror = () => {
+                        // Fallback: ถ้าเบราว์เซอร์อ่านไฟล์ภาพไม่ได้ (เช่น HEIC ใน iPhone) ให้ส่ง Base64 เต็มไปเลย
+                        const base64Data = event.target.result.split(',')[1];
+                        let mType = file.type;
+                        if (!mType || mType === '') mType = 'image/jpeg'; // fallback
+                        resolve({ base64Data, mimeType: mType });
+                    };
                 };
                 reader.onerror = (err) => reject(err);
             });
@@ -430,7 +436,12 @@
                     body: JSON.stringify(payload)
                 });
 
-                if (!response.ok) throw new Error("API request failed");
+                // จินนี่เพิ่มการดักจับ Error จาก API อย่างละเอียดค่ะ
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(`API Error ${response.status}: ${errText}`);
+                }
+
                 const result = await response.json();
                 const extractedText = result.candidates?.[0]?.content?.parts?.[0]?.text;
                 
@@ -468,7 +479,14 @@
                 }
             } catch (error) {
                 console.error("OCR Error:", error);
-                alert("น้องจินนี่ขออภัยค่ะ มีปัญหาในการอ่านรูปภาพ รบกวนเจ้านายเช็คภาพแล้วลองใหม่อีกครั้งนะคะ");
+                
+                // แจ้งเตือนแบบละเอียดเพื่อให้ทราบสาเหตุ ไม่เงียบหายไปเฉยๆ
+                let errorMsg = error.message;
+                if (errorMsg.includes("400") || errorMsg.includes("API_KEY_INVALID")) {
+                     alert("⚠️ คำเตือนจากน้องจินนี่: ไม่พบ API Key ค่ะ! \nหากเจ้านายเซฟไฟล์นี้ไปเปิดบนเครื่องตัวเอง เจ้านายต้องนำ 'Gemini API Key' ไปวางในโค้ดตรงบรรทัด const apiKey = '...'; ก่อนนะคะ ระบบถึงจะส่งรูปผ่านค่ะ!");
+                } else {
+                     alert(`น้องจินนี่ขออภัยค่ะ มีปัญหาในการส่งรูปภาพ (${errorMsg}) รบกวนเจ้านายเช็คภาพแล้วลองใหม่อีกครั้งนะคะ`);
+                }
             } finally {
                 document.getElementById('ocr-loading').style.display = 'none';
             }
