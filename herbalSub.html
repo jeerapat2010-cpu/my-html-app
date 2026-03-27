@@ -244,9 +244,9 @@ body{font-family:'Sarabun',sans-serif;background:#eaf4ec;color:var(--dark);min-h
   </div>
 
   <div class="stat-bar">
-    <div class="stat-item"><div class="stat-icon">💊</div><div><div class="stat-num">115</div><div class="stat-label">รายการยาแผนปัจจุบัน</div></div></div>
+    <div class="stat-item"><div class="stat-icon">💊</div><div><div class="stat-num">847</div><div class="stat-label">ยาแผนปัจจุบัน (115+732 บัญชียาหลักฯ)</div></div></div>
     <div class="stat-item"><div class="stat-icon">🌿</div><div><div class="stat-num">106</div><div class="stat-label">รายการยาสมุนไพร</div></div></div>
-    <div class="stat-item"><div class="stat-icon">✅</div><div><div class="stat-num">18</div><div class="stat-label">มียาสมุนไพรทดแทน</div></div></div>
+    <div class="stat-item"><div class="stat-icon">✅</div><div><div class="stat-num">18+</div><div class="stat-label">มียาสมุนไพรทดแทน (static)</div></div></div>
     <div class="stat-item"><div class="stat-icon">📄</div><div><div class="stat-num">30</div><div class="stat-label">คู่ยาในตาราง คู่มือเวชปฏิบัติ เม.ย. 2568</div></div></div>
     <div class="stat-item"><div class="stat-icon">🚫</div><div><div class="stat-num">97</div><div class="stat-label">ทดแทนไม่ได้ — วิกฤต</div></div></div>
   </div>
@@ -283,6 +283,22 @@ body{font-family:'Sarabun',sans-serif;background:#eaf4ec;color:var(--dark);min-h
             <option value="Antihyperlipidemic">Antihyperlipidemic</option>
             <option value="Antidiabetic">Antidiabetic</option>
             <option value="Antiplatelet">Antiplatelet</option>
+            <optgroup label="── บัญชียาหลักแห่งชาติ 2567 ──">
+            <option value="ระบบทางเดินอาหาร">ทางเดินอาหาร (GI)</option>
+            <option value="ระบบหัวใจ">หัวใจและหลอดเลือด (CVS)</option>
+            <option value="ระบบทางเดินหายใจ">ทางเดินหายใจ</option>
+            <option value="ระบบประสาทส่วนกลาง">ระบบประสาท (CNS)</option>
+            <option value="ยาต้านเชื้อ">ยาต้านเชื้อ / ยาปฏิชีวนะ</option>
+            <option value="ระบบต่อมไร้ท่อ">ต่อมไร้ท่อ / เบาหวาน</option>
+            <option value="สูติ-นรีเวช">สูติ-นรีเวช-ปัสสาวะ</option>
+            <option value="มะเร็ง">มะเร็งและภูมิคุ้มกัน</option>
+            <option value="กล้ามเนื้อและข้อ">กล้ามเนื้อและข้อ (MSK)</option>
+            <option value="ตา">ตา (Ophthalmology)</option>
+            <option value="หู คอ">หู คอ จมูก ปาก (ENT)</option>
+            <option value="ผิวหนัง">ผิวหนัง (Dermatology)</option>
+            <option value="ยาสลบ">ยาสลบและระงับปวด</option>
+            <option value="พิษวิทยา">พิษวิทยา</option>
+            </optgroup>
           </select>
         </div>
         <div class="form-group">
@@ -299,6 +315,13 @@ body{font-family:'Sarabun',sans-serif;background:#eaf4ec;color:var(--dark);min-h
             <span><span class="dot dot-partial"></span>ทดแทนบางส่วน</span>
             <span><span class="dot dot-none"></span>ไม่มีทดแทน</span>
           </div>
+    <div style="margin-top:10px;padding:8px 10px;background:#f5f0ff;border:1px solid #d8b4fe;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:6px">
+      <label style="font-size:12px;color:#4c1d95;display:flex;align-items:center;gap:7px;cursor:pointer;flex:1">
+        <input type="checkbox" id="toggleNL" checked onchange="filterDrugs()" style="accent-color:#7c3aed;width:14px;height:14px">
+        <span><strong>รวมบัญชียาหลักฯ 2567</strong></span>
+      </label>
+      <span style="font-size:11px;background:#e8d5fb;color:#6b21a8;border-radius:8px;padding:2px 8px;font-weight:700">+732 รายการ</span>
+    </div>
         </div>
       </div>
     </div>
@@ -381,6 +404,1407 @@ body{font-family:'Sarabun',sans-serif;background:#eaf4ec;color:var(--dark);min-h
 </div><!-- /container -->
 
 <script>
+// ============================================================
+// CLASS-BASED HERBAL SUBSTITUTION MAP
+// อ้างอิง: คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 (กรมการแพทย์)
+//          บัญชียาหลักแห่งชาติด้านสมุนไพร พ.ศ. 2566
+//          บัญชียาสมุนไพร 106 รายการ อปสข.6 (พ.ย. 2568)
+// ============================================================
+
+const classHerbMap = [
+
+// ─────────────────────────────────────────────
+// 1. GI — Antacids / Dyspepsia (PPI, H2, antacid)
+// ─────────────────────────────────────────────
+{
+  id:'gi_dyspepsia',
+  match:{sg:['1.1 antacid','dyspepsia','1.3 ulcer-healing','omeprazole','famotidine','sucralfate','pantoprazole'],dn:['omeprazole','pantoprazole','famotidine','ranitidine','cimetidine','sucralfate','aluminium hydroxide','magnesium hydroxide','simeticone']},
+  rating:'partial',ratingLabel:'ทดแทนได้บางส่วน — Functional Dyspepsia / ท้องอืดเฟ้อ ระดับเบา',
+  diseases:['อาการแน่นจุกเสียด ท้องอืด ท้องเฟ้อ (Dyspepsia)','Functional dyspepsia','ลดกรด (เสริม)'],
+  symptoms:['ท้องอืด','ท้องเฟ้อ','จุกเสียด','แน่นหน้าอก'],
+  note:'⚠️ ขมิ้นชันทดแทน PPI ได้ใน Functional dyspepsia ระดับเบา (หลักฐาน ก2) ใช้ได้ไม่เกิน 8 สัปดาห์ ถ้าไม่ดีขึ้นควรส่งตรวจ endoscopy',
+  herbs:[{
+    name:'ยาขมิ้นชัน',code:'10.1',activeIng:'Curcuminoids (curcumin, DMC, bisdemethoxycurcumin), น้ำมันหอมระเหย · หลักฐาน ก2 (Kongkam P et al. 2023 RCT)',
+    dose_daily:'500 มก. – 1 กรัม วันละ 4 ครั้ง หลังอาหารและก่อนนอน',
+    dose_course:'course 15 วัน = 28,000-56,000 มก. · ไม่เกิน 8 สัปดาห์',
+    dose_modern:'Omeprazole 20 mg OD / Famotidine 20 mg BD / Aluminium hydroxide PRN',
+    duration:'15-56 วัน (ไม่เกิน 8 สัปดาห์)',
+    cost_herb:'≤ 67 บาท/course (15 วัน)',cost_modern:'~15-100 บาท/course',
+    indication:'บรรเทาอาการแน่นจุกเสียด ท้องอืด ท้องเฟ้อ Functional dyspepsia ประสิทธิภาพเทียบเท่า PPI',
+    mechanism:'Curcumin กระตุ้นหลั่ง mucin เคลือบกระเพาะ ขับลมผ่านน้ำมันหอมระเหย ยับยั้ง H.pylori บางส่วน',
+    contraindication:['ห้ามในผู้ที่ท่อน้ำดีอุดตัน','ระวังในผู้ป่วยนิ่วถุงน้ำดี','ระวังหญิงตั้งครรภ์','ระวังในเด็ก (ยังไม่มีข้อมูลเพียงพอ)'],
+    adr:[{l:'yellow',t:'ผิวหนังอักเสบจากการแพ้ (พบน้อย)'},{l:'yellow',t:'คลื่นไส้เล็กน้อยในบางราย'}],
+    interaction:['⚠️ Anticoagulants/Antiplatelets (Warfarin, Aspirin) — ขมิ้นชันมีฤทธิ์ antiplatelet เพิ่มเสี่ยงเลือดออก','⚠️ CYP3A4/CYP1A2 inhibitor — อาจเพิ่มระดับยาที่ผ่าน pathway นี้','⚠️ ยาเคมีบำบัด (Doxorubicin, Cyclophosphamide, Camptothecin) — curcumin อาจลดฤทธิ์','⚠️ ยารักษาเบาหวาน — ระวัง hypoglycemia'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 1 (Dyspepsia) กรมการแพทย์',u:'https://www.dms.moph.go.th'},{t:'Kongkam P et al. Curcumin vs Omeprazole for Functional Dyspepsia. RCT 2023',u:'https://pubmed.ncbi.nlm.nih.gov'}]
+  },{
+    name:'ยาขิง',code:'13',activeIng:'Shogaols, Gingerols · หลักฐาน ก2 (RCT)',
+    dose_daily:'2-4 กรัม/วัน หลังอาหาร (กระตุ้น gastric emptying)',
+    dose_course:'course 7 วัน = 14,000-28,000 มก.',
+    dose_modern:'Domperidone 10 mg TID / Metoclopramide 10 mg TID',
+    duration:'7 วัน',
+    cost_herb:'≤ 84 บาท/course',cost_modern:'~20-60 บาท/course',
+    indication:'บรรเทาอาการ postprandial distress syndrome คลื่นไส้ อาหารไม่ย่อย',
+    mechanism:'Gingerols กระตุ้น gastric antrum → เร่ง gastric emptying ลดอาการ dyspepsia',
+    contraindication:['ห้ามในผู้มีภาวะเลือดออกผิดปกติ','ระวังในผู้ป่วยนิ่วถุงน้ำดี','ไม่แนะนำในเด็ก < 6 ขวบ'],
+    adr:[{l:'yellow',t:'แสบร้อนทางเดินอาหาร ระคายเคืองปาก-คอ'}],
+    interaction:['⚠️ Anticoagulants/Antiplatelets — ขิงมีฤทธิ์ antiplatelet เพิ่มเสี่ยงเลือดออก'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 1 กรมการแพทย์',u:'https://www.dms.moph.go.th'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 2. GI — ท้องเสีย (Non-infectious diarrhea)
+// ─────────────────────────────────────────────
+{
+  id:'gi_diarrhea',
+  match:{sg:['1.4 drugs used in acute diarrhea','loperamide','oral rehydration'],dn:['loperamide','zinc sulfate','oral rehydration']},
+  rating:'partial',ratingLabel:'ทดแทนได้บางส่วน — ท้องเสียชนิดไม่ติดเชื้อเท่านั้น',
+  diseases:['ท้องเสียชนิดไม่เกิดจากการติดเชื้อ (Non-infectious diarrhea)','อาการท้องเสียไม่มีไข้'],
+  symptoms:['ท้องเสีย','ถ่ายเหลว','อุจจาระไม่เป็นมูก/ไม่มีเลือดปน'],
+  note:'⚠️ ใช้ทดแทนได้เฉพาะท้องเสียชนิดไม่ติดเชื้อเท่านั้น (อุจจาระไม่มีมูก ไม่มีเลือด ไม่มีไข้) — ถ้ามีไข้หรือถ่ายมีเลือดต้องพบแพทย์ทันที',
+  herbs:[{
+    name:'ยาเหลืองปิดสมุทร',code:'29',activeIng:'ตำรับยาแผนไทย (สมุนไพรรวม)',
+    dose_daily:'ผู้ใหญ่: 1 กรัม ทุก 3-5 ชม. เมื่อมีอาการ',
+    dose_course:'ใช้ไม่เกิน 1 วัน = 4,000-5,000 มก.',
+    dose_modern:'Loperamide 2 mg หลังถ่ายเหลวแต่ละครั้ง (max 8 mg/day)',
+    duration:'ไม่เกิน 1 วัน — ถ้าไม่ดีขึ้นปรึกษาแพทย์',
+    cost_herb:'≤ 37 บาท/course',cost_modern:'~20-50 บาท/course',
+    indication:'บรรเทาท้องเสียชนิดไม่ติดเชื้อ ไม่มีมูกเลือด ไม่มีไข้',
+    mechanism:'ฤทธิ์ฝาดสมาน ลดการบีบตัวของลำไส้ ดูดซับน้ำ',
+    contraindication:['ห้ามในกรณีท้องเสียมีไข้','ห้ามในกรณีถ่ายมีมูกหรือเลือด','ห้ามในกรณีติดเชื้อแบคทีเรีย'],
+    adr:[{l:'yellow',t:'ท้องผูกถ้าใช้เกิน 1 วัน'}],
+    interaction:['ไม่มีรายงาน Drug interaction ที่สำคัญ'],
+    refs:[{t:'บัญชียาสมุนไพร อปสข.6 ลำดับ 29',u:'https://www.dtam.moph.go.th'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 3. GI — ท้องผูก (Laxatives)
+// ─────────────────────────────────────────────
+{
+  id:'gi_constipation',
+  match:{sg:['1.6 laxative','bisacodyl','senna','macrogol','ispaghula'],dn:['bisacodyl','senna','lactulose','macrogol','ispaghula','glycerol','magnesium hydroxide','magnesium sulfate']},
+  rating:'partial',ratingLabel:'ทดแทนได้บางส่วน — ท้องผูก ระดับเบา-ปานกลาง',
+  diseases:['ท้องผูก (Constipation)','ท้องผูกเรื้อรัง (Chronic constipation) ระดับเบา'],
+  symptoms:['ท้องผูก','ถ่ายอุจจาระยาก','ถ่ายน้อยกว่า 3 ครั้ง/สัปดาห์'],
+  note:'⚠️ ยาสมุนไพรทดแทนยาระบายกลุ่ม stimulant (Bisacodyl, Senna) ได้ดีที่สุด ไม่ควรใช้ต่อเนื่องนาน — ควรเน้นปรับพฤติกรรม กากใย และน้ำ',
+  herbs:[{
+    name:'ยามะขามแขก',code:'23',activeIng:'Sennoside B, Aloe emodin · หลักฐาน ก2 (RCT Senna vs Bisacodyl)',
+    dose_daily:'ชง: 2 กรัม แช่น้ำร้อน 10 นาที ก่อนนอน / แคปซูล: 800 มก.-1.2 กรัม ก่อนนอน',
+    dose_course:'course 7 วัน = 2,400-14,000 มก.',
+    dose_modern:'Bisacodyl 5-10 mg ON / Senna 15 mg ON',
+    duration:'7 วัน (ไม่ควรใช้ต่อเนื่องนาน)',
+    cost_herb:'≤ 31 บาท/course',cost_modern:'~10-30 บาท/course',
+    indication:'บรรเทาท้องผูก ทดแทน stimulant laxative กลุ่ม Bisacodyl, Senna',
+    mechanism:'Sennoside B กระตุ้นการบีบตัวลำไส้ใหญ่ เพิ่มจำนวนครั้งถ่าย (เริ่มออกฤทธิ์ 5 ชม.)',
+    contraindication:['ห้ามในผู้มีภาวะทางเดินอาหารอุดตัน','ห้ามในกรณีปวดท้องโดยไม่ทราบสาเหตุ','ระวังในเด็กอายุ < 12 ปี','ระวัง IBD (Inflammatory bowel disease)','ระวังหญิงตั้งครรภ์และให้นมบุตร'],
+    adr:[{l:'orange',t:'ปวดมวนท้อง ผื่นคัน'},{l:'red',t:'การใช้ขนาดสูงนาน → nephritis'},{l:'yellow',t:'อาจทำให้ลำไส้ชินยา ถ้าไม่ใช้จะไม่ถ่าย'}],
+    interaction:['⚠️ Digoxin — มะขามแขกลด K+ ทำให้ Digoxin toxicity เพิ่มขึ้น (หัวใจเต้นผิดปกติ)','⚠️ Corticosteroids + Loop/Thiazide diuretics + Theophylline — เสริมฤทธิ์ทำให้ K+ ต่ำ (hypokalemia)'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 2 (Constipation) กรมการแพทย์',u:'https://www.dms.moph.go.th'},{t:'บัญชียาสมุนไพร อปสข.6 ลำดับ 23',u:'https://www.dtam.moph.go.th'}]
+  },{
+    name:'ยาชุมเห็ดเทศ',code:'3 (กลุ่มที่ 2)',activeIng:'Anthraquinones',
+    dose_daily:'3-6 กรัม แช่น้ำร้อน วันละ 1 ครั้ง ก่อนนอน',
+    dose_course:'course 7 วัน = 21,000-42,000 มก.',
+    dose_modern:'Bisacodyl 5 mg ON',
+    duration:'7 วัน',
+    cost_herb:'≤ 60 บาท/course',cost_modern:'~10-20 บาท/course',
+    indication:'บรรเทาท้องผูก',
+    mechanism:'Anthraquinones กระตุ้นการบีบตัวลำไส้ใหญ่',
+    contraindication:['ระวังในผู้ป่วย IBD','เด็กอายุ < 12 ปี','หญิงตั้งครรภ์/ให้นมบุตร'],
+    adr:[{l:'yellow',t:'ปวดมวนท้อง ท้องเสีย'},{l:'red',t:'ใช้นาน → สูญเสีย K+ และลำไส้ใหญ่ชินยา'}],
+    interaction:['⚠️ Digoxin — เสี่ยง toxicity เนื่องจาก hypokalemia'],
+    refs:[{t:'บัญชียาสมุนไพร อปสข.6 ลำดับ 3 (หน้า 5)',u:'https://www.dtam.moph.go.th'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 4. GI — ริดสีดวงทวาร (Hemorrhoid)
+// ─────────────────────────────────────────────
+{
+  id:'gi_hemorrhoid',
+  match:{sg:['1.7 local preparations for anal','hemorrhoid','daflon','diosmin'],dn:['daflon','diosmin','hesperidin','lidocaine rectal','glycerol suppository']},
+  rating:'partial',ratingLabel:'ทดแทนได้บางส่วน — ริดสีดวงเกรด 1-2',
+  diseases:['ริดสีดวงทวารหนัก (Hemorrhoid) เกรด 1-2'],
+  symptoms:['ริดสีดวงทวาร','เลือดออกขณะถ่าย','คันทวารหนัก'],
+  note:'⚠️ ยาผสมเพชรสังฆาตใช้ได้เฉพาะริดสีดวงเกรด 1-2 ไม่เกิน 2 สัปดาห์ ห้ามใช้ในผู้ป่วยไต (Calcium Oxalate สูง)',
+  herbs:[{
+    name:'ยาผสมเพชรสังฆาต',code:'12',activeIng:'Flavonoids จากเถาเพชรสังฆาต · หลักฐาน ก2',
+    dose_daily:'สูตร 1: 1.2 กรัม วันละ 3 ครั้ง หลังอาหาร / สูตร 2: 500 มก.-1 กรัม วันละ 3 ครั้ง',
+    dose_course:'course 15 วัน = 21,000-50,400 มก.',
+    dose_modern:'Daflon (Diosmin+Hesperidin) 500 mg BD',
+    duration:'ไม่เกิน 2 สัปดาห์',
+    cost_herb:'≤ 204 บาท/course',cost_modern:'~150-400 บาท/course',
+    indication:'บรรเทาริดสีดวงทวาร เกรด 1-2 ประสิทธิภาพเทียบเท่า Flavonoid (Daflon)',
+    mechanism:'Flavonoids เพิ่มความแข็งแรงหลอดเลือด ลดการอักเสบ เพิ่มการไหลเวียนเลือดดำ',
+    contraindication:['ระวังหญิงตั้งครรภ์/ให้นมบุตร','⚠️ ห้ามในผู้ป่วยโรคไต (Calcium Oxalate สูงในเพชรสังฆาต → เสี่ยงนิ่วไต)'],
+    adr:[{l:'yellow',t:'ท้องเสีย มวนท้อง'}],
+    interaction:['ไม่มีรายงาน Drug interaction ที่มีนัยสำคัญ'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 3 (Hemorrhoid) กรมการแพทย์',u:'https://www.dms.moph.go.th'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 5. Respiratory — ไอ / เสมหะ (Cough/Expectorant)
+// ─────────────────────────────────────────────
+{
+  id:'resp_cough',
+  match:{sg:['3.6.1 cough suppressant','3.6.2 expectorant','cough','expectorant'],dn:['dextromethorphan','codeine','bromhexine','ambroxol','guaifenesin','glyceryl guaicolate','carbocisteine','acetylcysteine','erdosteine']},
+  rating:'partial',ratingLabel:'ทดแทนได้บางส่วน — ไอจากไวรัส / URI ระดับเบา',
+  diseases:['อาการไอจากการติดเชื้อไวรัส (Viral URI)','ไอมีเสมหะ (Productive cough)'],
+  symptoms:['ไอ','มีเสมหะ','ชุ่มคอ','ขับเสมหะ'],
+  note:'⚠️ ยาสมุนไพรทดแทนได้เฉพาะไอจากไวรัส (URI) ไม่สามารถทดแทนยาแก้ไอในกรณีปอดอักเสบ หรือไอเรื้อรังที่มีสาเหตุอื่น',
+  herbs:[{
+    name:'ยาประสะมะแว้ง',code:'8',activeIng:'ตำรับยา (สมุนไพรหลายชนิด) · หลักฐาน ก2',
+    dose_daily:'ผู้ใหญ่: 1-1.4 กรัม เมื่อมีอาการ / เด็ก 6-12 ปี: 200-400 มก.',
+    dose_course:'course 7 วัน = 14,000-19,600 มก.',
+    dose_modern:'Bromhexine 8 mg TID / GG syrup / Dextromethorphan 15 mg q6h',
+    duration:'7 วัน',
+    cost_herb:'≤ 50 บาท/course',cost_modern:'~20-80 บาท/course',
+    indication:'บรรเทาไอ ขับเสมหะ ทำให้ชุ่มคอ — ทดแทนยาแก้ไอแผนปัจจุบัน (RCT vs Dextromethorphan)',
+    mechanism:'ฤทธิ์ขับเสมหะ ลดการระคายเคืองเยื่อบุทางเดินหายใจ',
+    contraindication:['ผู้แพ้สมุนไพรในตำรับ'],
+    adr:[{l:'green',t:'ไม่พบรายงาน ADR ที่สำคัญ'}],
+    interaction:['ไม่มีรายงาน Drug interaction'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 4 (Cough) กรมการแพทย์',u:'https://www.dms.moph.go.th'}]
+  },{
+    name:'ยาแก้ไอผสมมะขามป้อม',code:'7',activeIng:'Phenolic compounds, Vitamin C · หลักฐาน ก2',
+    dose_daily:'จิบเมื่อมีอาการไอ ทุก 4 ชั่วโมง',
+    dose_course:'course 7 วัน = 1-2 ขวด',
+    dose_modern:'Brown mixture / GG syrup PRN',
+    duration:'7 วัน',
+    cost_herb:'≤ 84 บาท/course',cost_modern:'~30-80 บาท/course',
+    indication:'บรรเทาไอ ขับเสมหะ ทำให้ชุ่มคอ',
+    mechanism:'Phenolic compounds ลดการระคายเคือง Vitamin C เสริมภูมิคุ้มกัน',
+    contraindication:['ระวังในผู้ป่วยเบาหวาน (มีน้ำตาลในตำรับ)'],
+    adr:[{l:'yellow',t:'ท้องเสีย (ฤทธิ์ระบายของมะขามป้อม)'}],
+    interaction:['ระวังในผู้ป่วยเบาหวาน'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 4 กรมการแพทย์',u:'https://www.dms.moph.go.th'}]
+  },{
+    name:'ยาตรีผลา',code:'14',activeIng:'Tannins, Gallic acid, Chebulinic acid',
+    dose_daily:'ชง 1-2 กรัม ทุก 4 ชม. / แคปซูล 300-600 มก. วันละ 3-4 ครั้ง',
+    dose_course:'course 7 วัน = 8,400-56,000 มก.',
+    dose_modern:'Ambroxol 30 mg TID',
+    duration:'7 วัน',
+    cost_herb:'≤ 100 บาท/course',cost_modern:'~30-60 บาท/course',
+    indication:'บรรเทาไอ ขับเสมหะ',
+    mechanism:'Tannins ลดการระคายเคืองเยื่อเมือก ช่วยขับเสมหะ',
+    contraindication:['ระวังในผู้ที่ท้องเสียง่าย'],
+    adr:[{l:'yellow',t:'ท้องเสีย'}],
+    interaction:['ไม่มีรายงาน Drug interaction'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 4 กรมการแพทย์',u:'https://www.dms.moph.go.th'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 6. Respiratory — ภูมิแพ้ / Antihistamine
+// ─────────────────────────────────────────────
+{
+  id:'resp_allergy',
+  match:{sg:['3.4 antihistamine','12.2.1 drugs used in nasal allergy','allergic rhinitis'],dn:['loratadine','cetirizine','fexofenadine','chlorpheniramine','brompheniramine','hydroxyzine','desloratadine','levocetirizine','diphenhydramine','promethazine']},
+  rating:'partial',ratingLabel:'ทดแทนได้บางส่วน — ภูมิแพ้ทางจมูกระดับเบา (ไม่ง่วง)',
+  diseases:['โรคจมูกอักเสบภูมิแพ้ (Allergic rhinitis)','หวัดระยะแรก อาการภูมิแพ้'],
+  symptoms:['น้ำมูกไหล','คัดจมูก','จาม','คันจมูก','คันตา'],
+  note:'⚠️ ยาปราบชมพูทวีปทดแทน Loratadine ได้ (หลักฐาน ก2 RCT) ข้อดี: ไม่ง่วง ข้อด้อย: กินวันละ 4 ครั้ง ห้ามใช้ถ้ามีไซนัสอักเสบหรือติดเชื้อแบคทีเรีย',
+  herbs:[{
+    name:'ยาปราบชมพูทวีป',code:'5',activeIng:'23 ชนิด (เหงือกปลาหมอ พริกไทยดำ ใบกัญชาเทศ) · หลักฐาน ก2 (RCT เทียบ Loratadine)',
+    dose_daily:'750 มก.-1.5 กรัม วันละ 4 ครั้ง เช้า กลางวัน เย็น และก่อนนอน',
+    dose_course:'course 7 วัน = 21,000-42,000 มก.',
+    dose_modern:'Loratadine 10 mg OD / Cetirizine 10 mg OD',
+    duration:'7 วัน (ไม่ควรใช้นานกว่า 4 สัปดาห์)',
+    cost_herb:'≤ 170 บาท/course',cost_modern:'~10-40 บาท/course',
+    indication:'บรรเทาอาการจมูกอักเสบภูมิแพ้ ประสิทธิภาพเทียบเท่า Loratadine — ไม่ทำให้ง่วง',
+    mechanism:'ฤทธิ์ต้านการอักเสบ ลด histamine ระดับอ่อน สมุนไพรในตำรับมีฤทธิ์ต้านภูมิแพ้',
+    contraindication:['ห้ามในหญิงตั้งครรภ์','ห้ามเมื่อมีไซนัสอักเสบ หรือมีการติดเชื้อแบคทีเรีย (น้ำมูก/เสมหะเขียว มีไข้)','ระวังในผู้มีประวัติแผลในกระเพาะอาหาร'],
+    adr:[{l:'yellow',t:'แสบร้อนคอ เรอ ท้องอืด ท้องเสีย (ยามีรสร้อน)'},{l:'yellow',t:'ปวดแสบท้อง (ร้อยละ 9.67)'}],
+    interaction:['⚠️ Phenytoin, Propranolol, Theophylline, Rifampicin — ตำรับมีพริกไทยสูง อาจเปลี่ยนระดับยา (CYP interaction)'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 5 (Allergic Rhinitis) กรมการแพทย์',u:'https://www.dms.moph.go.th'},{t:'Onthong N et al. RCT Prabchompoothaweep vs Loratadine. J Health Edu 2019',u:'https://pubmed.ncbi.nlm.nih.gov'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 7. Respiratory — ฟ้าทะลายโจร / URI / Viral infection
+// ─────────────────────────────────────────────
+{
+  id:'resp_uri_viral',
+  match:{sg:['upper respiratory','3.1.1 adrenoceptor','antiviral','3.7','3.8'],dn:['paracetamol','aspirin','ibuprofen','naproxen','oseltamivir','aciclovir oral','amantadine']},
+  rating:'partial',ratingLabel:'ทดแทนได้บางส่วน — ไข้หวัด ไวรัส URI ระดับเบา',
+  diseases:['โรคติดเชื้อทางเดินหายใจส่วนบน (URI)','หวัดธรรมดา (Common cold)','อาการไข้ เจ็บคอ จาก Viral infection'],
+  symptoms:['ไข้','เจ็บคอ','น้ำมูกไหล','ปวดเมื่อยกล้ามเนื้อ','อ่อนเพลีย'],
+  note:'⚠️ ฟ้าทะลายโจรมีหลักฐาน ก2 (RCT หลายการศึกษา) ลดอาการ URI จากไวรัสได้ดี ห้ามใช้ถ้าสงสัย Streptococcal pharyngitis (ตุ่มหนองในคอ ไข้สูง)',
+  herbs:[{
+    name:'ยาฟ้าทะลายโจร',code:'6',activeIng:'andrographolide · หลักฐาน ก2 (RCT หลายการศึกษา)',
+    dose_daily:'ไข้หวัด: ชนิดผง 1.5-3 กรัม วันละ 4 ครั้ง หลังอาหารและก่อนนอน\nโควิด: andrographolide 180 มก./วัน แบ่ง 3 ครั้ง × 5 วัน',
+    dose_course:'course 5-7 วัน = 30,000-84,000 มก.',
+    dose_modern:'Paracetamol 500 mg q4-6h PRN / Ibuprofen 400 mg TID',
+    duration:'5-7 วัน',
+    cost_herb:'≤ 92 บาท/course',cost_modern:'~15-80 บาท/course',
+    indication:'บรรเทาไข้หวัด เจ็บคอ ปวดเมื่อย จาก Viral URI — ทดแทนยาแก้ไข้ และยาบรรเทาอาการหวัด',
+    mechanism:'Andrographolide ยับยั้งการเพิ่มจำนวนไวรัส ต้านการอักเสบ กระตุ้นภูมิคุ้มกัน',
+    contraindication:['ห้ามในหญิงตั้งครรภ์และให้นมบุตร (เสี่ยงทารกผิดรูป)','ห้ามในผู้แพ้ฟ้าทะลายโจร (ผื่น ปากบวม ตาบวม)','ห้ามในกรณีเจ็บคอจาก Streptococcus group A','ห้ามในผู้มีประวัติไตอักเสบหรือหัวใจรูมาติค'],
+    adr:[{l:'orange',t:'ปวดท้อง ท้องเดิน คลื่นไส้'},{l:'yellow',t:'ลมพิษ ใจสั่น วิงเวียนศีรษะ (พบน้อย)'}],
+    interaction:['⚠️ Warfarin/NOACs/Antiplatelets — ฟ้าทะลายโจรมีฤทธิ์ anticoagulant เพิ่มเสี่ยงเลือดออก','⚠️ ยาลดความดัน — อาจเสริมฤทธิ์ลดความดัน','⚠️ CYP1A2, CYP2C9, CYP3A4 — andrographolide มีผลต่อ enzyme เหล่านี้'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 6 (URI) กรมการแพทย์',u:'https://www.dms.moph.go.th'},{t:'Leelarasamee A et al. RCT Andrographis vs placebo. 2021 (N=829)',u:'https://pubmed.ncbi.nlm.nih.gov'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 8. MSK — NSAIDs (Oral) ปวดกล้ามเนื้อ/ข้อ
+// ─────────────────────────────────────────────
+{
+  id:'msk_nsaid_oral',
+  match:{sg:['10.1.1 non-steroidal','nsaid','10.1.3 gout'],dn:['diclofenac','ibuprofen','naproxen','mefenamic','indomethacin','piroxicam','meloxicam','celecoxib','etoricoxib','ketoprofen','tenoxicam','colchicine','allopurinol','febuxostat']},
+  rating:'partial',ratingLabel:'ทดแทนได้บางส่วน — ปวดกล้ามเนื้อ/ข้อระดับเบา-ปานกลาง',
+  diseases:['ปวดกล้ามเนื้อและกระดูก (Musculoskeletal pain)','ข้อเข่าเสื่อม (OA knee)','ปวดหลังส่วนล่าง (Low back pain)','โรคเกาต์ระดับเบา (บรรเทาอาการ)'],
+  symptoms:['ปวดเมื่อย','กล้ามเนื้ออักเสบ','ข้อเข่าเสื่อม','ปวดข้อ','ปวดหลัง'],
+  note:'⚠️ ยาสมุนไพรทดแทนได้เฉพาะอาการปวดระดับเบา-ปานกลาง (หลักฐาน ก2 เทียบ Diclofenac) ไม่สามารถทดแทนในปวดรุนแรงหรือหลังผ่าตัด',
+  herbs:[{
+    name:'ยาเถาวัลย์เปรียง (ผงบด)',code:'2.1',activeIng:'3-aryl-4-hydroxycoumarins, Lupeol, β-sitosterol · หลักฐาน ก2 (RCT vs Diclofenac)',
+    dose_daily:'ผง: 500 มก.-1 กรัม วันละ 3 ครั้ง หลังอาหารทันที\nสารสกัด: 200 มก. วันละ 3 ครั้ง',
+    dose_course:'course 15 วัน = 21,000-42,000 มก.',
+    dose_modern:'Diclofenac 50 mg TID / Ibuprofen 400 mg TID / Naproxen 250 mg BD',
+    duration:'7-15 วัน',
+    cost_herb:'≤ 84-86 บาท/course',cost_modern:'~50-200 บาท/course',
+    indication:'บรรเทาปวดกล้ามเนื้อ ลดการอักเสบ ข้อเข่าเสื่อม LBP (NSAIDs-like mechanism)',
+    mechanism:'ยับยั้ง COX pathway ลดการสร้าง prostaglandin คล้าย NSAIDs ผ่าน 3-aryl-4-hydroxycoumarins',
+    contraindication:['ห้ามในหญิงตั้งครรภ์','ระวังในผู้ป่วยแผลเปื่อยเพปติก','ระวังในผู้มีความผิดปกติตับ/ไต'],
+    adr:[{l:'orange',t:'ปวดท้อง ท้องผูก ปัสสาวะบ่อย คอแห้ง'},{l:'yellow',t:'เวียนศีรษะ ใจสั่น (พบน้อย)'}],
+    interaction:['⚠️ Paracetamol + Diclofenac — เสริมฤทธิ์ anti-inflammatory (ใช้ร่วมลดขนาดได้)','⚠️ Warfarin/Anticoagulants — เพิ่มเสี่ยงเลือดออก','⚠️ NSAIDs อื่น — ซ้ำซ้อน เสี่ยง GI bleeding'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 7 (OA Knee) กรมการแพทย์',u:'https://www.dms.moph.go.th'},{t:'จุไรรัตน์ คงล้อมญาติ. RCT เถาวัลย์เปรียง vs Diclofenac. วทจ 2562',u:'https://pubmed.ncbi.nlm.nih.gov'}]
+  },{
+    name:'ยาสหัศธารา',code:'4',activeIng:'ตำรับยารสร้อน (พริกไทย การบูร 20+ ชนิด) · หลักฐาน ก2 (RCT vs Diclofenac)',
+    dose_daily:'1-1.5 กรัม วันละ 3 ครั้ง หลังอาหาร เช้า กลางวัน เย็น',
+    dose_course:'course 7-15 วัน = 21,000-67,500 มก.',
+    dose_modern:'Diclofenac 50 mg TID',
+    duration:'7-15 วัน',
+    cost_herb:'≤ 73 บาท/course',cost_modern:'~50-150 บาท/course',
+    indication:'ขับลมในเส้น แก้โรคลมกองหยาบ บรรเทาปวดกล้ามเนื้อ',
+    mechanism:'ต้านการอักเสบ คลายกล้ามเนื้อ ขับลม (กลไกหลากหลายจากสมุนไพรรวม)',
+    contraindication:['ห้ามในหญิงตั้งครรภ์/มีไข้','ระวัง: ความดันโลหิตสูง โรคหัวใจ กรดไหลย้อน แผลเปื่อย'],
+    adr:[{l:'orange',t:'ร้อนท้อง แสบท้อง คลื่นไส้ คอแห้ง ผื่นคัน'},{l:'red',t:'ระวังสะสมการบูร — ห้ามใช้ต่อเนื่องในผู้มีตับ/ไตบกพร่อง'}],
+    interaction:['⚠️ Phenytoin, Propranolol, Theophylline, Rifampicin — พริกไทยสูงในตำรับ อาจเปลี่ยนระดับยา'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 7 กรมการแพทย์',u:'https://www.dms.moph.go.th'},{t:'Pinsornsak P et al. RCT Sahasthara vs Diclofenac in OA knee. 2015',u:'https://pubmed.ncbi.nlm.nih.gov'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 9. MSK — Topical NSAIDs / Analgesic balm
+// ─────────────────────────────────────────────
+{
+  id:'msk_topical',
+  match:{sg:['10.3.1 rubifacient','topical','13.4 topical corticosteroid'],dn:['diclofenac gel','diclofenac topical','methyl salicylate','piroxicam gel','ketoprofen gel','ibuprofen gel','capsaicin','lidocaine topical','benzocaine']},
+  rating:'high',ratingLabel:'ทดแทนได้ดี — ยาใช้ภายนอก',
+  diseases:['ปวดข้อ ปวดกล้ามเนื้อ (Topical)','บวม ฟกช้ำ เคล็ดยอก (External use)'],
+  symptoms:['ปวดข้อ ปวดกล้ามเนื้อ (ทาภายนอก)','บวม ฟกช้ำ เคล็ดยอก'],
+  note:'✅ ยาสมุนไพรทาภายนอกมีหลักฐาน ก2 รองรับและทดแทนได้ดีในอาการปวดกล้ามเนื้อและข้อระดับเบา-ปานกลาง',
+  herbs:[{
+    name:'ครีมไพล / น้ำมันไพล / ขี้ผึ้งไพล',code:'1.1-1.5',activeIng:'DMPBD, น้ำมันระเหย Terpinen-4-ol · หลักฐาน ก2 (RCT vs Diclofenac gel)',
+    dose_daily:'ทาและถูเบาๆ บริเวณที่มีอาการ วันละ 2-3 ครั้ง',
+    dose_course:'course 30 วัน = 1-2 หลอด/ขวด',
+    dose_modern:'Diclofenac gel 1% ทา 2-3 ครั้ง/วัน / Methyl salicylate cream',
+    duration:'30 วัน',
+    cost_herb:'≤ 65 บาท/course',cost_modern:'~50-200 บาท/course',
+    indication:'บรรเทาบวม ฟกช้ำ เคล็ดยอก ปวดกล้ามเนื้อ (ทาภายนอก)',
+    mechanism:'DMPBD ยับยั้ง COX-2 ลดการสร้าง prostaglandin ลดการอักเสบเฉพาะที่',
+    contraindication:['ห้ามทาบริเวณขอบตา เนื้อเยื่ออ่อน','ห้ามทาบริเวณผิวหนังมีบาดแผลหรือแผลเปิด'],
+    adr:[{l:'green',t:'ไม่มีรายงาน ADR ที่สำคัญ'}],
+    interaction:['ไม่มีรายงาน Drug interaction ที่มีนัยสำคัญ'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 7 กรมการแพทย์',u:'https://www.dms.moph.go.th'},{t:'Kosuwon W et al. RCT Plai cream 14% vs placebo. 2016',u:'https://pubmed.ncbi.nlm.nih.gov'}]
+  },{
+    name:'เจลพริก / ครีมพริก (Capsaicin cream)',code:'31',activeIng:'Capsaicin · หลักฐาน ก2',
+    dose_daily:'ทาบริเวณที่ปวด 3-4 ครั้ง/วัน',
+    dose_course:'course 30 วัน = 1 หลอด',
+    dose_modern:'Capsaicin cream 0.025-0.075% / Diclofenac gel',
+    duration:'30 วัน',
+    cost_herb:'≤ 40-180 บาท/course',cost_modern:'~100-400 บาท/course',
+    indication:'บรรเทาปวดข้อ ปวดกล้ามเนื้อ (musculoskeletal pain) และปวดจากเส้นประสาท (neuropathic pain)',
+    mechanism:'Capsaicin ลด Substance P ที่ปลายประสาท ลดการรับรู้ความเจ็บปวด',
+    contraindication:['ห้ามในผู้แพ้ Capsaicin'],
+    adr:[{l:'orange',t:'ผิวหนังแดง ปวดแสบร้อนบริเวณที่ทา (หาย 2-4 สัปดาห์)'}],
+    interaction:['⚠️ ACE inhibitors — ระวัง (capsaicin อาจเพิ่มผลข้างเคียง)','⚠️ Anticoagulants, Antiplatelets, Barbiturates, LMWH, Theophylline'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 7 กรมการแพทย์',u:'https://www.dms.moph.go.th'}]
+  },{
+    name:'ยาประคบสมุนไพร',code:'10',activeIng:'ไพล ขมิ้นชัน ตะไคร้ การบูร · หลักฐาน ข2',
+    dose_daily:'นึ่งประคบบริเวณที่มีอาการ วันละ 1-2 ครั้ง ครั้งละ 10-15 นาที',
+    dose_course:'course 7 วัน = 1-2 ลูก (ใช้ซ้ำได้ 3-4 ครั้ง/ลูก)',
+    dose_modern:'Methyl salicylate cream / Warm compress',
+    duration:'7 วัน',
+    cost_herb:'≤ 100 บาท/course',cost_modern:'~50-200 บาท/course',
+    indication:'ประคบลดปวด คลายกล้ามเนื้อ เส้นเอ็น และข้อ (OA knee, Office syndrome)',
+    mechanism:'ความร้อนขยายหลอดเลือด ปรับการไหลเวียน สมุนไพรในตำรับมีฤทธิ์ต้านการอักเสบเฉพาะที่',
+    contraindication:['ห้ามประคบบริเวณบาดแผล','ห้ามในอักเสบเฉียบพลัน 24 ชม.แรก'],
+    adr:[{l:'yellow',t:'ระคายเคืองผิวหนังถ้าร้อนเกินไป'}],
+    interaction:['ระวังผู้แพ้ส่วนประกอบ'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 7 กรมการแพทย์',u:'https://www.dms.moph.go.th'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 10. MSK — Muscle Relaxants
+// ─────────────────────────────────────────────
+{
+  id:'msk_muscle_relaxant',
+  match:{sg:['12.2.2 skeletal muscle relaxant','muscle relaxant'],dn:['orphenadrine','tolperisone','methocarbamol','carisoprodol','baclofen','tizanidine','cyclobenzaprine','dantrolene']},
+  rating:'partial',ratingLabel:'ทดแทนได้บางส่วน — คลายกล้ามเนื้อระดับเบา',
+  diseases:['ปวดเมื่อยกล้ามเนื้อที่มีอาการมือเท้าชา (ลมในเส้น)'],
+  symptoms:['กล้ามเนื้อเกร็ง','ปวดเมื่อย','มือเท้าชา'],
+  note:'⚠️ ยาแก้ลมแก้เส้นทดแทน Muscle relaxant ได้เฉพาะอาการเบา ไม่สามารถทดแทนใน spasticity หรืออาการรุนแรง',
+  herbs:[{
+    name:'ยาแก้ลมแก้เส้น',code:'19',activeIng:'ตำรับยารสร้อน (สมุนไพรรวม) · หลักฐาน ข',
+    dose_daily:'1-4 กรัม วันละ 2 ครั้ง เช้า-เย็น ก่อนอาหาร',
+    dose_course:'course 15 วัน = 28,000-112,000 มก.',
+    dose_modern:'Orphenadrine+Paracetamol 35/325 mg TID / Tolperisone 150 mg TID',
+    duration:'15 วัน',
+    cost_herb:'≤ 420 บาท/course (แคปซูล)',cost_modern:'~100-300 บาท/course',
+    indication:'แก้ลมในเส้น บรรเทาปวดกล้ามเนื้อที่มีมือเท้าชา',
+    mechanism:'ฤทธิ์คลายกล้ามเนื้อ ขับลม ลดการอักเสบ ผ่านสมุนไพรรสร้อนหลายชนิด',
+    contraindication:['ห้ามในหญิงตั้งครรภ์/ให้นมบุตร/มีไข้','ระวัง: แผลเปื่อยเพปติก กรดไหลย้อน ความดันสูง หัวใจ'],
+    adr:[{l:'orange',t:'วิงเวียนศีรษะ มึนงง คอแห้ง แสบร้อนกลางอก'}],
+    interaction:['ไม่มีรายงาน Drug interaction สำคัญ'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 7 กรมการแพทย์',u:'https://www.dms.moph.go.th'},{t:'บัญชียาสมุนไพร อปสข.6 ลำดับ 19',u:'https://www.dtam.moph.go.th'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 11. Skin — Topical antibacterials / Wound healing
+// ─────────────────────────────────────────────
+{
+  id:'skin_wound',
+  match:{sg:['13.1.1 antibacterial preparation','13.2 emollient','wound healing','13.3 topical antipruritic'],dn:['povidone iodine','silver sulfadiazine','framycetin','neomycin','bacitracin','fusidic acid','mupirocin','zinc oxide','calamine','urea cream','aqueous cream']},
+  rating:'partial',ratingLabel:'ทดแทนได้บางส่วน — แผลสด แผลไฟไหม้ สมานแผล',
+  diseases:['แผลสด แผลเรื้อรัง (สมาน)','แผลไฟไหม้ น้ำร้อนลวก','ผิวหนังอักเสบ คัน'],
+  symptoms:['แผลสด','แผลไฟไหม้','น้ำร้อนลวก','สมานแผล','ผิวหนังอักเสบ'],
+  note:'⚠️ ยาสมุนไพรใช้ได้ในแผลสดขนาดเล็กและแผลไฟไหม้ระดับเบา ไม่สามารถทดแทนในแผลติดเชื้อรุนแรงหรือแผลขนาดใหญ่',
+  herbs:[{
+    name:'เจลว่านหางจระเข้',code:'15',activeIng:'Polyuronide, Acemannan, Glycoprotein Aloctin A · หลักฐาน ข',
+    dose_daily:'ทาบริเวณผิวหนัง วันละ 3-4 ครั้ง หรือตามแพทย์สั่ง',
+    dose_course:'course = 1-2 หลอด',
+    dose_modern:'Silver Sulfadiazine 1% cream OD-BD / Framycetin gauze',
+    duration:'จนกว่าแผลจะหาย',
+    cost_herb:'≤ 67 บาท/course',cost_modern:'~50-200 บาท/course',
+    indication:'ช่วยลดความรุนแรงของแผลไฟไหม้น้ำร้อนลวก ลดผิวหนังอักเสบจากรังสีรักษา',
+    mechanism:'Acemannan เร่งการสร้าง collagen ต้านการอักเสบ ลดความเจ็บปวด ลดการบวม',
+    contraindication:['ห้ามในผู้แพ้ว่านหางจระเข้'],
+    adr:[{l:'yellow',t:'อาจเกิดอาการคัน ผื่นแดง ผื่นแพ้สัมผัส (พบน้อย)'}],
+    interaction:['ระวังในผู้แพ้ว่านหางจระเข้'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 12 (Skin) กรมการแพทย์',u:'https://www.dms.moph.go.th'},{t:'บัญชียาสมุนไพร อปสข.6 ลำดับ 15',u:'https://www.dtam.moph.go.th'}]
+  },{
+    name:'ครีมบัวบก',code:'16',activeIng:'Medecassic acid, Asiatic acid, Madecassoside · หลักฐาน ก2',
+    dose_daily:'ทาบริเวณที่เป็นแผล (หลังทำความสะอาดด้วยยาฆ่าเชื้อ) วันละ 1-3 ครั้ง',
+    dose_course:'course = 1-2 หลอด',
+    dose_modern:'Wound healing cream BD / Zinc oxide',
+    duration:'จนกว่าแผลจะหาย',
+    cost_herb:'≤ 46 บาท/course',cost_modern:'~50-150 บาท/course',
+    indication:'สมานแผล เร่งการสร้าง collagen',
+    mechanism:'Asiaticoside กระตุ้น fibroblast เร่ง collagen synthesis ช่วยสมานแผล',
+    contraindication:['ห้ามในผู้แพ้ Apiaceae (ยี่หร่า ผักชี)','ห้ามในผู้มีประวัติมะเร็งผิวหนัง','ห้ามทาแผลเปิดที่ติดเชื้อรุนแรง'],
+    adr:[{l:'yellow',t:'ผื่นแพ้สัมผัส (contact dermatitis) จากสารสกัด (พบน้อย)'}],
+    interaction:['ไม่มีรายงาน Drug interaction ที่มีนัยสำคัญ'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 12 กรมการแพทย์',u:'https://www.dms.moph.go.th'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 12. Skin — Antifungals (Topical)
+// ─────────────────────────────────────────────
+{
+  id:'skin_antifungal',
+  match:{sg:['13.1.2 antifungal preparation','11.1.3 antifungals','12.3.2 oropharyngeal antifungal'],dn:['clotrimazole','miconazole','ketoconazole','terbinafine','nystatin topical','econazole','tolnaftate','bifonazole']},
+  rating:'partial',ratingLabel:'ทดแทนได้บางส่วน — กลากเกลื้อน ผิวหนังเชื้อรา',
+  diseases:['กลากเกลื้อน (Tinea / Pityriasis versicolor)','โรคผิวหนังจากเชื้อรา น้ำกัดเท้า'],
+  symptoms:['กลาก','เกลื้อน','น้ำกัดเท้า','เชื้อราผิวหนัง'],
+  note:'⚠️ ยาทิงเจอร์ทองพันชั่งทดแทนได้เฉพาะการติดเชื้อราผิวหนังระดับเบา ไม่สามารถทดแทนใน onychomycosis (เชื้อราที่เล็บ) หรือติดเชื้อรารุนแรง',
+  herbs:[{
+    name:'ยาทิงเจอร์ทองพันชั่ง',code:'18',activeIng:'Thymoquinone, Carvacrol (สารต้านเชื้อรา)',
+    dose_daily:'ทาบริเวณที่เป็นกลาก เกลื้อน น้ำกัดเท้า วันละ 2-3 ครั้ง',
+    dose_course:'course 7 วัน = 1-2 ขวด',
+    dose_modern:'Clotrimazole 1% cream BD × 2-4 สัปดาห์ / Miconazole cream',
+    duration:'7-14 วัน (ต้องใช้ต่อเนื่องจนกว่าจะหาย)',
+    cost_herb:'≤ 48 บาท/course',cost_modern:'~50-200 บาท/course',
+    indication:'แก้กลากเกลื้อน โรคผิวหนังจากเชื้อรา น้ำกัดเท้า',
+    mechanism:'สารในตำรับมีฤทธิ์ยับยั้งการเจริญของเชื้อรา Candida และ Dermatophyte',
+    contraindication:['ห้ามทาบริเวณเยื่อเมือก ตา','ระวังในผิวหนังที่มีบาดแผล'],
+    adr:[{l:'yellow',t:'ระคายเคืองผิวหนังเล็กน้อย'}],
+    interaction:['ไม่มีรายงาน Drug interaction'],
+    refs:[{t:'บัญชียาสมุนไพร อปสข.6 ลำดับ 18',u:'https://www.dtam.moph.go.th'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 13. Skin — เริม งูสวัด (Topical antiviral)
+// ─────────────────────────────────────────────
+{
+  id:'skin_herpes',
+  match:{sg:['antiviral topical','oral ulcer','12.3.1','viral skin'],dn:['aciclovir topical','acyclovir cream','penciclovir','triamcinolone oral paste','carbenoxolone']},
+  rating:'partial',ratingLabel:'ทดแทนได้บางส่วน — เริม งูสวัด ระดับเบา',
+  diseases:['โรคเริม (Herpes simplex)','งูสวัด (Herpes zoster)','แผลในปาก (Aphthous ulcer)'],
+  symptoms:['ตุ่มน้ำใสจากเริม','ปวดแสบจากงูสวัด','แผลในปาก'],
+  note:'⚠️ ครีมพญายอทดแทนได้เฉพาะเริม งูสวัดระดับเบา ห้ามใช้ในผู้ที่มีภูมิคุ้มกันต่ำ ผู้ตั้งครรภ์ หรือมีไข้สูงกว่า 38 องศา',
+  herbs:[{
+    name:'ครีมพญายอ / กลีเซอรีนพญายอ / คาลาไมน์พญายอ',code:'17',activeIng:'Beta-galactosyl diglycerides (สารต้านไวรัส)',
+    dose_daily:'ทาบริเวณที่มีอาการ (เริม งูสวัด แผลในปาก ผดผื่น) วันละ 5 ครั้ง',
+    dose_course:'course 7 วัน = 1-2 ขวด/หลอด',
+    dose_modern:'Acyclovir 5% cream 5 ครั้ง/วัน × 7-10 วัน / TA oral paste',
+    duration:'7 วัน',
+    cost_herb:'≤ 33 บาท/course',cost_modern:'~100-400 บาท/course',
+    indication:'บรรเทาเริม งูสวัด แผลในปาก ผดผื่น ลมพิษ ตุ่มคัน อักเสบจากแมลงกัด',
+    mechanism:'Beta-galactosyl diglycerides ยับยั้งการแบ่งตัวของไวรัส Herpes simplex ลดการอักเสบ',
+    contraindication:['ไม่มีข้อห้ามที่ระบุ'],
+    adr:[{l:'green',t:'ไม่มีรายงาน ADR ที่สำคัญ'}],
+    interaction:['ไม่มีรายงาน Drug interaction'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 13 (Skin) กรมการแพทย์',u:'https://www.dms.moph.go.th'},{t:'บัญชียาสมุนไพร อปสข.6 ลำดับ 17',u:'https://www.dtam.moph.go.th'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 14. Endocrine — Oral antidiabetics (T2DM mild)
+// ─────────────────────────────────────────────
+{
+  id:'endo_diabetes',
+  match:{sg:['6.1.2 oral antidiabetic','antidiabetic'],dn:['metformin','glibenclamide','glipizide','gliclazide','glimepiride','pioglitazone','repaglinide','sitagliptin','vildagliptin','empagliflozin','dapagliflozin']},
+  rating:'low',ratingLabel:'ทดแทนได้น้อย — เสริมควบคุมน้ำตาล T2DM ระดับเบา เท่านั้น',
+  diseases:['เบาหวานชนิดที่ 2 ระดับเบา (T2DM mild) — เสริมการรักษา'],
+  symptoms:['น้ำตาลในเลือดสูงระดับเบา','ร้อนใน','เบื่ออาหาร'],
+  note:'⛔ ยาสมุนไพรไม่สามารถทดแทนยาลดน้ำตาลแผนปัจจุบันได้ในผู้ป่วยที่ต้องควบคุมน้ำตาลเข้มงวด ห้ามหยุดยาเบาหวานโดยไม่ปรึกษาแพทย์ — ใช้เสริมเท่านั้น',
+  herbs:[{
+    name:'ยามะระขี้นก',code:'30',activeIng:'Charantin, Polypeptide-p, Vicine · หลักฐาน ข',
+    dose_daily:'700-2,800 มก./วัน แบ่ง 3 ครั้ง',
+    dose_course:'course 15 วัน = 10,500-42,000 มก.',
+    dose_modern:'Metformin 500 mg TID / Glipizide 5 mg BD',
+    duration:'15 วัน (ติดตามระดับน้ำตาล)',
+    cost_herb:'≤ 130 บาท/course',cost_modern:'~30-100 บาท/course',
+    indication:'แก้ไข้ แก้ร้อนใน เจริญอาหาร มีหลักฐานลดน้ำตาลในเลือดเบื้องต้น — ใช้เสริมเท่านั้น',
+    mechanism:'Charantin + Polypeptide-p มีฤทธิ์คล้าย insulin ลดระดับน้ำตาลในเลือด',
+    contraindication:['ห้ามในเด็กเล็ก หญิงตั้งครรภ์','ไม่ใช้แทนอินซูลินหรือยาเบาหวานหลัก','ห้ามหยุดยาเบาหวานโดยไม่ปรึกษาแพทย์'],
+    adr:[{l:'yellow',t:'ปวดท้อง ท้องเสียเล็กน้อย'},{l:'red',t:'⚠️ ระวัง hypoglycemia เมื่อใช้ร่วมกับยาเบาหวานอื่น'}],
+    interaction:['⚠️ ยาลดน้ำตาลทุกชนิด — เสี่ยง hypoglycemia สำคัญ','⚠️ Insulin — ต้องติดตามระดับน้ำตาลอย่างใกล้ชิด'],
+    refs:[{t:'บัญชียาสมุนไพร อปสข.6 ลำดับ 30',u:'https://www.dtam.moph.go.th'},{t:'Leung L et al. Bitter melon. J Chin Integr Med 2009',u:'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4027280/'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 15. CVS — Antihypertensives / Diuretics
+// ─────────────────────────────────────────────
+{
+  id:'cvs_antihypertensive',
+  match:{sg:['2.2 diuretic','2.5 renin-angiotensin','2.6.2 calcium-channel','2.4 beta-adrenoceptor','antihypertensive','2.5.4 ace inhibitor','2.5.5 angiotensin'],dn:['amlodipine','nifedipine','felodipine','furosemide','hydrochlorothiazide','spironolactone','enalapril','captopril','lisinopril','losartan','valsartan','atenolol','propranolol','metoprolol','bisoprolol','carvedilol']},
+  rating:'low',ratingLabel:'ทดแทนได้น้อย — ลดความดันเสริมผ่าน diuresis เท่านั้น',
+  diseases:['ความดันโลหิตสูงระดับเบา (เสริมการรักษา)','ขับปัสสาวะ แก้ขัดเบา'],
+  symptoms:['ความดันโลหิตสูง','บวมน้ำ','ขัดเบา'],
+  note:'⚠️ ยาสมุนไพรช่วยลดความดันได้เล็กน้อยผ่าน diuresis ไม่สามารถทดแทนยาลดความดันแผนปัจจุบันได้ในผู้ที่ต้องการควบคุมอย่างเข้มงวด ห้ามหยุดยาลดความดันเองโดยไม่ปรึกษาแพทย์',
+  herbs:[{
+    name:'ยากระเจี๊ยบแดง',code:'11',activeIng:'Anthocyanins (Delphinidin-3-sambubioside) · หลักฐาน ข (ACE inhibitor อ่อนๆ)',
+    dose_daily:'6,000-9,000 มก./วัน แบ่ง 3 ครั้ง',
+    dose_course:'course 7 วัน = 42,000-63,000 มก.',
+    dose_modern:'Amlodipine 5 mg OD / Furosemide 20-40 mg OD / Enalapril 5 mg BD',
+    duration:'7-15 วัน (ติดตามความดัน)',
+    cost_herb:'≤ 85 บาท/course',cost_modern:'~15-100 บาท/course',
+    indication:'ขับปัสสาวะ แก้ขัดเบา ลดความดันเสริมผ่าน diuresis + อ่อน ACE inhibition',
+    mechanism:'Anthocyanins มีฤทธิ์ ACE inhibitor อ่อนๆ + diuresis ลดความดันโลหิต',
+    contraindication:['ระวังร่วมกับยาลดความดันทุกชนิด (เสี่ยง hypotension)','ระวัง Chloroquine — กระเจี๊ยบลดการดูดซึม Chloroquine อย่างมีนัยสำคัญ'],
+    adr:[{l:'yellow',t:'ปัสสาวะบ่อย'},{l:'orange',t:'ความดันต่ำในผู้ที่ใช้ยาลดความดันร่วม'}],
+    interaction:['⚠️ Chloroquine — ลดการดูดซึม Chloroquine ลดประสิทธิภาพยาต้านมาลาเรีย','⚠️ Antihypertensives ทุกชนิด — เสริมฤทธิ์ ระวัง hypotension','⚠️ Diuretics อื่น — เสริมฤทธิ์ขับน้ำ'],
+    refs:[{t:'บัญชียาสมุนไพร อปสข.6 ลำดับ 11',u:'https://www.dtam.moph.go.th'},{t:'Serban C et al. Sour tea and blood pressure. J Hypertens 2015',u:'https://pubmed.ncbi.nlm.nih.gov/26016169/'}]
+  },{
+    name:'ยาหญ้าหนวดแมว',code:'5 (กลุ่ม 2)',activeIng:'Orthosiphonin, Sinensetin, Eupatorin · หลักฐาน ข',
+    dose_daily:'5,600-8,400 มก./วัน แบ่ง 3 ครั้ง',
+    dose_course:'course 15 วัน = 84,000-126,000 มก.',
+    dose_modern:'Hydrochlorothiazide 12.5-25 mg OD',
+    duration:'15 วัน',
+    cost_herb:'≤ 61 บาท/course',cost_modern:'~10-30 บาท/course',
+    indication:'ขับปัสสาวะ แก้ขัดเบา ขับนิ่วขนาดเล็ก',
+    mechanism:'Orthosiphon aristatus มีฤทธิ์ diuretic ลดการคั่ง sodium',
+    contraindication:['ระวังในผู้ป่วยไตบกพร่อง','ระวัง electrolyte imbalance เมื่อใช้ต่อเนื่อง'],
+    adr:[{l:'yellow',t:'ปัสสาวะบ่อย'},{l:'orange',t:'อาจสูญเสียเกลือแร่เมื่อใช้นาน'}],
+    interaction:['⚠️ Diuretics อื่น — เสริมฤทธิ์ electrolyte imbalance'],
+    refs:[{t:'บัญชียาสมุนไพร อปสข.6 ลำดับ 5 (หน้า 5)',u:'https://www.dtam.moph.go.th'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 16. CNS — Hypnotics / Anxiolytics (Benzodiazepines)
+// ─────────────────────────────────────────────
+{
+  id:'cns_hypnotics',
+  match:{sg:['4.1 hypnotics and anxiolytics','benzodiazepine'],dn:['diazepam','lorazepam','clonazepam','alprazolam','oxazepam','temazepam','nitrazepam','zolpidem','zopiclone','buspirone','hydroxyzine','dipotassium clorazepate']},
+  rating:'partial',ratingLabel:'ทดแทนได้บางส่วน — นอนไม่หลับ/วิตกกังวลระดับเบา (ภายใต้แพทย์)',
+  diseases:['นอนไม่หลับ (Insomnia) ระดับเบา','ความวิตกกังวล (Anxiety) ระดับเบา'],
+  symptoms:['นอนไม่หลับ','วิตกกังวล','ลมวิงเวียน'],
+  note:'⚠️ ห้ามหยุด Benzodiazepine กะทันหัน (seizure rebound) ยาสมุนไพรทดแทนได้เฉพาะอาการเบา ห้ามใช้แทนในกรณีชักหรืออาการรุนแรง',
+  herbs:[{
+    name:'ยาน้ำมันกัญชาทั้งห้า (THC 2.0 mg/ml)',code:'22',activeIng:'THC 2.0 mg/ml · หลักฐาน ง (ภายใต้แพทย์)',
+    dose_daily:'เริ่ม 2-3 หยด ก่อนนอน (ภายใต้การดูแลแพทย์)',
+    dose_course:'2-4 ขวด (5 ml/ขวด)/course 30 วัน',
+    dose_modern:'Diazepam 5-10 mg ON / Lorazepam 0.5-1 mg ON',
+    duration:'30 วัน',
+    cost_herb:'≤ 600 บาท/course',cost_modern:'~20-100 บาท/course',
+    indication:'ช่วยนอนหลับ ลดวิตกกังวล เจริญอาหาร — ใช้เสริมในผู้ป่วยที่ใช้ยามาตรฐานแล้วไม่ได้ผล',
+    mechanism:'THC ออกฤทธิ์ผ่าน Endocannabinoid system (CB1 receptor) ลด neuronal excitability',
+    contraindication:['ต้องสั่งจ่ายโดยแพทย์เท่านั้น','ห้ามในเด็กอายุ < 18 ปี','ห้ามในหญิงตั้งครรภ์/ให้นมบุตร','ห้ามในผู้มีโรคจิตเวช'],
+    adr:[{l:'red',t:'ง่วงนอนมาก — ห้ามขับรถ'},{l:'orange',t:'ปากแห้ง ตาแดง เวียนหัว'},{l:'red',t:'Psychosis ในผู้มีความเสี่ยง'}],
+    interaction:['⚠️ CNS Depressants (Alcohol, Opioids, BZD) — เสริมฤทธิ์กดสมอง อันตราย','⚠️ Antiepileptics — อาจเปลี่ยนระดับยากันชัก','⚠️ CYP3A4 inhibitors — เพิ่มระดับ THC'],
+    refs:[{t:'บัญชียาสมุนไพร อปสข.6 ลำดับ 22',u:'https://www.dtam.moph.go.th'},{t:'Babson KA et al. Cannabis, Cannabinoids and Sleep. Curr Psychiatry Rep 2017',u:'https://pubmed.ncbi.nlm.nih.gov/28349316/'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 17. CNS — Antiepileptics (Refractory)
+// ─────────────────────────────────────────────
+{
+  id:'cns_epilepsy',
+  match:{sg:['4.8.1 drugs used in control of epilepsy','4.8.2 status epilepticus'],dn:['phenytoin','carbamazepine','valproate','valproic acid','lamotrigine','levetiracetam','oxcarbazepine','topiramate','gabapentin','pregabalin','clonazepam','clobazam','phenobarbital']},
+  rating:'low',ratingLabel:'ทดแทนได้น้อย — CBD เสริมเฉพาะลมชักรักษายากในเด็ก (ภายใต้แพทย์เฉพาะทาง)',
+  diseases:['โรคลมชักรักษายาก (Refractory epilepsy)','โรคลมชักดื้อต่อการรักษา'],
+  symptoms:['ชัก','โรคลมชักดื้อยา'],
+  note:'⚠️ CBD oil ใช้เสริมการรักษาโรคลมชักดื้อยาในเด็ก (Dravet, Lennox-Gastaut) ต้องมีกุมารแพทย์ทางระบบประสาทดูแล ห้ามหยุดยากันชักเองโดยเด็ดขาด',
+  herbs:[{
+    name:'ยาน้ำมันสารสกัดกัญชา CBD 100 mg/ml (CBD:THC ≥ 20:1)',code:'24.1',activeIng:'Cannabidiol (CBD) · หลักฐาน ก1 (Systematic review + RCT, Devinsky et al. NEJM 2017)',
+    dose_daily:'เริ่ม 2.5 mg/kg/วัน แบ่ง 2 ครั้ง ค่อยๆ ปรับโดยกุมารแพทย์ระบบประสาท',
+    dose_course:'1 ขวด (10 ml หรือ 30 ml)/month ชดเชยตามการใช้จริง',
+    dose_modern:'Clonazepam 0.5-2 mg BD / Clobazam 5-10 mg BD',
+    duration:'30 วัน (ปรับโดยแพทย์)',
+    cost_herb:'≤ 2,000 บาท/ขวด 10 ml (สปสช.ชดเชย)',cost_modern:'~100-500 บาท/month',
+    indication:'โรคลมชักรักษายาก ดื้อต่อการรักษา — เสริมการรักษาในเด็กอายุ ≥ 1 ปี',
+    mechanism:'CBD ออกฤทธิ์ผ่าน TRPV1, GPR55, Adenosine pathway ลด neuronal hyperexcitability',
+    contraindication:['ต้องสั่งจ่ายโดยกุมารแพทย์ทางระบบประสาทเท่านั้น','ห้ามหยุดยากันชักเองกะทันหัน','ต้องบริหารยา sublingual ห้ามผ่าน PVC feeding tube'],
+    adr:[{l:'orange',t:'ง่วงนอน ท้องเสีย เบื่ออาหาร น้ำหนักลด'},{l:'red',t:'Liver enzymes เพิ่ม — ต้องติดตาม LFT ทุก 4-8 สัปดาห์'},{l:'red',t:'Anemia, เกล็ดเลือดต่ำ (พบน้อย)'}],
+    interaction:['⚠️ Valproate + CBD — เพิ่มระดับ Valproate → hepatotoxicity','⚠️ Clobazam + CBD — เพิ่มระดับ N-desmethylclobazam 3-5 เท่า','⚠️ CYP2C19, CYP3A4 inhibitors — เพิ่มระดับ CBD','⚠️ Fluoroquinolones (CYP1A2), Dihydropyridines (CYP3A4) — เพิ่มระดับยาเหล่านี้'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 9 (Epilepsy) กรมการแพทย์',u:'https://www.dms.moph.go.th'},{t:'Devinsky O et al. CBD for Drug-Resistant Seizures in Dravet. NEJM 2017',u:'https://www.nejm.org/doi/10.1056/NEJMoa1611618'},{t:'Lusawat A et al. Thai Pediatric CBD-Epilepsy Study. Pediatric Neurology 2025',u:'https://www.dms.moph.go.th'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 18. CNS — Nausea / Vomiting / Vertigo
+// ─────────────────────────────────────────────
+{
+  id:'cns_nausea',
+  match:{sg:['4.5.1 drugs used in nausea','4.5.2 vestibular','nausea','vomiting','vertigo'],dn:['metoclopramide','domperidone','ondansetron','granisetron','prochlorperazine','cinnarizine','betahistine','dimenhydrinate','meclizine']},
+  rating:'partial',ratingLabel:'ทดแทนได้บางส่วน — คลื่นไส้จากเมารถ เมาเรือ ระดับเบา',
+  diseases:['คลื่นไส้อาเจียนจากเมารถ เมาเรือ','วิงเวียนศีรษะระดับเบา'],
+  symptoms:['คลื่นไส้','อาเจียน','เมารถ เมาเรือ','วิงเวียน'],
+  note:'⚠️ ขิงทดแทน Dimenhydrinate ได้เฉพาะ motion sickness ระดับเบา ไม่สามารถทดแทนในคลื่นไส้จากเคมีบำบัด PONV หรือวิงเวียนรุนแรง',
+  herbs:[{
+    name:'ยาขิง',code:'13',activeIng:'Shogaols, Gingerols · หลักฐาน ก2 (RCT motion sickness)',
+    dose_daily:'1-2 กรัม ก่อนเดินทาง 30-60 นาที หรือเมื่อมีอาการ',
+    dose_course:'course = ตามต้องการ',
+    dose_modern:'Dimenhydrinate 50 mg 30 นาทีก่อนเดินทาง / Metoclopramide 10 mg PRN',
+    duration:'ตามความต้องการ',
+    cost_herb:'≤ 84 บาท/course',cost_modern:'~20-50 บาท/course',
+    indication:'ป้องกัน/บรรเทา motion sickness คลื่นไส้อาเจียน (เมารถ เมาเรือ)',
+    mechanism:'Gingerols ยับยั้ง 5-HT3 receptor ลดสัญญาณ nausea จาก vagal afferent',
+    contraindication:['ห้ามใช้ร่วมกับยาละลายลิ่มเลือด','ผู้มีภาวะเลือดออกผิดปกติ','ผู้ป่วยนิ่วถุงน้ำดี','เด็กอายุ < 6 ขวบ'],
+    adr:[{l:'yellow',t:'แสบร้อนทางเดินอาหาร ระคายเคืองปาก-คอ'}],
+    interaction:['⚠️ Anticoagulants/Antiplatelets (Warfarin, Aspirin, Clopidogrel) — ขิงมีฤทธิ์ antiplatelet เพิ่มเสี่ยงเลือดออก'],
+    refs:[{t:'คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เม.ย. 2568 บทที่ 1 กรมการแพทย์',u:'https://www.dms.moph.go.th'},{t:'บัญชียาสมุนไพร อปสข.6 ลำดับ 13',u:'https://www.dtam.moph.go.th'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 19. CNS — Analgesics/Antipyretics (Mild pain/fever)
+// ─────────────────────────────────────────────
+{
+  id:'cns_analgesic',
+  match:{sg:['4.6 analgesic','4.7.2 neuropathic pain'],dn:['tramadol oral','paracetamol tab','aspirin tab','nefopam','ibuprofen oral']},
+  rating:'partial',ratingLabel:'ทดแทนได้บางส่วน — ไข้ระดับเบา / ปวดเมื่อยระดับเบา',
+  diseases:['ไข้ตัวร้อน (ระดับเบา)','ปวดเมื่อยกล้ามเนื้อ'],
+  symptoms:['ไข้ตัวร้อน','ปวดเมื่อย'],
+  note:'⚠️ ยาสมุนไพรทดแทน Paracetamol ได้เฉพาะไข้ระดับเบา ไม่แนะนำในผู้ที่สงสัยไข้เลือดออก',
+  herbs:[{
+    name:'ยาจันทลีลา',code:'9',activeIng:'ตำรับยาเย็น · หลักฐาน ข',
+    dose_daily:'ผู้ใหญ่: 1-2 กรัม ทุก 3-4 ชม. เมื่อมีอาการ',
+    dose_course:'course 7 วัน = 9,000-36,000 มก.',
+    dose_modern:'Paracetamol 500 mg q4-6h PRN',
+    duration:'7 วัน (ไม่เกิน 3 วัน — ถ้าไม่ดีขึ้นปรึกษาแพทย์)',
+    cost_herb:'≤ 97 บาท/course',cost_modern:'~15-40 บาท/course',
+    indication:'บรรเทาไข้ตัวร้อน ไข้เปลี่ยนฤดู',
+    mechanism:'ฤทธิ์ลดไข้จากสมุนไพรรสเย็นในตำรับ ลดการสร้าง prostaglandin',
+    contraindication:['ไม่แนะนำในผู้ที่สงสัยไข้เลือดออก','ถ้าใช้ > 3 วันแล้วไม่ดีขึ้นควรปรึกษาแพทย์'],
+    adr:[{l:'green',t:'ไม่มีรายงาน ADR ที่สำคัญ'}],
+    interaction:['ไม่มีรายงาน Drug interaction สำคัญ'],
+    refs:[{t:'บัญชียาสมุนไพร อปสข.6 ลำดับ 9 (หน้า 5)',u:'https://www.dtam.moph.go.th'}]
+  }]
+},
+
+// ─────────────────────────────────────────────
+// 20. Uroinary — Alkalinisation / UTI mild support
+// ─────────────────────────────────────────────
+{
+  id:'uro_alkalinisation',
+  match:{sg:['7.4.3 drugs used in alkalinisation','7.4.2 urinary frequency'],dn:['potassium citrate','sodium potassium citrate','sodium bicarbonate oral','methenamine']},
+  rating:'partial',ratingLabel:'ทดแทนได้บางส่วน — ขับปัสสาวะ แก้ขัดเบา',
+  diseases:['ขับปัสสาวะ แก้ขัดเบา','UTI ระดับเบา (เสริม)'],
+  symptoms:['ขัดเบา','ปัสสาวะบ่อย','ปวดเวลาปัสสาวะ'],
+  note:'⚠️ ยาสมุนไพรใช้เสริมได้เฉพาะอาการขัดเบาระดับเบา ไม่สามารถทดแทน antibiotics ในกรณี UTI ที่ติดเชื้อ',
+  herbs:[{
+    name:'ยาหญ้าหนวดแมว',code:'5 (กลุ่ม 2)',activeIng:'Orthosiphonin, Sinensetin · หลักฐาน ข',
+    dose_daily:'5,600-8,400 มก./วัน แบ่ง 3 ครั้ง',
+    dose_course:'course 15 วัน = 84,000-126,000 มก.',
+    dose_modern:'Sodium Potassium Citrate (SPC) 3-6 g/day',
+    duration:'15 วัน',
+    cost_herb:'≤ 61 บาท/course',cost_modern:'~50-150 บาท/course',
+    indication:'ขับปัสสาวะ แก้ขัดเบา ขับนิ่วขนาดเล็ก',
+    mechanism:'Diuretic effect ลดการคั่งของ sodium เพิ่มปริมาณปัสสาวะ',
+    contraindication:['ระวังในผู้ป่วยไตบกพร่อง'],
+    adr:[{l:'yellow',t:'ปัสสาวะบ่อย อาจสูญเสียเกลือแร่'}],
+    interaction:['⚠️ Diuretics อื่น — electrolyte imbalance'],
+    refs:[{t:'บัญชียาสมุนไพร อปสข.6 ลำดับ 5',u:'https://www.dtam.moph.go.th'}]
+  }]
+}
+
+]; // end classHerbMap
+
+// ─────────────────────────────────────────────
+// RESOLVER FUNCTION
+// ─────────────────────────────────────────────
+function resolveByClass(drug){
+  const nameLC=(drug.name||'').toLowerCase();
+  const sgLC=(drug.subgroup||drug.group||'').toLowerCase();
+
+  for(const cls of classHerbMap){
+    // Check subgroup keywords
+    const sgMatch=cls.match.sg.some(k=>sgLC.includes(k.toLowerCase()));
+    // Check drug name keywords
+    const dnMatch=cls.match.dn.some(k=>nameLC.includes(k.toLowerCase()));
+    if(sgMatch||dnMatch) return cls;
+  }
+  return null;
+}
+
+
+const nationalDrugs=[
+  {id:116,name:"Aluminium hydroxide + Magnesium hydroxide",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.1 Antacids and other drugs for dyspepsia",fromNL:true},
+  {id:117,name:"Simeticone (Simethicone)",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.1 Antacids and other drugs for dyspepsia",fromNL:true},
+  {id:118,name:"Compound Cardamom",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.1 Antacids and other drugs for dyspepsia",fromNL:true},
+  {id:119,name:"Aluminium hydroxide",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.1 Antacids and other drugs for dyspepsia",fromNL:true},
+  {id:120,name:"Dicycloverine hydrochloride (Dicyclomine hydrochloride)",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.2 Antispasmodics and other drugs altering gut motilit",fromNL:true},
+  {id:121,name:"Domperidone",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.2 Antispasmodics and other drugs altering gut motilit",fromNL:true},
+  {id:122,name:"Hyoscine butylbromide (Hyoscine-n-butylbromide)",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.2 Antispasmodics and other drugs altering gut motilit",fromNL:true},
+  {id:123,name:"Metoclopramide",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.2 Antispasmodics and other drugs altering gut motilit",fromNL:true},
+  {id:124,name:"Mebeverine hydrochloride",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.2 Antispasmodics and other drugs altering gut motilit",fromNL:true},
+  {id:125,name:"Omeprazole",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.3 Ulcer-healing drugs and drugs used in variceal blee",fromNL:true},
+  {id:126,name:"Famotidine",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.3 Ulcer-healing drugs and drugs used in variceal blee",fromNL:true},
+  {id:127,name:"Omeprazole sodium",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.3 Ulcer-healing drugs and drugs used in variceal blee",fromNL:true},
+  {id:128,name:"Pantoprazole sodium",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.3 Ulcer-healing drugs and drugs used in variceal blee",fromNL:true},
+  {id:129,name:"Sucralfate",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.3 Ulcer-healing drugs and drugs used in variceal blee",fromNL:true},
+  {id:130,name:"Bismuth subsalicylate",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.3 Ulcer-healing drugs and drugs used in variceal blee",fromNL:true},
+  {id:131,name:"Lauromacrogol 400 (Polidocanol)",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.3 Ulcer-healing drugs and drugs used in variceal blee",fromNL:true},
+  {id:132,name:"Octreotide acetate",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.3 Ulcer-healing drugs and drugs used in variceal blee",fromNL:true},
+  {id:133,name:"Oral rehydration salts (ORS)",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.4 Drugs used in acute diarrhea",fromNL:true},
+  {id:134,name:"Zinc sulfate",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.4 Drugs used in acute diarrhea",fromNL:true},
+  {id:135,name:"Loperamide hydrochloride",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.4 Drugs used in acute diarrhea",fromNL:true},
+  {id:136,name:"Mesalazine (Mesalamine)",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.5 Drugs used in chronic bowel disorders",fromNL:true},
+  {id:137,name:"Sulfasalazine",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.5 Drugs used in chronic bowel disorders",fromNL:true},
+  {id:138,name:"Infliximab",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.5 Drugs used in chronic bowel disorders",fromNL:true},
+  {id:139,name:"Bisacodyl",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.6 Laxatives",fromNL:true},
+  {id:140,name:"G lycerol",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.6 Laxatives",fromNL:true},
+  {id:141,name:"Ispaghula Husk (Psyllium Husk)",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.6 Laxatives",fromNL:true},
+  {id:142,name:"Magnesium hydroxide",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.6 Laxatives",fromNL:true},
+  {id:143,name:"Magnesium sulfate",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.6 Laxatives",fromNL:true},
+  {id:144,name:"Senna",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.6 Laxatives",fromNL:true},
+  {id:145,name:"Sodium phosphates",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.6 Laxatives",fromNL:true},
+  {id:146,name:"Lactulose",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.6 Laxatives",fromNL:true},
+  {id:147,name:"Macrogols (Polyethylene glycol, PEG)",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.6 Laxatives",fromNL:true},
+  {id:148,name:"Local anaesthetic + Corticosteroid",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.7 Local preparations for anal and rectal disorders",fromNL:true},
+  {id:149,name:"Colestyramine (Cholestyramine)",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.8 Drugs affecting intestinal secretions",fromNL:true},
+  {id:150,name:"Pancreatic enzymes",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.8 Drugs affecting intestinal secretions",fromNL:true},
+  {id:151,name:"Ursodeoxycholic acid (Ursodiol)",group:"ระบบทางเดินอาหาร (GI)",subgroup:"1.8 Drugs affecting intestinal secretions",fromNL:true},
+  {id:152,name:"Digoxin",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.1 Positive inotropic drugs",fromNL:true},
+  {id:153,name:"Milrinone",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.1 Positive inotropic drugs",fromNL:true},
+  {id:154,name:"Furosemide",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.2 Diuretics",fromNL:true},
+  {id:155,name:"Hydrochlorothiazide (HCTZ)",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.2 Diuretics",fromNL:true},
+  {id:156,name:"Mannitol",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.2 Diuretics",fromNL:true},
+  {id:157,name:"Spironolactone",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.2 Diuretics",fromNL:true},
+  {id:158,name:"Amiloride hydrochloride + Hydrochlorothiazide (HCTZ)",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.2 Diuretics",fromNL:true},
+  {id:159,name:"Adenosine",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.3 Anti-arrhythmic drugs",fromNL:true},
+  {id:160,name:"Atropine sulfate",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.3 Anti-arrhythmic drugs",fromNL:true},
+  {id:161,name:"Lidocaine hydrochloride (preservative free)",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.3 Anti-arrhythmic drugs",fromNL:true},
+  {id:162,name:"Verapamil",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.3 Anti-arrhythmic drugs",fromNL:true},
+  {id:163,name:"Amiodarone hydrochloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.3 Anti-arrhythmic drugs",fromNL:true},
+  {id:164,name:"Flecainide acetate",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.3 Anti-arrhythmic drugs",fromNL:true},
+  {id:165,name:"Propafenone hydrochloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.3 Anti-arrhythmic drugs",fromNL:true},
+  {id:166,name:"Atenolol",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.4 Beta-adrenoceptor blocking drugs",fromNL:true},
+  {id:167,name:"Metoprolol tartrate immediate release",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.4 Beta-adrenoceptor blocking drugs",fromNL:true},
+  {id:168,name:"Propranolol hydrochloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.4 Beta-adrenoceptor blocking drugs",fromNL:true},
+  {id:169,name:"Carvedilol",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.4 Beta-adrenoceptor blocking drugs",fromNL:true},
+  {id:170,name:"Labetalolhydrochloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.4 Beta-adrenoceptor blocking drugs",fromNL:true},
+  {id:171,name:"Esmolol hydrochloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.4 Beta-adrenoceptor blocking drugs",fromNL:true,tier:"ง"},
+  {id:172,name:"Hydralazine hydrochloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.5.1 Vasodilator antihypertensive drugs",fromNL:true},
+  {id:173,name:"Sodium nitroprusside",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.5.1 Vasodilator antihypertensive drugs",fromNL:true},
+  {id:174,name:"Methyldopa",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.5.2 Centrally acting antihypertensive drugs",fromNL:true},
+  {id:175,name:"Prazosin hydrochloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.5.3 Alpha-adrenoceptor blocking drugs",fromNL:true},
+  {id:176,name:"Doxazosin mesilate immediate release",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.5.3 Alpha-adrenoceptor blocking drugs",fromNL:true},
+  {id:177,name:"Enalapril maleate",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.5.4 Angiotensin-converting enzyme inhibitors",fromNL:true},
+  {id:178,name:"Captopril",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.5.4 Angiotensin-converting enzyme inhibitors",fromNL:true},
+  {id:179,name:"Lisinopril",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.5.4 Angiotensin-converting enzyme inhibitors",fromNL:true},
+  {id:180,name:"Losartan potassium",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.5.5 Angiotensin-II receptor antagonists",fromNL:true},
+  {id:181,name:"Glyceryl trinitrate",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.6.1 Nitrates",fromNL:true},
+  {id:182,name:"Isosorbide dinitrate",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.6.1 Nitrates",fromNL:true},
+  {id:183,name:"Isosorbide mononitrate",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.6.1 Nitrates",fromNL:true},
+  {id:184,name:"Amlodipine besilate",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.6.2 Calcium-channel blockers",fromNL:true},
+  {id:185,name:"Diltiazem hydrochloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.6.2 Calcium-channel blockers",fromNL:true},
+  {id:186,name:"Verapamil hydrochloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.6.2 Calcium-channel blockers",fromNL:true},
+  {id:187,name:"Diltiazem hydrochloride immediate release",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.6.2 Calcium-channel blockers",fromNL:true},
+  {id:188,name:"Lercanidipine hydrochloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.6.2 Calcium-channel blockers",fromNL:true},
+  {id:189,name:"Manidipine hydrochloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.6.2 Calcium-channel blockers",fromNL:true},
+  {id:190,name:"Nicardipine hydrochloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.6.2 Calcium-channel blockers",fromNL:true},
+  {id:191,name:"Nifedipine",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.6.2 Calcium-channel blockers",fromNL:true},
+  {id:192,name:"Nimodipine",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.6.2 Calcium-channel blockers",fromNL:true},
+  {id:193,name:"Sildenafil (as citrate)",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.6.3 Other vasodilators",fromNL:true},
+  {id:194,name:"Dopamine hydrochloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.7.1 Inotropic sympathomimetics",fromNL:true},
+  {id:195,name:"Isoprenaline hydrochloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.7.1 Inotropic sympathomimetics",fromNL:true},
+  {id:196,name:"Dobutamine hydrochloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.7.1 Inotropic sympathomimetics",fromNL:true},
+  {id:197,name:"Norepinephrine (Noradrenaline)",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.7.2 Vasoconstrictor sympathomimetics",fromNL:true},
+  {id:198,name:"Ephedrine hydrochloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.7.2 Vasoconstrictor sympathomimetics",fromNL:true},
+  {id:199,name:"Midodrine Hydrochloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.7.2 Vasoconstrictor sympathomimetics",fromNL:true},
+  {id:200,name:"Phenylephrine hydrochloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.7.2 Vasoconstrictor sympathomimetics",fromNL:true},
+  {id:201,name:"Epinephrine (Adrenaline)",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.7.3 Drugs used in cardiopulmonary resuscitation",fromNL:true},
+  {id:202,name:"Warfarin sodium",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.8 Anticoagulants",fromNL:true},
+  {id:203,name:"Heparin sodium",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.8 Anticoagulants",fromNL:true},
+  {id:204,name:"Enoxaparin sodium",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.8 Anticoagulants",fromNL:true},
+  {id:205,name:"Fondaparinux sodium",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.8 Anticoagulants",fromNL:true},
+  {id:206,name:"Aspirin (Acetylsalicylic acid)",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.9 Antiplatelet drugs",fromNL:true},
+  {id:207,name:"Clopidogrel bisulfate",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.9 Antiplatelet drugs",fromNL:true},
+  {id:208,name:"Dipyridamole",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.9 Antiplatelet drugs",fromNL:true},
+  {id:209,name:"Eptifibatide",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.9 Antiplatelet drugs",fromNL:true},
+  {id:210,name:"Ticagrelor",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.9 Antiplatelet drugs",fromNL:true},
+  {id:211,name:"Streptokinase",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.10 Fibrinolytic drugs",fromNL:true},
+  {id:212,name:"Alteplase (Recombinant tissue - type plasminogen",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.10 Fibrinolytic drugs",fromNL:true},
+  {id:213,name:"Tenecteplase",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.10 Fibrinolytic drugs",fromNL:true},
+  {id:214,name:"Tranexamic acid",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.11 Hemostatics",fromNL:true},
+  {id:215,name:"Human thrombin + Calcium chloride",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.11 Hemostatics",fromNL:true},
+  {id:216,name:"activated prothrombin complex concentrate (APCC)",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.11 Hemostatics",fromNL:true},
+  {id:217,name:"Coagulation factor VIII",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.11 Hemostatics",fromNL:true},
+  {id:218,name:"Coagulation factor IX",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.11 Hemostatics",fromNL:true},
+  {id:219,name:"Factor IX complex (Coagulation factors II, VII, IX, X)",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.11 Hemostatics",fromNL:true},
+  {id:220,name:"Gemfibrozil",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.12 Lipid-regulating drugs",fromNL:true},
+  {id:221,name:"Nicotinic acid immediate release",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.12 Lipid-regulating drugs",fromNL:true},
+  {id:222,name:"Simvastatin",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"2.12 Lipid-regulating drugs",fromNL:true},
+  {id:223,name:"Atorvastatin",group:"ระบบหัวใจและหลอดเลือด (CVS)",subgroup:"3.1 ในขนาดเกินวันละ เมื่อใชรวมกับยา หรือ",fromNL:true,tier:"ข"},
+  {id:224,name:"Fenofibrate",group:"100 LDL-C <70 )",subgroup:"2.2 20 mg clarithromycin, itraconazole, HIV protease in",fromNL:true},
+  {id:225,name:"Ezetimibe",group:"100 LDL-C <70 )",subgroup:"2.2 20 mg clarithromycin, itraconazole, HIV protease in",fromNL:true},
+  {id:226,name:"Procaterol hydrochloride",group:"ระบบทางเดินหายใจ",subgroup:"3.1.1 Adrenoceptor agonists",fromNL:true},
+  {id:227,name:"Salbutamol sulfate",group:"ระบบทางเดินหายใจ",subgroup:"3.1.1 Adrenoceptor agonists",fromNL:true},
+  {id:228,name:"Terbutaline sulfate",group:"ระบบทางเดินหายใจ",subgroup:"3.1.1 Adrenoceptor agonists",fromNL:true},
+  {id:229,name:"Ipratropium bromide + Fenoterol hydrobromide MDI,",group:"ระบบทางเดินหายใจ",subgroup:"3.1.2 Compound antimuscarinic bronchodilators",fromNL:true},
+  {id:230,name:"Aminophylline",group:"ระบบทางเดินหายใจ",subgroup:"3.1.3 Theophylline",fromNL:true},
+  {id:231,name:"Theophylline",group:"ระบบทางเดินหายใจ",subgroup:"3.1.3 Theophylline",fromNL:true},
+  {id:232,name:"Theophylline + Glyceryl guaiacolate",group:"ระบบทางเดินหายใจ",subgroup:"3.1.3 Theophylline",fromNL:true},
+  {id:233,name:"Budesonide DPI, MDI,",group:"ระบบทางเดินหายใจ",subgroup:"3.2 Corticosteroids",fromNL:true},
+  {id:234,name:"Fluticasone propionate",group:"ระบบทางเดินหายใจ",subgroup:"3.2 Corticosteroids",fromNL:true},
+  {id:235,name:"Montelukast sodium",group:"ระบบทางเดินหายใจ",subgroup:"3.3 Leukotriene receptor antagonists",fromNL:true},
+  {id:236,name:"Brompheniramine maleate",group:"ระบบทางเดินหายใจ",subgroup:"3.4 Antihistamines",fromNL:true},
+  {id:237,name:"Chlorpheniramine maleate",group:"ระบบทางเดินหายใจ",subgroup:"3.4 Antihistamines",fromNL:true},
+  {id:238,name:"Diphenhydramine hydrochloride",group:"ระบบทางเดินหายใจ",subgroup:"3.4 Antihistamines",fromNL:true},
+  {id:239,name:"Hydroxyzine hydrochloride",group:"ระบบทางเดินหายใจ",subgroup:"3.4 Antihistamines",fromNL:true},
+  {id:240,name:"Cetirizine hydrochloride",group:"ระบบทางเดินหายใจ",subgroup:"3.4 Antihistamines",fromNL:true},
+  {id:241,name:"Loratadine",group:"ระบบทางเดินหายใจ",subgroup:"3.4 Antihistamines",fromNL:true},
+  {id:242,name:"Phospholipids Poractant alfa Beractant)",group:"ระบบทางเดินหายใจ",subgroup:"3.5 Pulmonary surfactants",fromNL:true},
+  {id:243,name:"Dextromethorphan hydrobromide",group:"ระบบทางเดินหายใจ",subgroup:"3.6.1 Cough suppressants",fromNL:true},
+  {id:244,name:"Opium and Glycyrrhiza",group:"ระบบทางเดินหายใจ",subgroup:"3.6.1 Cough suppressants",fromNL:true},
+  {id:245,name:"Squill and Ammonia",group:"ระบบทางเดินหายใจ",subgroup:"3.6.1 Cough suppressants",fromNL:true},
+  {id:246,name:"Codeine phosphate + Glyceryl guaiacolate",group:"ระบบทางเดินหายใจ",subgroup:"3.6.1 Cough suppressants",fromNL:true},
+  {id:247,name:"Ammonium carbonate and senega",group:"ระบบทางเดินหายใจ",subgroup:"3.6.2 Expectorant and demulcent cough preparations",fromNL:true},
+  {id:248,name:"Glyceryl guaiacolate",group:"ระบบทางเดินหายใจ",subgroup:"3.6.2 Expectorant and demulcent cough preparations",fromNL:true},
+  {id:249,name:"Pseudoephedrine hydrochloride",group:"ระบบทางเดินหายใจ",subgroup:"3.7 Systemic nasal decongestants",fromNL:true},
+  {id:250,name:"Caffeine citrate",group:"ระบบทางเดินหายใจ",subgroup:"3.8 Other respiratory preparations",fromNL:true},
+  {id:251,name:"Chloral hydrate",group:"ระบบประสาทส่วนกลาง (CNS)",subgroup:"4.1 Hypnotics and anxiolytics",fromNL:true,tier:"ก"},
+  {id:252,name:"Chlordiazepoxide",group:"ระบบประสาทส่วนกลาง (CNS)",subgroup:"4.1 Hypnotics and anxiolytics",fromNL:true,tier:"ก"},
+  {id:253,name:"Diazepam",group:"ระบบประสาทส่วนกลาง (CNS)",subgroup:"4.1 Hypnotics and anxiolytics",fromNL:true,tier:"ก"},
+  {id:254,name:"Lorazepam",group:"ระบบประสาทส่วนกลาง (CNS)",subgroup:"4.1 Hypnotics and anxiolytics",fromNL:true},
+  {id:255,name:"Clonazepam",group:"ระบบประสาทส่วนกลาง (CNS)",subgroup:"4.1 Hypnotics and anxiolytics",fromNL:true},
+  {id:256,name:"Dipotassium clorazepate",group:"ระบบประสาทส่วนกลาง (CNS)",subgroup:"4.1 Hypnotics and anxiolytics",fromNL:true},
+  {id:257,name:"Chlorpromazine hydrochloride",group:"ระบบประสาทส่วนกลาง (CNS)",subgroup:"4.2.1 Antipsychotic drugs",fromNL:true},
+  {id:258,name:"Fluphenazine",group:"ระบบประสาทส่วนกลาง (CNS)",subgroup:"4.2.1 Antipsychotic drugs",fromNL:true},
+  {id:259,name:"Haloperidol",group:"ระบบประสาทส่วนกลาง (CNS)",subgroup:"4.2.1 Antipsychotic drugs",fromNL:true},
+  {id:260,name:"Perphenazine",group:"ระบบประสาทส่วนกลาง (CNS)",subgroup:"4.2.1 Antipsychotic drugs",fromNL:true},
+  {id:261,name:"Trifluoperazine hydrochloride",group:"ระบบประสาทส่วนกลาง (CNS)",subgroup:"4.2.1 Antipsychotic drugs",fromNL:true},
+  {id:262,name:"Thioridazine hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.2.1 Antipsychotic drugs",fromNL:true},
+  {id:263,name:"Clozapine",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.2.1 Antipsychotic drugs",fromNL:true},
+  {id:264,name:"Flupentixol (Flupenthixol)",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.2.1 Antipsychotic drugs",fromNL:true},
+  {id:265,name:"Pimozide",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.2.1 Antipsychotic drugs",fromNL:true},
+  {id:266,name:"Quetiapine fumarate immediate release",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.2.1 Antipsychotic drugs",fromNL:true},
+  {id:267,name:"Carbamazepine",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.2.2 Antimanic drugs",fromNL:true},
+  {id:268,name:"Lithium carbonate",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.2.2 Antimanic drugs",fromNL:true},
+  {id:269,name:"Sodium valproate",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.2.2 Antimanic drugs",fromNL:true},
+  {id:270,name:"Lamotrigine",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.2.2 Antimanic drugs",fromNL:true},
+  {id:271,name:"Amitriptyline hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.3 Antidepressant drugs",fromNL:true},
+  {id:272,name:"Fluoxetine hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.3 Antidepressant drugs",fromNL:true},
+  {id:273,name:"Imipramine hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.3 Antidepressant drugs",fromNL:true},
+  {id:274,name:"Nortriptyline hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.3 Antidepressant drugs",fromNL:true},
+  {id:275,name:"Sertraline",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.3 Antidepressant drugs",fromNL:true},
+  {id:276,name:"Mianserin hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.3 Antidepressant drugs",fromNL:true},
+  {id:277,name:"Clomipramine hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.3 Antidepressant drugs",fromNL:true},
+  {id:278,name:"Trazodone hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.3 Antidepressant drugs",fromNL:true},
+  {id:279,name:"Methylphenidate",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.4 Central nervous system stimulants",fromNL:true},
+  {id:280,name:"Ondansetron",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.5.1 Drugs used in nausea and vomiting",fromNL:true},
+  {id:281,name:"Olanzapine",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.5.1 Drugs used in nausea and vomiting",fromNL:true},
+  {id:282,name:"Dimenhydrinate compressed",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.5.2 Drugs used in vestibular disorders",fromNL:true},
+  {id:283,name:"Betahistine mesilate (Betahistine mesylate)",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.5.2 Drugs used in vestibular disorders",fromNL:true},
+  {id:284,name:"Paracetamol (Acetaminophen)",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.6 Analgesics and antipyretics",fromNL:true},
+  {id:285,name:"Aspirin (Acetylsalicylic acid) compressed",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.6 Analgesics and antipyretics",fromNL:true},
+  {id:286,name:"Ibuprofen",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.6 Analgesics and antipyretics",fromNL:true},
+  {id:287,name:"Buprenorphine hydrochloride sublingual",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.7.1 Opioid analgesics",fromNL:true},
+  {id:288,name:"Codeine phosphate",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.7.1 Opioid analgesics",fromNL:true},
+  {id:289,name:"Fentanyl",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.7.1 Opioid analgesics",fromNL:true},
+  {id:290,name:"Methadone hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.7.1 Opioid analgesics",fromNL:true},
+  {id:291,name:"Morphine sulfate",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.7.1 Opioid analgesics",fromNL:true},
+  {id:292,name:"Nalbuphine hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.7.1 Opioid analgesics",fromNL:true},
+  {id:293,name:"Pethidine hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.7.1 Opioid analgesics",fromNL:true},
+  {id:294,name:"Tramadol hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.7.1 Opioid analgesics",fromNL:true},
+  {id:295,name:"Gabapentin",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.7.2 Drugs for neuropathic pain",fromNL:true},
+  {id:296,name:"Ergotamine tartrate + Caffeine compressed",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.6 Analgesics and antipyretics",fromNL:true},
+  {id:297,name:"Dihydroergotamine mesylate",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.6 Analgesics and antipyretics",fromNL:true},
+  {id:298,name:"Cyproheptadine hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.7.3.2 Drugs used in the prophylaxis of migraine",fromNL:true},
+  {id:299,name:"Topiramate",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.7.3.2 Drugs used in the prophylaxis of migraine",fromNL:true},
+  {id:300,name:"Phenobarbital (Phenobarbitone)",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.8.1 Drugs used in the control of epilepsy",fromNL:true},
+  {id:301,name:"Phenytoin base",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.8.1 Drugs used in the control of epilepsy",fromNL:true},
+  {id:302,name:"Phenytoin sodium",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.8.1 Drugs used in the control of epilepsy",fromNL:true},
+  {id:303,name:"Levetiracetam",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.8.1 Drugs used in the control of epilepsy",fromNL:true},
+  {id:304,name:"Nitrazepam",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.8.1 Drugs used in the control of epilepsy",fromNL:true,tier:"ง"},
+  {id:305,name:"Vigabatrin",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.8.1 Drugs used in the control of epilepsy",fromNL:true,tier:"ง"},
+  {id:306,name:"Phenobarbital sodium (Phenobarbitone sodium)",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.8.2 Drugs used in status epilepticus",fromNL:true},
+  {id:307,name:"Levetiracetam concentrate for",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.8.2 Drugs used in status epilepticus",fromNL:true},
+  {id:308,name:"Midazolam hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.8.2 Drugs used in status epilepticus",fromNL:true},
+  {id:309,name:"Levodopa + Benserazide as hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.9 Drugs used in movement disorders",fromNL:true},
+  {id:310,name:"Levodopa + Carbidopa as monohydrate",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.9 Drugs used in movement disorders",fromNL:true},
+  {id:311,name:"Trihexyphenidyl hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.9 Drugs used in movement disorders",fromNL:true},
+  {id:312,name:"Baclofen",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.9 Drugs used in movement disorders",fromNL:true},
+  {id:313,name:"Levodopa + Benserazide as hydrochloride CR",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.9 Drugs used in movement disorders",fromNL:true},
+  {id:314,name:"Absolute alcohol",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.9 Drugs used in movement disorders",fromNL:true},
+  {id:315,name:"Amantadine hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.9 Drugs used in movement disorders",fromNL:true},
+  {id:316,name:"Entacapone",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.9 Drugs used in movement disorders",fromNL:true},
+  {id:317,name:"Phenol (Phenyl Alcohol)",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.9 Drugs used in movement disorders",fromNL:true},
+  {id:318,name:"Ropinirole",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.9 Drugs used in movement disorders",fromNL:true},
+  {id:319,name:"Tetrabenazine",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.9 Drugs used in movement disorders",fromNL:true},
+  {id:320,name:"Botulinum A toxin",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.9 Drugs used in movement disorders",fromNL:true},
+  {id:321,name:"Acamprosate",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.10.1 Drugs used in alcohol dependence",fromNL:true},
+  {id:322,name:"Naltrexone",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.10.1 Drugs used in alcohol dependence",fromNL:true},
+  {id:323,name:"Disulfiram",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.10.1 Drugs used in alcohol dependence",fromNL:true},
+  {id:324,name:"Clonidine hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.10.3 Drugs used in opioid dependence",fromNL:true},
+  {id:325,name:"Donepezil hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"4.11 Drugs used in dementia",fromNL:true,tier:"จ"},
+  {id:326,name:"Amoxicillin trihydrate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.1 Penicillins",fromNL:true},
+  {id:327,name:"Ampicillin sodium",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.1 Penicillins",fromNL:true},
+  {id:328,name:"Cloxacillin sodium",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.1 Penicillins",fromNL:true},
+  {id:329,name:"Dicloxacillin sodium",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.1 Penicillins",fromNL:true},
+  {id:330,name:"Phenoxymethylpenicillin potassium (Penicillin V)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.1 Penicillins",fromNL:true},
+  {id:331,name:"Benzylpenicillin (Penicillin G)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.1 Penicillins",fromNL:true},
+  {id:332,name:"Benzathine benzylpenicillin (Penicillin G benzathine)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.1 Penicillins",fromNL:true},
+  {id:333,name:"Procaine benzylpenicillin (Penicillin G procaine)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.1 Penicillins",fromNL:true},
+  {id:334,name:"Amoxicillin trihydrate + Potassium clavulanate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.1 Penicillins",fromNL:true},
+  {id:335,name:"Amoxicillin sodium + Potassium clavulanate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.1 Penicillins",fromNL:true},
+  {id:336,name:"Ampicillin sodium + Sulbactam sodium",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.1 Penicillins",fromNL:true},
+  {id:337,name:"Piperacillin sodium + Tazobactam sodium",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.1 Penicillins",fromNL:true},
+  {id:338,name:"Cefalexin (Cephalexin)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.2 Cephalosporins, cephamycins and other beta-lactam",fromNL:true},
+  {id:339,name:"Cefazolin sodium",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.2 Cephalosporins, cephamycins and other beta-lactam",fromNL:true},
+  {id:340,name:"Cefuroxime axetil",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.2 Cephalosporins, cephamycins and other beta-lactam",fromNL:true},
+  {id:341,name:"Haemophilus influenzae",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.2 Cephalosporins, cephamycins and other beta-lactam",fromNL:true},
+  {id:342,name:"Cefotaxime sodium",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.2 Cephalosporins, cephamycins and other beta-lactam",fromNL:true},
+  {id:343,name:"Ceftriaxone sodium",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.2 Cephalosporins, cephamycins and other beta-lactam",fromNL:true},
+  {id:344,name:"Ceftazidime",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.2 Cephalosporins, cephamycins and other beta-lactam",fromNL:true},
+  {id:345,name:"Cefixime",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.2 Cephalosporins, cephamycins and other beta-lactam",fromNL:true},
+  {id:346,name:"Cefoperazone sodium + Sulbactam sodium",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.2 Cephalosporins, cephamycins and other beta-lactam",fromNL:true},
+  {id:347,name:"Cefoxitin sodium",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.2 Cephalosporins, cephamycins and other beta-lactam",fromNL:true},
+  {id:348,name:"Ertapenem sodium",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.2 Cephalosporins, cephamycins and other beta-lactam",fromNL:true},
+  {id:349,name:"Imipenem + Cilastatin sodium",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.2 Cephalosporins, cephamycins and other beta-lactam",fromNL:true},
+  {id:350,name:"Meropenem",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.2 Cephalosporins, cephamycins and other beta-lactam",fromNL:true},
+  {id:351,name:"Ceftazidime + Avibactam",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.2 Cephalosporins, cephamycins and other beta-lactam",fromNL:true,tier:"จ"},
+  {id:352,name:"Doxycycline hyclate (Doxycycline hydrochloride)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.3 Tetracyclines",fromNL:true},
+  {id:353,name:"Tetracycline hydrochloride",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.3 Tetracyclines",fromNL:true},
+  {id:354,name:"Gentamicin sulfate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.4 Aminoglycosides",fromNL:true},
+  {id:355,name:"Amikacin sulfate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.4 Aminoglycosides",fromNL:true},
+  {id:356,name:"Netilmicin sulfate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.4 Aminoglycosides",fromNL:true},
+  {id:357,name:"Erythromycin estolate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.5 Macrolides",fromNL:true},
+  {id:358,name:"Erythromycin stearate or succinate dry",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.5 Macrolides",fromNL:true},
+  {id:359,name:"Roxithromycin",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.5 Macrolides",fromNL:true},
+  {id:360,name:"Azithromycin",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.5 Macrolides",fromNL:true,tier:"ง"},
+  {id:361,name:"azithromycin 2",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.5 Macrolides",fromNL:true},
+  {id:362,name:"Clarithromycin",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.5 Macrolides",fromNL:true},
+  {id:363,name:"Norfloxacin",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.6 Quinolones",fromNL:true},
+  {id:364,name:"Ofloxacin",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.6 Quinolones",fromNL:true},
+  {id:365,name:"Ciprofloxacin hydrochloride",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.6 Quinolones",fromNL:true},
+  {id:366,name:"Ciprofloxacin",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.6 Quinolones",fromNL:true},
+  {id:367,name:"Levofloxacin hemihydrates",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.6 Quinolones",fromNL:true},
+  {id:368,name:"Chloramphenicol sodium succinate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.7 Some other antibacterials",fromNL:true},
+  {id:369,name:"Metronidazole",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.7 Some other antibacterials",fromNL:true},
+  {id:370,name:"Clindamycin",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.7 Some other antibacterials",fromNL:true},
+  {id:371,name:"Nitrofurantoin",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.7 Some other antibacterials",fromNL:true},
+  {id:372,name:"Colistimethate sodium",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.7 Some other antibacterials",fromNL:true,tier:"ง"},
+  {id:373,name:"Fosfomycin sodium",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.7 Some other antibacterials",fromNL:true,tier:"ง"},
+  {id:374,name:"Sodium fusidate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.7 Some other antibacterials",fromNL:true,tier:"ง"},
+  {id:375,name:"Vancomycin hydrochloride",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.7 Some other antibacterials",fromNL:true,tier:"ง"},
+  {id:376,name:"Linezolid",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.7 Some other antibacterials",fromNL:true},
+  {id:377,name:"Sulfamethoxazole + Trimethoprim (Co-trimoxazole)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.8 Sulphonamides and trimethoprim",fromNL:true},
+  {id:378,name:"Trimethoprim",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.8 Sulphonamides and trimethoprim",fromNL:true},
+  {id:379,name:"Ethambutol hydrochloride",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.9 Antituberculous drugs",fromNL:true},
+  {id:380,name:"Isoniazid",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.9 Antituberculous drugs",fromNL:true},
+  {id:381,name:"Pyrazinamide",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.9 Antituberculous drugs",fromNL:true},
+  {id:382,name:"Rifampicin",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.9 Antituberculous drugs",fromNL:true},
+  {id:383,name:"Tuberculin Purified Protein Derivative",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.9 Antituberculous drugs",fromNL:true},
+  {id:384,name:"Isoniazid + Rifampicin",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.9 Antituberculous drugs",fromNL:true},
+  {id:385,name:"Isoniazid + Rifampicin + Pyrazinamide",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.9 Antituberculous drugs",fromNL:true},
+  {id:386,name:"Isoniazid + Rifampicin + Pyrazinamide +",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.9 Antituberculous drugs",fromNL:true,tier:"ข"},
+  {id:387,name:"Cycloserine",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.4 Aminoglycosides",fromNL:true},
+  {id:388,name:"Ethionamide",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.4 Aminoglycosides",fromNL:true},
+  {id:389,name:"Para-aminosalicylic acid (PAS)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.4 Aminoglycosides",fromNL:true},
+  {id:390,name:"Streptomycin sulfate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.4 Aminoglycosides",fromNL:true},
+  {id:391,name:"Levofloxacin hemihydrate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.4 Aminoglycosides",fromNL:true},
+  {id:392,name:"Rifapentine",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.6 Quinolones",fromNL:true},
+  {id:393,name:"Bedaquiline fumarate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.6 Quinolones",fromNL:true},
+  {id:394,name:"Clofazimine",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.6 Quinolones",fromNL:true},
+  {id:395,name:"Delamanid",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.6 Quinolones",fromNL:true},
+  {id:396,name:"Moxifloxacin hydrochloride",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.7 Some other antibacterials",fromNL:true},
+  {id:397,name:"Protionamide",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.7 Some other antibacterials",fromNL:true},
+  {id:398,name:"Dapsone",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.1.10 Antileprotic drugs",fromNL:true},
+  {id:399,name:"Fluconazole",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.2 Antifungal drugs",fromNL:true},
+  {id:400,name:"Griseofulvin",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.2 Antifungal drugs",fromNL:true},
+  {id:401,name:"Nystatin",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.2 Antifungal drugs",fromNL:true},
+  {id:402,name:"Saturated",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.2 Antifungal drugs",fromNL:true},
+  {id:403,name:"Itraconazole",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.2 Antifungal drugs",fromNL:true},
+  {id:404,name:"Amphotericin B",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.2 Antifungal drugs",fromNL:true},
+  {id:405,name:"Flucytosine (5-fluorocytosine)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.2 Antifungal drugs",fromNL:true},
+  {id:406,name:"Liposomal",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.2 Antifungal drugs",fromNL:true},
+  {id:407,name:"Micafungin sodium",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.2 Antifungal drugs",fromNL:true},
+  {id:408,name:"Posaconazole",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.2 Antifungal drugs",fromNL:true},
+  {id:409,name:"Voriconazole",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.2 Antifungal drugs",fromNL:true},
+  {id:410,name:"Aciclovir (Acyclovir)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.1 Non-antiretrovirals",fromNL:true},
+  {id:411,name:"Aciclovir sodium (Acyclovir sodium)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.1 Non-antiretrovirals",fromNL:true},
+  {id:412,name:"Oseltamivir phosphate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.1 Non-antiretrovirals",fromNL:true},
+  {id:413,name:"Cidofovir",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.1 Non-antiretrovirals",fromNL:true},
+  {id:414,name:"Ganciclovir sodium",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"1.3 adenovirus (cytopathological change)",fromNL:true},
+  {id:415,name:"Peramivir",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"1.3 adenovirus (cytopathological change)",fromNL:true},
+  {id:416,name:"Efavirenz (EFV)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.2 Antiretrovirals",fromNL:true},
+  {id:417,name:"Lamivudine (3TC)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.2 Antiretrovirals",fromNL:true},
+  {id:418,name:"Nevirapine (NVP)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.2 Antiretrovirals",fromNL:true},
+  {id:419,name:"Tenofovir disoproxil fumarate (TDF)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.2 Antiretrovirals",fromNL:true},
+  {id:420,name:"Tenofovir disoproxil fumarate + Emtricitabine",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.2 Antiretrovirals",fromNL:true},
+  {id:421,name:"Tenofovir disoproxil fumarate + Emtricitabine +",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.2 Antiretrovirals",fromNL:true},
+  {id:422,name:"Tenofovir disoproxil fumarate +",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.2 Antiretrovirals",fromNL:true},
+  {id:423,name:"Tenofovir alafenamide + Emtricitabine (TAF + FTC)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.2 Antiretrovirals",fromNL:true},
+  {id:424,name:"Tenofovir alafenamide + Emtricitabine + Dolutegravir",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.2 Antiretrovirals",fromNL:true},
+  {id:425,name:"Zidovudine (AZT)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.2 Antiretrovirals",fromNL:true},
+  {id:426,name:"Zidovudine +",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.2 Antiretrovirals",fromNL:true},
+  {id:427,name:"Rilpivirine (RPV)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.2 Antiretrovirals",fromNL:true},
+  {id:428,name:"Dolutegravir (DTG)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.2 Antiretrovirals",fromNL:true},
+  {id:429,name:"Dolutegravir (DTG) orodispersible",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.2 Antiretrovirals",fromNL:true},
+  {id:430,name:"Lopinavir + Ritonavir (LPV + RTV)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.2 Antiretrovirals",fromNL:true},
+  {id:431,name:"Ritonavir (RTV)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.2 Antiretrovirals",fromNL:true},
+  {id:432,name:"Abacavir (ABC)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.3.2 Antiretrovirals",fromNL:true},
+  {id:433,name:"Abacavir +",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"1.5",fromNL:true},
+  {id:434,name:"Darunavir (DRV)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"1.5",fromNL:true},
+  {id:435,name:"Tenofovir alafenamide (TAF)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"1.5",fromNL:true},
+  {id:436,name:"Entecavir (ETV)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"4.2 anti-HBc positive HBsAg-negative monoclonal antibod",fromNL:true},
+  {id:437,name:"switch therapy",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"2.4.3 HBsAg-positive anti-HBc positive",fromNL:true},
+  {id:438,name:"rescue therapy",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"2.4.3 HBsAg-positive anti-HBc positive",fromNL:true},
+  {id:439,name:"Sofosbuvir + Velpatasvir",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"4.3 HBsAg-positive anti-HBc positive",fromNL:true},
+  {id:440,name:"Ribavirin",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"4.3 HBsAg-positive anti-HBc positive",fromNL:true},
+  {id:441,name:"Chloroquine phosphate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.4.1 Antimalarials",fromNL:true},
+  {id:442,name:"Primaquine phosphate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.4.1 Antimalarials",fromNL:true},
+  {id:443,name:"Quinine compressed/film coated",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.4.1 Antimalarials",fromNL:true},
+  {id:444,name:"Artenimol (Dihydroartemisinin) + Piperaquine",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.4.1 Antimalarials",fromNL:true},
+  {id:445,name:"Artesunate + Pyronaridine",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.4.1 Antimalarials",fromNL:true},
+  {id:446,name:"Artesunate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.4.1 Antimalarials",fromNL:true,tier:"ค"},
+  {id:447,name:"Mefloquine hydrochloride",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.4.1 Antimalarials",fromNL:true},
+  {id:448,name:"Pyrimethamine",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.4.2 Other antiprotozoal drugs",fromNL:true},
+  {id:449,name:"Sulfadiazine",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.4.2 Other antiprotozoal drugs",fromNL:true},
+  {id:450,name:"Pentamidine isethionate (Pentamidine isethionate)",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.4.2 Other antiprotozoal drugs",fromNL:true},
+  {id:451,name:"Albendazole",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.5 Anthelmintics",fromNL:true},
+  {id:452,name:"Diethylcarbamazine citrate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.5 Anthelmintics",fromNL:true},
+  {id:453,name:"Mebendazole",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.5 Anthelmintics",fromNL:true},
+  {id:454,name:"Niclosamide",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.5 Anthelmintics",fromNL:true},
+  {id:455,name:"Praziquantel",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.5 Anthelmintics",fromNL:true},
+  {id:456,name:"Ivermectin",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.5 Anthelmintics",fromNL:true},
+  {id:457,name:"Chlorhexidine gluconate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.6 Antiseptics",fromNL:true,tier:"ก"},
+  {id:458,name:"Ethyl alcohol",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.6 Antiseptics",fromNL:true},
+  {id:459,name:"Gentian violet",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.6 Antiseptics",fromNL:true},
+  {id:460,name:"Hydrogen peroxide",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.6 Antiseptics",fromNL:true},
+  {id:461,name:"Potassium permanganate",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.6 Antiseptics",fromNL:true},
+  {id:462,name:"Povidone-iodine",group:"ยาต้านเชื้อ / ยาปฏิชีวนะ",subgroup:"5.6 Antiseptics",fromNL:true},
+  {id:463,name:"Biphasic isophane insulin",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.1.1 Insulins",fromNL:true},
+  {id:464,name:"Insulin aspart + Insulin aspart protamine",group:"4 Insulin aspart sterile sol",subgroup:"6.1.1 Insulins",fromNL:true},
+  {id:465,name:"Insulin lispro",group:"4 Insulin aspart sterile sol",subgroup:"6.1.1 Insulins",fromNL:true},
+  {id:466,name:"Insulin lispro + Insulin lispro protamine",group:"4 Insulin aspart sterile sol",subgroup:"6.1.1 Insulins",fromNL:true},
+  {id:467,name:"Insulin glargine",group:"4 Insulin aspart sterile sol",subgroup:"6.1.1 Insulins",fromNL:true},
+  {id:468,name:"Glibenclamide",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.1.2 Oral antidiabetic drugs",fromNL:true},
+  {id:469,name:"Glipizide",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.1.2 Oral antidiabetic drugs",fromNL:true},
+  {id:470,name:"Metformin hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.1.2 Oral antidiabetic drugs",fromNL:true},
+  {id:471,name:"Pioglitazone hydrochloride",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.1.2 Oral antidiabetic drugs",fromNL:true},
+  {id:472,name:"Repaglinide",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.1.2 Oral antidiabetic drugs",fromNL:true},
+  {id:473,name:"Diazoxide",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.1.3 Treatment of hypoglycemia",fromNL:true},
+  {id:474,name:"Glucagon, human",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.1.3 Treatment of hypoglycemia",fromNL:true},
+  {id:475,name:"Levothyroxine sodium (L-thyroxine sodium)",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.2.1 Thyroid hormones",fromNL:true},
+  {id:476,name:"Liothyronine sodium",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.2.1 Thyroid hormones",fromNL:true},
+  {id:477,name:"Propylthiouracil",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.2.2 Antithyroid drugs",fromNL:true},
+  {id:478,name:"Thiamazole (Methimazole)",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.2.2 Antithyroid drugs",fromNL:true},
+  {id:479,name:"Dexamethasone",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.3 Corticosteroids",fromNL:true},
+  {id:480,name:"Hydrocortisone",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.3 Corticosteroids",fromNL:true},
+  {id:481,name:"Prednisolone",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.3 Corticosteroids",fromNL:true},
+  {id:482,name:"Fludrocortisone acetate",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.3 Corticosteroids",fromNL:true},
+  {id:483,name:"Methylprednisolone",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.3 Corticosteroids",fromNL:true},
+  {id:484,name:"Triamcinolone acetonide",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.3 Corticosteroids",fromNL:true},
+  {id:485,name:"Conjugated estrogens",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.4.1 Female sex hormones",fromNL:true},
+  {id:486,name:"Medroxyprogesterone acetate",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.4.1 Female sex hormones",fromNL:true},
+  {id:487,name:"Norethisterone",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.4.1 Female sex hormones",fromNL:true},
+  {id:488,name:"Estradiol valerate",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.4.1 Female sex hormones",fromNL:true},
+  {id:489,name:"Hydroxyprogesterone",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.4.1 Female sex hormones",fromNL:true},
+  {id:490,name:"Micronized progesterone",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.4.1 Female sex hormones",fromNL:true},
+  {id:491,name:"Testosterone enantate (Testosterone enanthate)",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.4.2 Male sex hormones and antagonists",fromNL:true},
+  {id:492,name:"Cyproterone acetate",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.4.2 Male sex hormones and antagonists",fromNL:true},
+  {id:493,name:"Chorionic gonadotrophin",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.5.1 Hypothalamic and anterior pituitary hormones",fromNL:true},
+  {id:494,name:"Tetracosactide (Cosyntropin)",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.5.1 Hypothalamic and anterior pituitary hormones",fromNL:true},
+  {id:495,name:"Somatropin",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.5.1 Hypothalamic and anterior pituitary hormones",fromNL:true},
+  {id:496,name:"Thyrotropin alfa",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.5.1 Hypothalamic and anterior pituitary hormones",fromNL:true},
+  {id:497,name:"Desmopressin acetate (DDAVP)",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.5.2 Posterior pituitary hormones and antagonists",fromNL:true},
+  {id:498,name:"Alendronate sodium",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.6 Drugs affecting bone metabolism",fromNL:true},
+  {id:499,name:"Calcitonin-salmon",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.6 Drugs affecting bone metabolism",fromNL:true},
+  {id:500,name:"Disodium pamidronate",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.6 Drugs affecting bone metabolism",fromNL:true},
+  {id:501,name:"Zoledronic acid",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.6 Drugs affecting bone metabolism",fromNL:true},
+  {id:502,name:"Bromocriptine mesilate",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.7.1 Bromocriptine and other dopaminergic drugs",fromNL:true},
+  {id:503,name:"Leuprorelin acetate",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.7.2 Drugs affecting gonadotrophins",fromNL:true},
+  {id:504,name:"Triptorelin pamoate",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.7.2 Drugs affecting gonadotrophins",fromNL:true},
+  {id:505,name:"Ketoconazole",group:"ระบบต่อมไร้ท่อ / เบาหวาน (Endocrine)",subgroup:"6.7.3 Drugs used in endogenous glucocorticoid and andro",fromNL:true},
+  {id:506,name:"Methylergometrine maleate",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.1.1 Prostaglandins, prostaglandins antagonists and ox",fromNL:true},
+  {id:507,name:"Misoprostol + Mifepristone",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.1.1 Prostaglandins, prostaglandins antagonists and ox",fromNL:true},
+  {id:508,name:"Oxytocin",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.1.1 Prostaglandins, prostaglandins antagonists and ox",fromNL:true},
+  {id:509,name:"Alprostadil",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.1.1 Prostaglandins, prostaglandins antagonists and ox",fromNL:true},
+  {id:510,name:"Indometacin sodium",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.1.1 Prostaglandins, prostaglandins antagonists and ox",fromNL:true},
+  {id:511,name:"Sulprostone",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.1.1 Prostaglandins, prostaglandins antagonists and ox",fromNL:true},
+  {id:512,name:"Clotrimazole vaginal",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.2 Treatment of vaginal and vulval conditions",fromNL:true},
+  {id:513,name:"Nystatin vaginal",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.2 Treatment of vaginal and vulval conditions",fromNL:true},
+  {id:514,name:"Conjugated estrogens vaginal",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.2 Treatment of vaginal and vulval conditions",fromNL:true},
+  {id:515,name:"Etonogestrel",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.3 Contraceptives",fromNL:true},
+  {id:516,name:"Ethinylestradiol + Levonorgestrel",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.3 Contraceptives",fromNL:true},
+  {id:517,name:"Levonorgestrel",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.3 Contraceptives",fromNL:true},
+  {id:518,name:"Ethinylestradiol + Desogestrel",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.3 Contraceptives",fromNL:true},
+  {id:519,name:"Lynestrenol",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.3 Contraceptives",fromNL:true},
+  {id:520,name:"Alfuzosin hydrochloride",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.4.1 Drugs for benign prostatic hyperplasia",fromNL:true},
+  {id:521,name:"Finasteride",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.4.1 Drugs for benign prostatic hyperplasia",fromNL:true},
+  {id:522,name:"Oxybutynin hydrochloride immediate release",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.4.2 Drugs for urinary frequency enuresis, and inconti",fromNL:true},
+  {id:523,name:"Trospium chloride immediate release",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.4.2 Drugs for urinary frequency enuresis, and inconti",fromNL:true},
+  {id:524,name:"Potassium citrate",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.4.3 Drugs used in alkalinisation of urine",fromNL:true},
+  {id:525,name:"Sodium citrate + Potassium citrate",group:"สูติ-นรีเวช-ระบบทางเดินปัสสาวะ",subgroup:"7.4.3 Drugs used in alkalinisation of urine",fromNL:true},
+  {id:526,name:"Busulfan",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.1 Alkylating drugs",fromNL:true},
+  {id:527,name:"Chlorambucil",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.1 Alkylating drugs",fromNL:true},
+  {id:528,name:"Cyclophosphamide",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.1 Alkylating drugs",fromNL:true},
+  {id:529,name:"Melphalan",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.1 Alkylating drugs",fromNL:true},
+  {id:530,name:"Carmustine",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.1 Alkylating drugs",fromNL:true},
+  {id:531,name:"Ifosfamide",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.1 Alkylating drugs",fromNL:true},
+  {id:532,name:"Procarbazine hydrochloride",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.1 Alkylating drugs",fromNL:true},
+  {id:533,name:"Bleomycin",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.2 Cytotoxic antibiotics",fromNL:true},
+  {id:534,name:"Dactinomycin",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.2 Cytotoxic antibiotics",fromNL:true},
+  {id:535,name:"Doxorubicin hydrochloride",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.2 Cytotoxic antibiotics",fromNL:true},
+  {id:536,name:"Idarubicin hydrochloride",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.2 Cytotoxic antibiotics",fromNL:true},
+  {id:537,name:"Mitomycin",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.2 Cytotoxic antibiotics",fromNL:true},
+  {id:538,name:"Mitoxantrone hydrochloride",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.2 Cytotoxic antibiotics",fromNL:true},
+  {id:539,name:"Cytarabine",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.3 Antimetabolites",fromNL:true},
+  {id:540,name:"Fluorouracil (5-FU)",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.3 Antimetabolites",fromNL:true},
+  {id:541,name:"Mercaptopurine (6-MP)",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.3 Antimetabolites",fromNL:true},
+  {id:542,name:"Methotrexate",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.3 Antimetabolites",fromNL:true},
+  {id:543,name:"Capecitabine",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.3 Antimetabolites",fromNL:true},
+  {id:544,name:"concurrent chemoradiotherapy in",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"1.3 Stage III high risk T4 or N2",fromNL:true},
+  {id:545,name:"Fludarabine phosphate",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"1.3 Stage III high risk T4 or N2",fromNL:true},
+  {id:546,name:"Gemcitabine hydrochloride",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"1.3 Stage III high risk T4 or N2",fromNL:true},
+  {id:547,name:"Oxaliplatin",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"1.3 Stage III high risk T4 or N2",fromNL:true},
+  {id:548,name:"Tioguanine (6-TG)",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"1.3 Stage III high risk T4 or N2",fromNL:true},
+  {id:549,name:"Etoposide",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.4 Vinca alkaloids and etoposide",fromNL:true},
+  {id:550,name:"Vinblastine sulfate",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.4 Vinca alkaloids and etoposide",fromNL:true},
+  {id:551,name:"Vincristine sulfate",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.4 Vinca alkaloids and etoposide",fromNL:true},
+  {id:552,name:"Vinorelbine tartrate",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.4 Vinca alkaloids and etoposide",fromNL:true},
+  {id:553,name:"Asparaginase",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:554,name:"Calcium folinate (Leucovorin calcium)",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:555,name:"Cisplatin",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:556,name:"Carboplatin",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:557,name:"Hydroxycarbamide (Hydroxyurea)",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:558,name:"Arsenic trioxide",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:559,name:"Dacarbazine",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:560,name:"Docetaxel",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:561,name:"Irinotecan hydrochloride",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:562,name:"Mitotane",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:563,name:"Tretinoin (all-trans-Retinoic acid)",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:564,name:"Paclitaxel",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:565,name:"Topotecan",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:566,name:"Bortezomib",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:567,name:"Erlotinib",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:568,name:"Imatinib mesylate",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:569,name:"Nilotinib hydrochloride",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:570,name:"Dasatinib",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:571,name:"Rituximab",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:572,name:"non-Hodgkin lymphoma Diffused",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:573,name:"Trastuzumab",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.1.5 Other antineoplastic drugs",fromNL:true},
+  {id:574,name:"Azathioprine",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.2 Drugs affecting the immune response",fromNL:true},
+  {id:575,name:"Ciclosporin (Cyclosporin)",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.2 Drugs affecting the immune response",fromNL:true},
+  {id:576,name:"Antithymocyte immunoglobulin, rabbit (ATG)",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.2 Drugs affecting the immune response",fromNL:true},
+  {id:577,name:"induction acute allograft rejection",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.2 Drugs affecting the immune response",fromNL:true},
+  {id:578,name:"acute allograft rejection",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.2 Drugs affecting the immune response",fromNL:true},
+  {id:579,name:"Basiliximab",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.2 Drugs affecting the immune response",fromNL:true},
+  {id:580,name:"Mycophenolate mofetil",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"2.4 massive blood loss ( 1 blood volume), prolonged hyp",fromNL:true},
+  {id:581,name:"Tacrolimus",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"5.5 severe hemorrhagic cystitis",fromNL:true},
+  {id:582,name:"Sirolimus (Rapamycin)",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"5.5 severe hemorrhagic cystitis",fromNL:true},
+  {id:583,name:"Everolimus",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"1.3",fromNL:true},
+  {id:584,name:"Human normal immunoglobulin, intravenous (IVIG)",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"2.2 eGFR (CKD-EPI formula 30 ml/min/1.73 m2",fromNL:true},
+  {id:585,name:"Tamoxifen citrate",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.3.1 Progestogens, anti-estrogens and enzyme inhibitor",fromNL:true},
+  {id:586,name:"Anastrozole",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.3.1 Progestogens, anti-estrogens and enzyme inhibitor",fromNL:true},
+  {id:587,name:"Letrozole",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.3.1 Progestogens, anti-estrogens and enzyme inhibitor",fromNL:true},
+  {id:588,name:"Megestrol acetate",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.3.1 Progestogens, anti-estrogens and enzyme inhibitor",fromNL:true},
+  {id:589,name:"Bicalutamide",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"8.3.2 Prostate cancer",fromNL:true},
+  {id:590,name:"Folic acid",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"9.1.2 Drugs used in hypoplastic, hemolytic and renal an",fromNL:true},
+  {id:591,name:"Oxymetholone",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"9.1.2 Drugs used in hypoplastic, hemolytic and renal an",fromNL:true},
+  {id:592,name:"Deferiprone",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"9.1.2 Drugs used in hypoplastic, hemolytic and renal an",fromNL:true},
+  {id:593,name:"Deferoxamine mesilate (Desferrioxamine mesilate)",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"9.1.2 Drugs used in hypoplastic, hemolytic and renal an",fromNL:true},
+  {id:594,name:"Iron sucrose",group:"มะเร็งและภูมิคุ้มกัน",subgroup:"9.1.2 Drugs used in hypoplastic, hemolytic and renal an",fromNL:true},
+  {id:595,name:"Deferasirox",group:"2 Drugs affecting the immune response",subgroup:"9.1.2 Drugs used in hypoplastic, hemolytic and renal an",fromNL:true},
+  {id:596,name:"Epoetin alfa (epoetin alpha)",group:"2 Drugs affecting the immune response",subgroup:"9.1.2 Drugs used in hypoplastic, hemolytic and renal an",fromNL:true},
+  {id:597,name:"Epoetin beta",group:"2 Drugs affecting the immune response",subgroup:"9.1.2 Drugs used in hypoplastic, hemolytic and renal an",fromNL:true},
+  {id:598,name:"Filgrastim",group:"2 Drugs affecting the immune response",subgroup:"9.1.3 Drugs used in bone marrow transplantation",fromNL:true},
+  {id:599,name:"Lenograstim",group:"2 Drugs affecting the immune response",subgroup:"0.5 x 109/L",fromNL:true},
+  {id:600,name:"Calcium chloride + Potassium chloride + Sodium",group:"2 Drugs affecting the immune response",subgroup:"9.2 Fluids and electrolytes",fromNL:true},
+  {id:601,name:"Glucose with/without sodium chloride",group:"2 Drugs affecting the immune response",subgroup:"9.2 Fluids and electrolytes",fromNL:true},
+  {id:602,name:"Intermittent peritoneal dialysis",group:"2 Drugs affecting the immune response",subgroup:"9.2 Fluids and electrolytes",fromNL:true},
+  {id:603,name:"Potassium acetate",group:"2 Drugs affecting the immune response",subgroup:"9.2 Fluids and electrolytes",fromNL:true},
+  {id:604,name:"Potassium chloride",group:"2 Drugs affecting the immune response",subgroup:"9.2 Fluids and electrolytes",fromNL:true},
+  {id:605,name:"Sodium acetate",group:"2 Drugs affecting the immune response",subgroup:"9.2 Fluids and electrolytes",fromNL:true},
+  {id:606,name:"Sodium bicarbonate",group:"2 Drugs affecting the immune response",subgroup:"9.2 Fluids and electrolytes",fromNL:true},
+  {id:607,name:"Sodium chloride",group:"2 Drugs affecting the immune response",subgroup:"9.2 Fluids and electrolytes",fromNL:true},
+  {id:608,name:"Water for",group:"2 Drugs affecting the immune response",subgroup:"9.2 Fluids and electrolytes",fromNL:true},
+  {id:609,name:"Calcium polystyrene sulfonate",group:"2 Drugs affecting the immune response",subgroup:"9.2 Fluids and electrolytes",fromNL:true},
+  {id:610,name:"Continuous ambulatory peritoneal dialysis basic bag",group:"2 Drugs affecting the immune response",subgroup:"9.2 Fluids and electrolytes",fromNL:true},
+  {id:611,name:"Hydroxyethyl starch (HES) with electrolytes balanced salt",group:"2 Drugs affecting the immune response",subgroup:"9.2 Fluids and electrolytes",fromNL:true},
+  {id:612,name:"Multivitamins",group:"2 Drugs affecting the immune response",subgroup:"9.3 Vitamins",fromNL:true},
+  {id:613,name:"Multivitamins dry",group:"2 Drugs affecting the immune response",subgroup:"9.3 Vitamins",fromNL:true},
+  {id:614,name:"Vitamin A",group:"2 Drugs affecting the immune response",subgroup:"9.3 Vitamins",fromNL:true},
+  {id:615,name:"Vitamin B",group:"2 Drugs affecting the immune response",subgroup:"9.3 Vitamins",fromNL:true},
+  {id:616,name:"Vitamin B (Pyridoxine hydrochloride)",group:"2 Drugs affecting the immune response",subgroup:"9.3 Vitamins",fromNL:true},
+  {id:617,name:"Vitamin C",group:"2 Drugs affecting the immune response",subgroup:"9.3 Vitamins",fromNL:true},
+  {id:618,name:"Vitamin D (Ergocalciferol)",group:"2 Drugs affecting the immune response",subgroup:"9.3 Vitamins",fromNL:true},
+  {id:619,name:"Vitamin K (Phytomenadione)",group:"2 Drugs affecting the immune response",subgroup:"9.3 Vitamins",fromNL:true},
+  {id:620,name:"Vitamin B complex",group:"2 Drugs affecting the immune response",subgroup:"9.3 Vitamins",fromNL:true},
+  {id:621,name:"Vitamins B complex",group:"2 Drugs affecting the immune response",subgroup:"9.3 Vitamins",fromNL:true},
+  {id:622,name:"Calcitriol (1,25-Dihydroxyvitamin D )",group:"2 Drugs affecting the immune response",subgroup:"9.3 Vitamins",fromNL:true},
+  {id:623,name:"Vitamin E",group:"2 Drugs affecting the immune response",subgroup:"9.3 Vitamins",fromNL:true},
+  {id:624,name:"Amino acid",group:"2 Drugs affecting the immune response",subgroup:"9.4 Intravenous nutrition",fromNL:true},
+  {id:625,name:"Multivitamin",group:"2 Drugs affecting the immune response",subgroup:"9.4 Intravenous nutrition",fromNL:true},
+  {id:626,name:"Dextrose",group:"2 Drugs affecting the immune response",subgroup:"9.4 Intravenous nutrition",fromNL:true},
+  {id:627,name:"Fat",group:"2 Drugs affecting the immune response",subgroup:"9.4 Intravenous nutrition",fromNL:true},
+  {id:628,name:"Multiple trace mineral",group:"2 Drugs affecting the immune response",subgroup:"9.4 Intravenous nutrition",fromNL:true},
+  {id:629,name:"Two-in-one parenteral nutrition",group:"2 Drugs affecting the immune response",subgroup:"9.4 Intravenous nutrition",fromNL:true},
+  {id:630,name:"Three-in-one parenteral nutrition",group:"2 Drugs affecting the immune response",subgroup:"9.4 Intravenous nutrition",fromNL:true},
+  {id:631,name:"Calcium carbonate",group:"2 Drugs affecting the immune response",subgroup:"9.5 Minerals",fromNL:true},
+  {id:632,name:"Calcium gluconate",group:"2 Drugs affecting the immune response",subgroup:"9.5 Minerals",fromNL:true},
+  {id:633,name:"Ferrous sulfate",group:"2 Drugs affecting the immune response",subgroup:"9.5 Minerals",fromNL:true},
+  {id:634,name:"Sodium fluoride",group:"2 Drugs affecting the immune response",subgroup:"9.5 Minerals",fromNL:true},
+  {id:635,name:"Trace element",group:"2 Drugs affecting the immune response",subgroup:"9.5 Minerals",fromNL:true},
+  {id:636,name:"Ferrous fumarate",group:"2 Drugs affecting the immune response",subgroup:"9.5 Minerals",fromNL:true},
+  {id:637,name:"Iron (III) hydroxide polymaltose complex",group:"2 Drugs affecting the immune response",subgroup:"9.5 Minerals",fromNL:true},
+  {id:638,name:"Copper sulfate",group:"2 Drugs affecting the immune response",subgroup:"9.5 Minerals",fromNL:true},
+  {id:639,name:"Dipotassium hydrogen phosphate",group:"2 Drugs affecting the immune response",subgroup:"9.5 Minerals",fromNL:true},
+  {id:640,name:"Oral acidic phosphate",group:"2 Drugs affecting the immune response",subgroup:"9.5 Minerals",fromNL:true},
+  {id:641,name:"Oral neutral phosphate",group:"2 Drugs affecting the immune response",subgroup:"9.5 Minerals",fromNL:true},
+  {id:642,name:"Sodium glycerophosphate",group:"2 Drugs affecting the immune response",subgroup:"9.5 Minerals",fromNL:true},
+  {id:643,name:"Ferrous salt + Folic acid",group:"2 Drugs affecting the immune response",subgroup:"9.6 Vitamins and minerals for pregnancy and lactating m",fromNL:true},
+  {id:644,name:"Ferrous salt + Folic acid + Potassium Iodide",group:"2 Drugs affecting the immune response",subgroup:"9.6 Vitamins and minerals for pregnancy and lactating m",fromNL:true},
+  {id:645,name:"Potassium Iodide",group:"2 Drugs affecting the immune response",subgroup:"9.6 Vitamins and minerals for pregnancy and lactating m",fromNL:true},
+  {id:646,name:"Penicillamine (D-Penicillamine)",group:"2 Drugs affecting the immune response",subgroup:"9.7 Metabolic disorders",fromNL:true},
+  {id:647,name:"Carglumic acid",group:"2 Drugs affecting the immune response",subgroup:"9.7 Metabolic disorders",fromNL:true},
+  {id:648,name:"Imiglucerase",group:"2 Drugs affecting the immune response",subgroup:"9.7 Metabolic disorders",fromNL:true},
+  {id:649,name:"Mercaptamine (Cysteamine bitartrate) immediate-release",group:"2 Drugs affecting the immune response",subgroup:"9.7 Metabolic disorders",fromNL:true},
+  {id:650,name:"Nitisinone",group:"2 Drugs affecting the immune response",subgroup:"9.7 Metabolic disorders",fromNL:true},
+  {id:651,name:"Sapropterin (BH4)",group:"2 Drugs affecting the immune response",subgroup:"9.7 Metabolic disorders",fromNL:true},
+  {id:652,name:"Diclofenac sodium",group:"กล้ามเนื้อและข้อ (MSK)",subgroup:"10.1.1 Non-steroidal anti-inflammatory drugs (NSAIDs)",fromNL:true},
+  {id:653,name:"Indometacin",group:"กล้ามเนื้อและข้อ (MSK)",subgroup:"10.1.1 Non-steroidal anti-inflammatory drugs (NSAIDs)",fromNL:true},
+  {id:654,name:"Naproxen",group:"กล้ามเนื้อและข้อ (MSK)",subgroup:"10.1.1 Non-steroidal anti-inflammatory drugs (NSAIDs)",fromNL:true},
+  {id:655,name:"Piroxicam",group:"กล้ามเนื้อและข้อ (MSK)",subgroup:"10.1.1 Non-steroidal anti-inflammatory drugs (NSAIDs)",fromNL:true},
+  {id:656,name:"Chloroquine phosphate compressed",group:"กล้ามเนื้อและข้อ (MSK)",subgroup:"10.1.2 Disease-modifying antirheumatic drugs (DMARDs)",fromNL:true},
+  {id:657,name:"Hydroxychloroquine sulfate",group:"กล้ามเนื้อและข้อ (MSK)",subgroup:"10.1.2 Disease-modifying antirheumatic drugs (DMARDs)",fromNL:true},
+  {id:658,name:"Leflunomide",group:"กล้ามเนื้อและข้อ (MSK)",subgroup:"2.6 methotrexate sulfasalazine",fromNL:true},
+  {id:659,name:"Adalimumab",group:"กล้ามเนื้อและข้อ (MSK)",subgroup:"2.6 ) methotrexate sulfasalazine",fromNL:true,tier:"จ"},
+  {id:660,name:"Tocilizumab",group:"กล้ามเนื้อและข้อ (MSK)",subgroup:"2.6 ) methotrexate sulfasalazine",fromNL:true},
+  {id:661,name:"Colchicine",group:"กล้ามเนื้อและข้อ (MSK)",subgroup:"10.1.3 Drugs for treatment of gout and hyperuricaemia",fromNL:true},
+  {id:662,name:"Allopurinol",group:"กล้ามเนื้อและข้อ (MSK)",subgroup:"10.1.3 Drugs for treatment of gout and hyperuricaemia",fromNL:true},
+  {id:663,name:"Probenecid",group:"กล้ามเนื้อและข้อ (MSK)",subgroup:"10.1.3 Drugs for treatment of gout and hyperuricaemia",fromNL:true},
+  {id:664,name:"Benzbromarone",group:"กล้ามเนื้อและข้อ (MSK)",subgroup:"10.1.3 Drugs for treatment of gout and hyperuricaemia",fromNL:true},
+  {id:665,name:"Febuxostat",group:"กล้ามเนื้อและข้อ (MSK)",subgroup:"10.1.3 Drugs for treatment of gout and hyperuricaemia",fromNL:true},
+  {id:666,name:"Pyridostigmine bromide",group:"กล้ามเนื้อและข้อ (MSK)",subgroup:"10.2.1 Drugs which enhance neuromuscular transmission",fromNL:true},
+  {id:667,name:"Neostigmine methylsulfate",group:"กล้ามเนื้อและข้อ (MSK)",subgroup:"10.2.1 Drugs which enhance neuromuscular transmission",fromNL:true},
+  {id:668,name:"Tizanidine hydrochloride",group:"กล้ามเนื้อและข้อ (MSK)",subgroup:"12.2.2 Skeletal muscle relaxants",fromNL:true},
+  {id:669,name:"Methyl salicylate",group:"กล้ามเนื้อและข้อ (MSK)",subgroup:"10.3.1 Rubifacients",fromNL:true},
+  {id:670,name:"Boric acid",group:"ตา (Ophthalmology)",subgroup:"11.1.1 Antibacterials and eye wash solution",fromNL:true},
+  {id:671,name:"Chloramphenicol",group:"ตา (Ophthalmology)",subgroup:"11.1.1 Antibacterials and eye wash solution",fromNL:true},
+  {id:672,name:"Polymyxin B sulfate + Neomycin sulfate + Gramicidin",group:"ตา (Ophthalmology)",subgroup:"11.1.1 Antibacterials and eye wash solution",fromNL:true},
+  {id:673,name:"Cyclosporine",group:"ตา (Ophthalmology)",subgroup:"11.1.1 Antibacterials and eye wash solution",fromNL:true},
+  {id:674,name:"Fusidic acid",group:"ตา (Ophthalmology)",subgroup:"11.1.1 Antibacterials and eye wash solution",fromNL:true},
+  {id:675,name:"Levofloxacin",group:"ตา (Ophthalmology)",subgroup:"11.1.1 Antibacterials and eye wash solution",fromNL:true},
+  {id:676,name:"Dexamethasone sodium phosphate",group:"ตา (Ophthalmology)",subgroup:"11.1.2 Antibacterials with corticosteroids",fromNL:true},
+  {id:677,name:"Dexamethasone + Neomycin sulfate",group:"ตา (Ophthalmology)",subgroup:"11.1.2 Antibacterials with corticosteroids",fromNL:true},
+  {id:678,name:"Natamycin",group:"ตา (Ophthalmology)",subgroup:"11.1.3 Antifungals",fromNL:true},
+  {id:679,name:"Antazoline hydrochloride",group:"ตา (Ophthalmology)",subgroup:"11.2 Corticosteroids and other anti-inflammatory prepar",fromNL:true},
+  {id:680,name:"Fluorometholone",group:"ตา (Ophthalmology)",subgroup:"11.2 Corticosteroids and other anti-inflammatory prepar",fromNL:true},
+  {id:681,name:"Prednisolone acetate",group:"ตา (Ophthalmology)",subgroup:"11.2 Corticosteroids and other anti-inflammatory prepar",fromNL:true},
+  {id:682,name:"Sodium cromoglicate (Cromolyn sodium)",group:"ตา (Ophthalmology)",subgroup:"11.2 Corticosteroids and other anti-inflammatory prepar",fromNL:true},
+  {id:683,name:"Olopatadine hydrochloride",group:"ตา (Ophthalmology)",subgroup:"11.2 Corticosteroids and other anti-inflammatory prepar",fromNL:true},
+  {id:684,name:"Cyclopentolate hydrochloride",group:"ตา (Ophthalmology)",subgroup:"11.3 Mydriatics and cycloplegics",fromNL:true},
+  {id:685,name:"Tropicamide",group:"ตา (Ophthalmology)",subgroup:"11.3 Mydriatics and cycloplegics",fromNL:true},
+  {id:686,name:"Phenylephrine hydrochloride + Tropicamide",group:"ตา (Ophthalmology)",subgroup:"11.3 Mydriatics and cycloplegics",fromNL:true},
+  {id:687,name:"Glycerol",group:"ตา (Ophthalmology)",subgroup:"11.4 Drugs for treatment of glaucoma",fromNL:true},
+  {id:688,name:"Acetazolamide",group:"ตา (Ophthalmology)",subgroup:"11.4 Drugs for treatment of glaucoma",fromNL:true},
+  {id:689,name:"Pilocarpine",group:"ตา (Ophthalmology)",subgroup:"11.4 Drugs for treatment of glaucoma",fromNL:true},
+  {id:690,name:"Timolol maleate",group:"ตา (Ophthalmology)",subgroup:"11.4 Drugs for treatment of glaucoma",fromNL:true},
+  {id:691,name:"Brimonidine tartrate",group:"ตา (Ophthalmology)",subgroup:"11.4 Drugs for treatment of glaucoma",fromNL:true},
+  {id:692,name:"Latanoprost",group:"ตา (Ophthalmology)",subgroup:"11.4 Drugs for treatment of glaucoma",fromNL:true},
+  {id:693,name:"Brinzolamide",group:"ตา (Ophthalmology)",subgroup:"0.005% w/v)",fromNL:true},
+  {id:694,name:"Brinzolamide + Timolol maleate",group:"ตา (Ophthalmology)",subgroup:"0.005% w/v)",fromNL:true},
+  {id:695,name:"Tetracaine hydrochloride",group:"ตา (Ophthalmology)",subgroup:"11.5 Local anaesthetics",fromNL:true},
+  {id:696,name:"Hypromellose (with preservative)",group:"ตา (Ophthalmology)",subgroup:"11.6 Tear deficiency, ocular lubricants and astringents",fromNL:true},
+  {id:697,name:"Carbomer (with preservative, with/without sorbitol)",group:"ตา (Ophthalmology)",subgroup:"11.6 Tear deficiency, ocular lubricants and astringents",fromNL:true},
+  {id:698,name:"White petrolatum + Mineral oil",group:"ตา (Ophthalmology)",subgroup:"11.6 Tear deficiency, ocular lubricants and astringents",fromNL:true},
+  {id:699,name:"Hypromellose + Dextran 70 (preservative free)",group:"ตา (Ophthalmology)",subgroup:"11.6 Tear deficiency, ocular lubricants and astringents",fromNL:true},
+  {id:700,name:"Dried protein-free dialysate of calf blood",group:"ตา (Ophthalmology)",subgroup:"11.6 Tear deficiency, ocular lubricants and astringents",fromNL:true},
+  {id:701,name:"Balance salt",group:"ตา (Ophthalmology)",subgroup:"11.7 Ocular diagnostic and peri-operative preparations ",fromNL:true},
+  {id:702,name:"Carbachol",group:"ตา (Ophthalmology)",subgroup:"11.7 Ocular diagnostic and peri-operative preparations ",fromNL:true},
+  {id:703,name:"Diclofenac sodium with preservative",group:"ตา (Ophthalmology)",subgroup:"11.7 Ocular diagnostic and peri-operative preparations ",fromNL:true},
+  {id:704,name:"Fluorescein sodium",group:"ตา (Ophthalmology)",subgroup:"11.7 Ocular diagnostic and peri-operative preparations ",fromNL:true},
+  {id:705,name:"Indocyanine green",group:"ตา (Ophthalmology)",subgroup:"11.7 Ocular diagnostic and peri-operative preparations ",fromNL:true},
+  {id:706,name:"Trypan blue",group:"ตา (Ophthalmology)",subgroup:"11.7 Ocular diagnostic and peri-operative preparations ",fromNL:true},
+  {id:707,name:"Bevacizumab",group:"ตา (Ophthalmology)",subgroup:"11.7 Ocular diagnostic and peri-operative preparations ",fromNL:true},
+  {id:708,name:"Dexamethasone + Framycetin sulfate + Gramicidin",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.1.1 Otitis externa and otitis media",fromNL:true},
+  {id:709,name:"Hydrocortisone + Neomycin sulfate",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.1.1 Otitis externa and otitis media",fromNL:true},
+  {id:710,name:"Acetic acid",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.1.2 Drugs used in otomycosis",fromNL:true},
+  {id:711,name:"Clotrimazole",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.1.2 Drugs used in otomycosis",fromNL:true},
+  {id:712,name:"Budesonide",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.2.1 Drugs used in nasal allergy",fromNL:true},
+  {id:713,name:"Fluticasone furoate",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.2.1 Drugs used in nasal allergy",fromNL:true},
+  {id:714,name:"Oxymetazoline hydrochloride",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.2.2 Topical nasal decongestants",fromNL:true},
+  {id:715,name:"Borax (in glycerin)",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.3.1 Drugs used in treatment of oral ulcer",fromNL:true},
+  {id:716,name:"Chlorhexidine gluconate mouthwash",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.3.1 Drugs used in treatment of oral ulcer",fromNL:true},
+  {id:717,name:"Iodine Paint, compound",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.3.1 Drugs used in treatment of oral ulcer",fromNL:true},
+  {id:718,name:"Fluocinolone acetonide",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.3.1 Drugs used in treatment of oral ulcer",fromNL:true,tier:"ข"},
+  {id:719,name:"Iodoform (in ether)",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.3.1 Drugs used in treatment of oral ulcer",fromNL:true,tier:"ข"},
+  {id:720,name:"Miconazole nitrate",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.3.2 Oropharyngeal antifungal drugs",fromNL:true},
+  {id:721,name:"Camphorated parachlorophenol",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.3.3 Antiseptics for root canal treatment",fromNL:true},
+  {id:722,name:"Camphorated phenol",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.3.3 Antiseptics for root canal treatment",fromNL:true},
+  {id:723,name:"EDTA",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.3.3 Antiseptics for root canal treatment",fromNL:true},
+  {id:724,name:"Formocresol (Cresolated formaldehyde,",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.3.3 Antiseptics for root canal treatment",fromNL:true},
+  {id:725,name:"Sodium hypochlorite",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.3.3 Antiseptics for root canal treatment",fromNL:true},
+  {id:726,name:"Artificial saliva (Saliva substitutes)",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.3.5 Other dental preparations",fromNL:true},
+  {id:727,name:"Hydrogen peroxide mouthwash",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.3.5 Other dental preparations",fromNL:true},
+  {id:728,name:"Special mouthwash mouthwash",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.3.5 Other dental preparations",fromNL:true},
+  {id:729,name:"Zinc oxide",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.3.5 Other dental preparations",fromNL:true},
+  {id:730,name:"Zinc oxide with zinc acetate",group:"หู คอ จมูก ปาก (ENT)",subgroup:"12.3.5 Other dental preparations",fromNL:true},
+  {id:731,name:"Sulfadiazine silver (Silver sulfadiazine)",group:"ผิวหนัง (Dermatology)",subgroup:"13.1.1 Antibacterial preparations",fromNL:true},
+  {id:732,name:"Mupirocin",group:"ผิวหนัง (Dermatology)",subgroup:"13.1.1 Antibacterial preparations",fromNL:true},
+  {id:733,name:"Sodium thiosulfate",group:"ผิวหนัง (Dermatology)",subgroup:"13.1.2 Antifungal preparations",fromNL:true},
+  {id:734,name:"Benzyl benzoate",group:"ผิวหนัง (Dermatology)",subgroup:"13.1.3 Parasiticidal preparations",fromNL:true},
+  {id:735,name:"Permethrin",group:"ผิวหนัง (Dermatology)",subgroup:"13.1.3 Parasiticidal preparations",fromNL:true},
+  {id:736,name:"Sulfur (Sulphur)",group:"ผิวหนัง (Dermatology)",subgroup:"13.1.3 Parasiticidal preparations",fromNL:true},
+  {id:737,name:"Aluminium acetate (Aluminium subacetate)",group:"ผิวหนัง (Dermatology)",subgroup:"13.2 Emollient and barrier preparations",fromNL:true},
+  {id:738,name:"Urea",group:"ผิวหนัง (Dermatology)",subgroup:"13.2 Emollient and barrier preparations",fromNL:true},
+  {id:739,name:"White petrolatum",group:"ผิวหนัง (Dermatology)",subgroup:"13.2 Emollient and barrier preparations",fromNL:true},
+  {id:740,name:"Calamine",group:"ผิวหนัง (Dermatology)",subgroup:"13.3 Topical antipruritics",fromNL:true},
+  {id:741,name:"Menthol + Phenol + Camphor",group:"ผิวหนัง (Dermatology)",subgroup:"13.3 Topical antipruritics",fromNL:true},
+  {id:742,name:"Hydrocortisone acetate",group:"ผิวหนัง (Dermatology)",subgroup:"13.4 Topical corticosteroids",fromNL:true},
+  {id:743,name:"Betamethasone dipropionate",group:"ผิวหนัง (Dermatology)",subgroup:"13.4 Topical corticosteroids",fromNL:true},
+  {id:744,name:"Betamethasone valerate",group:"ผิวหนัง (Dermatology)",subgroup:"13.4 Topical corticosteroids",fromNL:true},
+  {id:745,name:"Clobetasol propionate",group:"ผิวหนัง (Dermatology)",subgroup:"13.4 Topical corticosteroids",fromNL:true},
+  {id:746,name:"Desoximetasone (Desoxymethasone)",group:"ผิวหนัง (Dermatology)",subgroup:"13.4 Topical corticosteroids",fromNL:true},
+  {id:747,name:"Betamethasone dipropionate + Salicylic acid",group:"ผิวหนัง (Dermatology)",subgroup:"13.4 Topical corticosteroids",fromNL:true},
+  {id:748,name:"chronic",group:"ผิวหนัง (Dermatology)",subgroup:"13.4 Topical corticosteroids",fromNL:true},
+  {id:749,name:"Mometasone furoate",group:"ผิวหนัง (Dermatology)",subgroup:"13.4 Topical corticosteroids",fromNL:true},
+  {id:750,name:"Betamethasone dipropionate + Calcipotriol",group:"ผิวหนัง (Dermatology)",subgroup:"13.4 Topical corticosteroids",fromNL:true},
+  {id:751,name:"chronic plaque psoriasis",group:"ผิวหนัง (Dermatology)",subgroup:"13.4 Topical corticosteroids",fromNL:true},
+  {id:752,name:"gel 4",group:"ผิวหนัง (Dermatology)",subgroup:"13.4 Topical corticosteroids",fromNL:true},
+  {id:753,name:"Coal tar + Triamcinolone acetonide",group:"ผิวหนัง (Dermatology)",subgroup:"13.5 Other preparations for psoriasis (excluding topica",fromNL:true},
+  {id:754,name:"Salicylic acid",group:"ผิวหนัง (Dermatology)",subgroup:"13.5 Other preparations for psoriasis (excluding topica",fromNL:true},
+  {id:755,name:"Methoxsalen",group:"ผิวหนัง (Dermatology)",subgroup:"13.5 Other preparations for psoriasis (excluding topica",fromNL:true},
+  {id:756,name:"Calcipotriol",group:"ผิวหนัง (Dermatology)",subgroup:"13.5 Other preparations for psoriasis (excluding topica",fromNL:true},
+  {id:757,name:"Acitretin",group:"ผิวหนัง (Dermatology)",subgroup:"13.5 Other preparations for psoriasis (excluding topica",fromNL:true},
+  {id:758,name:"Lactic acid",group:"ผิวหนัง (Dermatology)",subgroup:"13.6 Preparations for warts and calluses",fromNL:true},
+  {id:759,name:"Silver nitrate",group:"ผิวหนัง (Dermatology)",subgroup:"13.6 Preparations for warts and calluses",fromNL:true},
+  {id:760,name:"Trichloroacetic acid",group:"ผิวหนัง (Dermatology)",subgroup:"13.6 Preparations for warts and calluses",fromNL:true},
+  {id:761,name:"Salicylic acid +",group:"ผิวหนัง (Dermatology)",subgroup:"13.6 Preparations for warts and calluses",fromNL:true},
+  {id:762,name:"Aluminium Chloride",group:"ผิวหนัง (Dermatology)",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:763,name:"Anti-D immunoglobulin, human",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:764,name:"Diphtheria antitoxin (DAT)",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:765,name:"Diphtheria-Tetanus vaccine",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:766,name:"Diphtheria-Tetanus-Pertussis vaccine",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:767,name:"Diphtheria-Tetanus-Pertussis-Hepatitis B vaccine",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:768,name:"Diphtheria-Tetanus-Pertussis-Hepatitis B-Haemophilus",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:769,name:"Recombinant acellular Pertussis vaccine (aP)",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:770,name:"Hepatitis B vaccine (HB)",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:771,name:"Measles-Mumps-Rubella vaccine (MMR)",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:772,name:"Poliomyelitis vaccine, live attenuated (OPV)",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:773,name:"Inactivated polio vaccine (IPV)",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:774,name:"Rabies immunoglobulin, horse (ERIG)",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:775,name:"Rabies vaccines",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:776,name:"Rubella vaccine",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:777,name:"Tetanus antitoxin, horse",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:778,name:"Tetanus vaccine (Tetanus toxoid)",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:779,name:"Japanese encephalitis vaccine, inactivated",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:780,name:"Japanese encephalitis vaccine, live attenuated",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:781,name:"Rabies immunoglobulin, human (HRIG)",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:782,name:"Tetanus antitoxin, human",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:783,name:"Hepatitis B immunoglobulin, human (HBIG)",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:784,name:"Human papillomavirus vaccine 4",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:785,name:"Human papillomavirus vaccine",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:786,name:"Rotavirus vaccine",group:"วัคซีนและภูมิคุ้มกัน",subgroup:"13.7 Preparations for hyperhidrosis",fromNL:true},
+  {id:787,name:"Etomidate",group:"ยาสลบและระงับปวด",subgroup:"15.1.1 Intravenous anaesthetics",fromNL:true},
+  {id:788,name:"Propofol",group:"ยาสลบและระงับปวด",subgroup:"15.1.1 Intravenous anaesthetics",fromNL:true},
+  {id:789,name:"Thiopental sodium (Thiopentone sodium)",group:"ยาสลบและระงับปวด",subgroup:"15.1.1 Intravenous anaesthetics",fromNL:true},
+  {id:790,name:"Ketamine hydrochloride",group:"ยาสลบและระงับปวด",subgroup:"15.1.1 Intravenous anaesthetics",fromNL:true},
+  {id:791,name:"Isoflurane Inhalation vapour",group:"ยาสลบและระงับปวด",subgroup:"15.1.2 Inhalational anaesthetics",fromNL:true},
+  {id:792,name:"Sevoflurane Inhalation vapour",group:"ยาสลบและระงับปวด",subgroup:"15.1.2 Inhalational anaesthetics",fromNL:true},
+  {id:793,name:"Desflurane Inhalation vapour",group:"ยาสลบและระงับปวด",subgroup:"15.1.2 Inhalational anaesthetics",fromNL:true},
+  {id:794,name:"Atracurium besilate",group:"ยาสลบและระงับปวด",subgroup:"15.1.3 Muscle relaxants (Neuromuscular blocking drugs)",fromNL:true},
+  {id:795,name:"Cisatracurium besilate",group:"ยาสลบและระงับปวด",subgroup:"15.1.3 Muscle relaxants (Neuromuscular blocking drugs)",fromNL:true},
+  {id:796,name:"Pancuronium bromide",group:"ยาสลบและระงับปวด",subgroup:"15.1.3 Muscle relaxants (Neuromuscular blocking drugs)",fromNL:true},
+  {id:797,name:"Rocuronium bromide",group:"ยาสลบและระงับปวด",subgroup:"15.1.3 Muscle relaxants (Neuromuscular blocking drugs)",fromNL:true},
+  {id:798,name:"Suxamethonium chloride (Succinylcholine chloride)",group:"ยาสลบและระงับปวด",subgroup:"15.1.3 Muscle relaxants (Neuromuscular blocking drugs)",fromNL:true},
+  {id:799,name:"Vecuronium bromide",group:"ยาสลบและระงับปวด",subgroup:"15.1.3 Muscle relaxants (Neuromuscular blocking drugs)",fromNL:true},
+  {id:800,name:"Fentanyl citrate",group:"ยาสลบและระงับปวด",subgroup:"15.1.4 Sedative and analgesic peri-operative drugs",fromNL:true},
+  {id:801,name:"Dexmedetomidine",group:"ยาสลบและระงับปวด",subgroup:"15.1.4 Sedative and analgesic peri-operative drugs",fromNL:true},
+  {id:802,name:"Midazolam maleate",group:"ยาสลบและระงับปวด",subgroup:"15.1.4 Sedative and analgesic peri-operative drugs",fromNL:true},
+  {id:803,name:"Edrophonium chloride",group:"ยาสลบและระงับปวด",subgroup:"15.1.5 Anticholinesterases and antimuscarinic drugs use",fromNL:true},
+  {id:804,name:"Glycopyrronium bromide",group:"ยาสลบและระงับปวด",subgroup:"15.1.5 Anticholinesterases and antimuscarinic drugs use",fromNL:true},
+  {id:805,name:"Sugammadex",group:"ยาสลบและระงับปวด",subgroup:"15.1.5 Anticholinesterases and antimuscarinic drugs use",fromNL:true,tier:"ง"},
+  {id:806,name:"Dantrolene sodium",group:"ยาสลบและระงับปวด",subgroup:"15.1.6 Drugs for malignant hyperthermia",fromNL:true},
+  {id:807,name:"Benzocaine",group:"ยาสลบและระงับปวด",subgroup:"15.2 Local anaesthesia",fromNL:true},
+  {id:808,name:"Lidocaine hydrochloride",group:"ยาสลบและระงับปวด",subgroup:"15.2 Local anaesthesia",fromNL:true},
+  {id:809,name:"Lidocaine + Prilocaine",group:"ยาสลบและระงับปวด",subgroup:"15.2 Local anaesthesia",fromNL:true},
+  {id:810,name:"Lidocaine hydrochloride + Epinephrine",group:"ยาสลบและระงับปวด",subgroup:"15.2 Local anaesthesia",fromNL:true},
+  {id:811,name:"Mepivacaine hydrochloride",group:"ยาสลบและระงับปวด",subgroup:"15.2 Local anaesthesia",fromNL:true},
+  {id:812,name:"Mepivacaine hydrochloride + Epinephrine",group:"ยาสลบและระงับปวด",subgroup:"15.2 Local anaesthesia",fromNL:true},
+  {id:813,name:"Bupivacaine hydrochloride",group:"ยาสลบและระงับปวด",subgroup:"15.2 Local anaesthesia",fromNL:true},
+  {id:814,name:"Bupivacaine hydrochloride with/without glucose",group:"ยาสลบและระงับปวด",subgroup:"15.2 Local anaesthesia",fromNL:true},
+  {id:815,name:"Antivenom sera",group:"พิษวิทยา",subgroup:"16.1 Snakebite poisoning",fromNL:true},
+  {id:816,name:"Polyvalent antivenom for hematotoxin",group:"พิษวิทยา",subgroup:"16.1 Snakebite poisoning",fromNL:true},
+  {id:817,name:"Polyvalent antivenom for neurotoxin",group:"พิษวิทยา",subgroup:"16.1 Snakebite poisoning",fromNL:true},
+  {id:818,name:"Acetylcysteine (N-acetylcysteine)",group:"พิษวิทยา",subgroup:"16.2 Mushroom and microbial poisoning",fromNL:true},
+  {id:819,name:"Botulinum antitoxin",group:"พิษวิทยา",subgroup:"16.2 Mushroom and microbial poisoning",fromNL:true},
+  {id:820,name:"Pralidoxime chloride (2-PAM)",group:"พิษวิทยา",subgroup:"16.3 Pesticide & herbicide poisoning",fromNL:true},
+  {id:821,name:"Ethanol",group:"พิษวิทยา",subgroup:"16.5 Methanol poisoning",fromNL:true},
+  {id:822,name:"Dimercaprol (British Anti-Lewisite, BAL)",group:"พิษวิทยา",subgroup:"9.1.2 Drugs used in hypoplastic,",fromNL:true},
+  {id:823,name:"Sodium calcium edetate (Edetate calcium disodium,",group:"พิษวิทยา",subgroup:"9.1.2 Drugs used in hypoplastic,",fromNL:true},
+  {id:824,name:"Succimer",group:"พิษวิทยา",subgroup:"9.1.2 Drugs used in hypoplastic,",fromNL:true},
+  {id:825,name:"Sodium nitrite",group:"พิษวิทยา",subgroup:"16.7 Cyanide and Hydrogen sulfide poisoning",fromNL:true},
+  {id:826,name:"Methylene blue (Methylthioninium chloride)",group:"พิษวิทยา",subgroup:"16.8 Methemoglobinemia",fromNL:true},
+  {id:827,name:"Benzatropine mesilate (Benztropine mesylate)",group:"พิษวิทยา",subgroup:"16.9 Drug poisoning",fromNL:true},
+  {id:828,name:"Naloxone hydrochloride",group:"พิษวิทยา",subgroup:"16.9 Drug poisoning",fromNL:true},
+  {id:829,name:"Protamine sulfate",group:"พิษวิทยา",subgroup:"16.9 Drug poisoning",fromNL:true},
+  {id:830,name:"Flumazenil",group:"พิษวิทยา",subgroup:"16.9 Drug poisoning",fromNL:true},
+  {id:831,name:"Mesna",group:"พิษวิทยา",subgroup:"16.9 Drug poisoning",fromNL:true},
+  {id:832,name:"Charcoal, activated",group:"พิษวิทยา",subgroup:"16.10 Drugs used for absorption inhibition and eliminat",fromNL:true},
+  {id:833,name:"Macrogols (Polyethylene glycol, PEG) with electrolytes",group:"พิษวิทยา",subgroup:"16.10 Drugs used for absorption inhibition and eliminat",fromNL:true},
+  {id:834,name:"Iopamidol",group:"17 Contrast media and Radiopharmaceuticals",subgroup:"17.1.1.1",fromNL:true},
+  {id:835,name:"Iopromide",group:"17 Contrast media and Radiopharmaceuticals",subgroup:"17.1.1.1",fromNL:true},
+  {id:836,name:"Barium sulfate",group:"17 Contrast media and Radiopharmaceuticals",subgroup:"17.2 Non-iodinated gastrointestinal X-ray contrast medi",fromNL:true},
+  {id:837,name:"Meglumine gadoterate",group:"17 Contrast media and Radiopharmaceuticals",subgroup:"17.3 Magnetic resonance contrast media",fromNL:true},
+  {id:838,name:"Ethiodized oil (Iodized oil fluid",group:"17 Contrast media and Radiopharmaceuticals",subgroup:"17.4 Drug use for interventional radiology",fromNL:true},
+  {id:839,name:"Tc-99m dextran",group:"17 Contrast media and Radiopharmaceuticals",subgroup:"17.5 Radiopharmaceuticals",fromNL:true},
+  {id:840,name:"Tc-99m diethylene triamine penta acetic acid (DTPA)",group:"17 Contrast media and Radiopharmaceuticals",subgroup:"17.5 Radiopharmaceuticals",fromNL:true},
+  {id:841,name:"Tc-99m dimercaptosuccinic acid (DMSA)",group:"17 Contrast media and Radiopharmaceuticals",subgroup:"17.5 Radiopharmaceuticals",fromNL:true},
+  {id:842,name:"Tc-99m iminodiacetic acid (IDA)",group:"17 Contrast media and Radiopharmaceuticals",subgroup:"17.5 Radiopharmaceuticals",fromNL:true},
+  {id:843,name:"Tc-99m methylene diphosphonate (MDP)",group:"17 Contrast media and Radiopharmaceuticals",subgroup:"17.5 Radiopharmaceuticals",fromNL:true},
+  {id:844,name:"Tc-99m phytate",group:"17 Contrast media and Radiopharmaceuticals",subgroup:"17.5 Radiopharmaceuticals",fromNL:true},
+  {id:845,name:"Tc-99m sulfur colloid",group:"17 Contrast media and Radiopharmaceuticals",subgroup:"3.2 gastrointestinal bleeding)",fromNL:true},
+  {id:846,name:"invasive candida Fluconazole",group:"2 CrCl 30 mL/min - Liposomal",subgroup:"4.6 (2) ††§ 1.2",fromNL:true},
+  {id:847,name:"Facial features such as broad",group:"3 Trastuzumab",subgroup:"4.2.19 Hyper-IgE syndrome (sporadic or autosomal domina",fromNL:true}
+];
+
 // ============================================================
 // DRUG LIST (Excel เขต 6 · 115 รายการ)
 // ============================================================
@@ -779,19 +2203,164 @@ function hasSub(id){return!!herbDB[id];}
 function filterDrugs(){
   const s=document.getElementById('searchInput').value.toLowerCase();
   const g=document.getElementById('groupFilter').value;
+  const showNL=document.getElementById('toggleNL')?document.getElementById('toggleNL').checked:true;
   const list=document.getElementById('drugList');
   list.innerHTML='';
-  const filtered=drugs.filter(d=>(!s||d.name.toLowerCase().includes(s))&&(!g||d.group.includes(g)));
+
+  let pool=[...drugs];
+  if(showNL) pool=[...pool,...nationalDrugs];
+
+  const filtered=pool.filter(d=>{
+    const matchS=!s||d.name.toLowerCase().includes(s);
+    const matchG=!g||d.group.includes(g)||(d.subgroup||'').includes(g);
+    return matchS&&matchG;
+  });
+
   if(!filtered.length){list.innerHTML='<div class="drug-item" style="color:#999;font-style:italic;padding:12px">ไม่พบรายการยา</div>';return;}
-  filtered.forEach(d=>{
+
+  const display=filtered.slice(0,120);
+  display.forEach(d=>{
     const sub=herbDB[d.id];
-    const dotClass=sub?(sub.rating==='partial'?'dot-partial':'dot-green'):'dot-none';
+    const isNL=!!d.fromNL;
+    let dotClass='dot-none';
+    if(sub){dotClass=sub.rating==='partial'?'dot-partial':'dot-green';}
+    else if(isNL){const cls=resolveByClass(d);if(cls)dotClass=cls.rating==='high'?'dot-green':cls.rating==='partial'?'dot-partial':'dot-none';}
     const div=document.createElement('div');
     div.className='drug-item'+(d.id===currentDrugId?' active':'');
-    div.innerHTML=`<span class="dot ${dotClass}"></span>${d.name}<span class="drug-meta">${groupLabels[d.group]||d.group} · ${d.priority} priority</span>`;
-    div.onclick=()=>selectDrug(d.id);
+    const badge=isNL?'<span style="font-size:9px;background:#e8d5fb;color:#6b21a8;border-radius:6px;padding:1px 5px;margin-left:4px;vertical-align:middle">บัญชีฯ</span>':'';
+    const meta=isNL?'<span style="color:#888">'+(d.subgroup||d.group).substring(0,50)+'</span>':`<span style="color:#888">${groupLabels[d.group]||d.group} · ${d.priority} Priority</span>`;
+    div.innerHTML='<span class="dot '+dotClass+'"></span>'+d.name+badge+'<span class="drug-meta">'+meta+'</span>';
+    div.onclick=isNL?function(){selectNLDrug(d);}:function(){selectDrug(d.id);};
     list.appendChild(div);
   });
+
+  if(filtered.length>120){
+    const more=document.createElement('div');
+    more.style.cssText='padding:8px 12px;color:#999;font-style:italic;font-size:12px;text-align:center;border-top:1px solid #f0f5f1';
+    more.textContent='... อีก '+(filtered.length-120)+' รายการ — พิมพ์เพื่อกรองเพิ่ม';
+    list.appendChild(more);
+  }
+}
+
+function selectNLDrug(d){
+  currentDrugId='nl_'+d.id;
+  filterDrugs();
+
+  const resolved=resolveByClass(d);
+  if(resolved){
+    // Static result — show in right panel same style as 115 drugs
+    renderNLResult(d, resolved);
+  } else {
+    // No static mapping — switch to AI tab as fallback
+    document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById('tab-aiquery').classList.add('active');
+    document.querySelectorAll('.tab-btn').forEach(b=>{if(b.textContent.includes('AI'))b.classList.add('active');});
+    document.getElementById('aiDrugInput').value=d.name;
+    queryAI();
+  }
+}
+
+function renderNLResult(d, cls){
+  // Switch to search tab to show result
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-search').classList.add('active');
+  document.querySelectorAll('.tab-btn')[0].classList.add('active');
+
+  // Build a drug-like object compatible with renderResult
+  const fakeDrug={
+    id:'nl_'+d.id,
+    name:d.name,
+    group:d.subgroup||d.group,
+    unit:'',
+    priority:'National List'
+  };
+
+  const panel=document.getElementById('rightPanel');
+  const rc=cls.rating==='high'?'rating-high':cls.rating==='partial'?'rating-partial':'rating-low';
+  const ri=cls.rating==='high'?'✅':cls.rating==='partial'?'⚠️':'🔴';
+
+  let html=`<div class="result-card">
+    <div class="card-header">
+      <div class="card-header-left">
+        <h3>💊 ${d.name} <span style="font-size:10px;background:#e8d5fb;color:#6b21a8;border-radius:8px;padding:2px 8px;margin-left:6px;font-weight:700">บัญชียาหลักฯ 2567</span></h3>
+        <p>${d.subgroup||d.group}</p>
+      </div>
+      <div class="btn-group"><button class="btn btn-primary" onclick="window.print()">🖨️ พิมพ์/PDF</button></div>
+    </div>
+    <div class="card-body">
+    <div class="drug-info-box">
+      <div class="info-chip"><span class="label">กลุ่มยา</span><span class="value">${d.group}</span></div>
+      <div class="info-chip"><span class="label">บัญชียาย่อย</span><span class="value">${d.subgroup||'-'}</span></div>
+      <div class="info-chip"><span class="label">สถานะทดแทน</span><span class="value">${ri} ${cls.ratingLabel.split('—')[0].trim()}</span></div>
+    </div>
+    <div class="rating-badge ${rc}">${ri} ${cls.ratingLabel}</div>
+    <div style="margin-bottom:12px">`;
+  
+  cls.diseases.forEach(dis=>{ html+=`<span class="tag tag-d">${dis}</span>`; });
+  cls.symptoms.forEach(s=>{ html+=`<span class="tag tag-s">${s}</span>`; });
+  html+=`</div>
+    <div class="no-sub-banner" style="background:#fff8e1;border-color:#ffe082">
+      <div class="icon">📋</div>
+      <div><h4 style="color:#856404">หมายเหตุสำคัญ</h4><p>${cls.note}</p></div>
+    </div>`;
+
+  cls.herbs.forEach((h,i)=>{
+    html+=`<div class="sec-title">🌿 ตัวเลือกที่ ${i+1}</div>
+    <div class="herbal-card">
+      <div class="herbal-head">
+        <div class="hname">🌿 ${h.name}</div>
+        <div class="hcode">บัญชียาสมุนไพร ${h.code}</div>
+      </div>
+      <div class="herbal-body">
+        <div class="active-ing">🧪 <strong>สารสำคัญ:</strong> ${h.activeIng}</div>
+        <p style="font-size:12.5px;color:var(--gray);margin-bottom:10px;line-height:1.6">${h.indication}</p>
+        <p style="font-size:12px;color:#555;margin-bottom:12px;line-height:1.6"><strong>กลไก:</strong> ${h.mechanism}</p>
+        <div class="compare-grid">
+          <div class="compare-box modern">
+            <div class="box-title">💊 ยาแผนปัจจุบัน</div>
+            <p><strong>${d.name}</strong></p>
+            <p style="margin-top:5px;font-size:12px">${h.dose_modern}</p>
+          </div>
+          <div class="compare-box herbal">
+            <div class="box-title">🌿 ยาสมุนไพรทดแทน</div>
+            <p style="font-size:12.5px;line-height:1.6">${h.dose_daily}</p>
+            <p style="font-size:11.5px;color:var(--sage);margin-top:5px;font-weight:600">${h.dose_course}</p>
+          </div>
+        </div>
+        <div class="sec-title" style="margin-top:8px">💰 เปรียบเทียบค่าใช้จ่าย</div>
+        <table class="cost-table">
+          <tr><th>รายการ</th><th>ยาแผนปัจจุบัน</th><th>ยาสมุนไพร</th><th>ระยะเวลา</th></tr>
+          <tr><td>ค่าใช้จ่าย/course</td><td>${h.cost_modern}</td><td class="cg">${h.cost_herb}</td><td>${h.duration}</td></tr>
+        </table>
+        <div class="sec-title">⚠️ ข้อห้ามใช้ / ข้อควรระวัง</div>
+        <div>${h.contraindication.map(c=>`<span class="tag tag-w">🚫 ${c}</span>`).join('')}</div>
+        <div class="sec-title" style="margin-top:12px">⚕️ อาการไม่พึงประสงค์ (ADR)</div>
+        <ul class="adr-list">${h.adr.map(a=>`<li class="adr-item"><span class="adot ${a.l}"></span><span>${a.t}</span></li>`).join('')}</ul>
+        <div class="int-box">
+          <div class="int-title">🔗 Drug Interactions <span class="source-badge">คู่มือเวชปฏิบัติ เม.ย. 2568</span></div>
+          ${h.interaction.map(it=>`<div class="int-item">${it}</div>`).join('')}
+        </div>
+        <div class="sec-title" style="margin-top:12px">📚 อ้างอิง</div>
+        <div class="ref-box">
+          ${h.refs.map(r=>`📌 <a href="${r.u}" target="_blank">${r.t}</a><br>`).join('')}
+          📌 <a href="https://www.dms.moph.go.th" target="_blank" style="font-weight:700;color:#27ae60">📗 คู่มือการใช้ยาสมุนไพรในเวชปฏิบัติ เมษายน 2568 กรมการแพทย์ (ISBN: 978-616-11-5425-7)</a><br>
+          📌 <a href="https://www.dtam.moph.go.th" target="_blank">บัญชียาหลักแห่งชาติด้านสมุนไพร พ.ศ. 2566</a>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html+=`</div>
+    <div class="result-footer">
+      <span>📋 ข้อมูลสถิตย์ · อ้างอิง: คู่มือเวชปฏิบัติ เม.ย. 2568 + บัญชียาสมุนไพร 106 รายการ อปสข.6</span>
+      <span>กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก · สสจ.สมุทรปราการ</span>
+    </div>
+  </div>`;
+
+  panel.innerHTML=html;
+  panel.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 function selectDrug(id){
