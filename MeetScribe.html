@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeetScribe Pro ☆ บันทึกการประชุมสุดคาวาอี้</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#fff5f9;--surface:#ffffff;--surface2:#fff0f5;--surface3:#ffe4ed;
+--border:#ffc8dd;--border2:#ffb3cc;
+--text:#4a3347;--text2:#8a6b82;--text3:#b8a0b0;
+--accent:#ff6b9d;--accent2:#ff4081;--accent-soft:rgba(255,107,157,.12);
+--green:#66d9a0;--green-bg:#e8faf0;--red:#ff6b6b;--red-bg:#fff0f0;
+--amber:#ffb347;--amber-bg:#fff8ed;
+--purple:#b388ff;--purple-bg:#f3e8ff;
+--blue:#64b5f6;--blue-bg:#e8f4fd;
+--mint:#7ddfc3;--mint-bg:#e6faf3;
+--peach:#ffab91;
+--speaker1:#ff6b9d;--speaker2:#b388ff;--speaker3:#66d9a0;
+--speaker4:#ffb347;--speaker5:#64b5f6;--speaker6:#ffab91;
+--radius:16px;--radius-lg:20px;
+--shadow:0 2px 12px rgba(255,107,157,.1);
+--shadow-lg:0 8px 32px rgba(255,107,157,.15);
+}
+html{font-size:15px}
+body{font-family:'Noto Sans Thai',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle at 20% 20%,rgba(255,182,213,.15),transparent 50%),radial-gradient(circle at 80% 80%,rgba(179,136,255,.1),transparent 50%);pointer-events:none;z-index:0}
+
+.app{display:grid;grid-template-columns:320px 1fr;grid-template-rows:auto 1fr;height:100vh;position:relative;z-index:1}
+
+/* Header */
+.header{grid-column:1/-1;padding:14px 28px;display:flex;align-items:center;gap:14px;background:var(--surface);border-bottom:2px solid var(--border);position:relative}
+.header::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ff6b9d,#b388ff,#64b5f6,#66d9a0,#ffb347,#ff6b9d);background-size:300% 100%;animation:rainbow 6s linear infinite}
+@keyframes rainbow{0%{background-position:0% 0}100%{background-position:300% 0}}
+.logo{width:44px;height:44px;background:linear-gradient(135deg,#ff6b9d,#b388ff);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 12px rgba(255,107,157,.25)}
+.header h1{font-size:1.3rem;font-weight:800;color:var(--accent2)}
+.header h1 .star{color:#ffb347;font-size:1rem}
+.header .subtitle{font-size:.72rem;color:var(--text3);margin-top:2px}
+
+/* Sidebar */
+.sidebar{background:var(--surface);border-right:2px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.sidebar-section{padding:18px}
+.sidebar-section+.sidebar-section{border-top:2px dashed var(--border)}
+.section-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.section-title .emoji{font-size:.9rem}
+
+/* ====== KAWAII CHARACTER ====== */
+.mascot-area{display:flex;flex-direction:column;align-items:center;margin:8px 0 14px}
+.mascot-container{width:120px;height:120px;position:relative}
+.mascot{font-size:80px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);filter:drop-shadow(0 4px 8px rgba(255,107,157,.2));line-height:1;transition:transform .3s}
+.mascot.idle{animation:mascotIdle 3s ease-in-out infinite}
+.mascot.recording{animation:mascotDance .5s ease-in-out infinite}
+.mascot.paused{animation:mascotSleep 2s ease-in-out infinite}
+@keyframes mascotIdle{
+  0%,100%{transform:translate(-50%,-50%) rotate(0deg) scale(1)}
+  25%{transform:translate(-50%,-52%) rotate(-3deg) scale(1.02)}
+  75%{transform:translate(-50%,-48%) rotate(3deg) scale(.98)}
+}
+@keyframes mascotDance{
+  0%{transform:translate(-50%,-50%) rotate(0deg) scale(1)}
+  15%{transform:translate(-45%,-58%) rotate(-12deg) scale(1.1)}
+  30%{transform:translate(-55%,-50%) rotate(8deg) scale(.95)}
+  45%{transform:translate(-48%,-56%) rotate(-8deg) scale(1.08)}
+  60%{transform:translate(-52%,-48%) rotate(10deg) scale(.97)}
+  75%{transform:translate(-46%,-55%) rotate(-6deg) scale(1.05)}
+  100%{transform:translate(-50%,-50%) rotate(0deg) scale(1)}
+}
+@keyframes mascotSleep{
+  0%,100%{transform:translate(-50%,-50%) scale(1)}
+  50%{transform:translate(-50%,-50%) scale(.95)}
+}
+
+/* Music notes floating */
+.notes{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden}
+.note{position:absolute;font-size:16px;opacity:0;animation:none}
+.recording .note{animation:floatNote 1.5s ease-out infinite}
+.note:nth-child(1){left:10%;animation-delay:0s}
+.note:nth-child(2){left:30%;animation-delay:.3s}
+.note:nth-child(3){left:60%;animation-delay:.6s}
+.note:nth-child(4){left:80%;animation-delay:.9s}
+.note:nth-child(5){left:50%;animation-delay:1.2s}
+@keyframes floatNote{
+  0%{opacity:0;transform:translateY(80px) rotate(0deg) scale(.5)}
+  30%{opacity:1}
+  100%{opacity:0;transform:translateY(-30px) rotate(25deg) scale(1.2)}
+}
+
+/* Stars burst when recording */
+.sparkles{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+.sparkle{position:absolute;width:6px;height:6px;border-radius:50%;opacity:0}
+.recording .sparkle{animation:sparkle 2s ease-in-out infinite}
+.sparkle:nth-child(1){background:#ff6b9d;top:15%;left:15%;animation-delay:0s}
+.sparkle:nth-child(2){background:#ffb347;top:20%;right:20%;animation-delay:.4s}
+.sparkle:nth-child(3){background:#b388ff;bottom:25%;left:25%;animation-delay:.8s}
+.sparkle:nth-child(4){background:#64b5f6;bottom:20%;right:15%;animation-delay:1.2s}
+.sparkle:nth-child(5){background:#66d9a0;top:40%;left:10%;animation-delay:1.6s}
+@keyframes sparkle{
+  0%,100%{opacity:0;transform:scale(0)}
+  50%{opacity:1;transform:scale(1.5)}
+}
+
+.mascot-label{font-size:.75rem;color:var(--text3);margin-top:4px;font-weight:500;text-align:center;min-height:18px}
+
+/* Recording Button */
+.rec-btn{width:100%;padding:14px;border:2px solid transparent;border-radius:var(--radius);font-family:inherit;font-size:.95rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .25s;position:relative;overflow:hidden}
+.rec-btn.start{background:linear-gradient(135deg,#ff6b9d,#ff4081);color:#fff;box-shadow:0 4px 16px rgba(255,64,129,.25)}
+.rec-btn.start:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(255,64,129,.35)}
+.rec-btn.start::after{content:'✧';position:absolute;right:16px;font-size:1.1rem;animation:twinkle 1.5s infinite}
+@keyframes twinkle{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}
+.rec-btn.recording{background:#ff6b6b;color:#fff;animation:recPulse 1.5s infinite;border-color:rgba(255,107,107,.3)}
+@keyframes recPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,107,107,.4)}50%{box-shadow:0 0 0 12px rgba(255,107,107,0)}}
+.rec-btn.paused{background:var(--amber);color:#fff}
+.rec-controls{display:flex;gap:8px;margin-top:10px}
+.rec-controls button{flex:1;padding:10px;border:2px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .15s}
+.rec-controls button:hover{background:var(--surface2);border-color:var(--accent);color:var(--accent)}
+
+/* Timer */
+.timer{text-align:center;margin:10px 0;font-family:'JetBrains Mono',monospace;font-size:1.8rem;font-weight:500;color:var(--text2);letter-spacing:2px;transition:color .3s}
+.timer.active{color:var(--accent2);text-shadow:0 0 20px rgba(255,64,129,.2)}
+
+/* Waveform */
+.waveform{height:44px;background:var(--surface2);border-radius:var(--radius);overflow:hidden;margin-top:10px;border:2px solid var(--border)}
+.waveform canvas{width:100%;height:100%}
+
+/* Speakers */
+.speaker-list{display:flex;flex-direction:column;gap:6px}
+.speaker-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:var(--surface2);cursor:pointer;transition:all .15s;border:2px solid transparent}
+.speaker-item:hover{background:var(--surface3)}
+.speaker-item.active{border-color:var(--accent);background:var(--accent-soft)}
+.speaker-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.speaker-name{flex:1;font-size:.85rem;background:transparent;border:none;color:var(--text);font-family:inherit;outline:none;font-weight:500}
+.speaker-count{font-size:.7rem;color:var(--text3);font-family:'JetBrains Mono',monospace;background:var(--surface3);padding:2px 8px;border-radius:10px}
+.add-speaker{width:100%;margin-top:8px;padding:8px;border:2px dashed var(--border);border-radius:12px;background:transparent;color:var(--text3);font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .15s}
+.add-speaker:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+
+/* API Key */
+.api-input{width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:12px;background:var(--surface2);color:var(--text);font-family:inherit;font-size:.8rem;outline:none;transition:border .2s}
+.api-input:focus{border-color:var(--accent)}
+.api-note{font-size:.68rem;color:var(--text3);margin-top:6px;line-height:1.5}
+
+/* Main */
+.main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.toolbar{display:flex;align-items:center;gap:8px;padding:12px 24px;border-bottom:2px solid var(--border);background:var(--surface);flex-wrap:wrap}
+.toolbar .tab{padding:8px 18px;border:2px solid transparent;border-radius:12px;background:transparent;color:var(--text2);font-family:inherit;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .15s}
+.toolbar .tab:hover{color:var(--accent);background:var(--accent-soft)}
+.toolbar .tab.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.toolbar-right{margin-left:auto;display:flex;gap:8px}
+.export-btn{padding:8px 16px;border:2px solid var(--border);border-radius:12px;font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s;background:var(--surface);color:var(--text)}
+.export-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.export-btn.dl{background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff;border:none}
+.export-btn.dl:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+
+/* Transcript */
+.content-panel{flex:1;overflow-y:auto;padding:24px;scroll-behavior:smooth}
+.transcript-entry{display:flex;gap:14px;padding:14px 16px;margin-bottom:8px;background:var(--surface);border-radius:var(--radius);border:1.5px solid var(--border);animation:fadeIn .3s ease;box-shadow:var(--shadow)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.entry-time{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--text3);white-space:nowrap;padding-top:3px;min-width:48px}
+.entry-speaker{display:flex;align-items:center;gap:6px;min-width:90px}
+.entry-speaker .dot{width:8px;height:8px;border-radius:50%}
+.entry-text{flex:1;font-size:.92rem;line-height:1.8;color:var(--text)}
+.entry-text .interim{color:var(--text3);font-style:italic}
+
+/* Summary */
+.summary-panel{padding:24px}
+.summary-card{background:var(--surface);border:2px solid var(--border);border-radius:var(--radius-lg);padding:22px;margin-bottom:14px;box-shadow:var(--shadow)}
+.summary-card h3{font-size:1rem;font-weight:700;color:var(--accent2);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.summary-content{font-size:.9rem;line-height:1.8;color:var(--text2)}
+.summary-content li{margin:5px 0}
+.summary-content ul{padding-left:20px}
+.generate-summary-btn{width:100%;padding:16px;border:none;border-radius:var(--radius);background:linear-gradient(135deg,#b388ff,#ff6b9d);color:#fff;font-family:inherit;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 16px rgba(179,136,255,.25)}
+.generate-summary-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(179,136,255,.35)}
+.generate-summary-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.loading-dots::after{content:'';animation:dots 1.2s infinite}
+@keyframes dots{0%{content:''}33%{content:'.'}66%{content:'..'}100%{content:'...'}}
+
+/* Status */
+.status-bar{padding:8px 24px;border-top:2px solid var(--border);background:var(--surface);font-size:.72rem;color:var(--text3);display:flex;align-items:center;gap:16px}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--text3)}
+.status-dot.live{background:var(--accent);box-shadow:0 0 8px rgba(255,107,157,.5);animation:statusPulse 1s infinite}
+@keyframes statusPulse{0%,100%{box-shadow:0 0 4px rgba(255,107,157,.3)}50%{box-shadow:0 0 12px rgba(255,107,157,.6)}}
+
+/* Empty State */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;color:var(--text3);gap:10px;padding:40px}
+.empty-icon{font-size:3.5rem}
+.empty-text{font-size:1rem;font-weight:600;color:var(--text2)}
+.empty-hint{font-size:.82rem;max-width:380px;line-height:1.7;color:var(--text3)}
+
+/* Speaker select */
+.speaker-select{background:transparent;border:none;color:inherit;font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:.85rem;font-weight:500;z-index:999;animation:toastIn .3s ease;display:flex;align-items:center;gap:8px;box-shadow:var(--shadow-lg)}
+@keyframes toastIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--border2)}
+
+/* Shortcut hint */
+.shortcut-hint{margin-top:10px;padding:8px 10px;background:var(--surface2);border-radius:10px;font-size:.68rem;color:var(--text3);line-height:1.7;text-align:center}
+.shortcut-hint kbd{background:var(--surface);border:1.5px solid var(--border);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono',monospace;font-size:.65rem}
+
+/* Mobile */
+@media(max-width:900px){
+.app{grid-template-columns:1fr;grid-template-rows:auto auto 1fr}
+.sidebar{flex-direction:row;overflow-x:auto;border-right:none;border-bottom:2px solid var(--border)}
+.sidebar-section{min-width:260px}
+.mascot-container{width:80px;height:80px}
+.mascot{font-size:55px}
+}
+
+/* Confetti burst on stop */
+.confetti-container{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999}
+.confetti{position:absolute;width:8px;height:8px;border-radius:2px;top:-10px;animation:confettiFall 3s ease-out forwards}
+@keyframes confettiFall{
+  0%{opacity:1;transform:translateY(0) rotate(0deg)}
+  100%{opacity:0;transform:translateY(100vh) rotate(720deg)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">📝</div>
+    <div>
+      <h1>MeetScribe Pro <span class="star">☆</span></h1>
+      <div class="subtitle">บันทึกการประชุมสุดคาวาอี้ ✿ ถอดเสียง แยกผู้พูด สรุปด้วย AI</div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="section-title"><span class="emoji">🎀</span> การบันทึก</div>
+
+      <!-- Kawaii Mascot -->
+      <div class="mascot-area">
+        <div class="mascot-container" id="mascotContainer">
+          <div class="sparkles">
+            <div class="sparkle"></div><div class="sparkle"></div><div class="sparkle"></div><div class="sparkle"></div><div class="sparkle"></div>
+          </div>
+          <div class="notes" id="notesContainer">
+            <div class="note">♪</div><div class="note">♫</div><div class="note">♬</div><div class="note">♩</div><div class="note">❤</div>
+          </div>
+          <div class="mascot idle" id="mascot">🐱</div>
+        </div>
+        <div class="mascot-label" id="mascotLabel">พร้อมบันทึกแล้วค่า~ ✧</div>
+      </div>
+
+      <button class="rec-btn start" id="recBtn" onclick="toggleRecording()">
+        <span id="recIcon">🎙️</span>
+        <span id="recLabel">เริ่มบันทึกเลย!</span>
+      </button>
+      <div class="rec-controls" id="recControls" style="display:none">
+        <button onclick="pauseRecording()">⏸️ พัก</button>
+        <button onclick="stopRecording()">⏹️ จบ</button>
+      </div>
+      <div class="timer" id="timer">00:00:00</div>
+      <div class="waveform" id="waveformContainer">
+        <canvas id="waveform"></canvas>
+      </div>
+      <div class="shortcut-hint">
+        <kbd>Ctrl</kbd>+<kbd>Space</kbd> บันทึก &nbsp;|&nbsp; <kbd>1</kbd>-<kbd>6</kbd> สลับผู้พูด
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-title"><span class="emoji">👥</span> ผู้เข้าประชุม</div>
+      <div class="speaker-list" id="speakerList"></div>
+      <button class="add-speaker" onclick="addSpeaker()">+ เพิ่มผู้พูด ♡</button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-title"><span class="emoji">🔑</span> Anthropic API Key</div>
+      <input type="password" class="api-input" id="apiKey" placeholder="sk-ant-...">
+      <div class="api-note">✧ ใส่ API Key เพื่อเปิดใช้ AI สรุปประชุม (ข้อมูลอยู่ในเครื่องคุณเท่านั้นค่ะ)</div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="toolbar">
+      <button class="tab active" data-tab="transcript" onclick="switchTab('transcript')">📄 ข้อความเต็ม</button>
+      <button class="tab" data-tab="summary" onclick="switchTab('summary')">✨ สรุปประชุม</button>
+      <div class="toolbar-right">
+        <button class="export-btn" onclick="exportWord('full')">📥 Word เต็ม</button>
+        <button class="export-btn" onclick="exportWord('summary')">📥 Word สรุป</button>
+      </div>
+    </div>
+
+    <div class="content-panel" id="transcriptPanel">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">🎀</div>
+        <div class="empty-text">พร้อมบันทึกการประชุมค่ะ~</div>
+        <div class="empty-hint">กดปุ่ม "เริ่มบันทึกเลย!" เพื่อเริ่มถอดเสียงแบบ Real-time ✧<br>ตั้งชื่อผู้พูดและกดเลข 1-6 สลับผู้พูดได้ระหว่างบันทึก</div>
+      </div>
+      <div id="transcriptContent" style="display:none"></div>
+    </div>
+
+    <div class="content-panel" id="summaryPanel" style="display:none">
+      <div class="summary-panel">
+        <button class="generate-summary-btn" id="summaryBtn" onclick="generateSummary()">
+          ✨ สร้างสรุปการประชุมด้วย AI ✧
+        </button>
+        <div id="summaryContent" style="margin-top:20px"></div>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">พร้อมใช้งาน ✧</span>
+      <span style="margin-left:auto" id="wordCount">0 คำ</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ STATE ============
+const state = {
+  recording: false, paused: false,
+  startTime: null, elapsed: 0,
+  speakers: [], activeSpeaker: 0,
+  transcript: [], interimText: '',
+  summary: null,
+  mediaRecorder: null, audioChunks: [],
+  recognition: null, audioCtx: null, analyser: null, animFrame: null,
+};
+
+const SPEAKER_COLORS = ['--speaker1','--speaker2','--speaker3','--speaker4','--speaker5','--speaker6'];
+const MASCOT_FACES = ['🐱','🐰','🐻','🐼','🦊','🐹'];
+let mascotIdx = 0;
+
+// ============ INIT ============
+function init() {
+  addSpeaker('ผู้พูด 1');
+  addSpeaker('ผู้พูด 2');
+  renderSpeakers();
+  const k = localStorage.getItem('meetscribe_apikey');
+  if (k) document.getElementById('apiKey').value = k;
+
+  // Click mascot to change face
+  document.getElementById('mascot').addEventListener('click', () => {
+    mascotIdx = (mascotIdx + 1) % MASCOT_FACES.length;
+    document.getElementById('mascot').textContent = MASCOT_FACES[mascotIdx];
+  });
+}
+
+// ============ SPEAKERS ============
+function addSpeaker(name) {
+  if (typeof name !== 'string') name = `ผู้พูด ${state.speakers.length + 1}`;
+  state.speakers.push({ name, count: 0 });
+  renderSpeakers();
+}
+function renderSpeakers() {
+  document.getElementById('speakerList').innerHTML = state.speakers.map((s, i) => `
+    <div class="speaker-item ${i === state.activeSpeaker ? 'active' : ''}" onclick="setActiveSpeaker(${i})">
+      <div class="speaker-dot" style="background:var(${SPEAKER_COLORS[i % 6]})"></div>
+      <input class="speaker-name" value="${s.name}" onchange="renameSpeaker(${i},this.value)" onclick="event.stopPropagation()">
+      <span class="speaker-count">${s.count}</span>
+    </div>
+  `).join('');
+}
+function setActiveSpeaker(i) { state.activeSpeaker = i; renderSpeakers(); }
+function renameSpeaker(i, v) { state.speakers[i].name = v; renderTranscript(); }
+
+// ============ MASCOT ============
+function updateMascot() {
+  const m = document.getElementById('mascot');
+  const c = document.getElementById('mascotContainer');
+  const l = document.getElementById('mascotLabel');
+  if (!state.recording) {
+    m.className = 'mascot idle';
+    c.classList.remove('recording');
+    l.textContent = 'พร้อมบันทึกแล้วค่า~ ✧';
+  } else if (state.paused) {
+    m.className = 'mascot paused';
+    c.classList.remove('recording');
+    l.textContent = 'หลับพักก่อนนะ... 💤';
+  } else {
+    m.className = 'mascot recording';
+    c.classList.add('recording');
+    l.textContent = 'กำลังฟังอยู่ค่า~ ♪♫';
+  }
+}
+
+// ============ RECORDING ============
+async function toggleRecording() {
+  if (!state.recording) await startRecording();
+  else if (state.paused) resumeRecording();
+  else pauseRecording();
+}
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    state.mediaRecorder = new MediaRecorder(stream);
+    state.audioChunks = [];
+    state.mediaRecorder.ondataavailable = e => { if (e.data.size > 0) state.audioChunks.push(e.data); };
+    state.mediaRecorder.start(1000);
+
+    state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = state.audioCtx.createMediaStreamSource(stream);
+    state.analyser = state.audioCtx.createAnalyser();
+    state.analyser.fftSize = 256;
+    src.connect(state.analyser);
+    drawWaveform();
+
+    startSpeechRecognition();
+    state.recording = true; state.paused = false;
+    state.startTime = Date.now(); state.elapsed = 0;
+    updateUI(); updateMascot(); updateTimer();
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('transcriptContent').style.display = 'block';
+    setStatus('live', 'กำลังบันทึก~ ♪');
+  } catch (err) { showToast('❌ ไม่สามารถเข้าถึงไมโครโฟนได้ค่ะ'); }
+}
+
+function startSpeechRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast('⚠️ เบราว์เซอร์ไม่รองรับ Speech Recognition ค่ะ'); return; }
+  const rec = new SR();
+  rec.lang = 'th-TH'; rec.continuous = true; rec.interimResults = true;
+  rec.onresult = (ev) => {
+    let interim = '', final = '';
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      const t = ev.results[i][0].transcript;
+      if (ev.results[i].isFinal) final += t; else interim += t;
+    }
+    if (final) {
+      state.transcript.push({ time: getElapsed(), speakerIdx: state.activeSpeaker, text: final.trim(), ts: Date.now() });
+      state.speakers[state.activeSpeaker].count++;
+      renderSpeakers();
+      state.interimText = '';
+    } else { state.interimText = interim; }
+    renderTranscript(); updateWordCount();
+  };
+  rec.onerror = () => {};
+  rec.onend = () => { if (state.recording && !state.paused) try { rec.start(); } catch(e) {} };
+  rec.start();
+  state.recognition = rec;
+}
+
+function pauseRecording() {
+  state.paused = true;
+  if (state.recognition) try { state.recognition.stop(); } catch(e) {}
+  if (state.mediaRecorder?.state === 'recording') state.mediaRecorder.pause();
+  updateUI(); updateMascot(); setStatus('', 'หยุดชั่วคราว 💤');
+}
+function resumeRecording() {
+  state.paused = false;
+  state.startTime = Date.now() - state.elapsed;
+  startSpeechRecognition();
+  if (state.mediaRecorder?.state === 'paused') state.mediaRecorder.resume();
+  updateUI(); updateMascot(); setStatus('live', 'กำลังบันทึก~ ♪');
+}
+function stopRecording() {
+  state.recording = false; state.paused = false;
+  if (state.recognition) try { state.recognition.stop(); } catch(e) {}
+  if (state.mediaRecorder?.state !== 'inactive') state.mediaRecorder.stop();
+  if (state.animFrame) cancelAnimationFrame(state.animFrame);
+  if (state.audioCtx) state.audioCtx.close();
+  updateUI(); updateMascot(); setStatus('', 'บันทึกเสร็จแล้ว ✧');
+  launchConfetti();
+}
+
+// ============ UI ============
+function updateUI() {
+  const btn = document.getElementById('recBtn');
+  const icon = document.getElementById('recIcon');
+  const label = document.getElementById('recLabel');
+  const controls = document.getElementById('recControls');
+  if (!state.recording) {
+    btn.className = 'rec-btn start'; icon.textContent = '🎙️'; label.textContent = 'เริ่มบันทึกเลย!';
+    controls.style.display = 'none';
+  } else if (state.paused) {
+    btn.className = 'rec-btn paused'; icon.textContent = '▶️'; label.textContent = 'บันทึกต่อ~';
+    controls.style.display = 'flex';
+  } else {
+    btn.className = 'rec-btn recording'; icon.textContent = '🔴'; label.textContent = 'กำลังบันทึก...';
+    controls.style.display = 'flex';
+  }
+}
+function updateTimer() {
+  if (!state.recording) return;
+  if (!state.paused) state.elapsed = Date.now() - state.startTime;
+  const s = Math.floor(state.elapsed / 1000);
+  document.getElementById('timer').textContent =
+    `${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  document.getElementById('timer').className = state.recording && !state.paused ? 'timer active' : 'timer';
+  requestAnimationFrame(updateTimer);
+}
+function getElapsed() {
+  const s = Math.floor(state.elapsed / 1000);
+  return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+}
+
+function renderTranscript() {
+  const el = document.getElementById('transcriptContent');
+  let html = state.transcript.map((e, idx) => {
+    const color = `var(${SPEAKER_COLORS[e.speakerIdx % 6]})`;
+    return `<div class="transcript-entry">
+      <div class="entry-time">${e.time}</div>
+      <div class="entry-speaker"><div class="dot" style="background:${color}"></div>
+        <select class="speaker-select" style="color:${color}" onchange="changeSpeaker(${idx},this.value)">
+          ${state.speakers.map((s,i)=>`<option value="${i}" ${i===e.speakerIdx?'selected':''}>${s.name}</option>`).join('')}
+        </select></div>
+      <div class="entry-text">${e.text}</div>
+    </div>`;
+  }).join('');
+  if (state.interimText) {
+    const color = `var(${SPEAKER_COLORS[state.activeSpeaker % 6]})`;
+    html += `<div class="transcript-entry"><div class="entry-time">${getElapsed()}</div>
+      <div class="entry-speaker"><div class="dot" style="background:${color}"></div>
+      <span class="speaker-select" style="color:${color}">${state.speakers[state.activeSpeaker]?.name||''}</span></div>
+      <div class="entry-text"><span class="interim">${state.interimText}</span></div></div>`;
+  }
+  el.innerHTML = html;
+  el.parentElement.scrollTop = el.parentElement.scrollHeight;
+}
+function changeSpeaker(idx, si) {
+  state.speakers[state.transcript[idx].speakerIdx].count--;
+  state.transcript[idx].speakerIdx = parseInt(si);
+  state.speakers[parseInt(si)].count++;
+  renderSpeakers(); renderTranscript();
+}
+function updateWordCount() {
+  document.getElementById('wordCount').textContent =
+    state.transcript.reduce((c,e) => c + e.text.split(/\s+/).filter(Boolean).length, 0) + ' คำ';
+}
+
+// ============ WAVEFORM (kawaii pink) ============
+function drawWaveform() {
+  const canvas = document.getElementById('waveform');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width = canvas.offsetWidth * 2;
+  const H = canvas.height = canvas.offsetHeight * 2;
+  function draw() {
+    if (!state.analyser) return;
+    state.animFrame = requestAnimationFrame(draw);
+    const data = new Uint8Array(state.analyser.frequencyBinCount);
+    state.analyser.getByteFrequencyData(data);
+    ctx.fillStyle = '#fff0f5';
+    ctx.fillRect(0, 0, W, H);
+    const barW = W / data.length * 2;
+    for (let i = 0; i < data.length; i++) {
+      const barH = (data[i] / 255) * H;
+      const hue = 330 + (i / data.length) * 60;
+      ctx.fillStyle = `hsla(${hue},80%,70%,0.8)`;
+      ctx.beginPath();
+      ctx.roundRect(i * barW, H - barH, Math.max(barW - 1, 1), barH, [3, 3, 0, 0]);
+      ctx.fill();
+    }
+  }
+  draw();
+}
+
+// ============ TABS ============
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.getElementById('transcriptPanel').style.display = tab === 'transcript' ? '' : 'none';
+  document.getElementById('summaryPanel').style.display = tab === 'summary' ? '' : 'none';
+}
+
+// ============ AI SUMMARY ============
+async function generateSummary() {
+  localStorage.setItem('meetscribe_apikey', document.getElementById('apiKey').value);
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey) { showToast('⚠️ กรุณาใส่ API Key ก่อนนะคะ~'); return; }
+  if (!state.transcript.length) { showToast('⚠️ ยังไม่มีข้อความค่ะ'); return; }
+  const btn = document.getElementById('summaryBtn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ น้องกำลังสรุปให้ค่ะ<span class="loading-dots"></span>';
+
+  const fullText = state.transcript.map(e =>
+    `[${e.time}] ${state.speakers[e.speakerIdx]?.name||'?'}: ${e.text}`
+  ).join('\n');
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514', max_tokens: 4000,
+        messages: [{ role: 'user', content: `สรุปการประชุมต่อไปนี้เป็นภาษาไทย ตอบเป็น JSON:
+{"overview":"...","keyPoints":["..."],"decisions":["..."],"actionItems":["..."],"participants":["..."]}
+
+บันทึก:\n${fullText}` }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const jsonMatch = data.content[0].text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) { state.summary = JSON.parse(jsonMatch[0]); renderSummary(); }
+    else document.getElementById('summaryContent').innerHTML = `<div class="summary-card"><div class="summary-content">${data.content[0].text.replace(/\n/g,'<br>')}</div></div>`;
+  } catch (err) { showToast('❌ ' + err.message); }
+  btn.disabled = false;
+  btn.innerHTML = '✨ สร้างสรุปการประชุมด้วย AI ✧';
+}
+function renderSummary() {
+  const s = state.summary; if (!s) return;
+  document.getElementById('summaryContent').innerHTML = `
+    <div class="summary-card"><h3>📋 ภาพรวม</h3><div class="summary-content">${s.overview||'-'}</div></div>
+    <div class="summary-card"><h3>💡 ประเด็นสำคัญ</h3><div class="summary-content"><ul>${(s.keyPoints||[]).map(p=>`<li>${p}</li>`).join('')}</ul></div></div>
+    <div class="summary-card"><h3>✅ มติ/ข้อตกลง</h3><div class="summary-content"><ul>${(s.decisions||[]).map(d=>`<li>${d}</li>`).join('')}</ul></div></div>
+    <div class="summary-card"><h3>🎯 Action Items</h3><div class="summary-content"><ul>${(s.actionItems||[]).map(a=>`<li>${a}</li>`).join('')}</ul></div></div>
+    <div class="summary-card"><h3>👥 ผู้เข้าร่วม</h3><div class="summary-content">${(s.participants||[]).join(', ')}</div></div>`;
+}
+
+// ============ WORD EXPORT ============
+function exportWord(type) {
+  if (!state.transcript.length && type === 'full') { showToast('⚠️ ยังไม่มีข้อความค่ะ'); return; }
+  if (!state.summary && type === 'summary') { showToast('⚠️ สร้างสรุปก่อนนะคะ~'); return; }
+  const now = new Date();
+  const d = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()+543}`;
+  let body = '';
+  if (type === 'full') {
+    body = `<h1 style="color:#d63384;border-bottom:3px solid #ff6b9d;padding-bottom:10px;">📝 บันทึกการประชุม (ฉบับเต็ม)</h1>
+      <p style="color:#888;">วันที่ ${d} | ระยะเวลา ${document.getElementById('timer').textContent}</p>
+      <p style="color:#888;">ผู้เข้าร่วม: ${state.speakers.map(s=>s.name).join(', ')}</p><hr>
+      <table style="width:100%;border-collapse:collapse">
+        <tr style="background:#fff0f5"><th style="border:1px solid #ffc8dd;padding:8px;width:60px">เวลา</th>
+        <th style="border:1px solid #ffc8dd;padding:8px;width:100px">ผู้พูด</th>
+        <th style="border:1px solid #ffc8dd;padding:8px">ข้อความ</th></tr>
+        ${state.transcript.map(e=>`<tr><td style="border:1px solid #ffc8dd;padding:8px;font-family:monospace;color:#888">${e.time}</td>
+        <td style="border:1px solid #ffc8dd;padding:8px;font-weight:bold;color:#d63384">${state.speakers[e.speakerIdx]?.name||''}</td>
+        <td style="border:1px solid #ffc8dd;padding:8px">${e.text}</td></tr>`).join('')}</table>`;
+  } else {
+    const s = state.summary;
+    body = `<h1 style="color:#7b2d8e;border-bottom:3px solid #b388ff;padding-bottom:10px;">✨ สรุปการประชุม</h1>
+      <p style="color:#888;">วันที่ ${d}</p><hr>
+      <h2>📋 ภาพรวม</h2><p>${s.overview||'-'}</p>
+      <h2>💡 ประเด็นสำคัญ</h2><ul>${(s.keyPoints||[]).map(p=>`<li>${p}</li>`).join('')}</ul>
+      <h2>✅ มติ</h2><ul>${(s.decisions||[]).map(x=>`<li>${x}</li>`).join('')}</ul>
+      <h2>🎯 Action Items</h2><ul>${(s.actionItems||[]).map(x=>`<li>${x}</li>`).join('')}</ul>
+      <h2>👥 ผู้เข้าร่วม</h2><p>${(s.participants||[]).join(', ')}</p>`;
+  }
+  const doc = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+    <head><meta charset="utf-8"><style>body{font-family:'TH Sarabun New',Tahoma,sans-serif;font-size:16pt;line-height:1.6;margin:40px}h1{font-size:22pt}h2{font-size:18pt;margin-top:16px;color:#d63384}</style></head><body>${body}</body></html>`;
+  const blob = new Blob([doc], { type: 'application/msword' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = type === 'full' ? `บันทึกประชุม_${d}.doc` : `สรุปประชุม_${d}.doc`;
+  a.click(); URL.revokeObjectURL(a.href);
+  showToast('✅ ดาวน์โหลดสำเร็จค่ะ~ ♡');
+}
+
+// ============ CONFETTI ============
+function launchConfetti() {
+  const c = document.createElement('div'); c.className = 'confetti-container';
+  const colors = ['#ff6b9d','#b388ff','#64b5f6','#66d9a0','#ffb347','#ff6b6b','#ffc8dd'];
+  for (let i = 0; i < 60; i++) {
+    const p = document.createElement('div'); p.className = 'confetti';
+    p.style.left = Math.random()*100 + '%';
+    p.style.background = colors[Math.floor(Math.random()*colors.length)];
+    p.style.animationDelay = Math.random()*0.8 + 's';
+    p.style.animationDuration = 2 + Math.random()*2 + 's';
+    p.style.width = 4 + Math.random()*8 + 'px';
+    p.style.height = 4 + Math.random()*8 + 'px';
+    p.style.borderRadius = Math.random()>.5 ? '50%' : '2px';
+    c.appendChild(p);
+  }
+  document.body.appendChild(c);
+  setTimeout(() => c.remove(), 4000);
+}
+
+// ============ UTILS ============
+function setStatus(cls, txt) {
+  document.getElementById('statusDot').className = 'status-dot' + (cls ? ' ' + cls : '');
+  document.getElementById('statusText').textContent = txt;
+}
+function showToast(msg) {
+  const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg;
+  document.body.appendChild(el); setTimeout(() => el.remove(), 3000);
+}
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key >= '1' && e.key <= '6') { const i = parseInt(e.key)-1; if (i < state.speakers.length) setActiveSpeaker(i); }
+  if (e.code === 'Space' && e.ctrlKey) { e.preventDefault(); toggleRecording(); }
+});
+
+init();
+</script>
+</body>
+</html>
