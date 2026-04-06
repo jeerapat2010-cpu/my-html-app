@@ -327,8 +327,8 @@ const state = {
   speakers: [], activeSpeaker: 0,
   transcript: [], interimText: '',
   summary: null,
-  mediaRecorder: null, audioChunks: [],
-  recognition: null, audioCtx: null, analyser: null, animFrame: null,
+  mediaRecorder: null, audioChunks: [], stream: null,
+  recognition: null, recognitionId: 0, audioCtx: null, analyser: null, animFrame: null,
 };
 
 const SPEAKER_COLORS = ['--speaker1','--speaker2','--speaker3','--speaker4','--speaker5','--speaker6'];
@@ -397,7 +397,12 @@ async function toggleRecording() {
 
 async function startRecording() {
   try {
+    // Cleanup any previous session
+    cleanupRecording();
+
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    state.stream = stream;
+
     state.mediaRecorder = new MediaRecorder(stream);
     state.audioChunks = [];
     state.mediaRecorder.ondataavailable = e => { if (e.data.size > 0) state.audioChunks.push(e.data); };
@@ -421,11 +426,21 @@ async function startRecording() {
 }
 
 function startSpeechRecognition() {
+  // Stop old recognition cleanly
+  if (state.recognition) {
+    const old = state.recognition;
+    state.recognition = null;
+    try { old.onend = null; old.stop(); } catch(e) {}
+  }
+
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { showToast('⚠️ เบราว์เซอร์ไม่รองรับ Speech Recognition ค่ะ'); return; }
+
+  const myId = ++state.recognitionId;
   const rec = new SR();
   rec.lang = 'th-TH'; rec.continuous = true; rec.interimResults = true;
   rec.onresult = (ev) => {
+    if (state.recognitionId !== myId) return; // stale instance
     let interim = '', final = '';
     for (let i = ev.resultIndex; i < ev.results.length; i++) {
       const t = ev.results[i][0].transcript;
@@ -439,33 +454,85 @@ function startSpeechRecognition() {
     } else { state.interimText = interim; }
     renderTranscript(); updateWordCount();
   };
-  rec.onerror = () => {};
-  rec.onend = () => { if (state.recording && !state.paused) try { rec.start(); } catch(e) {} };
-  rec.start();
+  rec.onerror = (e) => {
+    if (e.error === 'not-allowed') showToast('❌ ไมโครโฟนถูกบล็อกค่ะ');
+  };
+  rec.onend = () => {
+    if (state.recognitionId === myId && state.recording && !state.paused) {
+      try { rec.start(); } catch(e) {}
+    }
+  };
+  try { rec.start(); } catch(e) { showToast('⚠️ ไม่สามารถเริ่ม Speech Recognition ค่ะ'); }
   state.recognition = rec;
 }
 
 function pauseRecording() {
   state.paused = true;
-  if (state.recognition) try { state.recognition.stop(); } catch(e) {}
-  if (state.mediaRecorder?.state === 'recording') state.mediaRecorder.pause();
+  // Kill recognition cleanly
+  if (state.recognition) {
+    const old = state.recognition;
+    state.recognition = null;
+    state.recognitionId++;
+    try { old.onend = null; old.stop(); } catch(e) {}
+  }
+  if (state.mediaRecorder?.state === 'recording') {
+    try { state.mediaRecorder.pause(); } catch(e) {}
+  }
+  state.interimText = '';
+  renderTranscript();
   updateUI(); updateMascot(); setStatus('', 'หยุดชั่วคราว 💤');
 }
+
 function resumeRecording() {
   state.paused = false;
   state.startTime = Date.now() - state.elapsed;
+  if (state.mediaRecorder?.state === 'paused') {
+    try { state.mediaRecorder.resume(); } catch(e) {}
+  }
   startSpeechRecognition();
-  if (state.mediaRecorder?.state === 'paused') state.mediaRecorder.resume();
   updateUI(); updateMascot(); setStatus('live', 'กำลังบันทึก~ ♪');
+  updateTimer();
 }
+
 function stopRecording() {
-  state.recording = false; state.paused = false;
-  if (state.recognition) try { state.recognition.stop(); } catch(e) {}
-  if (state.mediaRecorder?.state !== 'inactive') state.mediaRecorder.stop();
-  if (state.animFrame) cancelAnimationFrame(state.animFrame);
-  if (state.audioCtx) state.audioCtx.close();
+  state.recording = false;
+  state.paused = false;
+  state.interimText = '';
+  cleanupRecording();
+  renderTranscript();
   updateUI(); updateMascot(); setStatus('', 'บันทึกเสร็จแล้ว ✧');
   launchConfetti();
+}
+
+function cleanupRecording() {
+  // Stop recognition
+  if (state.recognition) {
+    const old = state.recognition;
+    state.recognition = null;
+    state.recognitionId++;
+    try { old.onend = null; old.stop(); } catch(e) {}
+  }
+  // Stop media recorder
+  if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
+    try { state.mediaRecorder.stop(); } catch(e) {}
+  }
+  // Stop all mic tracks (turns off red indicator)
+  if (state.stream) {
+    state.stream.getTracks().forEach(t => t.stop());
+    state.stream = null;
+  }
+  // Stop waveform animation
+  if (state.animFrame) {
+    cancelAnimationFrame(state.animFrame);
+    state.animFrame = null;
+  }
+  // Close audio context
+  if (state.audioCtx) {
+    try { state.audioCtx.close(); } catch(e) {}
+    state.audioCtx = null;
+  }
+  state.analyser = null;
+  state.mediaRecorder = null;
 }
 
 // ============ UI ============
