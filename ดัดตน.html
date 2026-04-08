@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ฤษีดัดตนถูกท่า v2.0</title>
+    
+    <!-- ฟอนต์ภาษาไทย -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- MediaPipe Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background: radial-gradient(circle at center, #064e3b 0%, #022c22 100%);
+            color: #ecfdf5;
+            min-height: 100vh;
+        }
+
+        .thai-gold-text {
+            background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0px 2px 10px rgba(251, 191, 36, 0.3);
+        }
+
+        .thai-gold-border {
+            border: 2px solid #d4af37;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+        }
+
+        @keyframes sparkle {
+            0% { box-shadow: 0 0 5px #fbbf24, 0 0 10px #fbbf24; }
+            50% { box-shadow: 0 0 20px #fef08a, 0 0 30px #fef08a; }
+            100% { box-shadow: 0 0 5px #fbbf24, 0 0 10px #fbbf24; }
+        }
+        
+        .sparkle-effect { animation: sparkle 2s infinite alternate; }
+
+        .btn-interactive {
+            transition: all 0.3s ease;
+            background: linear-gradient(180deg, #166534 0%, #14532d 100%);
+        }
+        .btn-interactive:hover {
+            transform: translateY(-3px) scale(1.05);
+            background: linear-gradient(180deg, #d4af37 0%, #b48e2d 100%);
+            color: #022c22;
+        }
+
+        .input_video { display: none; }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 1rem;
+        }
+
+        /* Progress Bar สำหรับนับเวลาค้างท่า */
+        #hold-progress-container { display: none; }
+        #hold-progress-bar { width: 0%; transition: width 0.1s linear; }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+
+    <!-- เสียงแจ้งเตือน -->
+    <audio id="click-sound" src="https://actions.google.com/sounds/v1/ui/button_click.ogg" preload="auto"></audio>
+    <audio id="success-sound" src="https://actions.google.com/sounds/v1/alarms/spaceship_alarm.ogg" preload="auto"></audio>
+
+    <header class="text-center py-8 relative">
+        <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20 pointer-events-none"></div>
+        <h1 class="text-5xl md:text-6xl font-bold thai-gold-text mb-2 drop-shadow-lg">ฤษีดัดตนถูกท่า</h1>
+        <p class="text-yellow-400 font-semibold tracking-wider">กลุ่มงานการแพทย์แผนไทย | Version 2.0.0</p>
+        <p class="text-sm text-green-300 mt-2">โปรแกรมประเมินท่าทางต่อเนื่อง (AI Sequence)</p>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 pb-12">
+        
+        <nav class="flex flex-wrap justify-center gap-4 mb-8">
+            <button onclick="switchTab('camera-tab')" class="btn-interactive thai-gold-border px-6 py-3 rounded-full font-bold text-yellow-400 shadow-lg">
+                📷 1. ประเมินท่าทาง (AI)
+            </button>
+            <button onclick="switchTab('reference-tab')" class="btn-interactive thai-gold-border px-6 py-3 rounded-full font-bold text-yellow-400 shadow-lg">
+                📚 2. อ้างอิงทฤษฎี
+            </button>
+        </nav>
+
+        <!-- ================= TAB 1: AI Camera Assessment ================= -->
+        <section id="camera-tab" class="tab-content block">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <!-- กล้องและ AI -->
+                <div class="glass-panel p-4 flex flex-col items-center">
+                    <h2 id="pose-title" class="text-2xl font-bold text-yellow-400 mb-4 sparkle-effect px-4 py-2 rounded-lg border border-yellow-500 text-center w-full">
+                        กำลังโหลดข้อมูลท่า...
+                    </h2>
+                    
+                    <div class="relative rounded-lg overflow-hidden border-4 border-green-500 bg-black w-full aspect-video flex justify-center items-center">
+                        <div id="loading-text" class="absolute text-yellow-400 animate-pulse font-bold text-xl z-10">กำลังเปิดกล้องและโหลด AI...</div>
+                        <video class="input_video" autoplay playsinline></video>
+                        <canvas class="output_canvas w-full h-full object-cover" width="640" height="480"></canvas>
+                        
+                        <!-- นับเวลาค้างท่าแบบ Overlay -->
+                        <div id="success-overlay" class="absolute inset-0 bg-green-500/80 hidden flex-col justify-center items-center z-20 backdrop-blur-sm">
+                            <span class="text-6xl mb-4">✨</span>
+                            <h2 class="text-4xl font-bold text-white shadow-lg">เยี่ยมมาก!</h2>
+                            <p class="text-xl text-yellow-200 mt-2 font-semibold">เตรียมตัวสู่ท่าถัดไป...</p>
+                        </div>
+                    </div>
+
+                    <!-- แถบแสดงสถานะ -->
+                    <div id="ai-feedback" class="mt-4 w-full p-4 rounded-lg bg-gray-900 border-2 border-yellow-500 text-center transition-colors duration-300">
+                        <h3 class="text-xl font-bold text-white">สถานะ: <span id="pose-status" class="text-yellow-400">กรุณายืนให้เห็นครึ่งตัวบน</span></h3>
+                        <p id="pose-instruction" class="text-green-300 mt-2 text-lg"></p>
+                        
+                        <!-- Progress Bar (แสดงเมื่อกำลังค้างท่า) -->
+                        <div id="hold-progress-container" class="mt-3 w-full bg-gray-700 rounded-full h-4 overflow-hidden border border-gray-600">
+                            <div id="hold-progress-bar" class="bg-gradient-to-r from-yellow-400 to-green-500 h-4"></div>
+                        </div>
+                    </div>
+
+                    <!-- ปุ่มควบคุม (ข้ามท่า) -->
+                    <div class="flex gap-4 mt-4 w-full justify-center">
+                        <button onclick="nextPose()" class="px-4 py-2 bg-yellow-600/80 hover:bg-yellow-500 text-white rounded-lg text-sm border border-yellow-400 transition">
+                            ⏭️ ข้ามไปท่าถัดไป
+                        </button>
+                        <button onclick="resetPoses()" class="px-4 py-2 bg-gray-700/80 hover:bg-gray-600 text-white rounded-lg text-sm border border-gray-500 transition">
+                            🔄 เริ่มใหม่ตั้งแต่ท่าแรก
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ทฤษฎีการแพทย์แผนไทย (เปลี่ยนอัตโนมัติ) -->
+                <div class="glass-panel p-6 h-[700px] overflow-y-auto custom-scrollbar">
+                    <h2 class="text-2xl font-bold thai-gold-text mb-4 border-b border-yellow-600 pb-2">📋 มุมมองการแพทย์แผนไทย (เชิงลึก)</h2>
+                    
+                    <div class="space-y-6 text-green-100 leading-relaxed">
+                        <div>
+                            <h3 id="theory-name" class="text-xl font-semibold text-yellow-400 mb-2">ชื่อท่า</h3>
+                            <p id="theory-desc">กำลังโหลดข้อมูล...</p>
+                        </div>
+                        
+                        <div class="bg-green-900/50 p-4 rounded-lg border-l-4 border-yellow-500">
+                            <h3 class="text-lg font-semibold text-yellow-300 mb-1">⚙️ กลไกการบำบัด (Therapeutic Mechanism)</h3>
+                            <p id="theory-mech">กำลังโหลดข้อมูลกลไก...</p>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-semibold text-yellow-400 mb-2">👈 แนะนำการกดจุดนวด (Acupressure)</h3>
+                            <div id="theory-acu" class="bg-black/30 p-4 rounded text-sm text-green-200">
+                                กำลังโหลดจุดกดนวด...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 2: References ================= -->
+        <section id="reference-tab" class="tab-content hidden glass-panel p-8 text-center">
+            <h2 class="text-3xl font-bold thai-gold-text mb-6">แหล่งอ้างอิงและบรรณานุกรม</h2>
+            <div class="max-w-2xl mx-auto text-left space-y-4 bg-green-900/30 p-6 rounded-lg border border-green-700">
+                <p class="text-green-100">การพัฒนาแอปพลิเคชันนี้อ้างอิงองค์ความรู้จาก:</p>
+                <ul class="list-disc ml-6 text-yellow-200 space-y-2">
+                    <li>ตำราเวชศาสตร์ฉบับหลวง รัชกาลที่ ๕</li>
+                    <li>สถาบันการแพทย์แผนไทย กรมการแพทย์แผนไทยและการแพทย์ทางเลือก กระทรวงสาธารณสุข</li>
+                    <li>คู่มืออบรมหลักสูตรนวดไทยเพื่อสุขภาพ 150 ชั่วโมง</li>
+                </ul>
+                
+                <div class="mt-8 text-center">
+                    <a href="https://www.dtam.moph.go.th/" target="_blank" class="inline-block bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-6 rounded-full transition-colors">
+                        🌐 เว็บไซต์กรมการแพทย์แผนไทยฯ
+                    </a>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // --- 1. ข้อมูลท่าทางทั้งหมด (Pose Sequence) สำหรับออฟฟิศซินโดรม ---
+        const posesList = [
+            {
+                id: 1,
+                name: "ท่าที่ 1: ดัดตนแก้เกียจ (ชูมือขึ้นฟ้า)",
+                instruction: "ประสานมือที่หน้าอก หายใจเข้า แล้วดันมือชูขึ้นเหนือศีรษะให้สุดแขน",
+                theory_name: "🌿 ท่าดัดตนแก้ขัดแขน และแก้เกียจ",
+                theory_desc: "<strong>สาเหตุ:</strong> นั่งพิมพ์งานนาน ทำให้ 'ลมอุทธังคมาวาตา' (ลมพัดขึ้นเบื้องบน) คั่งค้าง เลือดไปเลี้ยงศีรษะไม่สะดวก เกิดอาการตาพร่า มึนงง ปวดศีรษะ",
+                theory_mech: "การประสานมือและยืดแขนขึ้นจนสุด เป็นการ <strong>'เปิดประตูลม'</strong> เมื่อกั้นลมหายใจ เลือดจะถูกกักชั่วคราว และเมื่อคลายท่า เลือดจะพุ่งทะลัก (Rebound Phenomenon) กวาดล้างของเสียบริเวณบ่าไหล่",
+                theory_acu: "1. <strong>จุดสัญญาณ 4, 5 หัวไหล่:</strong> กดคลายกล้ามเนื้อบ่า (Trapezius)<br>2. <strong>จุดจอมประสาท:</strong> กลางกระหม่อม เพื่อคลายลมบนศีรษะ",
+                checkCondition: (landmarks) => {
+                    const lWrist = landmarks[15], rWrist = landmarks[16], nose = landmarks[0];
+                    if (!lWrist || !rWrist || !nose) return false;
+                    return (lWrist.y < nose.y && rWrist.y < nose.y && lWrist.visibility > 0.5 && rWrist.visibility > 0.5);
+                }
+            },
+            {
+                id: 2,
+                name: "ท่าที่ 2: บริหารบ่าและข้อไหล่ (นิ้วแตะไหล่)",
+                instruction: "ลดแขนลง เอานิ้วมือทั้งสองข้างแตะที่หัวไหล่ของตนเอง กางข้อศอกออกไปด้านข้าง",
+                theory_name: "🌿 ท่าบริหารข้อไหล่ แก้ไหล่ติด",
+                theory_desc: "<strong>สาเหตุ:</strong> การเกร็งแขนจับเมาส์ทำงานนานๆ ทำให้ธาตุลมติดขัดบริเวณข้อต่อ (พังผืดเกาะ) ทำให้ปวดร้าวลงแขน",
+                theory_mech: "การใช้นิ้วแตะไหล่และยกศอกขึ้น ยืดกล้ามเนื้อ Deltoid ช่วยให้ข้อต่อหัวไหล่ (Shoulder joint) มีน้ำหล่อเลี้ยง ป้องกันพังผืดเกาะยึด",
+                theory_acu: "1. <strong>จุดใต้ไหปลาร้า:</strong> คลึงเบาๆ เพื่อเปิดทางเดินหายใจ<br>2. <strong>จุดรอบข้อไหล่:</strong> ช่วยลดอาการตึงเกร็ง",
+                checkCondition: (landmarks) => {
+                    const lWrist = landmarks[15], rWrist = landmarks[16], lShoulder = landmarks[11], rShoulder = landmarks[12];
+                    if (!lWrist || !rWrist || !lShoulder || !rShoulder) return false;
+                    const lDistX = Math.abs(lWrist.x - lShoulder.x), lDistY = Math.abs(lWrist.y - lShoulder.y);
+                    const rDistX = Math.abs(rWrist.x - rShoulder.x), rDistY = Math.abs(rWrist.y - rShoulder.y);
+                    return (lDistX < 0.15 && lDistY < 0.25 && rDistX < 0.15 && rDistY < 0.25);
+                }
+            },
+            {
+                id: 3,
+                name: "ท่าที่ 3: กางแขนเปิดทรวงอก (แก้ไหล่ห่อ)",
+                instruction: "กางแขนทั้งสองข้างออกด้านข้างให้ตึง ระดับเดียวกับหัวไหล่ แอ่นอกรับลม",
+                theory_name: "🌿 ท่าดัดตนเปิดอก แก้หลังค่อมไหล่ห่อ",
+                theory_desc: "<strong>สาเหตุ:</strong> พฤติกรรมก้มหน้าจ้องจอ ทำให้กล้ามเนื้อหน้าอก (Pectoralis) หดเกร็ง หลังค่อม ปอดขยายตัวได้ไม่เต็มที่",
+                theory_mech: "การกางแขนตึงไปด้านข้าง ช่วยยืด <strong>'เส้นประธานสุมนา'</strong> ขยายทรวงอกให้ปอดรับออกซิเจนเต็มที่ แก้ลมจุกเสียด และปรับโครงสร้างกระดูกสันหลัง",
+                theory_acu: "1. <strong>จุดแนวกระดูกสันหลังส่วนอก:</strong> คลายกล้ามเนื้อ Rhomboid<br>2. <strong>นวดคลึงร่องอก:</strong> คลายพังผืดกล้ามเนื้อหน้าอก",
+                checkCondition: (landmarks) => {
+                    const lWrist = landmarks[15], rWrist = landmarks[16], lShoulder = landmarks[11], rShoulder = landmarks[12];
+                    if (!lWrist || !rWrist || !lShoulder || !rShoulder) return false;
+                    const lAlignedY = Math.abs(lWrist.y - lShoulder.y) < 0.25;
+                    const rAlignedY = Math.abs(rWrist.y - rShoulder.y) < 0.25;
+                    const lSpreadX = Math.abs(lWrist.x - lShoulder.x) > 0.15;
+                    const rSpreadX = Math.abs(rWrist.x - rShoulder.x) > 0.15;
+                    return (lAlignedY && rAlignedY && lSpreadX && rSpreadX);
+                }
+            },
+            {
+                id: 4,
+                name: "ท่าที่ 4: ประสานมือท้ายทอย (แก้ปวดคอ)",
+                instruction: "เอามือทั้งสองประสานกันไว้ที่ท้ายทอย กางศอกออก แล้วออกแรงดันศีรษะสู้กับมือ",
+                theory_name: "🌿 ท่าดัดตนแก้ปวดคอ และตาพร่า",
+                theory_desc: "<strong>สาเหตุ:</strong> การยื่นหน้ามองจอ (Forward Head Posture) ทำให้กล้ามเนื้อคอด้านหลังรับน้ำหนักศีรษะมากเกินไป จนเกิดอาการปวดตึงร้าวขึ้นขมับ",
+                theory_mech: "การประสานท้ายทอยกางศอก ช่วยยืดกล้ามเนื้อ Suboccipital เพิ่มเลือดไปเลี้ยงสมองและดวงตา แก้อาการตาแห้งและปวดหัวไมเกรนเทียม",
+                theory_acu: "1. <strong>จุดฐานกะโหลกศีรษะ (ร่องบุ๋มท้ายทอย):</strong> ใช้นิ้วโป้งกดคลึงเพื่อเปิดเลือดขึ้นสมอง",
+                checkCondition: (landmarks) => {
+                    const lWrist = landmarks[15], rWrist = landmarks[16], nose = landmarks[0], lElbow = landmarks[13], rElbow = landmarks[14];
+                    if (!lWrist || !rWrist || !nose || !lElbow || !rElbow) return false;
+                    // ข้อมืออยู่ระดับจมูก/หู และ ศอกกางออกกว้าง
+                    const handsAtHead = (lWrist.y < nose.y + 0.15 && rWrist.y < nose.y + 0.15) && (lWrist.y > nose.y - 0.2);
+                    const elbowsSpread = Math.abs(lElbow.x - rElbow.x) > 0.3;
+                    return handsAtHead && elbowsSpread;
+                }
+            },
+            {
+                id: 5,
+                name: "ท่าที่ 5: ยืดกล้ามเนื้อบ่า (เอียงคอด้วยมือ)",
+                instruction: "ยกแขนขวาข้ามศีรษะไปจับหูซ้าย แล้วค่อยๆ ดึงเอียงศีรษะไปทางขวา",
+                theory_name: "🌿 ท่าดัดตนแก้ปวดบ่า (Tension)",
+                theory_desc: "<strong>สาเหตุ:</strong> ความเครียดจากการทำงาน ทำให้กล้ามเนื้อบ่า (Upper Trapezius) หดเกร็งเป็นก้อน (Trigger Point)",
+                theory_mech: "การใช้มือช่วยดึงเอียงคอ เป็นการทำ Passive Stretch ช่วยคลายพังผืดที่เกาะตามแนว 'เส้นอิทา และ ปิงคลา' ลดอาการคอตกหมอน",
+                theory_acu: "1. <strong>จุดโค้งคอ (ร่องสายนกเขา):</strong> กดคลายแนวกล้ามเนื้อด้านข้างคอ",
+                checkCondition: (landmarks) => {
+                    const rWrist = landmarks[16], lEar = landmarks[7], nose = landmarks[0], rShoulder = landmarks[12];
+                    if (!rWrist || !lEar || !nose || !rShoulder) return false;
+                    // ข้อมือขวา(16) อยู่ใกล้ หูซ้าย(7)
+                    const touchingEar = Math.abs(rWrist.x - lEar.x) < 0.15 && Math.abs(rWrist.y - lEar.y) < 0.15;
+                    // ศีรษะเอียง (จมูกเบี้ยวไปทางไหล่ขวา)
+                    const headTilted = Math.abs(nose.x - rShoulder.x) < Math.abs(nose.x - landmarks[11].x);
+                    return touchingEar && headTilted;
+                }
+            },
+            {
+                id: 6,
+                name: "ท่าที่ 6: เอียงลำตัว (แก้ปวดเอว/สีข้าง)",
+                instruction: "ประสานมือชูขึ้นเหนือศีรษะให้ตึง แล้วเอนตัวเอียงไปทางด้านข้างจนรู้สึกตึงสีข้าง",
+                theory_name: "🌿 ท่าดัดตนแก้ปวดสีข้าง และหลังล่าง",
+                theory_desc: "<strong>สาเหตุ:</strong> นั่งเก้าอี้ผิดท่า ทิ้งน้ำหนักลงก้นกบข้างเดียว ทำให้กล้ามเนื้อเอว (Quadratus Lumborum) หดสั้น ปวดร้าวลงสะโพก",
+                theory_mech: "การเอียงตัวช่วยยืดกล้ามเนื้อสีข้างและเอว กระตุ้นลมใน 'เส้นกาลทารี' (เส้นที่ควบคุมการเคลื่อนไหวแขนขา) ให้เดินสะดวก ช่วยคลายหลังล่าง",
+                theory_acu: "1. <strong>จุดเหนือขอบเชิงกรานด้านหลัง:</strong> ใช้กำปั้นนวดคลึงเบาๆ เพื่อคลายกล้ามเนื้อเอว",
+                checkCondition: (landmarks) => {
+                    const lWrist = landmarks[15], rWrist = landmarks[16], nose = landmarks[0];
+                    if (!lWrist || !rWrist || !nose) return false;
+                    // มือต้องชูขึ้น
+                    const handsUp = lWrist.y < nose.y && rWrist.y < nose.y;
+                    // มือต้องเบี่ยงไปทางใดทางหนึ่งชัดเจนเมื่อเทียบกับจมูก
+                    const centerHandsX = (lWrist.x + rWrist.x) / 2;
+                    const handsShifted = Math.abs(centerHandsX - nose.x) > 0.12;
+                    return handsUp && handsShifted;
+                }
+            }
+        ];
+
+        // --- 2. ตัวแปรควบคุม State ---
+        let currentPoseIndex = 0;
+        let isHolding = false;
+        let holdStartTime = 0;
+        const requiredHoldTime = 3000; // ค้างท่า 3 วินาที
+        let isTransitioning = false; // กำลังเปลี่ยนท่า ป้องกันการเช็คซ้ำ
+
+        // --- 3. อัปเดต UI หน้าจอ ---
+        function updateUIForCurrentPose() {
+            const pose = posesList[currentPoseIndex];
+            
+            // อัปเดต หัวข้อและคำสั่ง
+            document.getElementById('pose-title').innerText = pose.name;
+            document.getElementById('pose-instruction').innerText = pose.instruction;
+            
+            // อัปเดต ทฤษฎี
+            document.getElementById('theory-name').innerHTML = pose.theory_name;
+            document.getElementById('theory-desc').innerHTML = pose.theory_desc;
+            document.getElementById('theory-mech').innerHTML = pose.theory_mech;
+            document.getElementById('theory-acu').innerHTML = pose.theory_acu;
+            
+            // Reset Progress UI
+            document.getElementById('hold-progress-container').style.display = 'none';
+            document.getElementById('hold-progress-bar').style.width = '0%';
+            
+            const fbBox = document.getElementById('ai-feedback');
+            fbBox.className = "mt-4 w-full p-4 rounded-lg bg-gray-900 border-2 border-yellow-500 text-center transition-colors duration-300";
+            document.getElementById('pose-status').innerText = "พร้อมแล้วเริ่มทำท่าได้เลย";
+            document.getElementById('pose-status').className = "text-white";
+        }
+
+        function nextPose() {
+            if (currentPoseIndex < posesList.length - 1) {
+                currentPoseIndex++;
+                updateUIForCurrentPose();
+            } else {
+                // จบโปรแกรมทั้งหมด แสดงหน้าจอแสดงความยินดีแบบ Modal/Overlay (แทน alert)
+                const overlay = document.getElementById('success-overlay');
+                overlay.innerHTML = `
+                    <span class="text-7xl mb-4 animate-bounce">🏆</span>
+                    <h2 class="text-4xl md:text-5xl font-bold text-white shadow-lg text-center thai-gold-text">ยอดเยี่ยมมาก!</h2>
+                    <p class="text-lg md:text-xl text-green-200 mt-4 font-semibold text-center px-4 max-w-md">คุณบริหารร่างกายแก้ออฟฟิศซินโดรมครบทั้ง 6 ท่าแล้ว เลือดลมไหลเวียนดีเยี่ยม!</p>
+                    <button onclick="resetApp()" class="mt-8 px-8 py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 border-2 border-yellow-300 rounded-full text-green-900 font-bold transition-all shadow-[0_0_20px_rgba(212,175,55,0.6)] transform hover:scale-105">
+                        🔄 เริ่มทำใหม่อีกครั้ง
+                    </button>
+                `;
+                overlay.classList.remove('hidden');
+                overlay.classList.add('flex', 'bg-green-900/95'); // ทำให้พื้นหลังเข้มขึ้นตอนจบ
+            }
+        }
+
+        function resetApp() {
+            const overlay = document.getElementById('success-overlay');
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex', 'bg-green-900/95');
+            // รีเซ็ตเนื้อหา Overlay กลับไปเป็นแบบเดิมสำหรับใช้ระหว่างท่า
+            overlay.innerHTML = `
+                <span class="text-6xl mb-4">✨</span>
+                <h2 class="text-4xl font-bold text-white shadow-lg">เยี่ยมมาก!</h2>
+                <p class="text-xl text-yellow-200 mt-2 font-semibold">เตรียมตัวสู่ท่าถัดไป...</p>
+            `;
+            resetPoses();
+        }
+
+        function resetPoses() {
+            currentPoseIndex = 0;
+            updateUIForCurrentPose();
+        }
+
+        // --- 4. ระบบควบคุม UI พื้นฐาน ---
+        function switchTab(tabId) {
+            document.getElementById('click-sound').play().catch(e=>{});
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+                tab.classList.remove('block');
+            });
+            const selectedTab = document.getElementById(tabId);
+            selectedTab.classList.remove('hidden');
+            selectedTab.classList.add('block');
+        }
+
+        // โหลด UI เริ่มต้น
+        updateUIForCurrentPose();
+
+        // --- 5. ระบบ AI (MediaPipe Pose) ---
+        const videoElement = document.getElementsByClassName('input_video')[0];
+        const canvasElement = document.getElementsByClassName('output_canvas')[0];
+        const canvasCtx = canvasElement.getContext('2d');
+        const loadingText = document.getElementById('loading-text');
+
+        function onResults(results) {
+            if(loadingText) loadingText.style.display = 'none';
+
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+            if (results.poseLandmarks) {
+                // วาดเส้น AI
+                drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: '#d4af37', lineWidth: 4});
+                drawLandmarks(canvasCtx, results.poseLandmarks, {color: '#064e3b', lineWidth: 2, radius: 4});
+
+                // ตรวจสอบท่าทาง
+                if (!isTransitioning) {
+                    analyzePoseLogic(results.poseLandmarks);
+                }
+            } else {
+                if (!isTransitioning) {
+                    document.getElementById('pose-status').innerText = "ไม่พบผู้ใช้งานในกล้อง";
+                    document.getElementById('pose-status').className = "text-red-400";
+                    isHolding = false;
+                    document.getElementById('hold-progress-container').style.display = 'none';
+                }
+            }
+            canvasCtx.restore();
+        }
+
+        function analyzePoseLogic(landmarks) {
+            const currentPose = posesList[currentPoseIndex];
+            const isPoseCorrect = currentPose.checkCondition(landmarks);
+            const statusEl = document.getElementById('pose-status');
+            const feedbackBox = document.getElementById('ai-feedback');
+            const progressContainer = document.getElementById('hold-progress-container');
+            const progressBar = document.getElementById('hold-progress-bar');
+
+            if (isPoseCorrect) {
+                if (!isHolding) {
+                    // เพิ่งเริ่มทำท่าถูก
+                    isHolding = true;
+                    holdStartTime = Date.now();
+                    statusEl.innerText = "ท่าทางถูกต้อง! ค้างไว้และกั้นลมหายใจ...";
+                    statusEl.className = "text-yellow-300";
+                    feedbackBox.classList.add('bg-yellow-900');
+                    progressContainer.style.display = 'block';
+                } else {
+                    // กำลังค้างท่า
+                    const elapsed = Date.now() - holdStartTime;
+                    const progress = Math.min((elapsed / requiredHoldTime) * 100, 100);
+                    progressBar.style.width = progress + '%';
+
+                    if (elapsed >= requiredHoldTime) {
+                        // สำเร็จ!
+                        handlePoseSuccess();
+                    }
+                }
+            } else {
+                // ทำผิด หรือ หลุดจากท่า
+                if (isHolding) {
+                    isHolding = false;
+                    statusEl.innerText = "หลุดจากท่า พยายามยืดให้ถึงจุดหมาย";
+                    statusEl.className = "text-red-400";
+                    feedbackBox.classList.remove('bg-yellow-900');
+                    progressContainer.style.display = 'none';
+                    progressBar.style.width = '0%';
+                }
+            }
+        }
+
+        function handlePoseSuccess() {
+            isTransitioning = true;
+            isHolding = false;
+            
+            // เล่นเสียงสำเร็จ
+            document.getElementById('success-sound').play().catch(e=>{});
+            
+            // แสดง Overlay ฉลองความสำเร็จ
+            const overlay = document.getElementById('success-overlay');
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                overlay.classList.remove('flex');
+                isTransitioning = false;
+                nextPose();
+            }, 3000); // โชว์ฉลอง 3 วินาที แล้วไปท่าต่อไป
+        }
+
+        // ตั้งค่า AI
+        const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
+        pose.setOptions({
+            modelComplexity: 1,
+            smoothLandmarks: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+        pose.onResults(onResults);
+
+        // เปิดกล้อง
+        const camera = new Camera(videoElement, {
+            onFrame: async () => { await pose.send({image: videoElement}); },
+            width: 640,
+            height: 480
+        });
+        camera.start();
+
+    </script>
+</body>
+</html>
