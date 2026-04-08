@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>อโรมาสมุนไพรเพื่อสุขภาพ ตามธาตุเจ้าเรือน</title>
+    <!-- โหลด Font จาก Google -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- โหลด Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- โหลด Chart.js สำหรับกราฟใยแมงมุม -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- โหลด html2canvas สำหรับเซฟรูปภาพ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- กำหนดค่าสีของ Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                    },
+                    colors: {
+                        'thai-green': '#065F46',
+                        'thai-light-green': '#D1FAE5',
+                        'thai-gold': '#D4AF37',
+                        'thai-gold-light': '#FDE68A',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #ECFDF5 0%, #ffffff 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .gold-border {
+            border: 2px solid #D4AF37;
+            box-shadow: 0 4px 6px -1px rgba(212, 175, 55, 0.4), 0 2px 4px -1px rgba(212, 175, 55, 0.2);
+        }
+
+        .btn-interactive {
+            transition: all 0.3s ease;
+        }
+        
+        .btn-interactive:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 10px 15px -3px rgba(6, 95, 70, 0.3);
+        }
+
+        .btn-interactive:active {
+            transform: translateY(1px) scale(0.98);
+        }
+
+        .sparkle {
+            position: absolute;
+            pointer-events: none;
+            background: radial-gradient(circle, #fff 10%, #D4AF37 40%, transparent 70%);
+            border-radius: 50%;
+            animation: sparkle-anim 1s linear forwards;
+            z-index: 50;
+        }
+
+        @keyframes sparkle-anim {
+            0% { transform: scale(0) translateY(0); opacity: 1; }
+            50% { transform: scale(1.5) translateY(-20px); opacity: 0.8; }
+            100% { transform: scale(0) translateY(-40px); opacity: 0; }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .tab-active {
+            background: linear-gradient(to right, #065F46, #047857);
+            color: white;
+            border-bottom: 4px solid #D4AF37;
+        }
+        .tab-inactive {
+            background: white;
+            color: #065F46;
+            border-bottom: 4px solid transparent;
+        }
+    </style>
+</head>
+<body class="text-gray-800 font-sans" onclick="initAudio()">
+
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-thai-green to-[#047857] text-white py-8 shadow-lg relative overflow-hidden">
+        <div class="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+        <div class="container mx-auto px-4 text-center relative z-10">
+            <h1 class="text-3xl md:text-4xl font-bold mb-2 text-thai-gold-light tracking-wide text-shadow-sm">อโรมาสมุนไพรเพื่อสุขภาพ ตามธาตุเจ้าเรือน</h1>
+            <p class="text-sm md:text-base opacity-90">ค้นหากลิ่นหอมที่ใช่ ปรับสมดุลอารมณ์ตามศาสตร์การแพทย์แผนไทย</p>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="container mx-auto px-4 mt-6">
+        <div class="flex flex-wrap justify-center rounded-t-lg overflow-hidden gold-border bg-white shadow-sm">
+            <button onclick="switchTab('quiz')" id="tab-quiz" class="flex-1 py-3 px-2 text-sm md:text-base font-semibold text-center transition-colors tab-active btn-interactive" onmouseenter="createSparkle(event)">
+                🌿 ประเมินธาตุเจ้าเรือน
+            </button>
+            <button onclick="switchTab('herbs')" id="tab-herbs" class="flex-1 py-3 px-2 text-sm md:text-base font-semibold text-center transition-colors tab-inactive btn-interactive" onmouseenter="createSparkle(event)">
+                ✨ สรรพคุณสมุนไพร
+            </button>
+            <button onclick="switchTab('ref')" id="tab-ref" class="flex-1 py-3 px-2 text-sm md:text-base font-semibold text-center transition-colors tab-inactive btn-interactive" onmouseenter="createSparkle(event)">
+                📚 อ้างอิง
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="container mx-auto px-4 py-6 mb-24" id="main-content">
+        <!-- Content will be injected here by JavaScript -->
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-thai-green text-white py-6 text-center fixed bottom-0 w-full shadow-[0_-4px_6px_rgba(0,0,0,0.1)] z-40">
+        <p class="text-sm">จัดทำโดย: <span class="text-thai-gold-light font-semibold">ภก.จีรภัทร พลายงาม</span></p>
+        <p class="text-xs mt-1 text-gray-200">กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สสจ.สมุทรปราการ</p>
+        <p class="text-xs mt-1 opacity-75">Version 1.1.0 | อโรมาสมุนไพรเพื่อสุขภาพ ตามธาตุเจ้าเรือน</p>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- ระบบเสียง (Audio) ---
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound() {
+            if (!audioCtx) return;
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.5);
+            
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.5);
+        }
+
+        // --- ระบบแอนิเมชัน (Sparkle) ---
+        function createSparkle(e) {
+            const sparkle = document.createElement('div');
+            sparkle.classList.add('sparkle');
+            const size = Math.random() * 10 + 5;
+            sparkle.style.width = `${size}px`;
+            sparkle.style.height = `${size}px`;
+            const x = e.clientX || e.pageX;
+            const y = e.clientY || e.pageY;
+            sparkle.style.left = `${x - size/2}px`;
+            sparkle.style.top = `${y - size/2}px`;
+            document.body.appendChild(sparkle);
+            setTimeout(() => { sparkle.remove(); }, 1000);
+        }
+
+        document.body.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'OPTION' && e.target.tagName !== 'INPUT') { 
+                createSparkle(e);
+            }
+        });
+
+        // --- ฐานข้อมูลแบบทดสอบ ---
+        const questions = [
+            {
+                q: "1. รูปร่างและโครงสร้างทางกายภาพของคุณเป็นอย่างไร?",
+                choices: [
+                    { text: "โครงร่างใหญ่ กระดูกใหญ่ กล้ามเนื้อแน่น น้ำหนักขึ้นง่าย ลดลงยาก", element: "earth" },
+                    { text: "รูปร่างสมส่วน มีน้ำมีนวล ผิวพรรณเต่งตึง ไม่ผอมไม่ก้วนจนเกินไป", element: "water" },
+                    { text: "ผอมบาง โครงร่างเล็ก กระดูกเล็ก ข้อต่อมักมีเสียงลั่นเมื่อขยับ", element: "wind" },
+                    { text: "กล้ามเนื้อชัดเจน ระบบเผาผลาญดีมาก มักไม่ค่อยอ้วน เหงื่อออกเยอะ", element: "fire" }
+                ]
+            },
+            {
+                q: "2. ลักษณะผิวพรรณของคุณส่วนใหญ่เป็นแบบใด?",
+                choices: [
+                    { text: "ผิวค่อนข้างหยาบ รูขุมขนกว้าง สีผิวเข้ม สิวอุดตันง่าย", element: "earth" },
+                    { text: "ผิวชุ่มชื้น เปล่งปลั่ง ดูมีน้ำหล่อเลี้ยงตลอดเวลา รูขุมขนละเอียด", element: "water" },
+                    { text: "ผิวค่อนข้างแห้ง หยาบกร้านง่าย โดยเฉพาะฤดูหนาว ริมฝีปากแห้งบ่อย", element: "wind" },
+                    { text: "ผิวอุ่น ร้อนง่าย มักมีเหงื่อซึมตามฝ่ามือฝ่าเท้า มีรอยแดงหรือผื่นง่าย", element: "fire" }
+                ]
+            },
+            {
+                q: "3. อารมณ์และลักษณะนิสัยที่โดดเด่นที่สุดของคุณ?",
+                choices: [
+                    { text: "หนักแน่น อดทน มั่นคง โกรธยาก แต่ถ้าโกรธจะหายยาก ชอบความจำเจ", element: "earth" },
+                    { text: "ใจเย็น สุขุม ประนีประนอม ปรับตัวเข้ากับสภาพแวดล้อมหรือคนอื่นได้ดี", element: "water" },
+                    { text: "คิดเร็ว ทำเร็ว เปลี่ยนแปลงง่าย บางครั้งวิตกกังวล ฟุ้งซ่าน ขี้ลืม", element: "wind" },
+                    { text: "กระตือรือร้น มุ่งมั่น ใจร้อน หงุดหงิดง่าย ทนความไม่สมบูรณ์แบบไม่ค่อยได้", element: "fire" }
+                ]
+            },
+            {
+                q: "4. รูปแบบการนอนหลับของคุณเป็นแบบไหน?",
+                choices: [
+                    { text: "หลับลึก หลับยาว ตื่นยาก ชอบนอนพักผ่อนเป็นเวลานาน", element: "earth" },
+                    { text: "หลับปกติ หลับง่าย ตื่นมาสดชื่นกระปรี้กระเปร่า", element: "water" },
+                    { text: "หลับยาก ตื่นบ่อย ฝันบ่อย รู้สึกเหมือนนอนไม่ค่อยหลับ", element: "wind" },
+                    { text: "ใช้เวลานอนไม่มากแต่เต็มอิ่ม แต่ถ้ารู้สึกเครียดจะนอนไม่หลับเลย", element: "fire" }
+                ]
+            },
+            {
+                q: "5. สภาพอากาศแบบใดที่คุณมักจะรู้สึกไม่สบายตัวมากที่สุด?",
+                choices: [
+                    { text: "อากาศชื้นแฉะ ฝนตกหนัก (ทำให้รู้สึกร่างกายหนัก หนืด)", element: "earth" },
+                    { text: "อากาศหนาวจัด เย็นจัด (ทำให้ไม่สบายตัว เป็นหวัดง่าย)", element: "water" },
+                    { text: "อากาศเย็นและแห้ง หรือมีลมพัดแรง (ทำให้ผิวแห้ง ปวดตามข้อ)", element: "wind" },
+                    { text: "อากาศร้อนจัด แดดแรง (ทำให้ปวดหัว หงุดหงิด อ่อนเพลีย)", element: "fire" }
+                ]
+            }
+        ];
+
+        // --- ฐานข้อมูลสมุนไพร 16 ชนิด ---
+        const herbsData = [
+            { element: "earth", name: "อบเชย (Cinnamon)", thElement: "ปฐวีธาตุ (ดิน)", active: "Cinnamaldehyde, Eugenol", props: "กระตุ้นระบบประสาทส่วนกลาง แก้อาการอ่อนเพลียเรื้อรัง กระตุ้นการไหลเวียนโลหิต ทำให้ร่างกายอบอุ่น บรรเทาความเครียดที่เกิดจากความเหนื่อยล้าทางกาย", prep: "หยดน้ำมันหอมระเหย 2-3 หยดในเตาอโรม่า หรือใช้ก้านอบเชยแท้ต้มกับน้ำร้อน สูดดมไอระเหยเช้า-เย็น", color: "text-amber-800", bgColor: "bg-amber-100", border: "border-amber-300" },
+            { element: "earth", name: "กานพลู (Clove)", thElement: "ปฐวีธาตุ (ดิน)", active: "Eugenol, Beta-caryophyllene", props: "มีฤทธิ์กระตุ้นจิตใจให้ตื่นตัว ฟื้นฟูพลังงาน ลดอาการง่วงซึม บรรเทาอาการวิงเวียนศีรษะ และมีฤทธิ์ต่อต้านแบคทีเรียในระบบทางเดินหายใจ", prep: "ใช้น้ำมันหอมระเหยกานพลูเจือจางสูดดม หรือนำดอกกานพลูแห้งบดหยาบใส่ห่อผ้าดมเป็นยาดม", color: "text-amber-800", bgColor: "bg-amber-100", border: "border-amber-300" },
+            { element: "earth", name: "ไพล (Plai)", thElement: "ปฐวีธาตุ (ดิน)", active: "Terpinen-4-ol, Sabinene", props: "ผ่อนคลายกล้ามเนื้อที่ตึงเครียด กลิ่นหอมอบอุ่นเฉพาะตัวช่วยลดความรู้สึกหนักอึ้งในศีรษะ แก้ปวดหัวจากความเครียดสะสม", prep: "นำเหง้าไพลสดหั่นแว่นต้มในน้ำร้อน สูดดมไอระเหย หรือใช้น้ำมันไพลนวดคลึงบริเวณขมับ", color: "text-amber-800", bgColor: "bg-amber-100", border: "border-amber-300" },
+            { element: "earth", name: "พริกไทยดำ (Black Pepper)", thElement: "ปฐวีธาตุ (ดิน)", active: "Piperine, Limonene", props: "ให้ความรู้สึกอบอุ่นล้ำลึก กระตุ้นความจำและการรับรู้ของสมอง ลดอาการซึมเศร้าแบบหมดไฟ (Burnout)", prep: "ใช้น้ำมันหอมระเหยผสมกับน้ำมันนวด หรือผสมกับกลิ่นกลุ่มซิตรัสเพื่อกระจายกลิ่นในห้องทำงาน", color: "text-amber-800", bgColor: "bg-amber-100", border: "border-amber-300" },
+            { element: "water", name: "มะกรูด (Kaffir Lime)", thElement: "อาโปธาตุ (น้ำ)", active: "Citronellal, Limonene", props: "กระตุ้นความสดใส คลายความกังวลและความเครียดสะสม แก้อาการวิงเวียน หน้ามืด ตาลาย ช่วยระบายความชื้นและลดความเหนอะหนะในความรู้สึก", prep: "ฝานผิวมะกรูดสดขยี้ดมโดยตรง หรือใช้น้ำมันหอมระเหยหยดใส่สำลีวางไว้ใกล้โต๊ะทำงาน", color: "text-blue-800", bgColor: "bg-blue-100", border: "border-blue-300" },
+            { element: "water", name: "ตะไคร้หอม (Citronella)", thElement: "อาโปธาตุ (น้ำ)", active: "Geraniol, Citronellol", props: "ช่วยให้จิตใจกระปรี้กระเปร่า ลดความรู้สึกซึมเศร้าหรือหดหู่ กระตุ้นพลังงานบวกในร่างกาย และช่วยปรับอากาศให้สะอาด", prep: "ทุบต้นตะไคร้หอมสดให้ช้ำ วางไว้ในห้องน้ำหรือห้องนอน หรือใช้ในเครื่องพ่นไอน้ำ", color: "text-blue-800", bgColor: "bg-blue-100", border: "border-blue-300" },
+            { element: "water", name: "ส้มโอ (Pomelo)", thElement: "อาโปธาตุ (น้ำ)", active: "D-limonene, Myrcene", props: "กลิ่นหอมอมเปรี้ยวช่วยกระตุ้นการหลั่งเอนดอร์ฟิน ลดอาการซึมเศร้า ปรับอารมณ์ให้เบิกบาน และช่วยลดอาการคลื่นไส้จากการแพ้ท้องหรือเมารถ", prep: "บีบผิวนอกของส้มโอสดให้ละอองน้ำมันหอมระเหยกระจายออกมาแล้วสูดดม", color: "text-blue-800", bgColor: "bg-blue-100", border: "border-blue-300" },
+            { element: "water", name: "ส้มเขียวหวาน (Tangerine)", thElement: "อาโปธาตุ (น้ำ)", active: "Limonene, Linalool", props: "ให้ความรู้สึกผ่อนคลายอย่างอ่อนโยน ช่วยให้นอนหลับสบาย ลดความกังวลในเด็กและผู้ใหญ่ ปรับสมดุลอารมณ์ที่แปรปรวน", prep: "อบเปลือกส้มให้แห้ง ทำเป็นบุหงารำไป (Potpourri) วางไว้หัวเตียง หรือใช้ Essential Oil", color: "text-blue-800", bgColor: "bg-blue-100", border: "border-blue-300" },
+            { element: "wind", name: "มะลิ (Jasmine)", thElement: "วาโยธาตุ (ลม)", active: "Benzyl acetate, Linalool", props: "บำรุงหัวใจให้ชุ่มชื่น ผ่อนคลายระบบประสาทส่วนกลางอย่างล้ำลึก ลดความวิตกกังวล ความกระวนกระวายใจ และช่วยแก้ปัญหาการนอนหลับยาก", prep: "นำดอกมะลิสดลอยในน้ำสะอาด วางไว้ในห้องนอน หรือใช้น้ำมันหอมระเหยแต้มจุดชีพจร", color: "text-teal-800", bgColor: "bg-teal-100", border: "border-teal-300" },
+            { element: "wind", name: "ไม้จันทน์หอม (Sandalwood)", thElement: "วาโยธาตุ (ลม)", active: "Alpha-santalol, Beta-santalol", props: "ดึงสติ ลดความฟุ้งซ่านของความคิด ช่วยนำจิตเข้าสู่สมาธิได้ลึกขึ้น คลายความตึงเครียดของกล้ามเนื้อที่เกิดจากอารมณ์", prep: "ใช้จุดเป็นธูปหอมระเหย เผาไม้จันทน์ชิ้นเล็ก หรือใช้น้ำมันหอมระเหยในเวลาที่ต้องการสมาธิ", color: "text-teal-800", bgColor: "bg-teal-100", border: "border-teal-300" },
+            { element: "wind", name: "พิมเสนต้น (Patchouli)", thElement: "วาโยธาตุ (ลม)", active: "Patchoulol, Alpha-guaiene", props: "กลิ่นหอมเย็นลึกติดดิน (Earthy) ช่วยดึงพลังงานที่ลอยฟุ้งให้กลับมามั่นคง (Grounding) ลดความหวั่นไหวทางอารมณ์ ปรับสมดุลฮอร์โมน", prep: "ผสมน้ำมันหอมระเหยพิมเสน 1 หยดกับน้ำมันตัวพา นวดบริเวณท้ายทอยหรือหน้าอก", color: "text-teal-800", bgColor: "bg-teal-100", border: "border-teal-300" },
+            { element: "wind", name: "จำปา (Champaca)", thElement: "วาโยธาตุ (ลม)", active: "Linalool, Methyl benzoate", props: "ให้ความรู้สึกสงบ นุ่มนวล ลดความตึงเครียดของระบบประสาท บรรเทาอาการปวดหัวไมเกรนที่เกิดจากความเครียดจัด", prep: "วางดอกจำปาสดไว้ใกล้บริเวณที่นั่งทำงาน หรือใช้น้ำมันหอมระเหยจำปาหยดลงบนหมอน", color: "text-teal-800", bgColor: "bg-teal-100", border: "border-teal-300" },
+            { element: "fire", name: "เตยหอม (Pandan)", thElement: "เตโชธาตุ (ไฟ)", active: "2-Acetyl-1-pyrroline", props: "กลิ่นหอมเย็นชื่นใจ ช่วยดับพิษร้อนในร่างกายและจิตใจ ลดความหงุดหงิดกระวนกระวาย ชูกำลัง บรรเทาอาการอ่อนเพลียจากอากาศร้อน", prep: "หั่นใบเตยสดเป็นชิ้นเล็กๆ ขยี้เบาๆ วางไว้ในห้อง หรือต้มน้ำใบเตยเพื่อสูดไอระเหยและดื่ม", color: "text-red-800", bgColor: "bg-red-100", border: "border-red-300" },
+            { element: "fire", name: "สะระแหน่ (Peppermint)", thElement: "เตโชธาตุ (ไฟ)", active: "Menthol, Menthone", props: "ให้ความเย็นซ่า สดชื่นทันทีที่สูดดม ช่วยลดอุณหภูมิความร้อนในร่างกาย บรรเทาอาการปวดศีรษะและไมเกรน ดับความโกรธ", prep: "ใช้น้ำมันหอมระเหยเปปเปอร์มินต์ผสมน้ำ พ่นเป็นสเปรย์ปรับอากาศ หรือขยี้ใบสดสูดดม", color: "text-red-800", bgColor: "bg-red-100", border: "border-red-300" },
+            { element: "fire", name: "บัวหลวง (Sacred Lotus)", thElement: "เตโชธาตุ (ไฟ)", active: "Nuciferine, Nelumboside", props: "หอมละมุนอ่อนโยน ช่วยสงบจิตใจที่เร่าร้อน ดับพิษไข้ทางอารมณ์ ทำให้ใจเย็นลง และมีส่วนช่วยในการลดความดันโลหิตเมื่อได้สูดดมและผ่อนคลาย", prep: "ใช้เกสรบัวหลวงแห้งชงน้ำร้อนสูดดม หรือใช้น้ำมันหอมระเหยกลิ่นบัวหลวงประพรมในห้อง", color: "text-red-800", bgColor: "bg-red-100", border: "border-red-300" },
+            { element: "fire", name: "กุหลาบมอญ (Damask Rose)", thElement: "เตโชธาตุ (ไฟ)", active: "Citronellol, Geraniol", props: "ปลอบประโลมจิตใจที่ร้อนรุ่มและเกรี้ยวกราด ลดความโกรธและความขุ่นมัว บำรุงผิวพรรณ ปรับสมดุลอารมณ์ผู้หญิงในช่วงมีประจำเดือน", prep: "ใช้น้ำสกัดดอกกุหลาบ (Rose Water) ฉีดพ่นใบหน้า หรือใช้น้ำมันหอมระเหยหยดในอ่างอาบน้ำ", color: "text-red-800", bgColor: "bg-red-100", border: "border-red-300" }
+        ];
+
+        // --- State Management ---
+        let currentTab = 'quiz';
+        let currentStep = 'dob'; 
+        let currentQuestion = 0;
+        let scores = { earth: 0, water: 0, wind: 0, fire: 0 };
+        
+        // สถานะสำหรับการกรองสมุนไพร
+        let herbFilter = 'all';
+        let herbSearch = '';
+        
+        let chartInstance = null; // ตัวแปรกราฟ
+
+        // --- LocalStorage ---
+        function saveState() {
+            const state = { currentStep, currentQuestion, scores };
+            localStorage.setItem('aromaState', JSON.stringify(state));
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem('aromaState');
+            if (saved) {
+                const state = JSON.parse(saved);
+                currentStep = state.currentStep;
+                currentQuestion = state.currentQuestion;
+                scores = state.scores;
+            }
+        }
+
+        function clearState() {
+            localStorage.removeItem('aromaState');
+            currentStep = 'dob';
+            currentQuestion = 0;
+            scores = { earth: 0, water: 0, wind: 0, fire: 0 };
+        }
+
+        // --- Core Logic ---
+        function switchTab(tab) {
+            playSound();
+            currentTab = tab;
+            
+            ['quiz', 'herbs', 'ref'].forEach(t => {
+                const el = document.getElementById(`tab-${t}`);
+                if (t === tab) {
+                    el.className = "flex-1 py-3 px-2 text-sm md:text-base font-semibold text-center transition-colors tab-active btn-interactive";
+                } else {
+                    el.className = "flex-1 py-3 px-2 text-sm md:text-base font-semibold text-center transition-colors tab-inactive btn-interactive";
+                }
+            });
+
+            if (tab === 'quiz' && currentStep !== 'result' && currentQuestion === 0) {
+                currentStep = 'dob';
+            }
+            renderContent();
+        }
+
+        function getBirthElement(month) {
+            if (month >= 10 || month <= 12) return 'earth';
+            if (month >= 7 && month <= 9) return 'water';
+            if (month >= 4 && month <= 6) return 'wind';
+            return 'fire';
+        }
+
+        function startQuestions() {
+            playSound();
+            const month = parseInt(document.getElementById('birth-month').value);
+            const birthElement = getBirthElement(month);
+            
+            scores = { earth: 0, water: 0, wind: 0, fire: 0 };
+            scores[birthElement] += 3; // ให้น้ำหนักธาตุกำเนิด 3 คะแนน
+            
+            currentStep = 'questions';
+            saveState();
+            renderContent();
+        }
+
+        function answerQuestion(element) {
+            playSound();
+            for(let i=0; i<3; i++) {
+                setTimeout(() => { const e = window.event; if(e) createSparkle(e); }, i * 100);
+            }
+
+            scores[element] += 1;
+            currentQuestion++;
+            
+            if (currentQuestion >= questions.length) {
+                currentStep = 'result';
+            }
+            saveState();
+            renderContent();
+        }
+
+        // --- Render Functions ---
+        function renderContent() {
+            const main = document.getElementById('main-content');
+            main.innerHTML = ''; 
+
+            if (currentTab === 'quiz') {
+                if (currentStep === 'dob') {
+                    main.innerHTML = `
+                        <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-lg gold-border fade-in-up text-center">
+                            <h2 class="text-2xl font-bold text-thai-green mb-4">ขั้นที่ 1: วิเคราะห์ธาตุเจ้าเรือนกำเนิด</h2>
+                            <p class="text-gray-600 mb-6">ตามหลักการแพทย์แผนไทย เดือนเกิดจะบ่งบอกถึง "ธาตุพื้นฐาน" ของร่างกาย<br>กรุณาระบุเดือนเกิดของคุณ</p>
+                            
+                            <div class="mb-8">
+                                <select id="birth-month" class="w-full md:w-1/2 p-4 border-2 border-thai-light-green rounded-lg text-lg focus:outline-none focus:border-thai-gold transition-colors text-center cursor-pointer">
+                                    <option value="1">มกราคม (ม.ค.) - ธาตุไฟ</option>
+                                    <option value="2">กุมภาพันธ์ (ก.พ.) - ธาตุไฟ</option>
+                                    <option value="3">มีนาคม (มี.ค.) - ธาตุไฟ</option>
+                                    <option value="4">เมษายน (เม.ย.) - ธาตุลม</option>
+                                    <option value="5">พฤษภาคม (พ.ค.) - ธาตุลม</option>
+                                    <option value="6">มิถุนายน (มิ.ย.) - ธาตุลม</option>
+                                    <option value="7">กรกฎาคม (ก.ค.) - ธาตุน้ำ</option>
+                                    <option value="8">สิงหาคม (ส.ค.) - ธาตุน้ำ</option>
+                                    <option value="9">กันยายน (ก.ย.) - ธาตุน้ำ</option>
+                                    <option value="10">ตุลาคม (ต.ค.) - ธาตุดิน</option>
+                                    <option value="11">พฤศจิกายน (พ.ย.) - ธาตุดิน</option>
+                                    <option value="12">ธันวาคม (ธ.ค.) - ธาตุดิน</option>
+                                </select>
+                            </div>
+                            <button onclick="startQuestions()" class="bg-gradient-to-r from-thai-green to-emerald-700 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:shadow-xl btn-interactive transition-all w-full md:w-auto">
+                                ถัดไป: ประเมินธาตุปัจจุบัน ➡️
+                            </button>
+                        </div>
+                    `;
+                }
+                else if (currentStep === 'questions') {
+                    const q = questions[currentQuestion];
+                    main.innerHTML = `
+                        <div class="max-w-2xl mx-auto bg-white p-6 md:p-8 rounded-xl shadow-lg gold-border fade-in-up">
+                            <div class="text-center mb-6">
+                                <span class="inline-block py-1 px-3 rounded-full bg-thai-light-green text-thai-green text-sm font-semibold mb-2">ขั้นที่ 2: ธาตุปัจจุบัน (ข้อ ${currentQuestion + 1} / ${questions.length})</span>
+                                <h2 class="text-xl md:text-2xl font-bold text-thai-green">${q.q}</h2>
+                            </div>
+                            <div class="space-y-3">
+                                ${q.choices.map((choice, index) => `
+                                    <button onclick="answerQuestion('${choice.element}')" class="w-full text-left p-4 border border-gray-200 rounded-lg hover:border-thai-gold hover:bg-yellow-50 transition-all btn-interactive flex items-center group">
+                                        <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mr-4 group-hover:bg-thai-gold group-hover:text-white transition-colors">
+                                            ${String.fromCharCode(65 + index)}
+                                        </div>
+                                        <span class="text-gray-700 font-medium">${choice.text}</span>
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                } 
+                else if (currentStep === 'result') {
+                    const dominantElement = Object.keys(scores).reduce((a, b) => scores[a] > scores[b] ? a : b);
+                    const recommendedHerbs = herbsData.filter(h => h.element === dominantElement);
+                    const mainHerb = recommendedHerbs[0]; 
+
+                    main.innerHTML = `
+                        <div class="max-w-4xl mx-auto space-y-6 fade-in-up">
+                            
+                            <!-- กล่องเตือนทางการแพทย์ -->
+                            <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm">
+                                <h4 class="font-bold text-red-700 flex items-center"><span class="mr-2">⚠️</span> ข้อควรระวัง (Medical Disclaimer)</h4>
+                                <ul class="text-sm text-red-600 mt-2 list-disc list-inside space-y-1">
+                                    <li>ข้อมูลนี้ใช้เพื่อการดูแลสุขภาพเบื้องต้นและการผ่อนคลาย ไม่สามารถทดแทนการรักษาจากแพทย์ได้</li>
+                                    <li><strong>สตรีมีครรภ์ หญิงให้นมบุตร และเด็กเล็ก</strong> ควรปรึกษาแพทย์หรือเภสัชกรก่อนใช้น้ำมันหอมระเหยทุกชนิด</li>
+                                    <li>ควรทดสอบอาการแพ้ (Patch Test) ด้วยการเจือจางน้ำมันหอมระเหยทาบริเวณข้อพับ ทิ้งไว้ 24 ชม. ก่อนการใช้งานจริง</li>
+                                </ul>
+                            </div>
+
+                            <!-- ส่วนผลลัพธ์ที่จะถูก Capture เป็นรูป -->
+                            <div id="result-capture-area" class="bg-white p-6 md:p-8 rounded-xl shadow-lg gold-border text-center relative overflow-hidden">
+                                <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-thai-gold-light rounded-full mix-blend-multiply filter blur-2xl opacity-50"></div>
+                                
+                                <h2 class="text-xl font-bold text-gray-600 mb-1">ผลการวิเคราะห์ธาตุเจ้าเรือน (กำเนิด + ปัจจุบัน)</h2>
+                                <h3 class="text-3xl md:text-4xl font-extrabold ${mainHerb.color} mb-6 inline-block">${mainHerb.thElement}</h3>
+                                
+                                <!-- กราฟใยแมงมุม -->
+                                <div class="w-full max-w-sm mx-auto mb-8 bg-gray-50 rounded-lg p-4 border border-gray-100">
+                                    <canvas id="radarChart"></canvas>
+                                </div>
+                                
+                                <div class="${mainHerb.bgColor} ${mainHerb.border} border-2 p-6 rounded-xl mb-8 shadow-inner relative text-left">
+                                    <span class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-white px-4 py-1 rounded-full text-sm font-bold text-thai-green shadow border border-thai-green whitespace-nowrap">🌟 สมุนไพรหลักของคุณ</span>
+                                    
+                                    <h4 class="text-2xl font-bold text-thai-green mb-3 mt-2 text-center">🌿 ${mainHerb.name}</h4>
+                                    
+                                    <div class="bg-white bg-opacity-80 p-4 rounded-lg mt-4 space-y-3">
+                                        <div>
+                                            <p class="font-semibold text-thai-green"><span class="text-thai-gold">🧪</span> สารสำคัญ:</p>
+                                            <p class="text-gray-800 font-mono text-sm">${mainHerb.active}</p>
+                                        </div>
+                                        <div>
+                                            <p class="font-semibold text-thai-green"><span class="text-thai-gold">✨</span> สรรพคุณทางยา:</p>
+                                            <p class="text-gray-700 text-sm">${mainHerb.props}</p>
+                                        </div>
+                                        <div>
+                                            <p class="font-semibold text-thai-green"><span class="text-thai-gold">🥣</span> วิธีประยุกต์ใช้:</p>
+                                            <p class="text-gray-700 text-sm">${mainHerb.prep}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="text-left">
+                                    <h4 class="font-bold text-md text-gray-800 mb-3 border-l-4 border-thai-gold pl-2">สมุนไพรเสริมที่แนะนำสำหรับธาตุของคุณ</h4>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        ${recommendedHerbs.slice(1).map(h => `
+                                            <div class="bg-gray-50 border border-gray-200 p-3 rounded-lg">
+                                                <p class="font-bold ${h.color} mb-1 text-sm">${h.name}</p>
+                                                <p class="text-xs text-gray-600 line-clamp-2">${h.props}</p>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                                
+                                <!-- Watermark สำหรับตอนเซฟรูป -->
+                                <div class="mt-6 pt-4 border-t border-gray-100 text-xs text-gray-400">
+                                    สร้างโดย: อโรมาสมุนไพรเพื่อสุขภาพ ตามธาตุเจ้าเรือน | กลุ่มงานการแพทย์แผนไทยฯ สสจ.สมุทรปราการ
+                                </div>
+                            </div>
+
+                            <!-- ปุ่ม Action ต่างๆ -->
+                            <div class="flex flex-col md:flex-row gap-4 justify-center mt-6">
+                                <button onclick="downloadResult()" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg hover:bg-indigo-700 btn-interactive flex items-center justify-center">
+                                    📸 บันทึกเป็นรูปภาพ (Save Image)
+                                </button>
+                                <button onclick="clearState(); renderContent();" class="bg-gradient-to-r from-thai-gold to-yellow-600 text-white font-bold py-3 px-6 rounded-full shadow-lg hover:shadow-xl btn-interactive flex items-center justify-center">
+                                    🔄 ทำแบบประเมินใหม่
+                                </button>
+                            </div>
+                        </div>
+                    `;
+
+                    // วาดกราฟหลังจาก Inject HTML เสร็จ
+                    setTimeout(initChart, 100);
+                }
+            } 
+            else if (currentTab === 'herbs') {
+                renderHerbsTab(main);
+            }
+            else if (currentTab === 'ref') {
+                main.innerHTML = `
+                    <div class="max-w-4xl mx-auto bg-white p-6 md:p-10 rounded-xl shadow-lg gold-border fade-in-up">
+                        <h2 class="text-2xl font-bold text-thai-green mb-8 border-b-2 border-thai-gold-light pb-2 flex items-center">
+                            <span class="text-3xl mr-3">📚</span> เอกสารอ้างอิงและข้อมูลทางวิชาการ
+                        </h2>
+                        
+                        <div class="space-y-6 text-gray-700">
+                            <div class="bg-gray-50 p-4 rounded-lg border-l-4 border-thai-green">
+                                <h3 class="font-bold text-lg text-gray-800 mb-1">ตำราเภสัชกรรมไทย (Thai Herbal Pharmacopoeia - THP)</h3>
+                                <p class="text-sm text-gray-600 mb-2">กรมวิทยาศาสตร์การแพทย์ กระทรวงสาธารณสุข</p>
+                                <p class="text-sm">อ้างอิงข้อมูลด้านสารสำคัญในพืชสมุนไพร (Active Compounds) และข้อบ่งใช้ทางเภสัชกรรมแผนไทยที่ได้รับการรับรอง</p>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg border-l-4 border-thai-green">
+                                <h3 class="font-bold text-lg text-gray-800 mb-1">ฐานข้อมูลเครื่องยา (Materia Medica)</h3>
+                                <p class="text-sm text-gray-600 mb-2">คณะเภสัชศาสตร์ มหาวิทยาลัยอุบลราชธานี</p>
+                                <p class="text-sm">อ้างอิงข้อมูลสรรพคุณสมุนไพรพื้นบ้าน และวิธีการสกัด/เตรียมยาสมุนไพรสำหรับการทำอโรมาเทอราปี</p>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg border-l-4 border-thai-green">
+                                <h3 class="font-bold text-lg text-gray-800 mb-1">WHO Monographs on Selected Medicinal Plants</h3>
+                                <p class="text-sm text-gray-600 mb-2">องค์การอนามัยโลก (World Health Organization)</p>
+                                <p class="text-sm">อ้างอิงคุณสมบัติทางเภสัชวิทยาในระดับสากล ของสารหอมระเหยในสมุนไพร</p>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg border-l-4 border-thai-green">
+                                <h3 class="font-bold text-lg text-gray-800 mb-1">ทฤษฎีการแพทย์แผนไทย: คัมภีร์สมุฏฐานวินิจฉัย</h3>
+                                <p class="text-sm text-gray-600 mb-2">วิทยาลัยการแพทย์แผนไทย</p>
+                                <p class="text-sm">ใช้อ้างอิงสำหรับการคำนวณ "ธาตุเจ้าเรือนกำเนิด" และ "ธาตุเจ้าเรือนปัจจุบัน"</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-10 p-6 bg-gradient-to-r from-thai-light-green to-emerald-50 rounded-xl text-center border border-emerald-100 shadow-sm">
+                            <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center text-3xl mx-auto mb-3 shadow">👨‍⚕️</div>
+                            <p class="font-bold text-thai-green text-lg mb-1">จัดทำและพัฒนาองค์ความรู้โดย</p>
+                            <p class="text-gray-800 text-xl font-semibold mb-1">ภก.จีรภัทร พลายงาม</p>
+                            <p class="text-sm text-thai-green font-medium mb-2">กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สสจ.สมุทรปราการ</p>
+                            <p class="text-xs text-gray-500">การประยุกต์ใช้เทคโนโลยีสารสนเทศเพื่อการดูแลสุขภาพทางเลือก</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // --- Render Herbs Tab with Filters ---
+        function renderHerbsTab(container) {
+            container.innerHTML = `
+                <div class="max-w-6xl mx-auto fade-in-up">
+                    <h2 class="text-2xl font-bold text-thai-green mb-6 text-center">ฐานข้อมูลสมุนไพรปรับธาตุ (16 ชนิด)</h2>
+                    
+                    <!-- Search & Filter Controls -->
+                    <div class="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-100 flex flex-col md:flex-row gap-4 items-center justify-between">
+                        <div class="w-full md:w-1/3 relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</span>
+                            <input type="text" id="herbSearch" placeholder="ค้นหาสมุนไพร หรือ สรรพคุณ..." value="${herbSearch}" onkeyup="updateHerbsFilter()" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-thai-green focus:ring-1 focus:ring-thai-green">
+                        </div>
+                        <div class="flex flex-wrap gap-2 justify-center w-full md:w-auto">
+                            <button onclick="setHerbFilter('all')" class="px-4 py-2 text-sm rounded-full transition-colors ${herbFilter==='all' ? 'bg-thai-green text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">ทั้งหมด</button>
+                            <button onclick="setHerbFilter('earth')" class="px-4 py-2 text-sm rounded-full transition-colors ${herbFilter==='earth' ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-800 hover:bg-amber-100'}">ดิน</button>
+                            <button onclick="setHerbFilter('water')" class="px-4 py-2 text-sm rounded-full transition-colors ${herbFilter==='water' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-800 hover:bg-blue-100'}">น้ำ</button>
+                            <button onclick="setHerbFilter('wind')" class="px-4 py-2 text-sm rounded-full transition-colors ${herbFilter==='wind' ? 'bg-teal-600 text-white' : 'bg-teal-50 text-teal-800 hover:bg-teal-100'}">ลม</button>
+                            <button onclick="setHerbFilter('fire')" class="px-4 py-2 text-sm rounded-full transition-colors ${herbFilter==='fire' ? 'bg-red-600 text-white' : 'bg-red-50 text-red-800 hover:bg-red-100'}">ไฟ</button>
+                        </div>
+                    </div>
+
+                    <div id="herbsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- Herbs will be injected here -->
+                    </div>
+                </div>
+            `;
+            updateHerbsGrid();
+        }
+
+        function setHerbFilter(element) {
+            playSound();
+            herbFilter = element;
+            renderHerbsTab(document.getElementById('main-content'));
+        }
+
+        function updateHerbsFilter() {
+            herbSearch = document.getElementById('herbSearch').value.toLowerCase();
+            updateHerbsGrid();
+        }
+
+        function updateHerbsGrid() {
+            const grid = document.getElementById('herbsGrid');
+            if(!grid) return;
+
+            let filtered = herbsData;
+            
+            if (herbFilter !== 'all') {
+                filtered = filtered.filter(h => h.element === herbFilter);
+            }
+            
+            if (herbSearch.trim() !== '') {
+                filtered = filtered.filter(h => 
+                    h.name.toLowerCase().includes(herbSearch) || 
+                    h.props.toLowerCase().includes(herbSearch) ||
+                    h.active.toLowerCase().includes(herbSearch)
+                );
+            }
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500">ไม่พบสมุนไพรที่ค้นหา</div>`;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(herb => `
+                <div class="bg-white rounded-xl shadow-md ${herb.border} border-t-4 hover:shadow-xl transition-all relative overflow-hidden group flex flex-col">
+                    <div class="absolute -right-6 -top-6 w-20 h-20 ${herb.bgColor} rounded-full opacity-40 group-hover:scale-150 transition-transform duration-500 z-0"></div>
+                    <div class="p-5 relative z-10 flex-grow">
+                        <span class="text-xs font-bold px-2 py-1 bg-gray-100 rounded-full text-gray-600 shadow-sm">${herb.thElement}</span>
+                        <h3 class="text-lg font-bold text-thai-green mt-3 mb-2 leading-tight">${herb.name}</h3>
+                        <div class="mb-3">
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">สารสำคัญ</p>
+                            <p class="text-xs font-mono text-gray-800">${herb.active}</p>
+                        </div>
+                        <div class="bg-gray-50 p-2 rounded text-sm mb-2 text-gray-700 flex-grow text-xs leading-relaxed">
+                            <strong class="text-thai-green">สรรพคุณ:</strong> ${herb.props}
+                        </div>
+                    </div>
+                    <div class="${herb.bgColor} p-3 text-xs text-gray-800 border-t border-gray-100">
+                        <strong>วิธีใช้:</strong> ${herb.prep}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- Chart.js ---
+        function initChart() {
+            const ctx = document.getElementById('radarChart');
+            if (!ctx) return;
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['ปฐวี (ดิน)', 'อาโป (น้ำ)', 'วาโย (ลม)', 'เตโช (ไฟ)'],
+                    datasets: [{
+                        label: 'สัดส่วนคะแนนธาตุ',
+                        data: [scores.earth, scores.water, scores.wind, scores.fire],
+                        backgroundColor: 'rgba(212, 175, 55, 0.4)', // สี thai-gold แบบใส
+                        borderColor: '#D4AF37',
+                        pointBackgroundColor: '#065F46',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#065F46',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1, display: false }, // ซ่อนตัวเลขขีดสเกล
+                            pointLabels: {
+                                font: { family: "'Prompt', sans-serif", size: 12, weight: 'bold' },
+                                color: '#065F46'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        // --- html2canvas (Save Image) ---
+        function downloadResult() {
+            playSound();
+            const captureArea = document.getElementById('result-capture-area');
+            
+            // เพิ่มการแจ้งเตือนกำลังโหลด
+            const btn = event.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ กำลังประมวลผล...';
+            btn.disabled = true;
+
+            html2canvas(captureArea, {
+                scale: 2, // เพิ่มความละเอียดภาพ
+                useCORS: true,
+                backgroundColor: '#ffffff'
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'อโรมาสมุนไพร_ตามธาตุเจ้าเรือน.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+                // คืนค่าปุ่ม
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }).catch(err => {
+                console.error("Error generating image:", err);
+                alert("เกิดข้อผิดพลาดในการบันทึกรูปภาพ กรุณาลองใหม่อีกครั้ง");
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+        }
+
+        // --- Initialization ---
+        window.onload = () => {
+            loadState();
+            renderContent();
+            
+            // กรณีโหลดมาแล้วอยู่หน้าผลลัพธ์ ให้วาดกราฟเลย
+            if (currentTab === 'quiz' && currentStep === 'result') {
+                setTimeout(initChart, 100);
+            }
+        };
+    </script>
+</body>
+</html>
