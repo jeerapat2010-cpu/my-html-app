@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>โปรแกรมลดน้ำตาล 30 วัน - สสจ.สมุทรปราการ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Confetti & Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --base-font-size: 16px;
+        }
+        html { font-size: var(--base-font-size); transition: font-size 0.3s; }
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #fff0f5; 
+            overflow-x: hidden;
+            transition: all 0.3s ease;
+        }
+        .font-thai-title { font-family: 'Kanit', sans-serif; }
+        .font-cert { font-family: 'Sarabun', serif; }
+        
+        .bg-theme-pink { background: linear-gradient(135deg, #ec4899 0%, #fb7185 100%); }
+        
+        .marquee-container { width: 100%; overflow: hidden; background-color: #be185d; color: white; padding: 8px 0; white-space: nowrap; }
+        .marquee-content { display: inline-block; animation: marquee 25s linear infinite; }
+        @keyframes marquee { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #fdf2f8; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #f43f5e; border-radius: 10px; }
+        
+        .day-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .day-card:hover:not(.locked) { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(244, 63, 94, 0.2); }
+        .day-card.locked { opacity: 0.6; filter: grayscale(80%); cursor: not-allowed; }
+        .day-card.completed { border-color: #f43f5e; background-color: #fff1f2; }
+
+        @keyframes twinkle { 0%, 100% { opacity: 0.4; transform: scale(0.8) rotate(0deg); } 50% { opacity: 1; transform: scale(1.2) rotate(15deg); filter: drop-shadow(0 0 8px #fcd34d); } }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes fight-shake { 0%, 100% { transform: rotate(0deg) scale(1); } 25% { transform: rotate(-15deg) scale(1.1); } 50% { transform: rotate(15deg) scale(1.1); } 75% { transform: rotate(-15deg) scale(1.1); } }
+        @keyframes run-away { 0% { transform: translateX(0) rotate(0deg); opacity: 1; } 100% { transform: translateX(100px) rotate(45deg); opacity: 0; } }
+        @keyframes hit-impact { 0% { transform: scale(0); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
+
+        .wib-wab { animation: twinkle 2s infinite ease-in-out; }
+        .wib-wab-delay-1 { animation-delay: 0.5s; }
+        .wib-wab-delay-2 { animation-delay: 1s; }
+        .wib-wab-delay-3 { animation-delay: 1.5s; }
+        .float-cute { animation: float 3s infinite ease-in-out; }
+        
+        .fighter-hero { animation: fight-shake 1.5s infinite; display: inline-block; font-size: 2.5rem; }
+        .enemy-sweet { display: inline-block; font-size: 2rem; cursor: pointer; transition: all 0.3s; }
+        .enemy-sweet:active { animation: run-away 0.5s forwards; }
+        
+        .cert-bg { background-image: radial-gradient(#fce7f3 1px, transparent 1px); background-size: 20px 20px; background-color: #ffffff; }
+
+        @keyframes pulse-slow { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .9; transform: scale(1.02); } }
+        .animate-pulse-slow { animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+        /* High Contrast Mode */
+        body.high-contrast {
+            background-color: #121212 !important;
+            color: #ffffff !important;
+        }
+        body.high-contrast .bg-white, body.high-contrast .bg-pink-50, body.high-contrast .bg-rose-50, body.high-contrast .bg-purple-50 {
+            background-color: #1e1e1e !important;
+            color: #ffffff !important;
+            border-color: #ffff00 !important;
+        }
+        body.high-contrast .text-pink-600, body.high-contrast .text-rose-600, body.high-contrast .text-pink-800, body.high-contrast .text-pink-900, body.high-contrast .text-gray-600, body.high-contrast .text-gray-800 {
+            color: #ffff00 !important;
+        }
+        body.high-contrast .bg-theme-pink, body.high-contrast .bg-gradient-to-br, body.high-contrast .bg-gradient-to-r {
+            background: #000000 !important;
+            border: 2px solid #ffff00 !important;
+        }
+        body.high-contrast .day-card.completed { background-color: #333 !important; border-color: #00ff00 !important; color: #00ff00 !important; }
+        body.high-contrast svg circle[stroke="url(#cuteGradient)"] { stroke: #ffff00 !important; }
+        body.high-contrast .shadow-xl, body.high-contrast .shadow-lg { box-shadow: 0 0 10px #ffff00 !important; }
+        
+        /* A11y Toolbar */
+        .a11y-toolbar {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .a11y-btn {
+            background: white;
+            border: 2px solid #f472b6;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #be185d;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .a11y-btn:hover { transform: scale(1.1); background: #fdf2f8; }
+        body.high-contrast .a11y-btn { background: #000; border-color: #ffff00; color: #ffff00; }
+    </style>
+</head>
+<body class="text-gray-800 antialiased selection:bg-pink-200 selection:text-pink-900">
+
+    <!-- Accessibility Toolbar -->
+    <div class="a11y-toolbar">
+        <button class="a11y-btn group relative" onclick="toggleContrast()" aria-label="โหมดสายตา">
+            <i data-lucide="contrast" class="h-6 w-6"></i>
+            <span class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded hidden group-hover:block whitespace-nowrap">ปรับสีชัดเจน</span>
+        </button>
+        <button class="a11y-btn font-bold text-lg group relative" onclick="changeFontSize(2)" aria-label="เพิ่มขนาดอักษร">
+            A+
+            <span class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded hidden group-hover:block whitespace-nowrap">ขยายอักษร</span>
+        </button>
+        <button class="a11y-btn font-bold text-sm group relative" onclick="changeFontSize(-2)" aria-label="ลดขนาดอักษร">
+            A-
+            <span class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded hidden group-hover:block whitespace-nowrap">ย่ออักษร</span>
+        </button>
+    </div>
+
+    <!-- Marquee Info -->
+    <div class="marquee-container shadow-md relative z-50">
+        <div class="marquee-content text-sm md:text-base font-medium tracking-wide">
+            <span class="mx-4"><i data-lucide="heart-pulse" class="inline h-4 w-4 mr-1 text-pink-200"></i> สมุนไพรรสขมช่วยบำรุงน้ำดีและลดน้ำตาลในเลือด</span>
+            <span class="mx-4"><i data-lucide="moon" class="inline h-4 w-4 mr-1 text-pink-200"></i> การนอนหลับก่อน 22.00 น. ช่วยลดความโหยน้ำตาลในวันถัดไป</span>
+            <span class="mx-4"><i data-lucide="footprints" class="inline h-4 w-4 mr-1 text-pink-200"></i> นวดกดจุดฝ่าเท้าทุกคืนป้องกันอาการชาปลายประสาท</span>
+            <span class="mx-4"><i data-lucide="coffee" class="inline h-4 w-4 mr-1 text-pink-200"></i> ดื่มชาน้ำใบเตยหอม หรือ ชาหญ้าดอกขาว ช่วยลดความอยากของหวานได้</span>
+        </div>
+    </div>
+
+    <!-- Header & Fighting Graphics -->
+    <header class="bg-theme-pink text-white py-12 relative shadow-lg overflow-hidden">
+        <div class="absolute inset-0 opacity-10">
+            <svg class="absolute w-full h-full" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+                <pattern id="pattern-hearts" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+                    <path d="M20 35l-1.45-1.32C13.4 28.54 10 25.46 10 21.5c0-3.23 2.54-5.77 5.77-5.77 1.83 0 3.58.85 4.73 2.18 1.15-1.33 2.9-2.18 4.73-2.18 3.23 0 5.77 2.54 5.77 5.77 0 3.96-3.4 7.04-8.55 12.18L20 35z" fill="currentColor"/>
+                </pattern>
+                <rect x="0" y="0" width="100%" height="100%" fill="url(#pattern-hearts)"></rect>
+            </svg>
+        </div>
+        
+        <div class="absolute top-4 right-4 md:top-10 md:right-20 flex items-center space-x-2 z-20 select-none">
+            <div class="fighter-hero drop-shadow-md">🤺</div>
+            <div class="relative">
+                <div class="enemy-sweet" onclick="playHitSound(this)">🍩</div>
+                <div class="enemy-sweet" onclick="playHitSound(this)" style="animation-delay: 0.2s">🧁</div>
+                <div class="enemy-sweet" onclick="playHitSound(this)" style="animation-delay: 0.4s">🍫</div>
+            </div>
+            <div class="text-xs font-bold text-pink-100 absolute -bottom-6 right-0 w-32 text-center">(คลิกปราบความหวาน!)</div>
+        </div>
+
+        <div class="max-w-6xl mx-auto px-4 text-center relative z-10 mt-8 md:mt-0">
+            <div class="flex justify-center mb-4">
+                <div class="bg-white p-3 rounded-full shadow-lg border-2 border-pink-200 float-cute text-pink-500">
+                    <i data-lucide="shield-plus" class="h-10 w-10"></i>
+                </div>
+            </div>
+            <h2 class="text-pink-100 font-semibold tracking-wide text-sm md:text-base mb-2">กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สสจ.สมุทรปราการ</h2>
+            <h1 class="font-thai-title text-4xl md:text-6xl font-bold text-white mb-4 drop-shadow-md">พิชิตน้ำตาลใน 30 วันด้วยศาสตร์แผนไทย</h1>
+            <p class="text-pink-50 max-w-2xl mx-auto text-sm md:text-base">ฟื้นฟูสมดุลธาตุด้วยโภชนาการและแพทย์แผนไทย ทำภารกิจรายวันให้สำเร็จเพื่อสุขภาพที่ยั่งยืน</p>
+            
+            <div class="max-w-md mx-auto mt-8 bg-pink-900/50 rounded-full h-6 overflow-hidden border-2 border-pink-300 relative backdrop-blur-sm">
+                <div id="progress-bar" class="bg-gradient-to-r from-purple-400 via-pink-400 to-rose-400 h-full transition-all duration-1000 ease-out" style="width: 0%"></div>
+                <div class="absolute inset-0 flex items-center justify-center text-xs font-bold text-white drop-shadow-md" id="progress-text">0 / 30 วัน</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Medical Disclaimer -->
+    <div class="max-w-6xl mx-auto px-4 mt-8">
+        <div class="bg-red-50 border-l-4 border-red-500 p-5 md:p-6 rounded-r-2xl shadow-sm relative overflow-hidden hover:shadow-md transition">
+            <div class="flex items-start relative z-10">
+                <div class="flex-shrink-0 bg-red-100 p-2 rounded-full mt-1 animate-pulse">
+                    <i data-lucide="alert-triangle" class="h-6 w-6 text-red-600"></i>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-red-800 font-bold text-lg mb-2 font-thai-title">⚠️ คำเตือนทางการแพทย์ (Medical Disclaimer)</h3>
+                    <div class="text-red-700 text-sm md:text-base space-y-2 leading-relaxed">
+                        <p><strong class="text-red-800">1. ห้ามหยุดยาเองเด็ดขาด:</strong> หากท่านรับประทานยาเบาหวานหรือฉีดอินซูลิน ต้องปฏิบัติตามคำสั่งแพทย์อย่างเคร่งครัด</p>
+                        <p><strong class="text-red-800">2. ระวังภาวะน้ำตาลตก:</strong> หากมีอาการ <span class="bg-red-200 px-1 rounded text-red-900 font-medium">ใจสั่น หน้ามืด หวิว เหงื่อแตก มือสั่น หิวจัด</span> ให้รีบดื่มน้ำหวาน หรือทานผลไม้ทันที</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="mb-12 bg-gradient-to-br from-white to-pink-50 rounded-[2.5rem] shadow-xl p-6 md:p-10 border-4 border-white relative overflow-hidden">
+            <i data-lucide="sparkles" class="wib-wab absolute top-6 left-6 h-8 w-8 text-pink-400"></i>
+            <i data-lucide="heart" class="wib-wab wib-wab-delay-1 absolute bottom-10 left-10 h-6 w-6 text-rose-300 fill-rose-200"></i>
+            <div class="absolute -right-20 -top-20 w-64 h-64 bg-pink-200 rounded-full mix-blend-multiply filter blur-2xl opacity-50 animate-pulse"></div>
+
+            <div class="text-center mb-8 relative z-10 flex flex-col md:flex-row justify-between items-center">
+                <div class="text-left mb-4 md:mb-0">
+                    <h2 class="text-3xl font-bold text-pink-800 flex items-center font-thai-title text-4xl">
+                        <span class="mr-2">✨</span> แดชบอร์ดสุขภาพ
+                    </h2>
+                    <p class="text-pink-600 font-medium mt-2">ติดตามความก้าวหน้าและสุขภาพของคุณ</p>
+                </div>
+                
+                <!-- Health Tracker Button -->
+                <button onclick="openHealthTracker()" class="bg-white border-2 border-pink-400 text-pink-600 px-6 py-3 rounded-2xl font-bold shadow-md hover:bg-pink-50 hover:scale-105 transition flex items-center">
+                    <i data-lucide="activity" class="mr-2 h-5 w-5"></i> บันทึกค่าน้ำตาล/น้ำหนัก
+                </button>
+            </div>
+            
+            <div class="flex flex-col lg:flex-row gap-8 items-center relative z-10">
+                <!-- Circular Meter -->
+                <div class="flex-shrink-0 relative w-64 h-64 float-cute bg-white rounded-full shadow-xl p-2 border-4 border-pink-100 flex items-center justify-center">
+                    <svg class="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
+                        <defs>
+                            <linearGradient id="cuteGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#c084fc" />
+                                <stop offset="50%" stop-color="#f472b6" />
+                                <stop offset="100%" stop-color="#fb7185" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="100" cy="100" r="85" stroke="#fdf2f8" stroke-width="16" fill="transparent" stroke-linecap="round" />
+                        <circle cx="100" cy="100" r="85" stroke="url(#cuteGradient)" stroke-width="16" fill="transparent" stroke-linecap="round"
+                            stroke-dasharray="534" stroke-dashoffset="534" 
+                            class="transition-all duration-1000 ease-out" id="dash-meter-circle" />
+                    </svg>
+                    <div class="absolute flex flex-col items-center justify-center text-center">
+                        <span class="text-5xl font-bold text-pink-600 font-thai-title drop-shadow-sm" id="dash-percent">0%</span>
+                        <span class="text-xs font-bold text-purple-600 bg-purple-50 px-3 py-1 rounded-full mt-2 border border-purple-200">พลังฟื้นฟู</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 w-full">
+                    <div class="bg-white/80 backdrop-blur-sm rounded-3xl p-5 flex flex-col items-center text-center shadow-md border-2 border-pink-100">
+                        <div class="bg-pink-100 rounded-full p-3 mb-2 text-pink-500"><i data-lucide="calendar-heart" class="h-8 w-8"></i></div>
+                        <p class="text-xs text-pink-600 font-bold tracking-wider mb-1">ทำสำเร็จแล้ว</p>
+                        <p class="text-3xl font-bold text-pink-800" id="dash-days">0<span class="text-base text-pink-400">/30 วัน</span></p>
+                    </div>
+                    
+                    <div class="bg-white/80 backdrop-blur-sm rounded-3xl p-5 flex flex-col items-center text-center shadow-md border-2 border-purple-100">
+                        <div class="bg-purple-100 rounded-full p-3 mb-2 text-purple-500"><i data-lucide="list-checks" class="h-8 w-8"></i></div>
+                        <p class="text-xs text-purple-600 font-bold tracking-wider mb-1">ภารกิจที่ผ่าน</p>
+                        <p class="text-3xl font-bold text-purple-800" id="dash-tasks">0<span class="text-base text-purple-400">/90 ข้อ</span></p>
+                    </div>
+
+                    <div class="bg-white/80 backdrop-blur-sm rounded-3xl p-4 flex items-center shadow-md border-2 border-rose-100 col-span-2 md:col-span-1">
+                        <div class="bg-rose-100 rounded-full p-3 mr-3 text-rose-500"><i data-lucide="map" class="h-6 w-6"></i></div>
+                        <div class="text-left">
+                            <p class="text-[10px] text-rose-600 font-bold tracking-wider mb-0.5">ระยะเดินทาง</p>
+                            <p class="text-sm font-bold text-rose-900" id="dash-phase">สัปดาห์ที่ 1</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white/80 backdrop-blur-sm rounded-3xl p-4 flex items-center shadow-md border-2 border-fuchsia-100 col-span-2 md:col-span-1">
+                        <div class="bg-fuchsia-100 rounded-full p-3 mr-3 text-fuchsia-500"><i data-lucide="smile" class="h-6 w-6" id="dash-status-icon"></i></div>
+                        <div class="text-left">
+                            <p class="text-[10px] text-fuchsia-600 font-bold tracking-wider mb-0.5">สถานะร่างกาย</p>
+                            <p class="text-sm font-bold text-fuchsia-900" id="dash-status">กำลังขับพิษ</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Health Chart Area (กราฟสุขภาพถูกย้ายมาตรงนี้) -->
+            <div class="mt-8 border-t border-pink-200 pt-6 relative z-10">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-bold text-pink-700 uppercase tracking-wider">
+                        <i data-lucide="line-chart" class="inline h-4 w-4 mr-1"></i> กราฟติดตามสุขภาพ (ความสำเร็จของคุณ)
+                    </h3>
+                </div>
+                <!-- กราฟ Canvas บน Dashboard -->
+                <div class="bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-inner border-2 border-pink-100 relative h-64 md:h-80 w-full">
+                    <canvas id="dashboardHealthChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Badges Area (ส่วนแสดงเหรียญรางวัล) -->
+            <div class="mt-8 border-t border-pink-200 pt-6 relative z-10">
+                <h3 class="text-sm font-bold text-pink-700 mb-4 uppercase tracking-wider"><i data-lucide="medal" class="inline h-4 w-4 mr-1"></i> ตู้โชว์เหรียญเกียรติยศ (Badges)</h3>
+                <div class="flex space-x-4 overflow-x-auto pb-2" id="badges-container">
+                    <!-- Badges injected by JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Calendar Grid -->
+        <div class="flex justify-between items-end mb-8 mt-12">
+            <div>
+                <h2 class="text-2xl font-bold text-pink-900 flex items-center font-thai-title">
+                    <i data-lucide="calendar-check" class="mr-2 text-rose-500"></i> แผนปฏิบัติการ 30 วัน
+                </h2>
+                <p class="text-gray-500 text-sm mt-1">คลิกที่ภารกิจเพื่ออ่านเกร็ดความรู้ และติ๊กถูกเมื่อทำสำเร็จ</p>
+            </div>
+            <button onclick="playSound('click'); resetProgress();" class="text-xs text-rose-500 hover:text-rose-700 underline flex items-center transition bg-white px-3 py-1.5 rounded-full shadow-sm border border-rose-200">
+                <i data-lucide="rotate-ccw" class="h-3 w-3 mr-1"></i> เริ่มใหม่ทั้งหมด
+            </button>
+        </div>
+        <div id="calendar-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-10 gap-3 md:gap-4 pb-10"></div>
+    </main>
+
+    <!-- Modal: Daily Checklist -->
+    <div id="mission-modal" class="fixed inset-0 bg-pink-900 bg-opacity-60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh] border-4 border-pink-100" id="modal-content">
+            
+            <div class="bg-gradient-to-r from-pink-500 to-rose-400 text-white p-5 flex justify-between items-center relative flex-shrink-0">
+                <div class="relative z-10">
+                    <span class="text-pink-100 text-xs font-bold tracking-wider uppercase mb-1 block">ภารกิจประจำวัน</span>
+                    <h3 class="text-3xl font-thai-title font-bold text-white drop-shadow-sm" id="modal-day-title">วันที่ X</h3>
+                </div>
+                <button onclick="playSound('click'); closeModal()" class="text-pink-500 bg-white hover:bg-pink-50 transition relative z-10 p-2 rounded-full shadow-md">
+                    <i data-lucide="x" class="h-5 w-5"></i>
+                </button>
+            </div>
+            
+            <div class="bg-rose-50 px-5 py-3 border-b border-rose-100 flex items-center flex-shrink-0" id="modal-phase-info">
+                <i data-lucide="info" class="h-4 w-4 text-rose-500 mr-2 flex-shrink-0"></i>
+                <span class="text-xs text-rose-800 font-medium" id="modal-phase-text">ช่วงปรับตัว</span>
+            </div>
+
+            <!-- Health Stat Banner (ส่วนแสดงเปรียบเทียบน้ำหนัก) -->
+            <div id="modal-health-stat" class="hidden px-5 py-3 bg-white border-b border-pink-100 flex justify-between items-center flex-shrink-0 shadow-sm">
+                <!-- ข้อมูลจะถูกใส่เข้ามาทาง JavaScript -->
+            </div>
+
+            <!-- Modal Body (Checklists) -->
+            <div class="p-5 custom-scrollbar overflow-y-auto flex-1 bg-pink-50/30" id="modal-tasks-container"></div>
+            
+            <div class="p-5 border-t border-pink-100 bg-white flex flex-col items-center flex-shrink-0">
+                <p id="task-status-text" class="text-sm text-pink-600 font-bold mb-3">ทำครบแล้ว 0/3 ภารกิจ</p>
+                <button id="btn-complete-day" onclick="completeCurrentDay()" disabled class="w-full py-3 rounded-2xl font-bold text-white bg-gray-300 cursor-not-allowed transition-all duration-300 flex items-center justify-center shadow-sm">
+                    <i data-lucide="lock" class="h-5 w-5 mr-2" id="btn-icon"></i>
+                    <span id="btn-text">ทำภารกิจให้ครบเพื่อไปต่อ</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Health Tracker Form Only (ปรับให้เล็กลง เน้นแค่กรอกข้อมูล) -->
+    <div id="health-modal" class="fixed inset-0 bg-black bg-opacity-60 z-[150] hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col">
+            <div class="bg-purple-600 text-white p-5 flex justify-between items-center flex-shrink-0">
+                <div>
+                    <h3 class="text-2xl font-thai-title font-bold flex items-center"><i data-lucide="edit-3" class="mr-2"></i> บันทึกข้อมูลวันนี้</h3>
+                </div>
+                <button onclick="closeHealthTracker()" class="text-purple-600 bg-white hover:bg-purple-50 p-2 rounded-full shadow-md"><i data-lucide="x" class="h-5 w-5"></i></button>
+            </div>
+            
+            <div class="p-6 flex-1 bg-purple-50/30">
+                <div class="flex flex-col gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-purple-800 mb-1">วันที่บันทึก (Day)</label>
+                        <select id="health-day-input" class="w-full border-2 border-purple-200 rounded-lg p-3 text-base focus:outline-none focus:border-purple-500 shadow-inner">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-purple-800 mb-1">น้ำตาลในเลือด (FBS) <span class="text-xs text-gray-500 font-normal">ถ้ามี</span></label>
+                        <input type="number" id="health-sugar-input" placeholder="มก./ดล." class="w-full border-2 border-purple-200 rounded-lg p-3 text-base focus:outline-none focus:border-purple-500 shadow-inner">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-purple-800 mb-1">น้ำหนัก (Kg) <span class="text-xs text-gray-500 font-normal">จำเป็น</span></label>
+                        <input type="number" id="health-weight-input" placeholder="กก." step="0.1" class="w-full border-2 border-purple-200 rounded-lg p-3 text-base focus:outline-none focus:border-purple-500 shadow-inner">
+                    </div>
+                    <div class="mt-4">
+                        <button onclick="saveHealthLog()" class="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold py-3 px-4 rounded-xl hover:shadow-lg transition-shadow shadow-md flex items-center justify-center text-lg">
+                            <i data-lucide="save" class="mr-2"></i> บันทึกข้อมูล
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Glory Certificate -->
+    <div id="glory-modal" class="fixed inset-0 bg-pink-900/90 backdrop-blur-sm z-[200] hidden flex items-center justify-center p-4">
+        <!-- Certificate Container -->
+        <div class="cert-bg rounded-xl shadow-2xl max-w-2xl w-full p-2 relative overflow-hidden transform scale-100 transition-all border-2 border-yellow-600">
+            <div class="border-[10px] border-double border-yellow-500 bg-white/95 p-8 md:p-12 text-center relative h-full flex flex-col items-center justify-center">
+                <!-- Emblem -->
+                <div class="inline-flex items-center justify-center w-28 h-28 bg-gradient-to-br from-yellow-100 to-yellow-300 rounded-full mb-6 border-4 border-yellow-500 shadow-lg relative float-cute">
+                    <i data-lucide="award" class="h-14 w-14 text-yellow-700"></i>
+                    <div class="absolute -bottom-4 left-4 w-6 h-10 bg-red-600 -z-10 transform -rotate-12 rounded-b"></div>
+                    <div class="absolute -bottom-4 right-4 w-6 h-10 bg-red-600 -z-10 transform rotate-12 rounded-b"></div>
+                </div>
+                
+                <h4 class="text-rose-700 font-bold tracking-widest text-sm mb-2 uppercase">กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สสจ.สมุทรปราการ</h4>
+                <h2 class="font-thai-title text-5xl font-bold text-yellow-600 mb-6 drop-shadow-sm">ใบประกาศเกียรติคุณ</h2>
+                
+                <p class="text-gray-600 font-cert text-lg md:text-xl leading-relaxed mb-6">
+                    ขอมอบใบประกาศฉบับนี้เพื่อแสดงว่า<br>
+                    <span class="text-2xl font-bold text-pink-700 my-2 block border-b border-pink-200 pb-2 inline-block px-8">คุณคือผู้พิชิตน้ำตาล 30 วัน</span><br>
+                    ได้สำเร็จลุล่วงตามหลักวิถีแพทย์แผนไทยและโภชนาการ
+                </p>
+                <div class="flex justify-center w-full mb-8">
+                    <div class="text-center">
+                        <div class="border-b border-gray-400 w-48 mb-2 pb-2"><span class="font-thai-title text-2xl text-pink-800 opacity-80">ชีวาภิรมย์</span></div>
+                        <p class="text-xs text-gray-500 uppercase tracking-wide">สสจ. สมุทรปราการ</p>
+                    </div>
+                </div>
+                <button onclick="playSound('click'); closeGlory()" class="group relative px-8 py-3 font-bold text-white rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg hover:scale-105 active:scale-95 transition-all">
+                    <span class="relative z-10 flex items-center"><i data-lucide="heart" class="mr-2 h-4 w-4 fill-white"></i> เริ่มเส้นทางสุขภาพต่อไป</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-pink-900 text-pink-200 py-8 mt-12 border-t-4 border-rose-400">
+        <div class="max-w-4xl mx-auto px-4 text-center text-xs md:text-sm">
+            <i data-lucide="flower-2" class="h-6 w-6 mx-auto mb-4 text-pink-400"></i>
+            <p class="mb-2 text-white font-bold text-base">กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สสจ.สมุทรปราการ</p>
+            <p class="opacity-50 mt-2">© 2026 สมุทรปราการโมเดล - สุขภาพดีวิถีไทย (Professional Edition)</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- Accessibility (A11y) System ---
+        let currentFontSize = 16;
+        function changeFontSize(step) {
+            currentFontSize += step;
+            if (currentFontSize < 12) currentFontSize = 12;
+            if (currentFontSize > 24) currentFontSize = 24;
+            document.documentElement.style.setProperty('--base-font-size', currentFontSize + 'px');
+            playSound('click');
+        }
+
+        function toggleContrast() {
+            document.body.classList.toggle('high-contrast');
+            playSound('click');
+        }
+
+        // Text-To-Speech (TTS)
+        function speakText(text, event) {
+            if(event) event.stopPropagation();
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'th-TH';
+            utterance.rate = 0.9;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // --- Audio System ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playTone(freq, type, duration, vol=0.1) {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+        function playSound(type) {
+            if (type === 'click') { playTone(600, 'sine', 0.1, 0.1); setTimeout(() => playTone(800, 'sine', 0.1, 0.1), 50); }
+            else if (type === 'check') { playTone(880, 'sine', 0.1, 0.1); setTimeout(() => playTone(1108.73, 'sine', 0.2, 0.1), 100); }
+            else if (type === 'success') { const notes = [523.25, 659.25, 783.99, 1046.50]; notes.forEach((f, i) => setTimeout(() => playTone(f, 'triangle', 0.3, 0.1), i * 100)); }
+            else if (type === 'tada') {
+                playTone(523.25, 'square', 0.5, 0.1); playTone(659.25, 'square', 0.5, 0.1); playTone(783.99, 'square', 0.5, 0.1);
+                setTimeout(() => { playTone(1046.50, 'square', 1.0, 0.15); playTone(1318.51, 'square', 1.0, 0.1); }, 300);
+            }
+            else if (type === 'hit') { playTone(150, 'sawtooth', 0.1, 0.2); setTimeout(() => playTone(100, 'square', 0.1, 0.2), 50); }
+        }
+
+        function playHitSound(element) {
+            playSound('hit');
+            element.style.pointerEvents = 'none';
+            element.style.animation = 'run-away 0.5s forwards';
+            const explosion = document.createElement('div');
+            explosion.innerText = '💥';
+            explosion.style.position = 'absolute'; explosion.style.left = element.offsetLeft + 'px'; explosion.style.top = element.offsetTop + 'px'; explosion.style.fontSize = '2rem'; explosion.style.animation = 'hit-impact 0.4s ease-out forwards';
+            element.parentElement.appendChild(explosion);
+            setTimeout(() => { element.style.display = 'none'; explosion.remove(); }, 500);
+        }
+
+        // --- Data & State ---
+        const generateDaysData = () => {
+            const data = [];
+            const dailyPlans = [
+                { phase: "สัปดาห์ที่ 1: ปรับตัว & ลดละเลิก", tasks: [
+                    { text: "งดเติมน้ำตาลทรายในอาหาร", howTo: "ชิมก่อนปรุง หากต้องหวานใช้หญ้าหวาน", benefit: "ลดไขมันพอกตับ", science: "น้ำตาลทรายกระตุ้นอินซูลินรวดเร็ว", ref: "WHO" },
+                    { text: "ดื่มน้ำเปล่าให้ได้ 8 แก้ว", howTo: "จิบทีละน้อยตลอดวัน", benefit: "ช่วยไตขับของเสีย", science: "เจือจางน้ำตาลในเลือด", ref: "ADA" },
+                    { text: "เข้านอนก่อน 22.30 น.", howTo: "งดมือถือ 30 นาทีก่อนนอน", benefit: "ลดความอยากหวานวันรุ่งขึ้น", science: "หลับลึกช่วยหลั่ง Growth Hormone", ref: "NSF" }
+                ]},
+                { phase: "สัปดาห์ที่ 1: ปรับตัว & ลดละเลิก", tasks: [
+                    { text: "งดเครื่องดื่มชงหวาน 100%", howTo: "สั่งไม่หวานเลย 0%", benefit: "ตัดวงจรติดหวาน", science: "Fructose เปลี่ยนเป็นไขมันสะสมง่าย", ref: "AHA" },
+                    { text: "เดินย่อยหลังมื้อเที่ยง 10 นาที", howTo: "เดินแกว่งแขนเบาๆ หลังอาหาร", benefit: "กระตุ้นธาตุลม", science: "ดึงน้ำตาลในเลือดไปใช้ทันที", ref: "Sports Med" },
+                    { text: "จิบชาน้ำใบเตยหอม", howTo: "ต้มดื่มอุ่นๆ ไม่เติมน้ำตาล", benefit: "บำรุงหัวใจ", science: "Aromatherapy ลดฮอร์โมนเครียด", ref: "สธ." }
+                ]}
+            ];
+
+            let planIndex = 0;
+            for (let i = 1; i <= 30; i++) {
+                let plan = dailyPlans[planIndex % 2]; 
+                if (i === 30) {
+                    plan = { phase: "ความสำเร็จ: วันที่ 30", tasks: [
+                        { text: "ฉลองความสำเร็จ", howTo: "ให้รางวัลด้วยเมนูสุขภาพ", benefit: "สร้างปิติ", science: "Positive Reinforcement", ref: "Psychology" },
+                        { text: "ตั้งเป้าหมายระยะยาว", howTo: "เขียนเป้าหมายต่อไป", benefit: "มีเข็มทิศ", science: "Goal Setting Theory", ref: "Locke" },
+                        { text: "บันทึกน้ำหนัก/รอบเอว", howTo: "เปรียบเทียบกับวันแรก", benefit: "เห็นผลลัพธ์", science: "ลด Visceral Fat", ref: "IDF" }
+                    ]};
+                }
+                const dayTasks = plan.tasks.map((t, idx) => ({ id: `d${i}-t${idx}`, ...t, completed: false }));
+                data.push({ day: i, phase: plan.phase, tasks: dayTasks, isCompleted: false });
+                planIndex++;
+            }
+            return data;
+        };
+
+        let appData = [];
+        let healthLogs = []; 
+        let currentUnlockedDay = 1;
+        let activeModalDay = null;
+        let myChart = null; 
+
+        function initApp() {
+            lucide.createIcons();
+            loadProgress();
+            renderCalendar();
+            updateProgressBar();
+            updateDashboard();
+            renderBadges();
+            
+            // Populate Health Tracker Select
+            const selectDay = document.getElementById('health-day-input');
+            for(let i=1; i<=30; i++) {
+                selectDay.innerHTML += `<option value="${i}">วันที่ ${i}</option>`;
+            }
+            
+            // Render initial chart on dashboard
+            setTimeout(() => { renderChart(); }, 500); 
+        }
+
+        function loadProgress() {
+            const savedData = localStorage.getItem('cheevapirom_pro_data');
+            const savedDay = localStorage.getItem('cheevapirom_pro_day');
+            const savedHealth = localStorage.getItem('cheevapirom_health_logs');
+            
+            if (savedData && savedDay) {
+                appData = JSON.parse(savedData);
+                currentUnlockedDay = parseInt(savedDay);
+            } else {
+                appData = generateDaysData();
+                currentUnlockedDay = 1;
+                saveProgress();
+            }
+            
+            healthLogs = savedHealth ? JSON.parse(savedHealth) : [];
+        }
+
+        function saveProgress() {
+            localStorage.setItem('cheevapirom_pro_data', JSON.stringify(appData));
+            localStorage.setItem('cheevapirom_pro_day', currentUnlockedDay.toString());
+            localStorage.setItem('cheevapirom_health_logs', JSON.stringify(healthLogs));
+        }
+
+        function resetProgress() {
+            if(confirm('คุณแน่ใจหรือไม่ว่าต้องการเริ่มใหม่ทั้งหมด? ข้อมูลเดิมและบันทึกสุขภาพจะหายไป')) {
+                localStorage.removeItem('cheevapirom_pro_data');
+                localStorage.removeItem('cheevapirom_pro_day');
+                localStorage.removeItem('cheevapirom_health_logs');
+                loadProgress();
+                renderCalendar();
+                updateProgressBar();
+                updateDashboard();
+                renderBadges();
+                renderChart();
+            }
+        }
+
+        // --- Core UI Functions ---
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+            appData.forEach(data => {
+                const isLocked = data.day > currentUnlockedDay;
+                const isCompleted = data.isCompleted;
+                const isCurrent = data.day === currentUnlockedDay;
+
+                let cardClasses = "day-card relative aspect-square rounded-2xl border-2 flex flex-col items-center justify-center p-2 text-center overflow-hidden ";
+                if (isCompleted) cardClasses += "completed border-rose-400 text-rose-700 bg-rose-50 shadow-sm";
+                else if (isCurrent) cardClasses += "border-pink-500 text-pink-800 bg-white shadow-md ring-4 ring-pink-100 cursor-pointer animate-pulse-slow";
+                else if (isLocked) cardClasses += "locked border-gray-200 bg-gray-50 text-gray-400";
+                else cardClasses += "border-pink-200 bg-white text-pink-700 cursor-pointer shadow-sm";
+
+                let iconHtml = isCompleted ? `<i data-lucide="check-circle-2" class="h-6 w-6 text-rose-500 mb-1"></i>` : 
+                               isLocked ? `<i data-lucide="lock" class="h-6 w-6 text-gray-300 mb-1"></i>` : 
+                               `<i data-lucide="heart" class="h-6 w-6 text-pink-400 mb-1"></i>`;
+
+                grid.innerHTML += `
+                    <div class="${cardClasses}" ${!isLocked ? `onclick="playSound('click'); openModal(${data.day})"` : ''}>
+                        ${isCurrent ? `<div class="absolute top-0 right-0 w-3 h-3 bg-rose-500 rounded-full animate-ping mt-2 mr-2"></div>` : ''}
+                        ${iconHtml}
+                        <span class="text-xs font-bold uppercase tracking-wider mb-1">วันที่</span>
+                        <span class="text-2xl md:text-3xl font-thai-title font-bold leading-none">${data.day}</span>
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function updateProgressBar() {
+            const completedDays = currentUnlockedDay > 30 ? 30 : currentUnlockedDay - 1;
+            const percentage = (completedDays / 30) * 100;
+            document.getElementById('progress-bar').style.width = `${percentage}%`;
+            document.getElementById('progress-text').innerText = `${completedDays} / 30 วัน`;
+        }
+
+        // --- Modals & Checklists ---
+        function openModal(dayNumber) {
+            activeModalDay = dayNumber;
+            const dayData = appData[dayNumber - 1];
+            document.getElementById('modal-day-title').innerText = `ภารกิจวันที่ ${dayNumber}`;
+            document.getElementById('modal-phase-text').innerText = dayData.phase;
+            renderTasks(dayData);
+            updateModalStatus(dayData);
+            updateModalHealthStat(dayNumber);
+            
+            const modal = document.getElementById('mission-modal');
+            const content = document.getElementById('modal-content');
+            modal.classList.remove('hidden');
+            setTimeout(() => { content.classList.remove('scale-95'); content.classList.add('scale-100'); }, 10);
+        }
+
+        function updateModalHealthStat(dayNumber) {
+            const statContainer = document.getElementById('modal-health-stat');
+            const currentLog = healthLogs.find(l => l.day === dayNumber);
+            
+            if (!currentLog || !currentLog.weight) {
+                statContainer.classList.remove('hidden');
+                statContainer.innerHTML = `
+                    <div class="flex items-center text-sm text-gray-400">
+                        <i data-lucide="scale" class="h-4 w-4 mr-2"></i>
+                        <span>ยังไม่ได้บันทึกน้ำหนักของวันนี้ (บันทึกได้ที่หน้าแดชบอร์ด)</span>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            const pastLogs = healthLogs.filter(l => l.day < dayNumber && l.weight != null).sort((a,b) => b.day - a.day);
+            
+            if (pastLogs.length === 0) {
+                statContainer.classList.remove('hidden');
+                statContainer.innerHTML = `
+                    <div class="flex items-center text-sm text-purple-600 font-bold">
+                        <i data-lucide="scale" class="h-4 w-4 mr-2 text-purple-500"></i>
+                        <span>น้ำหนักวันนี้: ${currentLog.weight} กก. <span class="text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full ml-2">บันทึกแรก</span></span>
+                    </div>
+                `;
+            } else {
+                const prevLog = pastLogs[0];
+                const diff = (currentLog.weight - prevLog.weight).toFixed(1);
+                let diffText = ""; let diffClass = ""; let iconClass = "";
+
+                if (diff > 0) {
+                    diffText = `เพิ่มขึ้น ${diff} กก.`; diffClass = "text-rose-600 bg-rose-50 border-rose-200"; iconClass = "trending-up";
+                } else if (diff < 0) {
+                    diffText = `ลดลง ${Math.abs(diff)} กก.`; diffClass = "text-emerald-600 bg-emerald-50 border-emerald-200"; iconClass = "trending-down";
+                } else {
+                    diffText = `คงที่`; diffClass = "text-blue-600 bg-blue-50 border-blue-200"; iconClass = "minus";
+                }
+
+                statContainer.classList.remove('hidden');
+                statContainer.innerHTML = `
+                    <div class="flex items-center text-sm font-bold text-gray-700">
+                        <i data-lucide="scale" class="h-5 w-5 mr-2 text-pink-500"></i>
+                        <span>${currentLog.weight} กก.</span>
+                    </div>
+                    <div class="flex items-center text-xs font-bold px-2 py-1 rounded-full border shadow-sm ${diffClass}">
+                        <i data-lucide="${iconClass}" class="h-3 w-3 mr-1"></i>
+                        <span>${diffText} (เทียบกับวันที่ ${prevLog.day})</span>
+                    </div>
+                `;
+            }
+            lucide.createIcons();
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('mission-modal');
+            const content = document.getElementById('modal-content');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => { modal.classList.add('hidden'); activeModalDay = null; }, 300);
+        }
+
+        function renderTasks(dayData) {
+            const container = document.getElementById('modal-tasks-container');
+            container.innerHTML = '';
+            dayData.tasks.forEach((task, index) => {
+                const labelClass = task.completed ? 'line-through text-pink-300' : 'text-pink-900 font-medium';
+                const bgClass = task.completed ? 'bg-white/50 border-pink-100 opacity-70' : 'bg-white border-pink-200 hover:border-pink-400';
+                const speechText = `${task.text}. วิธีปฏิบัติ: ${task.howTo}. ผลดีต่อสุขภาพ: ${task.benefit}.`;
+
+                container.innerHTML += `
+                    <div class="mb-3 border-2 rounded-2xl transition-all ${bgClass} overflow-hidden shadow-sm">
+                        <div class="flex items-start p-4 cursor-pointer select-none" onclick="playSound('click'); toggleTaskDetails('day-${activeModalDay}-task-${index}')">
+                            <div class="relative flex items-center justify-center mr-4 mt-0.5" onclick="event.stopPropagation(); toggleTask(${index})">
+                                <input type="checkbox" class="peer sr-only" ${task.completed ? 'checked' : ''} ${dayData.isCompleted ? 'disabled' : ''}>
+                                <div class="w-6 h-6 border-2 border-pink-300 rounded-lg bg-white flex items-center justify-center peer-checked:bg-pink-500 peer-checked:border-pink-500 transition-colors">
+                                    <i data-lucide="check" class="h-4 w-4 text-white opacity-0 peer-checked:opacity-100"></i>
+                                </div>
+                            </div>
+                            <div class="flex-1 flex justify-between items-center ${labelClass} text-sm md:text-base leading-snug">
+                                <span>${task.text}</span>
+                                <div class="flex items-center">
+                                    <button class="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50 mr-2 transition-colors" title="ฟังเสียงอ่าน" onclick="speakText('${speechText}', event)">
+                                        <i data-lucide="volume-2" class="h-5 w-5"></i>
+                                    </button>
+                                    <button class="text-pink-400 hover:text-pink-600 transition-transform duration-300" id="icon-day-${activeModalDay}-task-${index}">
+                                        <i data-lucide="chevron-down" class="h-5 w-5"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="day-${activeModalDay}-task-${index}-details" class="hidden px-5 pb-5 pt-1 bg-gradient-to-b from-white to-pink-50/50 text-sm text-gray-700 space-y-3 border-t border-pink-100">
+                            <p class="mb-2"><strong class="text-pink-600">วิธีปฏิบัติ:</strong> ${task.howTo}</p>
+                            <p class="mb-2"><strong class="text-rose-600">ผลดี:</strong> ${task.benefit}</p>
+                            <p class="mb-2"><strong class="text-purple-600">ความรู้:</strong> ${task.science}</p>
+                            <p class="text-xs text-gray-400 mt-2"><strong>อ้างอิง:</strong> ${task.ref}</p>
+                        </div>
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        window.toggleTaskDetails = function(id) {
+            const div = document.getElementById(id + '-details');
+            const btn = document.getElementById('icon-' + id);
+            div.classList.toggle('hidden');
+            btn.classList.toggle('rotate-180');
+        }
+
+        function toggleTask(taskIndex) {
+            const dayData = appData[activeModalDay - 1];
+            dayData.tasks[taskIndex].completed = !dayData.tasks[taskIndex].completed;
+            playSound(dayData.tasks[taskIndex].completed ? 'check' : 'click');
+            saveProgress();
+            renderTasks(dayData);
+            updateModalStatus(dayData);
+            updateDashboard();
+        }
+
+        function updateModalStatus(dayData) {
+            const completed = dayData.tasks.filter(t => t.completed).length;
+            const isAllDone = dayData.tasks.length === completed;
+            document.getElementById('task-status-text').innerText = `ทำสำเร็จแล้ว ${completed}/${dayData.tasks.length} ภารกิจ`;
+            
+            const btn = document.getElementById('btn-complete-day');
+            if (dayData.isCompleted) {
+                btn.disabled = true; btn.className = "w-full py-3 rounded-2xl font-bold text-pink-700 bg-pink-100 cursor-not-allowed flex items-center justify-center";
+                btn.innerHTML = `<i data-lucide="check-circle" class="h-5 w-5 mr-2"></i> ปลดล็อคผ่านด่านนี้แล้ว`;
+            } else if (isAllDone) {
+                btn.disabled = false; btn.className = "w-full py-3 rounded-2xl font-bold text-white bg-gradient-to-r from-pink-500 to-rose-500 hover:scale-105 transition-transform shadow-lg flex items-center justify-center animate-pulse-slow";
+                btn.innerHTML = `<i data-lucide="unlock" class="h-5 w-5 mr-2"></i> ยืนยัน! ปลดล็อควันถัดไป`;
+            } else {
+                btn.disabled = true; btn.className = "w-full py-3 rounded-2xl font-bold text-gray-500 bg-gray-200 cursor-not-allowed flex items-center justify-center";
+                btn.innerHTML = `<i data-lucide="lock" class="h-5 w-5 mr-2"></i> ทำภารกิจให้ครบเพื่อไปต่อ`;
+            }
+            lucide.createIcons();
+        }
+
+        function completeCurrentDay() {
+            playSound('success');
+            appData[activeModalDay - 1].isCompleted = true;
+            if (currentUnlockedDay === activeModalDay && activeModalDay < 30) currentUnlockedDay++;
+            
+            saveProgress();
+            closeModal();
+            renderCalendar();
+            updateProgressBar();
+            updateDashboard();
+            renderBadges();
+
+            if (activeModalDay === 30) setTimeout(() => triggerGlory(), 800);
+        }
+
+        function triggerGlory() {
+            playSound('tada');
+            document.getElementById('glory-modal').classList.remove('hidden');
+            const end = Date.now() + 5000;
+            (function frame() {
+                confetti({ particleCount: 7, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#f472b6', '#fb7185', '#e879f9', '#fcd34d'] });
+                confetti({ particleCount: 7, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#f472b6', '#fb7185', '#e879f9', '#fcd34d'] });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+        }
+        function closeGlory() { document.getElementById('glory-modal').classList.add('hidden'); }
+
+        function updateDashboard() {
+            const completedDays = appData.filter(d => d.isCompleted).length;
+            let totalT = 0, compT = 0;
+            appData.forEach(d => { totalT += d.tasks.length; compT += d.tasks.filter(t => t.completed).length; });
+            const percent = Math.round((compT / totalT) * 100) || 0;
+            
+            document.getElementById('dash-days').innerHTML = `${completedDays}<span class="text-base text-pink-400">/30</span>`;
+            document.getElementById('dash-tasks').innerHTML = `${compT}<span class="text-base text-purple-400">/${totalT}</span>`;
+            document.getElementById('dash-percent').innerText = `${percent}%`;
+            
+            const meter = document.getElementById('dash-meter-circle');
+            meter.style.strokeDashoffset = (2 * Math.PI * 85) * (1 - percent/100);
+
+            let pText="กำลังเตรียมตัว", sText="เริ่มต้นใหม่", icon="smile";
+            if(completedDays>=30) { pText="พิชิต 30 วัน"; sText="เป๊ะปัง! ✨"; icon="party-popper"; }
+            else if(completedDays>=21) { pText="สัปดาห์ที่ 4: ยั่งยืน"; sText="สวยปัง แข็งแรง 💖"; icon="sparkles"; }
+            else if(completedDays>=14) { pText="สัปดาห์ที่ 3: ปรับวิถี"; sText="หุ่นเฟิร์ม 🌸"; icon="flower-2"; }
+            else if(completedDays>=7) { pText="สัปดาห์ที่ 2: ฟื้นฟูธาตุ"; sText="ตัวเบาสบายขึ้น 🦋"; icon="wind"; }
+            else if(completedDays>=0) { pText="สัปดาห์ที่ 1: ปรับตัว"; sText="ขับไล่น้ำตาล 💦"; icon="droplets"; }
+
+            document.getElementById('dash-phase').innerText = pText;
+            document.getElementById('dash-status').innerText = sText;
+            document.getElementById('dash-status-icon').setAttribute('data-lucide', icon);
+            lucide.createIcons();
+        }
+
+        // --- Badges System ---
+        function renderBadges() {
+            const completedDays = appData.filter(d => d.isCompleted).length;
+            const container = document.getElementById('badges-container');
+            container.innerHTML = '';
+            
+            const badgesDef = [
+                { id: 1, name: "ก้าวแรก", icon: "footprints", req: 1, color: "bg-amber-100 text-amber-600 border-amber-200" },
+                { id: 2, name: "นักรบ 7 วัน", icon: "shield-check", req: 7, color: "bg-blue-100 text-blue-600 border-blue-200" },
+                { id: 3, name: "ครึ่งทางแล้ว", icon: "flame", req: 15, color: "bg-rose-100 text-rose-600 border-rose-200" },
+                { id: 4, name: "วินัยดีเลิศ", icon: "star", req: 21, color: "bg-purple-100 text-purple-600 border-purple-200" },
+                { id: 5, name: "ผู้พิชิต 30 วัน", icon: "crown", req: 30, color: "bg-yellow-100 text-yellow-600 border-yellow-400" }
+            ];
+
+            badgesDef.forEach(b => {
+                const unlocked = completedDays >= b.req;
+                const cssClass = unlocked ? `${b.color} border-2 shadow-sm` : `bg-gray-100 text-gray-300 border-gray-200 border-2 grayscale`;
+                container.innerHTML += `
+                    <div class="flex flex-col items-center flex-shrink-0 w-24">
+                        <div class="h-14 w-14 rounded-full flex items-center justify-center mb-1 ${cssClass}">
+                            <i data-lucide="${b.icon}" class="h-7 w-7"></i>
+                        </div>
+                        <span class="text-[10px] font-bold text-center ${unlocked ? 'text-gray-700' : 'text-gray-400'}">${b.name}</span>
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        // --- Health Tracker & Chart.js (แสดงผลบน Dashboard) ---
+        function openHealthTracker() {
+            playSound('click');
+            // เซ็ตวันที่ใน dropdown ให้ตรงกับวันที่ทำล่าสุดอัตโนมัติ
+            document.getElementById('health-day-input').value = currentUnlockedDay;
+            document.getElementById('health-modal').classList.remove('hidden');
+        }
+        
+        function closeHealthTracker() {
+            playSound('click');
+            document.getElementById('health-modal').classList.add('hidden');
+        }
+
+        function saveHealthLog() {
+            const dayStr = document.getElementById('health-day-input').value;
+            const fbsStr = document.getElementById('health-sugar-input').value;
+            const weightStr = document.getElementById('health-weight-input').value;
+
+            if(!fbsStr && !weightStr) return alert('กรุณากรอกค่าน้ำตาลหรือน้ำหนักก่อนบันทึก');
+
+            const dayNum = parseInt(dayStr);
+            const existingIndex = healthLogs.findIndex(l => l.day === dayNum);
+            
+            const newLog = {
+                day: dayNum,
+                fbs: fbsStr ? parseFloat(fbsStr) : null,
+                weight: weightStr ? parseFloat(weightStr) : null
+            };
+
+            if(existingIndex >= 0) healthLogs[existingIndex] = newLog;
+            else healthLogs.push(newLog);
+            
+            healthLogs.sort((a,b) => a.day - b.day);
+            saveProgress();
+            
+            document.getElementById('health-sugar-input').value = '';
+            document.getElementById('health-weight-input').value = '';
+            
+            playSound('success');
+            closeHealthTracker(); // ปิดหน้าต่างให้ทันที
+            renderChart(); // อัปเดตตารางหน้าแดชบอร์ด
+        }
+
+        function renderChart() {
+            const canvasElement = document.getElementById('dashboardHealthChart');
+            if(!canvasElement) return;
+            const ctx = canvasElement.getContext('2d');
+            
+            if(myChart) myChart.destroy(); 
+
+            // หากยังไม่มีข้อมูล ให้แสดงข้อความว่างๆ ไว้
+            if(healthLogs.length === 0) {
+                myChart = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels: ['ยังไม่มีข้อมูล'], datasets: [{ label: 'โปรดบันทึกสุขภาพ', data: [] }] },
+                    options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+                return;
+            }
+
+            const labels = healthLogs.map(l => `วันที่ ${l.day}`);
+            const fbsData = healthLogs.map(l => l.fbs);
+            const weightData = healthLogs.map(l => l.weight);
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'น้ำตาล (FBS)',
+                            data: fbsData,
+                            borderColor: '#ec4899', // Pink 500
+                            backgroundColor: '#ec4899',
+                            yAxisID: 'y',
+                            tension: 0.3,
+                            spanGaps: true,
+                            pointRadius: 5,
+                            pointHoverRadius: 8
+                        },
+                        {
+                            label: 'น้ำหนัก (Kg)',
+                            data: weightData,
+                            borderColor: '#8b5cf6', // Violet 500
+                            backgroundColor: '#8b5cf6',
+                            yAxisID: 'y1',
+                            tension: 0.3,
+                            spanGaps: true,
+                            pointRadius: 5,
+                            pointHoverRadius: 8
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'top', labels: { font: { family: 'Prompt' } } }
+                    },
+                    scales: {
+                        x: { ticks: { font: { family: 'Prompt', size: 10 } } },
+                        y: {
+                            type: 'linear', display: true, position: 'left',
+                            title: { display: true, text: 'น้ำตาล (mg/dL)', font: { family: 'Prompt' } },
+                            ticks: { font: { family: 'Prompt', size: 10 } }
+                        },
+                        y1: {
+                            type: 'linear', display: true, position: 'right',
+                            title: { display: true, text: 'น้ำหนัก (Kg)', font: { family: 'Prompt' } },
+                            grid: { drawOnChartArea: false },
+                            ticks: { font: { family: 'Prompt', size: 10 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        document.body.addEventListener('click', function() { if(audioCtx.state === 'suspended') audioCtx.resume(); }, { once: true });
+        window.onload = initApp;
+    </script>
+</body>
+</html>
