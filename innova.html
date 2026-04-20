@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบประเมินนวัตกรรมการแพทย์แผนไทยและทางเลือก ปี 2569</title>
+    <!-- นำเข้า Font สารบรรณ -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+
+    <style>
+        :root {
+            --primary-blue: #0073e6;
+            --primary-blue-dark: #0052a3;
+            --primary-orange: #ff6a00;
+            --primary-orange-light: #ffc299;
+            --light-bg: #f4f7f8;
+            --white: #ffffff;
+            --text-dark: #2d3748;
+        }
+
+        * { box-sizing: border-box; }
+
+        body { font-family: 'Sarabun', sans-serif; background-color: var(--light-bg); color: var(--text-dark); margin: 0; display: flex; min-height: 100vh; overflow-x: hidden; }
+
+        /* Sidebar & Layout */
+        .sidebar { width: 260px; background: linear-gradient(180deg, var(--primary-blue) 0%, var(--primary-blue-dark) 100%); color: var(--white); position: fixed; height: 100vh; padding: 20px 0; box-shadow: 3px 0 15px rgba(0,0,0,0.15); z-index: 100; transition: transform 0.3s ease; }
+        .sidebar-header { text-align: center; padding: 0 20px 20px 20px; border-bottom: 2px solid var(--primary-orange); margin-bottom: 20px; }
+        .sidebar-header h2 { margin: 0; font-size: 22px; color: var(--white); text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+        .sidebar-header p { margin: 5px 0 0 0; font-size: 14px; color: var(--primary-orange-light); }
+        .menu-item { padding: 15px 25px; cursor: pointer; font-size: 18px; border-left: 5px solid transparent; transition: all 0.3s ease; display: flex; align-items: center; gap: 10px; color: rgba(255,255,255,0.8); }
+        .menu-item:hover, .menu-item.active { background-color: rgba(255, 106, 0, 0.15); border-left: 5px solid var(--primary-orange); color: var(--white); font-weight: 600; }
+        .menu-toggle { display: none; position: fixed; top: 15px; left: 15px; z-index: 1000; background: var(--primary-orange); color: white; border: none; padding: 10px 15px; border-radius: 6px; font-size: 24px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .main-content { margin-left: 260px; padding: 30px 40px; width: calc(100% - 260px); transition: margin-left 0.3s ease, width 0.3s ease; }
+        .section { display: none; animation: fadeIn 0.4s ease-out; }
+        .section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Cards & Forms */
+        .card { background: var(--white); padding: 30px; border-radius: 12px; border-top: 5px solid var(--primary-orange); box-shadow: 0 5px 20px rgba(0,0,0,0.08); margin-bottom: 30px; overflow: hidden; }
+        h1, h2, h3 { color: var(--primary-blue-dark); margin-top: 0; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { font-weight: 600; color: var(--primary-blue-dark); display: block; margin-bottom: 5px; }
+        input, select, textarea { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-family: 'Sarabun', sans-serif; font-size: 16px; transition: all 0.3s; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary-orange); box-shadow: 0 0 0 3px rgba(255, 106, 0, 0.2); }
+        input[type="file"] { padding: 8px; background: #f8fafc; }
+
+        /* Buttons */
+        .btn { padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-family: 'Sarabun', sans-serif; font-size: 16px; font-weight: 600; transition: all 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .btn-primary { background: var(--primary-orange); color: var(--white); }
+        .btn-primary:hover { background: #e65c00; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(255, 106, 0, 0.3); }
+        .btn-success { background: #10b981; color: var(--white); }
+        .btn-success:hover { background: #059669; transform: translateY(-2px); }
+        .btn-outline { background: transparent; border: 2px solid var(--primary-blue); color: var(--primary-blue); }
+        .btn-outline:hover { background: var(--primary-blue); color: var(--white); }
+        .btn-sm { padding: 6px 12px; font-size: 14px; border-radius: 4px; border: none; cursor: pointer; font-family: 'Sarabun', sans-serif;}
+        .btn-edit { background-color: var(--primary-blue); color: #fff; }
+        .btn-delete { background-color: #ef4444; color: #fff; margin-left: 5px; }
+        .btn-print { background-color: #0ea5e9; color: #fff; margin-left: 5px; }
+
+        /* Tables */
+        .table-responsive { overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; border-radius: 8px; overflow: hidden; min-width: 800px;}
+        th { background: var(--primary-blue); color: var(--white); padding: 12px; text-align: left; border: 1px solid rgba(255,255,255,0.2); }
+        td { border: 1px solid #e2e8f0; padding: 12px; vertical-align: top; }
+        tr:nth-child(even) { background-color: #f8fafc; }
+        tr:hover { background-color: #f1f5f9; }
+        .category-row { background-color: rgba(0, 115, 230, 0.1) !important; font-weight: bold; color: var(--primary-blue-dark); }
+        .sub-row td { padding-top: 10px; padding-bottom: 10px; font-size: 15px; }
+        .score-input { width: 80px; text-align: center; font-weight: bold; color: var(--primary-blue); background: #fff5eb; border: 2px solid var(--primary-orange); }
+        .total-score { font-size: 24px; font-weight: bold; color: var(--primary-orange); }
+
+        /* ⭐ AI Reasoning Box (อัปเกรดใหม่) */
+        .ai-reason { 
+            display: none; 
+            margin-top: 12px; 
+            padding: 10px 15px; 
+            border-radius: 6px; 
+            font-size: 14px; 
+            line-height: 1.5; 
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+            transition: all 0.3s;
+        }
+        .ai-snippet {
+            background: rgba(255,255,255,0.7);
+            border-left: 4px solid rgba(0,0,0,0.15);
+            padding: 6px 10px;
+            margin: 6px 0;
+            font-style: italic;
+            color: #334155;
+            border-radius: 0 4px 4px 0;
+            font-size: 13px;
+        }
+        .ai-kw-badge {
+            background-color: #e0f2fe;
+            color: #0284c7;
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+
+        /* Filter Controls & Badges */
+        .filter-container { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; background: #f0f9ff; padding: 15px; border-radius: 8px; border: 1px solid #bae6fd; }
+        .filter-container select { width: auto; min-width: 200px; padding: 8px 12px; }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 14px; font-weight: 600; display: inline-block; white-space: nowrap;}
+        .badge-excellent { background: #dcfce7; color: #166534; }
+        .badge-good { background: #fef9c3; color: #854d0e; }
+        .badge-normal { background: #fee2e2; color: #991b1b; }
+
+        /* Dashboard specific */
+        .stat-card { background: linear-gradient(135deg, var(--primary-blue), #00a8ff); color: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(0, 115, 230, 0.3); position: relative; overflow: hidden; }
+        .stat-card::after { content: ''; position: absolute; top: -50%; right: -20%; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%; }
+        .stat-card h3 { color: rgba(255,255,255,0.9); margin: 0 0 10px 0; font-size: 18px; }
+        .stat-card .value { font-size: 38px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
+        .top5-rank { font-size: 20px; font-weight: bold; }
+        .rank-1 { color: #FFD700; } .rank-2 { color: #C0C0C0; } .rank-3 { color: #CD7F32; }
+
+        /* Loading */
+        #loader { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 1000; justify-content: center; align-items: center; flex-direction: column; }
+        .spinner { border: 5px solid #f3f3f3; border-top: 5px solid var(--primary-orange); border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; }
+        
+        @media (max-width: 992px) { .grid-3 { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) {
+            .menu-toggle { display: block; }
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-left: 0; width: 100%; padding: 70px 15px 20px 15px; }
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
+            .stat-card .value { font-size: 30px; }
+            .card { padding: 20px 15px; }
+        }
+
+        /* ---------------- PRINT CSS ---------------- */
+        #printArea { display: none; }
+        @media print {
+            body * { visibility: hidden; }
+            #printArea, #printArea * { visibility: visible; }
+            #printArea { display: block; position: absolute; left: 0; top: 0; width: 100%; padding: 20px; background: white; color: black; font-family: 'Sarabun', sans-serif; }
+            @page { size: A4; margin: 15mm; }
+            .p-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #0052a3; padding-bottom: 10px; }
+            .p-title { font-size: 24px; font-weight: bold; color: #0052a3; margin: 0; }
+            .p-subtitle { font-size: 16px; color: #666; margin-top: 5px; }
+            .p-top-container { display: flex; gap: 20px; align-items: flex-start; margin-bottom: 20px; }
+            .p-info-box { flex: 1; border: 1px solid #ccc; padding: 15px; border-radius: 8px; background: #f8fafc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .p-info-row { display: flex; margin-bottom: 8px; }
+            .p-info-label { width: 140px; font-weight: bold; color: #0052a3; }
+            .p-img-box { width: 180px; text-align: center; display: none; }
+            .p-img-box img { max-width: 100%; max-height: 180px; border-radius: 8px; border: 1px solid #ccc; object-fit: contain; }
+            .p-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            .p-table th { background-color: #0073e6 !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 8px; border: 1px solid #ccc; text-align: left; }
+            .p-table td { border: 1px solid #ccc; padding: 8px; }
+            .p-table .p-cat { background-color: #e0f2fe !important; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .p-table .p-score-col { text-align: center; width: 80px; font-weight: bold; }
+            .p-total-box { text-align: right; font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #ff6a00 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .p-analysis-box { border: 1px solid #0073e6; border-radius: 8px; padding: 15px; margin-bottom: 15px; page-break-inside: avoid; }
+            .p-analysis-title { font-weight: bold; color: #0052a3; margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+            .p-analysis-text { white-space: pre-wrap; font-size: 14px; margin-top: 10px; }
+            .p-signature { margin-top: 50px; text-align: right; page-break-inside: avoid; }
+            .p-sig-line { display: inline-block; width: 200px; border-bottom: 1px dotted #000; margin-bottom: 5px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Indicator -->
+    <div id="loader">
+        <div class="spinner"></div>
+        <h3 style="margin-top: 20px; color: var(--primary-blue);" id="loaderText">กำลังประมวลผลไฟล์...</h3>
+        <p style="color: var(--text-dark); margin-top: 5px;">โปรดรอสักครู่ ระบบกำลังค้นหาหลักฐานอ้างอิงระดับประโยค</p>
+    </div>
+
+    <!-- Mobile Menu Button -->
+    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+
+    <!-- Sidebar Menu -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>ระบบประเมินนวัตกรรม</h2>
+            <p>แพทย์แผนไทย ปี 2569</p>
+        </div>
+        <div class="menu-item active" onclick="switchTab('dashboard', this)">📊 Dashboard สรุปผล</div>
+        <div class="menu-item" onclick="switchTab('evaluation', this, true)">📝 ประเมินผลงาน (เพิ่มใหม่)</div>
+        <div class="menu-item" onclick="switchTab('report', this)">📋 ทะเบียนรวม (สรุป)</div>
+        <div class="menu-item" onclick="switchTab('detailReport', this)">📑 สรุปคะแนนรายตัว (ละเอียด)</div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+
+        <!-- ==================== TAB 1: DASHBOARD ==================== -->
+        <div id="dashboard" class="section active">
+            <div class="card">
+                <h1>ภาพรวมผลการประเมินนวัตกรรม ประจำปี 2569</h1>
+                <div class="grid-3" style="margin-bottom: 30px;">
+                    <div class="stat-card"><h3>จำนวนผลงานทั้งหมด</h3><div class="value" id="stat-total">0</div></div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, var(--primary-orange), #ff9900);"><h3 style="color:#fff;">คะแนนเฉลี่ยรวม</h3><div class="value" id="stat-avg">0.00</div></div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #10b981, #34d399);"><h3 style="color:#fff;">ผลงานระดับดีเยี่ยม (80+)</h3><div class="value" id="stat-excellent">0</div></div>
+                </div>
+
+                <div style="background: #fff; padding: 25px; border-radius: 12px; border-left: 5px solid var(--primary-orange); box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 30px; overflow-x: auto;">
+                    <h2 style="margin-bottom: 15px; font-size: 20px;">🏆 จัดอันดับ Top 5 นวัตกรรมคะแนนสูงสุด</h2>
+                    <table style="min-width: 600px;">
+                        <thead style="background: var(--primary-blue-dark);">
+                            <tr><th width="10%" style="text-align: center;">อันดับ</th><th width="40%">ชื่อผลงาน</th><th width="20%">หน่วยงาน</th><th width="20%">ประเภท</th><th width="10%" style="text-align: center;">คะแนนรวม</th></tr>
+                        </thead>
+                        <tbody id="top5TableBody">
+                            <tr><td colspan="5" align="center" style="padding: 20px; color: #64748b;">ยังไม่มีข้อมูลผลงานที่ได้รับการประเมิน</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="grid-2" style="margin-bottom: 30px;">
+                    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; overflow-x: auto;">
+                        <h3 style="text-align: center; font-size: 18px;">จำนวนผลงาน แบ่งตามระดับคะแนน</h3><div style="min-width: 300px;"><canvas id="scoreRangeChart"></canvas></div>
+                    </div>
+                    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; overflow-x: auto;">
+                        <h3 style="text-align: center; font-size: 18px;">จุดเด่นนวัตกรรม (คะแนนเฉลี่ย 5 หมวด)</h3><div style="min-width: 300px;"><canvas id="radarChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== TAB 2: EVALUATION FORM ==================== -->
+        <div id="evaluation" class="section">
+            <div class="card">
+                <h1>แบบประเมินและวิเคราะห์นวัตกรรม (Expert Mode)</h1>
+                <p>กรอกข้อมูล หรืออัปโหลดไฟล์รายละเอียดนวัตกรรม (PDF) เพื่อให้ระบบ <b>วิเคราะห์ดึงหลักฐานอ้างอิงอัตโนมัติ</b></p>
+                
+                <div class="grid-2">
+                    <div class="form-group" style="background: #f0f9ff; padding: 20px; border-radius: 8px; border: 2px dashed var(--primary-blue);">
+                        <label>📄 อัปโหลดไฟล์นำเสนอ (PDF)</label>
+                        <input type="file" id="pdfUpload" accept="application/pdf" onchange="extractDataFromPDF(this)">
+                        <small style="color: #475569; display: block; margin-top: 5px;">* ระบบจะสแกนหาข้อความ และแสดงประโยคอ้างอิงเป็นหลักฐานในแต่ละข้อ</small>
+                    </div>
+                    <div class="form-group" style="background: #fff5eb; padding: 20px; border-radius: 8px; border: 2px dashed var(--primary-orange);">
+                        <label>📸 อัปโหลดรูปภาพผลิตภัณฑ์ (ถ้ามี)</label>
+                        <input type="file" id="imageUpload" accept="image/*" onchange="processAndPreviewImage(this)">
+                        <div style="text-align: center;"><img id="imagePreview" src="" style="display:none; max-width: 100%; max-height: 150px; margin-top: 10px; border-radius: 6px; object-fit: contain; box-shadow: 0 2px 5px rgba(0,0,0,0.1);"></div>
+                        <small style="color: #475569; display: block; margin-top: 5px;">* รูปภาพจะถูกบีบอัดและนำไปแสดงในหน้าพิมพ์ใบประเมินผล</small>
+                    </div>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 25px 0;">
+
+                <div class="grid-2">
+                    <div class="form-group"><label>ชื่อผลงาน / ผลิตภัณฑ์ *</label><input type="text" id="inv_name" placeholder="ระบุชื่อนวัตกรรม" required></div>
+                    <div class="form-group">
+                        <label>ประเภทนวัตกรรม *</label>
+                        <select id="inv_type">
+                            <option value="ผลิตภัณฑ์สมุนไพร">ผลิตภัณฑ์สมุนไพร</option><option value="รูปแบบการบริการ (Service)">รูปแบบการบริการ (Service)</option>
+                            <option value="เทคโนโลยี/เครื่องมือแพทย์">เทคโนโลยี/เครื่องมือแพทย์</option><option value="แอปพลิเคชัน/ซอฟต์แวร์">แอปพลิเคชัน/ซอฟต์แวร์</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>ชื่อหน่วยงาน (รพ. / รพ.สต.) *</label><input type="text" id="inv_agency" placeholder="เช่น รพ.สต.บ้านบางระจัน"></div>
+                    <div class="form-group">
+                        <label>อำเภอ *</label>
+                        <select id="inv_district">
+                            <option value="เมือง">เมือง</option><option value="บางพลี">บางพลี</option><option value="พระประแดง">พระประแดง</option>
+                            <option value="บางบ่อ">บางบ่อ</option><option value="พระสมุทรเจดีย์">พระสมุทรเจดีย์</option><option value="บางเสาธง">บางเสาธง</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>ชื่อผู้ส่ง / นวัตกร</label><input type="text" id="inv_creator" placeholder="ชื่อ-นามสกุล"></div>
+                    <div class="form-group"><label>กรรมการผู้ประเมิน</label><input type="text" id="inv_assessor" placeholder="ชื่อกรรมการ" value="กรรมการคนที่ 1"></div>
+                </div>
+
+                <div class="grid-3" style="margin-top: 5px;">
+                    <div class="form-group"><label>📞 เบอร์โทรติดต่อ</label><input type="text" id="inv_contact" placeholder="08X-XXX-XXXX"></div>
+                    <div class="form-group"><label>🎯 กลุ่มเป้าหมายผู้รับบริการ</label><input type="text" id="inv_target" placeholder="เช่น ผู้สูงอายุ, ผู้ป่วยข้อเข่า"></div>
+                    <div class="form-group">
+                        <label>🚀 สถานะการพัฒนา</label>
+                        <select id="inv_stage">
+                            <option value="ริเริ่ม/ต้นแบบ (Prototype)">ริเริ่ม/ต้นแบบ (Prototype)</option><option value="ทดลองใช้ (Pilot)">ทดลองใช้ในหน่วยงาน (Pilot)</option>
+                            <option value="ใช้งานจริง (Implemented)">ใช้งานจริงอย่างแพร่หลาย (Implemented)</option><option value="ขยายผล (Scaling)">ขยายผลสู่ชุมชน/เครือข่าย (Scaling)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group"><label>🔗 ลิงก์วิดีโอสาธิต หรือเอกสารเพิ่มเติม (ถ้ามี)</label><input type="text" id="inv_link" placeholder="วางลิงก์ YouTube, Google Drive..."></div>
+
+                <h3 style="margin-top: 30px; border-bottom: 2px solid var(--primary-blue); padding-bottom: 10px;">เกณฑ์การพิจารณาตัดสิน (100 คะแนน)</h3>
+                
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th width="8%" style="text-align: center;">ข้อ</th>
+                                <th width="52%">หัวข้อการประเมิน (จากเกณฑ์ปี 2569)</th>
+                                <th width="15%" style="text-align: center;">คะแนนเต็ม</th>
+                                <th width="25%" style="text-align: center;">คะแนนที่ได้</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- หมวด 1 -->
+                            <tr class="category-row"><td colspan="4">1. ความใหม่ พัฒนาต่อยอด และมีความคิดสร้างสรรค์ (20)</td></tr>
+                            <tr class="sub-row">
+                                <td align="center">1.1</td>
+                                <td>มีความแปลกใหม่ ความคิดสร้างสรรค์ แตกต่างจากสิ่งที่มีอยู่เดิม ประยุกต์ใช้ทรัพยากรที่มีอยู่ในการพัฒนานวัตกรรม
+                                    <div id="reason_1_1" class="ai-reason"></div>
+                                </td>
+                                <td align="center">10</td><td align="center"><input type="number" id="score_1_1" class="score-input" min="0" max="10" value="0" oninput="calculateTotal()"></td>
+                            </tr>
+                            <tr class="sub-row">
+                                <td align="center">1.2</td>
+                                <td>มีระดับการพัฒนาต่อยอดจากองค์ความรู้เดิมอย่างเป็นรูปธรรม หรือแสดงให้เห็นถึงการปรับปรุงอย่างต่อเนื่อง
+                                    <div id="reason_1_2" class="ai-reason"></div>
+                                </td>
+                                <td align="center">10</td><td align="center"><input type="number" id="score_1_2" class="score-input" min="0" max="10" value="0" oninput="calculateTotal()"></td>
+                            </tr>
+                            <!-- หมวด 2 -->
+                            <tr class="category-row"><td colspan="4">2. ความสอดคล้องกับปัญหาสุขภาพและบริบท (20)</td></tr>
+                            <tr class="sub-row">
+                                <td align="center">2.1</td>
+                                <td>มีการออกแบบพัฒนานวัตกรรม ที่สอดคล้องกับสภาพปัญหา วิเคราะห์ปัญหา
+                                    <div id="reason_2_1" class="ai-reason"></div>
+                                </td>
+                                <td align="center">10</td><td align="center"><input type="number" id="score_2_1" class="score-input" min="0" max="10" value="0" oninput="calculateTotal()"></td>
+                            </tr>
+                            <tr class="sub-row">
+                                <td align="center">2.2</td>
+                                <td>ความเหมาะสมกับบริบทหน่วยบริการ สามารถใช้ได้จริงใน รพ./รพ.สต.
+                                    <div id="reason_2_2" class="ai-reason"></div>
+                                </td>
+                                <td align="center">10</td><td align="center"><input type="number" id="score_2_2" class="score-input" min="0" max="10" value="0" oninput="calculateTotal()"></td>
+                            </tr>
+                            <!-- หมวด 3 -->
+                            <tr class="category-row"><td colspan="4">3. คุณภาพ ความปลอดภัย (20)</td></tr>
+                            <tr class="sub-row">
+                                <td align="center">3.1</td>
+                                <td>มีข้อมูลสนับสนุนความปลอดภัย
+                                    <div id="reason_3_1" class="ai-reason"></div>
+                                </td>
+                                <td align="center">10</td><td align="center"><input type="number" id="score_3_1" class="score-input" min="0" max="10" value="0" oninput="calculateTotal()"></td>
+                            </tr>
+                            <tr class="sub-row">
+                                <td align="center">3.2</td>
+                                <td>ไม่มีผลข้างเคียงรุนแรง มีการประเมินความปลอดภัย เช่น การระคายเคือง การแพ้ หรือผลข้างเคียง
+                                    <div id="reason_3_2" class="ai-reason"></div>
+                                </td>
+                                <td align="center">10</td><td align="center"><input type="number" id="score_3_2" class="score-input" min="0" max="10" value="0" oninput="calculateTotal()"></td>
+                            </tr>
+                            <!-- หมวด 4 -->
+                            <tr class="category-row"><td colspan="4">4. ประสิทธิผลและหลักฐานเชิงวิชาการ (20)</td></tr>
+                            <tr class="sub-row">
+                                <td align="center">4.1</td>
+                                <td>เห็นผลลัพธ์ชัดเจน เช่น ลดอาการปวด เพิ่มคุณภาพชีวิต มีตัวชี้วัดผลลัพธ์ที่เป็นรูปธรรม
+                                    <div id="reason_4_1" class="ai-reason"></div>
+                                </td>
+                                <td align="center">10</td><td align="center"><input type="number" id="score_4_1" class="score-input" min="0" max="10" value="0" oninput="calculateTotal()"></td>
+                            </tr>
+                            <tr class="sub-row">
+                                <td align="center">4.2</td>
+                                <td>หลักฐานหรือข้อมูลสนับสนุน หลักฐานเชิงวิชาการ มีเอกสารอ้างอิงหรือองค์ความรู้รองรับ
+                                    <div id="reason_4_2" class="ai-reason"></div>
+                                </td>
+                                <td align="center">10</td><td align="center"><input type="number" id="score_4_2" class="score-input" min="0" max="10" value="0" oninput="calculateTotal()"></td>
+                            </tr>
+                            <!-- หมวด 5 -->
+                            <tr class="category-row"><td colspan="4">5. คุณค่าและการนำไปใช้ (20)</td></tr>
+                            <tr class="sub-row">
+                                <td align="center">5.1</td>
+                                <td>การนำไปใช้ ใช้ง่าย สะดวกและมีขั้นตอนการใช้ไม่ซับซ้อน สามารถนำไปใช้ได้ดี
+                                    <div id="reason_5_1" class="ai-reason"></div>
+                                </td>
+                                <td align="center">10</td><td align="center"><input type="number" id="score_5_1" class="score-input" min="0" max="10" value="0" oninput="calculateTotal()"></td>
+                            </tr>
+                            <tr class="sub-row">
+                                <td align="center">5.2</td>
+                                <td>คุณค่าและความคุ้มค่า ก่อให้เกิดประโยชน์ต่อผู้ป่วย/ชุมชน
+                                    <div id="reason_5_2" class="ai-reason"></div>
+                                </td>
+                                <td align="center">10</td><td align="center"><input type="number" id="score_5_2" class="score-input" min="0" max="10" value="0" oninput="calculateTotal()"></td>
+                            </tr>
+                            <tr style="background: #fff5eb;">
+                                <td colspan="2" align="right"><b>รวมคะแนนทั้งหมด:</b></td>
+                                <td align="center"><b>100</b></td>
+                                <td align="center"><span id="display_total" class="total-score">0</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3 style="margin-top: 40px; border-bottom: 2px solid var(--primary-blue); padding-bottom: 10px;">บทสรุปการวิเคราะห์เชิงลึก (AI แนะนำ / กรรมการปรับแก้ได้)</h3>
+                <div class="grid-2">
+                    <div class="form-group"><label>📝 1. จุดเด่นด้านนวัตกรรม และความคิดสร้างสรรค์</label><textarea id="analysis_innovation" rows="4" placeholder="กรอกวิเคราะห์ความแปลกใหม่ การพัฒนาต่อยอด..."></textarea></div>
+                    <div class="form-group"><label>💰 2. ความคุ้มค่าด้านการลงทุน และประโยชน์ต่อชุมชน</label><textarea id="analysis_value" rows="4" placeholder="กรอกวิเคราะห์ความคุ้มค่าเชิงเศรษฐศาสตร์สุขภาพ..."></textarea></div>
+                </div>
+                <div class="form-group"><label>📌 3. สรุปภาพรวมและข้อเสนอแนะเพิ่มเติม</label><textarea id="analysis_summary" rows="3" placeholder="บทสรุปจากกรรมการ หรือข้อเสนอแนะเพื่อพัฒนาต่อ..."></textarea></div>
+                <div class="form-group"><label>❓ 4. ไกด์คำถามสำหรับกรรมการ (จุดด้อย / การพัฒนาต่อยอด)</label><textarea id="analysis_questions" rows="4" placeholder="คำถามแนะนำสำหรับสัมภาษณ์นวัตกร เช่น ข้อควรระวัง, แผนขยายผล..."></textarea></div>
+
+                <div style="margin-top: 30px; text-align: center;">
+                    <button class="btn btn-outline" onclick="clearForm()">✖ ล้างข้อมูล / ยกเลิก</button>
+                    <button class="btn btn-primary" id="btnSave" onclick="saveEvaluation()">💾 ยืนยันผลและบันทึก</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== TAB 3: REPORT ==================== -->
+        <div id="report" class="section">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 15px;">
+                    <h1 style="margin: 0;">ทะเบียนสรุปผลงานนวัตกรรม</h1>
+                    <button class="btn btn-success" style="margin-top: 10px;" onclick="exportToCSV()">📥 Export เป็น Excel (CSV)</button>
+                </div>
+                <div class="filter-container">
+                    <div><label style="font-size: 14px; margin-bottom: 3px;">🔍 กรองตามอำเภอ</label><select id="filterDistrict" onchange="applyFilters()"><option value="all">-- ทุกอำเภอ --</option><option value="เมือง">เมือง</option><option value="บางพลี">บางพลี</option><option value="พระประแดง">พระประแดง</option><option value="บางบ่อ">บางบ่อ</option><option value="พระสมุทรเจดีย์">พระสมุทรเจดีย์</option><option value="บางเสาธง">บางเสาธง</option></select></div>
+                    <div><label style="font-size: 14px; margin-bottom: 3px;">🔍 กรองตามประเภท</label><select id="filterType" onchange="applyFilters()"><option value="all">-- ทุกประเภท --</option><option value="ผลิตภัณฑ์สมุนไพร">ผลิตภัณฑ์สมุนไพร</option><option value="รูปแบบการบริการ (Service)">รูปแบบการบริการ (Service)</option><option value="เทคโนโลยี/เครื่องมือแพทย์">เทคโนโลยี/เครื่องมือแพทย์</option><option value="แอปพลิเคชัน/ซอฟต์แวร์">แอปพลิเคชัน/ซอฟต์แวร์</option></select></div>
+                </div>
+                <div class="table-responsive">
+                    <table id="reportTable">
+                        <thead>
+                            <tr><th style="text-align: center;">ลำดับ</th><th>ชื่อผลงาน</th><th>หน่วยงาน</th><th>อำเภอ</th><th>ประเภท</th><th style="text-align: center;">คะแนนรวม</th><th style="text-align: center;">ระดับผลงาน</th><th style="text-align: center; min-width: 180px;">จัดการ</th></tr>
+                        </thead>
+                        <tbody id="reportTableBody"><tr><td colspan="8" align="center" style="padding: 20px;">ยังไม่มีข้อมูลการประเมิน</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== TAB 4: DETAILED REPORT ==================== -->
+        <div id="detailReport" class="section">
+            <div class="card">
+                <h1>สรุปคะแนนรายตัว (แจกแจงรายข้อย่อย 1.1 - 5.2)</h1>
+                <div class="filter-container">
+                    <div><label style="font-size: 14px; margin-bottom: 3px;">🔍 กรองตามอำเภอ</label><select id="filterDistrict2" onchange="syncFilters(this.value, 'district')"><option value="all">-- ทุกอำเภอ --</option><option value="เมือง">เมือง</option><option value="บางพลี">บางพลี</option><option value="พระประแดง">พระประแดง</option><option value="บางบ่อ">บางบ่อ</option><option value="พระสมุทรเจดีย์">พระสมุทรเจดีย์</option><option value="บางเสาธง">บางเสาธง</option></select></div>
+                    <div><label style="font-size: 14px; margin-bottom: 3px;">🔍 กรองตามประเภท</label><select id="filterType2" onchange="syncFilters(this.value, 'type')"><option value="all">-- ทุกประเภท --</option><option value="ผลิตภัณฑ์สมุนไพร">ผลิตภัณฑ์สมุนไพร</option><option value="รูปแบบการบริการ (Service)">รูปแบบการบริการ (Service)</option><option value="เทคโนโลยี/เครื่องมือแพทย์">เทคโนโลยี/เครื่องมือแพทย์</option><option value="แอปพลิเคชัน/ซอฟต์แวร์">แอปพลิเคชัน/ซอฟต์แวร์</option></select></div>
+                </div>
+                <div class="table-responsive" style="margin-top: 20px;">
+                    <table id="detailTable" style="white-space: nowrap;">
+                        <thead>
+                            <tr>
+                                <th rowspan="2" style="text-align: center; vertical-align: middle;">ลำดับ</th><th rowspan="2" style="vertical-align: middle; min-width: 200px;">ชื่อผลงาน</th><th rowspan="2" style="vertical-align: middle;">หน่วยงาน</th>
+                                <th colspan="2" style="text-align: center; background: #0062cc;">1. ความใหม่</th><th colspan="2" style="text-align: center; background: #0052a3;">2. บริบท</th><th colspan="2" style="text-align: center; background: #0062cc;">3. ความปลอดภัย</th><th colspan="2" style="text-align: center; background: #0052a3;">4. ประสิทธิผล</th><th colspan="2" style="text-align: center; background: #0062cc;">5. ความคุ้มค่า</th>
+                                <th rowspan="2" style="text-align: center; vertical-align: middle; font-size: 18px; background: var(--primary-orange);">รวม</th><th rowspan="2" style="text-align: center; vertical-align: middle;">จัดการ</th>
+                            </tr>
+                            <tr>
+                                <th style="text-align: center; font-size: 12px; background: #0073e6;">1.1(10)</th><th style="text-align: center; font-size: 12px; background: #0073e6;">1.2(10)</th>
+                                <th style="text-align: center; font-size: 12px; background: #005bb5;">2.1(10)</th><th style="text-align: center; font-size: 12px; background: #005bb5;">2.2(10)</th>
+                                <th style="text-align: center; font-size: 12px; background: #0073e6;">3.1(10)</th><th style="text-align: center; font-size: 12px; background: #0073e6;">3.2(10)</th>
+                                <th style="text-align: center; font-size: 12px; background: #005bb5;">4.1(10)</th><th style="text-align: center; font-size: 12px; background: #005bb5;">4.2(10)</th>
+                                <th style="text-align: center; font-size: 12px; background: #0073e6;">5.1(10)</th><th style="text-align: center; font-size: 12px; background: #0073e6;">5.2(10)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailTableBody"><tr><td colspan="15" align="center" style="padding: 20px;">ยังไม่มีข้อมูลการประเมิน</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== HIDDEN PRINT AREA ==================== -->
+    <div id="printArea">
+        <div class="p-header"><h1 class="p-title">ใบสรุปผลการประเมินนวัตกรรมการแพทย์แผนไทยและการแพทย์ทางเลือก</h1><div class="p-subtitle">ประจำปี 2569</div></div>
+        <div class="p-top-container">
+            <div class="p-info-box">
+                <div class="p-info-row"><div class="p-info-label">ชื่อผลงาน:</div><div id="p_name"></div></div>
+                <div class="p-info-row"><div class="p-info-label">หน่วยงาน/อำเภอ:</div><div id="p_agency_district"></div></div>
+                <div class="p-info-row"><div class="p-info-label">ประเภท:</div><div id="p_type"></div></div>
+                <div class="p-info-row"><div class="p-info-label">สถานะการพัฒนา:</div><div id="p_stage"></div></div>
+                <div class="p-info-row"><div class="p-info-label">กลุ่มเป้าหมาย:</div><div id="p_target"></div></div>
+                <div class="p-info-row"><div class="p-info-label">ผู้จัดทำนวัตกรรม:</div><div id="p_creator"></div></div>
+            </div>
+            <div class="p-img-box" id="p_image_container"><img id="p_image" src=""><div style="font-size: 12px; color: #666; margin-top: 5px;">ภาพผลิตภัณฑ์/ผลงาน</div></div>
+        </div>
+
+        <table class="p-table">
+            <thead><tr><th width="70%">หัวข้อการประเมิน</th><th class="p-score-col">คะแนนเต็ม</th><th class="p-score-col">คะแนนที่ได้</th></tr></thead>
+            <tbody>
+                <tr class="p-cat"><td colspan="3">1. ความใหม่ พัฒนาต่อยอด และมีความคิดสร้างสรรค์</td></tr>
+                <tr><td>1.1 มีความแปลกใหม่ แตกต่างจากสิ่งที่มีอยู่เดิม</td><td class="p-score-col">10</td><td class="p-score-col" id="p_s1_1"></td></tr>
+                <tr><td>1.2 ระดับการพัฒนาต่อยอดจากองค์ความรู้เดิม</td><td class="p-score-col">10</td><td class="p-score-col" id="p_s1_2"></td></tr>
+                <tr class="p-cat"><td colspan="3">2. ความสอดคล้องกับปัญหาสุขภาพและบริบท</td></tr>
+                <tr><td>2.1 สอดคล้องกับสภาพปัญหา วิเคราะห์ปัญหา</td><td class="p-score-col">10</td><td class="p-score-col" id="p_s2_1"></td></tr>
+                <tr><td>2.2 ความเหมาะสมกับบริบท นำไปใช้ได้จริง</td><td class="p-score-col">10</td><td class="p-score-col" id="p_s2_2"></td></tr>
+                <tr class="p-cat"><td colspan="3">3. คุณภาพ ความปลอดภัย</td></tr>
+                <tr><td>3.1 มีข้อมูลสนับสนุนความปลอดภัย</td><td class="p-score-col">10</td><td class="p-score-col" id="p_s3_1"></td></tr>
+                <tr><td>3.2 ไม่พบผลข้างเคียงรุนแรง หรือมีการประเมิน</td><td class="p-score-col">10</td><td class="p-score-col" id="p_s3_2"></td></tr>
+                <tr class="p-cat"><td colspan="3">4. ประสิทธิผลและหลักฐานเชิงวิชาการ</td></tr>
+                <tr><td>4.1 เห็นผลลัพธ์ชัดเจน มีตัวชี้วัดเป็นรูปธรรม</td><td class="p-score-col">10</td><td class="p-score-col" id="p_s4_1"></td></tr>
+                <tr><td>4.2 มีหลักฐานเชิงวิชาการสนับสนุน</td><td class="p-score-col">10</td><td class="p-score-col" id="p_s4_2"></td></tr>
+                <tr class="p-cat"><td colspan="3">5. คุณค่าและการนำไปใช้</td></tr>
+                <tr><td>5.1 ใช้ง่าย สะดวก ไม่ซับซ้อน</td><td class="p-score-col">10</td><td class="p-score-col" id="p_s5_1"></td></tr>
+                <tr><td>5.2 ความคุ้มค่า เกิดประโยชน์ต่อผู้ป่วย/ชุมชน</td><td class="p-score-col">10</td><td class="p-score-col" id="p_s5_2"></td></tr>
+            </tbody>
+        </table>
+        <div class="p-total-box">รวมคะแนนทั้งหมด: <span id="p_total" style="font-size: 28px; color: #ff6a00;"></span> / 100 คะแนน</div>
+
+        <div class="p-analysis-box"><div class="p-analysis-title">📝 จุดเด่นด้านนวัตกรรม และความคิดสร้างสรรค์</div><div class="p-analysis-text" id="p_txt_inno"></div></div>
+        <div class="p-analysis-box"><div class="p-analysis-title">💰 ความคุ้มค่าด้านการลงทุน และประโยชน์ต่อชุมชน</div><div class="p-analysis-text" id="p_txt_val"></div></div>
+        <div class="p-analysis-box"><div class="p-analysis-title">📌 สรุปภาพรวมและข้อเสนอแนะเพิ่มเติม</div><div class="p-analysis-text" id="p_txt_sum"></div></div>
+        <div class="p-analysis-box"><div class="p-analysis-title">❓ แนวทางคำถามสำหรับกรรมการ (สัมภาษณ์)</div><div class="p-analysis-text" id="p_txt_q"></div></div>
+
+        <div class="p-signature">
+            <div>ลงชื่อ <div class="p-sig-line"></div> กรรมการผู้ประเมิน</div>
+            <div style="margin-top: 5px;">( <span id="p_assessor" style="display:inline-block; width:180px; text-align:center;"></span> )</div>
+            <div style="margin-top: 5px;">วันที่ ....... / .................... / ...........</div>
+        </div>
+    </div>
+
+    <!-- ---------------- JavaScript Logic ---------------- -->
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+        let dbEvaluations = [];
+        let currentEditId = null; 
+        let currentImageBase64 = ""; 
+
+        let chartInstanceType = null; let chartInstanceDistrict = null;
+        let chartInstanceRange = null; let chartInstanceRadar = null;
+
+        window.onload = function() {
+            const savedData = localStorage.getItem('innovations_db');
+            if (savedData) {
+                try {
+                    dbEvaluations = JSON.parse(savedData);
+                    applyFilters(); updateDashboard();
+                } catch(e) { console.error("Error loading saved data", e); }
+            }
+        };
+
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+
+        function switchTab(tabId, element, isNew = false) {
+            document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            element.classList.add('active');
+            
+            if(window.innerWidth <= 768) { document.getElementById('sidebar').classList.remove('open'); }
+            if(tabId === 'dashboard') { updateDashboard(); }
+            if(tabId === 'report' || tabId === 'detailReport') { applyFilters(); }
+            if(isNew) { clearForm(); }
+        }
+
+        function clearForm() {
+            currentEditId = null;
+            document.getElementById('btnSave').innerHTML = '💾 ยืนยันผลและบันทึก';
+            document.querySelectorAll('input[type="text"], input[type="file"], textarea').forEach(el => el.value = '');
+            if(document.getElementById('inv_stage')) document.getElementById('inv_stage').value = 'ริเริ่ม/ต้นแบบ (Prototype)';
+            document.querySelectorAll('.score-input').forEach(el => el.value = '0');
+            document.getElementById('display_total').innerText = '0';
+            document.querySelectorAll('.ai-reason').forEach(el => el.style.display = 'none');
+            
+            document.getElementById('analysis_questions').value = '';
+            currentImageBase64 = "";
+            document.getElementById('imagePreview').src = "";
+            document.getElementById('imagePreview').style.display = 'none';
+        }
+
+        function calculateTotal() {
+            let total = 0;
+            const subScores = ['1_1', '1_2', '2_1', '2_2', '3_1', '3_2', '4_1', '4_2', '5_1', '5_2'];
+            subScores.forEach(id => {
+                let inputEl = document.getElementById('score_' + id);
+                if (inputEl) {
+                    let val = parseInt(inputEl.value) || 0;
+                    if(val > 10) { val = 10; inputEl.value = 10; }
+                    if(val < 0) { val = 0; inputEl.value = 0; }
+                    total += val;
+                }
+            });
+            document.getElementById('display_total').innerText = total;
+        }
+
+        function processAndPreviewImage(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 500; const MAX_HEIGHT = 500;
+                    let width = img.width; let height = img.height;
+                    if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } 
+                    else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
+                    canvas.width = width; canvas.height = height;
+                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+                    currentImageBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                    
+                    const preview = document.getElementById('imagePreview');
+                    preview.src = currentImageBase64; preview.style.display = 'inline-block';
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // --- Extract PDF (Main Upgrade) ---
+        async function extractDataFromPDF(input) {
+            const file = input.files[0];
+            if (!file) return;
+            document.getElementById('loader').style.display = 'flex';
+            document.getElementById('loaderText').innerText = 'กำลังอ่านและค้นหาหลักฐานระดับประโยค...';
+            const reader = new FileReader();
+            reader.onload = async function() {
+                try {
+                    const typedarray = new Uint8Array(this.result);
+                    const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                    let fullText = '';
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        fullText += textContent.items.map(item => item.str).join(' ') + ' ';
+                    }
+                    analyzeAndScoreTextExpert(fullText);
+                } catch (error) {
+                    alert('ไม่สามารถอ่านไฟล์ PDF ได้ หรือไฟล์ถูกจำกัดสิทธิ์');
+                } finally {
+                    document.getElementById('loader').style.display = 'none';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // --- 🌟 Expert NLP Algorithm (ดึง Snippet มาโชว์) ---
+        function analyzeAndScoreTextExpert(originalText) {
+            // 1. ดึงข้อมูลพื้นฐาน
+            const nameMatch = originalText.match(/(?:ชื่อผลงาน|ชื่อนวัตกรรม|โครงการ|เรื่อง)\s*:?\s*([^\n\r]+)/i);
+            if (nameMatch && nameMatch[1]) document.getElementById('inv_name').value = nameMatch[1].trim().substring(0, 100);
+
+            const agencyMatch = originalText.match(/(?:รพ\.สต\.|โรงพยาบาลส่งเสริมสุขภาพตำบล|โรงพยาบาล|รพ\.|สสอ\.|หน่วยงาน)\s*([ก-๙a-zA-Z0-9\s]+)/i);
+            if (agencyMatch && agencyMatch[1]) document.getElementById('inv_agency').value = (originalText.includes("รพ.สต.") ? "รพ.สต." : "รพ.") + agencyMatch[1].trim().split(' ')[0];
+
+            const creatorMatch = originalText.match(/(?:นาย|นาง|นางสาว|น\.ส\.|ผู้จัดทำ|ผู้เสนอ)\s*([ก-๙a-zA-Z\s]+)/i);
+            if(creatorMatch && creatorMatch[1]) document.getElementById('inv_creator').value = creatorMatch[1].trim().substring(0, 50);
+
+            // 2. ฟังก์ชันวิเคราะห์แบบ Expert
+            const lowerText = originalText.toLowerCase();
+
+            function analyzeCriterionExpert(keywords, desc) {
+                let foundKeywords = [];
+                let snippets = [];
+
+                keywords.forEach(kw => {
+                    let idx = lowerText.indexOf(kw);
+                    if (idx !== -1) {
+                        foundKeywords.push(kw);
+                        // ดึงประโยคแวดล้อมมาเป็นหลักฐาน (-40 ถึง +80 ตัวอักษร)
+                        let start = Math.max(0, idx - 40);
+                        let end = Math.min(originalText.length, idx + kw.length + 80);
+                        let snippet = originalText.substring(start, end).replace(/\n/g, ' ');
+                        
+                        // ไฮไลต์คำที่เจอ
+                        let regex = new RegExp(kw, "gi");
+                        snippet = snippet.replace(regex, `<span class="ai-kw-badge">$&</span>`);
+                        snippets.push(`"...${snippet}..."`);
+                    }
+                });
+
+                // เอาเฉพาะ Snippet ที่ไม่ซ้ำ (โชว์สูงสุด 2 อันพอให้ไม่รก)
+                snippets = [...new Set(snippets)].slice(0, 2);
+
+                let matchCount = foundKeywords.length;
+                let score = 0; let status = ""; let colorTheme = {};
+
+                if (matchCount === 0) {
+                    score = 3 + Math.floor(Math.random() * 2); // 3-4
+                    status = "⚠️ ไม่พบข้อมูลที่ชัดเจน";
+                    colorTheme = { bg: '#fef2f2', border: '#dc2626' };
+                } else if (matchCount <= 2) {
+                    score = 5 + Math.floor(Math.random() * 2); // 5-6
+                    status = "ℹ️ พบข้อมูลบางส่วน";
+                    colorTheme = { bg: '#fffbeb', border: '#f59e0b' };
+                } else if (matchCount <= 4) {
+                    score = 7 + Math.floor(Math.random() * 2); // 7-8
+                    status = "✅ มีความสอดคล้องระดับดี";
+                    colorTheme = { bg: '#f0fdf4', border: '#22c55e' };
+                } else {
+                    score = 9 + (Math.random() > 0.5 ? 1 : 0); // 9-10
+                    status = "🌟 สอดคล้องดีเยี่ยม (หลักฐานชัดเจน)";
+                    colorTheme = { bg: '#f0f9ff', border: '#0ea5e9' };
+                }
+
+                if (originalText.length < 500) score = Math.min(score, 5); // หักคะแนนถ้าเนื้อหาน้อยเกินไป
+
+                let reasonHtml = `<div><strong style="display:block; margin-bottom:6px;">${status}</strong>`;
+                if (snippets.length > 0) {
+                    reasonHtml += `<div style="font-size:12px; color:#64748b; margin-bottom:4px;"><b>ดึงประโยคจากเอกสาร:</b></div>`;
+                    snippets.forEach(s => { reasonHtml += `<div class="ai-snippet">${s}</div>`; });
+                    reasonHtml += `<div style="font-size: 12px; color: #94a3b8; margin-top:6px;"><b>คีย์เวิร์ดตรวจจับ:</b> ${foundKeywords.join(', ')}</div>`;
+                } else {
+                    reasonHtml += `<div style="color: #64748b;">ระบบไม่พบคำสำคัญที่เกี่ยวข้องกับ <b>${desc}</b> แนะนำให้สอบถามเพิ่มเติมเพื่อความชัดเจน</div>`;
+                }
+                reasonHtml += `</div>`;
+
+                return { score, reasonHtml, colorTheme };
+            }
+
+            // คลังคำศัพท์ใหม่ (ละเอียดระดับการแพทย์)
+            const kw_1_1 = ["นวัตกรรม", "สร้างสรรค์", "ความแตกต่าง", "ไม่เคยมี", "ประยุกต์ใช้", "ภูมิปัญญา", "แก้ปัญหาแบบใหม่", "แนวคิดใหม่", "ครั้งแรก", "จุดเด่น"];
+            const kw_1_2 = ["ต่อยอด", "พัฒนาจาก", "ปรับปรุง", "ต่อเนื่อง", "เพิ่มประสิทธิภาพ", "ยกระดับ", "รุ่นที่", "อดีต", "ดีกว่าเดิม"];
+            const kw_2_1 = ["สภาพปัญหา", "สาเหตุ", "วิเคราะห์", "ความต้องการ", "สอดคล้อง", "ลดอัตรา", "สถิติ", "อุบัติการณ์", "ระบาด", "ข้อมูลพื้นฐาน"];
+            const kw_2_2 = ["บริบท", "รพ.สต.", "พื้นที่", "ชุมชน", "นำไปใช้จริง", "เหมาะสม", "ทรัพยากรที่มี", "เข้าถึงง่าย", "ชาวบ้าน", "ผู้รับบริการ"];
+            const kw_3_1 = ["ปลอดภัย", "มาตรฐาน", "รับรอง", "อย.", "ทดสอบ", "ตรวจสอบ", "คู่มือ", "คำเตือน", "ข้อห้าม", "GMP", "ISO"];
+            const kw_3_2 = ["ผลข้างเคียง", "ระคายเคือง", "แพ้", "อาการแทรกซ้อน", "เฝ้าระวัง", "ติดตามอาการ", "ไม่พบอาการ", "ความเสี่ยง", "ประเมินความปลอดภัย"];
+            const kw_4_1 = ["ผลลัพธ์", "ลดอาการ", "เพิ่มคุณภาพชีวิต", "ตัวชี้วัด", "ร้อยละ", "เปอร์เซ็นต์", "สำเร็จ", "ค่าเฉลี่ย", "ระดับความปวด", "ความพึงพอใจ"];
+            const kw_4_2 = ["วิชาการ", "อ้างอิง", "งานวิจัย", "หลักฐาน", "วารสาร", "ตีพิมพ์", "ทฤษฎี", "ทดลอง", "คลินิก", "บรรณานุกรม"];
+            const kw_5_1 = ["ใช้ง่าย", "สะดวก", "ไม่ซับซ้อน", "ลดขั้นตอน", "ลดเวลา", "พกพา", "น้ำหนักเบา", "ผู้สูงอายุใช้ได้", "เรียนรู้ง่าย"];
+            const kw_5_2 = ["คุ้มค่า", "ประหยัด", "งบประมาณ", "ลดต้นทุน", "เศรษฐศาสตร์", "ประโยชน์", "ราคาถูก", "สร้างรายได้", "เชิงพาณิชย์", "ค่าใช้จ่าย"];
+
+            const results = {
+                '1_1': analyzeCriterionExpert(kw_1_1, "ความแปลกใหม่"), '1_2': analyzeCriterionExpert(kw_1_2, "การต่อยอด"),
+                '2_1': analyzeCriterionExpert(kw_2_1, "การวิเคราะห์ปัญหา"), '2_2': analyzeCriterionExpert(kw_2_2, "บริบทพื้นที่"),
+                '3_1': analyzeCriterionExpert(kw_3_1, "ความปลอดภัยเบื้องต้น"), '3_2': analyzeCriterionExpert(kw_3_2, "การเฝ้าระวังผลข้างเคียง"),
+                '4_1': analyzeCriterionExpert(kw_4_1, "ตัวชี้วัดและผลลัพธ์"), '4_2': analyzeCriterionExpert(kw_4_2, "หลักฐานเชิงวิชาการ"),
+                '5_1': analyzeCriterionExpert(kw_5_1, "ความสะดวกในการใช้งาน"), '5_2': analyzeCriterionExpert(kw_5_2, "ความคุ้มค่าด้านเศรษฐศาสตร์")
+            };
+
+            for (const [id, res] of Object.entries(results)) {
+                document.getElementById(`score_${id}`).value = res.score;
+                const rBox = document.getElementById(`reason_${id}`);
+                rBox.innerHTML = res.reasonHtml;
+                rBox.style.backgroundColor = res.colorTheme.bg;
+                rBox.style.borderLeftColor = res.colorTheme.border;
+                rBox.style.display = 'block';
+            }
+
+            calculateTotal();
+
+            // 3. สร้างบทวิเคราะห์และไกด์คำถาม (อิงจากคะแนนที่ได้)
+            let total = parseInt(document.getElementById('display_total').innerText);
+            
+            let innoText = (results['1_1'].score >= 7) ? "✅ มีความโดดเด่นด้านแนวคิดสร้างสรรค์ มีการประยุกต์ใช้สิ่งใหม่ที่ชัดเจนในเอกสาร" : "⚠️ เอกสารควรอธิบายจุดเด่นด้านนวัตกรรมที่แตกต่างจากของเดิมในท้องตลาดให้ชัดเจนยิ่งขึ้น";
+            document.getElementById('analysis_innovation').value = innoText;
+
+            let valText = (results['5_2'].score >= 7) ? "✅ นวัตกรรมนี้แสดงหลักฐานที่บ่งบอกถึงความคุ้มค่า การลดต้นทุน และให้ประโยชน์กับชุมชนได้จริง" : "⚠️ ไม่พบตัวเลขหรือข้อมูลยืนยันความคุ้มค่าเชิงเศรษฐศาสตร์สุขภาพที่ชัดเจน";
+            document.getElementById('analysis_value').value = valText;
+
+            let sumText = `(ประมวลผลจากระบบ AI อัตโนมัติ: ${total} / 100 คะแนน)\n`;
+            sumText += (total >= 80) ? "👉 สรุป: เอกสารมีรายละเอียดครบถ้วนและอ้างอิงชัดเจน จัดอยู่ในเกณฑ์คุณภาพสูง แนะนำให้พิจารณาสนับสนุน" : "👉 สรุป: ควรพิจารณาข้อมูลในส่วนของความปลอดภัยและหลักฐานเชิงวิชาการเพิ่มเติม เพื่อความมั่นใจก่อนนำไปใช้จริง";
+            document.getElementById('analysis_summary').value = sumText;
+
+            // สร้างไกด์คำถามเฉพาะจุด (Dynamic Questions)
+            let qArray = [];
+            if (results['1_2'].score < 7) qArray.push("1. [การต่อยอด] หากต้องการนำนวัตกรรมนี้ไปขยายผลในระดับจังหวัด คิดว่าต้องปรับปรุงกลไกใดอีกบ้าง?");
+            else qArray.push("1. [การต่อยอด] นวัตกรรมนี้มีแผนจะจดสิทธิบัตร หรือต่อยอดเป็นผลิตภัณฑ์เชิงพาณิชย์ในอนาคตหรือไม่?");
+
+            if (results['3_1'].score < 7 || results['3_2'].score < 7) qArray.push("2. [ความปลอดภัย] เนื่องจากข้อมูลความปลอดภัยยังระบุไม่ชัดเจน ขอทราบวิธีการเฝ้าระวังอาการแพ้/ผลข้างเคียงที่ใช้ในปัจจุบัน?");
+            else qArray.push("2. [ข้อจำกัด] นวัตกรรมนี้มีข้อห้ามใช้ หรือผู้ป่วยกลุ่มใดที่ต้องระมัดระวังเป็นพิเศษหรือไม่?");
+
+            if (results['4_1'].score < 7) qArray.push("3. [ประสิทธิผล] มีการเก็บข้อมูลตัวชี้วัดความสำเร็จก่อน-หลังใช้นวัตกรรมนี้อย่างเป็นระบบหรือไม่?");
+            
+            if (results['5_2'].score < 7) qArray.push("4. [ความคุ้มค่า] นวัตกรรมนี้ช่วยลดภาระค่าใช้จ่าย หรือลดระยะเวลาทำงานได้ประมาณเท่าไหร่เมื่อเทียบกับวิธีเดิม?");
+
+            document.getElementById('analysis_questions').value = qArray.join('\n');
+
+            alert("ระบบดึงประโยคหลักฐานอ้างอิงจาก PDF เรียบร้อยแล้ว (กรุณาดูในกรอบสีฟ้า/สีส้มใต้แต่ละข้อ)");
+        }
+
+        // --- Save / Edit / Delete ---
+        function saveEvaluation() {
+            const data = {
+                id: currentEditId || Date.now(), 
+                name: document.getElementById('inv_name').value || 'ไม่ได้ระบุชื่อ',
+                type: document.getElementById('inv_type').value,
+                agency: document.getElementById('inv_agency').value || 'ไม่ได้ระบุหน่วยงาน',
+                district: document.getElementById('inv_district').value,
+                creator: document.getElementById('inv_creator').value,
+                assessor: document.getElementById('inv_assessor').value,
+                contact: document.getElementById('inv_contact').value,
+                target: document.getElementById('inv_target').value,
+                stage: document.getElementById('inv_stage').value,
+                link: document.getElementById('inv_link').value,
+                image: currentImageBase64,
+                totalScore: parseInt(document.getElementById('display_total').innerText),
+                subScores: {
+                    s1_1: parseInt(document.getElementById('score_1_1').value)||0, s1_2: parseInt(document.getElementById('score_1_2').value)||0,
+                    s2_1: parseInt(document.getElementById('score_2_1').value)||0, s2_2: parseInt(document.getElementById('score_2_2').value)||0,
+                    s3_1: parseInt(document.getElementById('score_3_1').value)||0, s3_2: parseInt(document.getElementById('score_3_2').value)||0,
+                    s4_1: parseInt(document.getElementById('score_4_1').value)||0, s4_2: parseInt(document.getElementById('score_4_2').value)||0,
+                    s5_1: parseInt(document.getElementById('score_5_1').value)||0, s5_2: parseInt(document.getElementById('score_5_2').value)||0
+                },
+                scores: {
+                    c1: (parseInt(document.getElementById('score_1_1').value)||0) + (parseInt(document.getElementById('score_1_2').value)||0),
+                    c2: (parseInt(document.getElementById('score_2_1').value)||0) + (parseInt(document.getElementById('score_2_2').value)||0),
+                    c3: (parseInt(document.getElementById('score_3_1').value)||0) + (parseInt(document.getElementById('score_3_2').value)||0),
+                    c4: (parseInt(document.getElementById('score_4_1').value)||0) + (parseInt(document.getElementById('score_4_2').value)||0),
+                    c5: (parseInt(document.getElementById('score_5_1').value)||0) + (parseInt(document.getElementById('score_5_2').value)||0)
+                },
+                analysis: {
+                    innovation: document.getElementById('analysis_innovation').value,
+                    value: document.getElementById('analysis_value').value,
+                    summary: document.getElementById('analysis_summary').value,
+                    questions: document.getElementById('analysis_questions').value
+                }
+            };
+
+            if(data.name === 'ไม่ได้ระบุชื่อ') { alert('กรุณากรอกชื่อผลงานก่อนบันทึก'); return; }
+
+            if(currentEditId) {
+                const index = dbEvaluations.findIndex(item => item.id === currentEditId);
+                if(index !== -1) dbEvaluations[index] = data;
+                alert('อัปเดตข้อมูลเรียบร้อยแล้ว');
+            } else {
+                dbEvaluations.push(data);
+                alert('บันทึกข้อมูลเรียบร้อยแล้ว');
+            }
+            
+            try { localStorage.setItem('innovations_db', JSON.stringify(dbEvaluations)); } 
+            catch (e) { alert("หน่วยความจำเบราว์เซอร์เต็ม (อาจเกิดจากรูปภาพขนาดใหญ่) ไม่สามารถบันทึกได้"); return; }
+
+            clearForm(); applyFilters(); document.querySelectorAll('.menu-item')[0].click();
+        }
+
+        function editEvaluation(id) {
+            const item = dbEvaluations.find(d => d.id === id);
+            if(!item) return;
+            currentEditId = id;
+            document.getElementById('inv_name').value = item.name; document.getElementById('inv_type').value = item.type;
+            document.getElementById('inv_agency').value = item.agency; document.getElementById('inv_district').value = item.district;
+            document.getElementById('inv_creator').value = item.creator || ''; document.getElementById('inv_assessor').value = item.assessor || '';
+            document.getElementById('inv_contact').value = item.contact || ''; document.getElementById('inv_target').value = item.target || '';
+            document.getElementById('inv_stage').value = item.stage || 'ริเริ่ม/ต้นแบบ (Prototype)'; document.getElementById('inv_link').value = item.link || '';
+
+            currentImageBase64 = item.image || "";
+            if(currentImageBase64) {
+                document.getElementById('imagePreview').src = currentImageBase64;
+                document.getElementById('imagePreview').style.display = 'inline-block';
+            } else { document.getElementById('imagePreview').style.display = 'none'; }
+
+            document.getElementById('score_1_1').value = item.subScores.s1_1; document.getElementById('score_1_2').value = item.subScores.s1_2;
+            document.getElementById('score_2_1').value = item.subScores.s2_1; document.getElementById('score_2_2').value = item.subScores.s2_2;
+            document.getElementById('score_3_1').value = item.subScores.s3_1; document.getElementById('score_3_2').value = item.subScores.s3_2;
+            document.getElementById('score_4_1').value = item.subScores.s4_1; document.getElementById('score_4_2').value = item.subScores.s4_2;
+            document.getElementById('score_5_1').value = item.subScores.s5_1; document.getElementById('score_5_2').value = item.subScores.s5_2;
+
+            document.getElementById('analysis_innovation').value = item.analysis.innovation || '';
+            document.getElementById('analysis_value').value = item.analysis.value || '';
+            document.getElementById('analysis_summary').value = item.analysis.summary || '';
+            document.getElementById('analysis_questions').value = item.analysis.questions || '';
+
+            document.querySelectorAll('.ai-reason').forEach(el => el.style.display = 'none');
+            calculateTotal(); document.getElementById('btnSave').innerHTML = '💾 บันทึกการแก้ไข';
+            switchTab('evaluation', document.querySelectorAll('.menu-item')[1]);
+        }
+
+        function deleteEvaluation(id) {
+            if(confirm("คุณแน่ใจหรือไม่ที่จะลบข้อมูลผลงานนี้?")) {
+                dbEvaluations = dbEvaluations.filter(d => d.id !== id);
+                localStorage.setItem('innovations_db', JSON.stringify(dbEvaluations));
+                applyFilters(); updateDashboard(); alert("ลบข้อมูลสำเร็จ");
+            }
+        }
+
+        // --- FILTERING ---
+        function syncFilters(value, type) {
+            if(type === 'district') document.getElementById('filterDistrict').value = value;
+            if(type === 'type') document.getElementById('filterType').value = value;
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const dist = document.getElementById('filterDistrict').value;
+            const type = document.getElementById('filterType').value;
+            
+            document.getElementById('filterDistrict2').value = dist;
+            document.getElementById('filterType2').value = type;
+
+            let filtered = dbEvaluations;
+            if(dist !== 'all') filtered = filtered.filter(item => item.district === dist);
+            if(type !== 'all') filtered = filtered.filter(item => item.type === type);
+
+            renderReportTable(filtered); renderDetailTable(filtered);
+        }
+
+        // --- PRINT FUNCTION ---
+        function printEvaluation(id) {
+            const item = dbEvaluations.find(d => d.id === id);
+            if(!item) return;
+
+            document.getElementById('p_name').innerText = item.name; document.getElementById('p_agency_district').innerText = `${item.agency} (อ.${item.district})`;
+            document.getElementById('p_type').innerText = item.type; document.getElementById('p_stage').innerText = item.stage || '-';
+            document.getElementById('p_target').innerText = item.target || '-'; document.getElementById('p_creator').innerText = item.creator || '-';
+            
+            if(item.image) {
+                document.getElementById('p_image').src = item.image; document.getElementById('p_image_container').style.display = 'block';
+            } else { document.getElementById('p_image_container').style.display = 'none'; }
+
+            document.getElementById('p_s1_1').innerText = item.subScores.s1_1; document.getElementById('p_s1_2').innerText = item.subScores.s1_2;
+            document.getElementById('p_s2_1').innerText = item.subScores.s2_1; document.getElementById('p_s2_2').innerText = item.subScores.s2_2;
+            document.getElementById('p_s3_1').innerText = item.subScores.s3_1; document.getElementById('p_s3_2').innerText = item.subScores.s3_2;
+            document.getElementById('p_s4_1').innerText = item.subScores.s4_1; document.getElementById('p_s4_2').innerText = item.subScores.s4_2;
+            document.getElementById('p_s5_1').innerText = item.subScores.s5_1; document.getElementById('p_s5_2').innerText = item.subScores.s5_2;
+            document.getElementById('p_total').innerText = item.totalScore;
+            
+            document.getElementById('p_txt_inno').innerText = item.analysis.innovation || '-'; document.getElementById('p_txt_val').innerText = item.analysis.value || '-';
+            document.getElementById('p_txt_sum').innerText = item.analysis.summary || '-'; document.getElementById('p_txt_q').innerText = item.analysis.questions || '-';
+            document.getElementById('p_assessor').innerText = item.assessor || 'ชื่อกรรมการ';
+
+            window.print();
+        }
+
+        // --- Render ข้อมูล ---
+        function renderReportTable(dataArr = dbEvaluations) {
+            const tbody = document.getElementById('reportTableBody');
+            if(dataArr.length === 0) { tbody.innerHTML = '<tr><td colspan="8" align="center" style="padding: 20px;">ไม่พบข้อมูลตามเงื่อนไข</td></tr>'; return; }
+            tbody.innerHTML = '';
+            dataArr.forEach((item, index) => {
+                let bClass = 'badge-normal', bText = 'ปรับปรุง';
+                if(item.totalScore >= 80) { bClass = 'badge-excellent'; bText = 'ดีเยี่ยม'; } else if(item.totalScore >= 60) { bClass = 'badge-good'; bText = 'ดี'; }
+                tbody.innerHTML += `<tr><td align="center">${index + 1}</td><td>${item.name}</td><td>${item.agency}</td><td>${item.district}</td><td>${item.type}</td><td align="center"><b style="color: var(--primary-orange); font-size: 16px;">${item.totalScore}</b></td><td align="center"><span class="badge ${bClass}">${bText}</span></td><td align="center" style="white-space: nowrap;"><button class="btn-sm btn-print" title="พิมพ์/PDF" onclick="printEvaluation(${item.id})">🖨️</button><button class="btn-sm btn-edit" title="แก้ไข" onclick="editEvaluation(${item.id})">✏️</button><button class="btn-sm btn-delete" title="ลบ" onclick="deleteEvaluation(${item.id})">🗑️</button></td></tr>`;
+            });
+        }
+
+        function renderDetailTable(dataArr = dbEvaluations) {
+            const tbody = document.getElementById('detailTableBody');
+            if(dataArr.length === 0) { tbody.innerHTML = '<tr><td colspan="16" align="center" style="padding: 20px;">ไม่พบข้อมูลตามเงื่อนไข</td></tr>'; return; }
+            tbody.innerHTML = '';
+            dataArr.forEach((item, index) => {
+                tbody.innerHTML += `<tr><td align="center">${index + 1}</td><td style="white-space: normal; min-width: 200px;">${item.name}</td><td>${item.agency}</td><td align="center">${item.subScores.s1_1}</td><td align="center">${item.subScores.s1_2}</td><td align="center">${item.subScores.s2_1}</td><td align="center">${item.subScores.s2_2}</td><td align="center">${item.subScores.s3_1}</td><td align="center">${item.subScores.s3_2}</td><td align="center">${item.subScores.s4_1}</td><td align="center">${item.subScores.s4_2}</td><td align="center">${item.subScores.s5_1}</td><td align="center">${item.subScores.s5_2}</td><td align="center"><b style="color: var(--primary-orange);">${item.totalScore}</b></td><td align="center" style="white-space: nowrap;"><button class="btn-sm btn-print" title="พิมพ์/PDF" onclick="printEvaluation(${item.id})">🖨️</button><button class="btn-sm btn-edit" onclick="editEvaluation(${item.id})">✏️</button></td></tr>`;
+            });
+        }
+
+        // --- Export CSV ---
+        function exportToCSV() {
+            if(dbEvaluations.length === 0) { alert('ไม่มีข้อมูลสำหรับ Export'); return; }
+            let csvContent = "\uFEFF";
+            let headers = ["ลำดับ", "ชื่อผลงาน", "หน่วยงาน", "อำเภอ", "ประเภท", "กลุ่มเป้าหมาย", "สถานะการพัฒนา", "ผู้เสนอ", "เบอร์โทรศัพท์", "ลิงก์เพิ่มเติม", "ผู้ประเมิน", "คะแนนรวม", "1.1 ความแปลกใหม่", "1.2 การต่อยอด", "2.1 วิเคราะห์ปัญหา", "2.2 บริบท", "3.1 ความปลอดภัย", "3.2 ผลข้างเคียง", "4.1 ตัวชี้วัด", "4.2 หลักฐาน", "5.1 ใช้ง่าย", "5.2 ความคุ้มค่า", "วิเคราะห์จุดเด่น", "วิเคราะห์ความคุ้มค่า", "ข้อเสนอแนะ", "ไกด์คำถามสำหรับกรรมการ"];
+            csvContent += headers.join(",") + "\n";
+            dbEvaluations.forEach((item, index) => {
+                let row = [
+                    index + 1, `"${item.name}"`, `"${item.agency}"`, `"${item.district}"`, `"${item.type}"`,
+                    `"${item.target || ''}"`, `"${item.stage || ''}"`, `"${item.creator || ''}"`, `"${item.contact || ''}"`, `"${item.link || ''}"`,
+                    `"${item.assessor || ''}"`, item.totalScore, item.subScores.s1_1, item.subScores.s1_2, item.subScores.s2_1, item.subScores.s2_2,
+                    item.subScores.s3_1, item.subScores.s3_2, item.subScores.s4_1, item.subScores.s4_2, item.subScores.s5_1, item.subScores.s5_2,
+                    `"${(item.analysis.innovation || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`, `"${(item.analysis.value || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`, `"${(item.analysis.summary || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`, `"${(item.analysis.questions || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob);
+            const link = document.createElement("a"); link.setAttribute("href", url); link.setAttribute("download", "ผลประเมินนวัตกรรม_2569.csv");
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
+
+        // --- Dashboard กราฟ ---
+        function updateDashboard() {
+            if(dbEvaluations.length === 0) return;
+            const totalItems = dbEvaluations.length; const sumScore = dbEvaluations.reduce((sum, item) => sum + item.totalScore, 0); const excellentCount = dbEvaluations.filter(item => item.totalScore >= 80).length;
+            document.getElementById('stat-total').innerText = totalItems; document.getElementById('stat-avg').innerText = (sumScore / totalItems).toFixed(2); document.getElementById('stat-excellent').innerText = excellentCount;
+
+            const typeGroups = dbEvaluations.reduce((acc, item) => { acc[item.type] = acc[item.type] || { count: 0, sum: 0 }; acc[item.type].count += 1; acc[item.type].sum += item.totalScore; return acc; }, {});
+            const typeLabels = Object.keys(typeGroups); const typeAverages = typeLabels.map(t => typeGroups[t].sum / typeGroups[t].count);
+            const ctxType = document.getElementById('typeChart').getContext('2d'); if(chartInstanceType) chartInstanceType.destroy();
+            chartInstanceType = new Chart(ctxType, { type: 'bar', data: { labels: typeLabels, datasets: [{ label: 'คะแนนเฉลี่ย', data: typeAverages, backgroundColor: '#ff6a00', borderRadius: 5 }] }, options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } } });
+
+            const distGroups = dbEvaluations.reduce((acc, item) => { acc[item.district] = (acc[item.district] || 0) + 1; return acc; }, {});
+            const ctxDist = document.getElementById('districtChart').getContext('2d'); if(chartInstanceDistrict) chartInstanceDistrict.destroy();
+            chartInstanceDistrict = new Chart(ctxDist, { type: 'doughnut', data: { labels: Object.keys(distGroups), datasets: [{ data: Object.values(distGroups), backgroundColor: ['#0073e6', '#00a8ff', '#ff6a00', '#ffb84d', '#10b981', '#64748b'] }] }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'right' } } } });
+
+            const ranges = { 'ดีเยี่ยม (80-100)': 0, 'ดี (60-79)': 0, 'ปานกลาง (40-59)': 0, 'ปรับปรุง (<40)': 0 };
+            dbEvaluations.forEach(item => { if(item.totalScore >= 80) ranges['ดีเยี่ยม (80-100)']++; else if(item.totalScore >= 60) ranges['ดี (60-79)']++; else if(item.totalScore >= 40) ranges['ปานกลาง (40-59)']++; else ranges['ปรับปรุง (<40)']++; });
+            const ctxRange = document.getElementById('scoreRangeChart').getContext('2d'); if(chartInstanceRange) chartInstanceRange.destroy();
+            chartInstanceRange = new Chart(ctxRange, { type: 'bar', data: { labels: Object.keys(ranges), datasets: [{ label: 'จำนวนผลงาน', data: Object.values(ranges), backgroundColor: '#0073e6', borderRadius: 5 }] }, options: { maintainAspectRatio: false, indexAxis: 'y', scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } } } });
+
+            let avgRadar = { c1: 0, c2: 0, c3: 0, c4: 0, c5: 0 };
+            dbEvaluations.forEach(item => { avgRadar.c1 += item.scores.c1; avgRadar.c2 += item.scores.c2; avgRadar.c3 += item.scores.c3; avgRadar.c4 += item.scores.c4; avgRadar.c5 += item.scores.c5; });
+            const radarData = [ avgRadar.c1/totalItems, avgRadar.c2/totalItems, avgRadar.c3/totalItems, avgRadar.c4/totalItems, avgRadar.c5/totalItems ];
+            const ctxRadar = document.getElementById('radarChart').getContext('2d'); if(chartInstanceRadar) chartInstanceRadar.destroy();
+            chartInstanceRadar = new Chart(ctxRadar, { type: 'radar', data: { labels: ['1. ความใหม่/สร้างสรรค์', '2. บริบท/แก้ปัญหา', '3. ความปลอดภัย', '4. ประสิทธิผล', '5. ความคุ้มค่า'], datasets: [{ label: 'คะแนนเฉลี่ยรายหมวด (เต็ม 20)', data: radarData, backgroundColor: 'rgba(255, 106, 0, 0.2)', borderColor: '#ff6a00', pointBackgroundColor: '#0073e6' }] }, options: { maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 20 } } } });
+
+            const top5 = [...dbEvaluations].sort((a,b) => b.totalScore - a.totalScore).slice(0, 5);
+            const tbody = document.getElementById('top5TableBody'); tbody.innerHTML = '';
+            top5.forEach((item, index) => {
+                let rankIcon = index === 0 ? '<span class="top5-rank rank-1">🥇 1</span>' : index === 1 ? '<span class="top5-rank rank-2">🥈 2</span>' : index === 2 ? '<span class="top5-rank rank-3">🥉 3</span>' : `<span class="top5-rank" style="color:#64748b;">${index + 1}</span>`;
+                tbody.innerHTML += `<tr><td align="center">${rankIcon}</td><td style="white-space: normal;"><b>${item.name}</b></td><td>${item.agency}</td><td>${item.type}</td><td align="center"><b style="color: var(--primary-orange); font-size: 18px;">${item.totalScore}</b></td></tr>`;
+            });
+        }
+    </script>
+</body>
+</html>
