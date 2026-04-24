@@ -1502,6 +1502,11 @@ const About = ({ items, onExport, onPrint, onSaveHTML }) => {
 
 // ── MAIN APP ─────────────────────────────────────────────────────────────────
 function App() {
+  // --- เพิ่ม State สำหรับจัดการระบบ Login ---
+  const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem('wisdom_auth') === 'true');
+  const [pin, setPin] = useState("");
+  const [loginError, setLoginError] = useState(false);
+
   const [items, setItems] = useState(() => {
     const saved = loadData();
     if (saved) {
@@ -1849,6 +1854,49 @@ itemCards +
 
   const PAGE_COLORS = { dashboard:GOLD.main, products:GOLD.medium, rankings:GOLD.dark, analysis:GOLD.amber, about:GOLD.rust };
 
+  // --- ฟังก์ชันจัดการ Login ---
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (pin === "8888") {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('wisdom_auth', 'true'); // จำการล็อคอินไว้จนกว่าจะปิดแท็บ
+      setLoginError(false);
+    } else {
+      setLoginError(true);
+      setPin("");
+    }
+  };
+
+  // --- หน้าจอ Login ---
+  if (!isAuthenticated) {
+    return (
+      <div style={{ fontFamily:"'Sarabun', 'TH SarabunIT๙', sans-serif", background:"#fef9e7", minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+        <div style={{ background:"#fff", padding:"40px 30px", borderRadius:24, boxShadow:"0 10px 40px rgba(154,122,0,0.15)", textAlign:"center", maxWidth:400, width:"100%", border:"2px solid #e8c840" }}>
+          <div style={{ fontSize:50, marginBottom:16 }}>🔒</div>
+          <h2 style={{ color:GOLD.dark, margin:"0 0 8px", fontSize:22, fontWeight:800 }}>WISDOM PRODUCT 2569</h2>
+          <p style={{ color:"#666", margin:"0 0 24px", fontSize:14 }}>กรุณาใส่รหัสผ่าน 4 หลัก เพื่อเข้าสู่ระบบ</p>
+          
+          <form onSubmit={handleLogin}>
+            <input 
+              type="password" 
+              maxLength={4}
+              value={pin}
+              onChange={e => { setPin(e.target.value.replace(/[^0-9]/g, '')); setLoginError(false); }}
+              placeholder="••••"
+              style={{ width:"100%", padding:"14px", fontSize:32, letterSpacing:16, textAlign:"center", borderRadius:16, border:`2px solid ${loginError ? '#e53935' : '#e8c840'}`, outline:"none", marginBottom:16, color:GOLD.dark, fontWeight:800, boxSizing:"border-box" }}
+              autoFocus
+            />
+            {loginError && <div style={{ color:"#e53935", fontSize:13, fontWeight:700, margin:"-8px 0 16px" }}>รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่</div>}
+            
+            <button type="submit" style={{ width:"100%", background:`linear-gradient(135deg,${GOLD.main},${GOLD.medium})`, color:"#fff", border:"none", borderRadius:16, padding:"16px", fontSize:16, fontWeight:700, cursor:"pointer", boxShadow:"0 4px 12px rgba(154,122,0,0.2)" }}>
+              เข้าสู่ระบบ
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ fontFamily:"'Sarabun', 'TH SarabunIT๙', sans-serif", background:"#fef9e7", minHeight:"100vh" }}>
       {/* Header */}
@@ -1863,6 +1911,10 @@ itemCards +
               </div>
             </div>
             <div style={{ display:"flex", gap:8 }}>
+              <button onClick={() => { setIsAuthenticated(false); sessionStorage.removeItem('wisdom_auth'); setPin(''); }}
+                style={{ background:"rgba(255,255,255,0.18)", color:"#fff", border:"1px solid rgba(255,255,255,0.35)", borderRadius:10, padding:"7px 14px", fontSize:12, cursor:"pointer", fontWeight:600 }}>
+                🚪 ออกจากระบบ
+              </button>
               <button onClick={handlePrint}
                 style={{ background:"rgba(255,255,255,0.18)", color:"#fff", border:"1px solid rgba(255,255,255,0.35)", borderRadius:10, padding:"7px 14px", fontSize:12, cursor:"pointer", fontWeight:600 }}>
                 🖨️ PDF
