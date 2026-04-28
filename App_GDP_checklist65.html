@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GDP Checklist — สถานที่นำหรือสั่งยาเข้ามาในราชอาณาจักร</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun',sans-serif;background:#f5f5f0;color:#1a1a1a;font-size:15px;line-height:1.6}
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+
+/* ── Layout ── */
+.container{max-width:960px;margin:0 auto;padding:20px}
+.header{background:#1a4731;color:#fff;padding:20px 24px;border-radius:12px;margin-bottom:16px}
+.header h1{font-size:18px;font-weight:600;margin-bottom:4px}
+.header p{font-size:13px;opacity:.8}
+
+/* ── Stats ── */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px}
+.stat{background:#fff;border:1px solid #e0e0d8;border-radius:10px;padding:12px;text-align:center}
+.stat-n{font-size:24px;font-weight:600}
+.stat-l{font-size:11px;color:#666;margin-top:2px}
+.n-all{color:#1a4731}
+.n-pass{color:#0f6e56}
+.n-fail{color:#b83222}
+.n-na{color:#5348a0}
+.n-crit{color:#c0580a}
+
+/* ── Progress ── */
+.prog-wrap{background:#e8e8e0;border-radius:6px;height:8px;overflow:hidden;margin-bottom:16px}
+.prog-bar{height:100%;background:linear-gradient(90deg,#1D9E75,#0f6e56);border-radius:6px;transition:width .4s}
+
+/* ── Filter Tabs ── */
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tab{padding:5px 14px;border:1px solid #ccc;border-radius:20px;cursor:pointer;font-size:13px;background:#fff;color:#555;transition:all .15s}
+.tab.active{background:#1a4731;color:#fff;border-color:#1a4731}
+.tab:hover:not(.active){background:#f0f0e8}
+
+/* ── Section ── */
+.section{background:#fff;border:1px solid #e0e0d8;border-radius:12px;margin-bottom:10px;overflow:hidden}
+.sec-head{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none}
+.sec-head:hover{background:#fafaf5}
+.sec-num{width:28px;height:28px;border-radius:50%;background:#1a4731;color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sec-title{font-size:14px;font-weight:600;flex:1}
+.sec-meta{display:flex;gap:6px;align-items:center}
+.badge{font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px}
+.b-default{background:#f0f0e8;color:#666}
+.b-pass{background:#e1f5ee;color:#0f6e56}
+.b-fail{background:#fae5e2;color:#b83222}
+.b-partial{background:#e6f1fb;color:#185FA5}
+.arrow{font-size:11px;color:#999;transition:transform .2s;margin-left:4px}
+.arrow.open{transform:rotate(90deg)}
+.sec-body{display:none;border-top:1px solid #f0f0e8}
+.sec-body.open{display:block}
+
+/* ── Item ── */
+.item{border-bottom:1px solid #f5f5f0;transition:background .1s}
+.item:last-child{border-bottom:none}
+.item:hover{background:#fafaf8}
+.item-main{display:flex;align-items:flex-start;gap:10px;padding:10px 16px;cursor:pointer}
+.item-id{font-size:11px;color:#888;font-weight:500;min-width:28px;padding-top:2px}
+.item-content{flex:1}
+.item-title{font-size:13px;font-weight:500;margin-bottom:2px}
+.crit-badge{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;background:#fff3e8;color:#c0580a;border:1px solid #f0c090;margin-left:6px}
+.item-short{font-size:12px;color:#888;margin-top:2px}
+.btn-wrap{display:flex;gap:4px;flex-shrink:0;padding-top:1px}
+.btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #ddd;cursor:pointer;background:#fff;color:#666;font-family:inherit;transition:all .15s}
+.btn:hover{border-color:#aaa}
+.btn.pass.on{background:#e1f5ee;color:#0f6e56;border-color:#1D9E75;font-weight:500}
+.btn.fail.on{background:#fae5e2;color:#b83222;border-color:#d85a30;font-weight:500}
+.btn.na.on{background:#eeedfe;color:#534AB7;border-color:#7F77DD;font-weight:500}
+
+/* ── Detail Panel ── */
+.detail{display:none;padding:0 16px 14px 54px;background:#fafafa;border-top:1px dashed #e8e8e0}
+.detail.open{display:block}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+.dbox{border-radius:8px;padding:10px 12px}
+.dbox-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.dbox ul{list-style:none;padding:0}
+.dbox ul li{font-size:12px;line-height:1.7;padding-left:14px;position:relative;color:#444}
+.dbox ul li::before{content:"•";position:absolute;left:0;color:inherit}
+.dbox-pass{background:#e8f8f2;color:#0a5c42}
+.dbox-pass .dbox-title{color:#0a5c42}
+.dbox-pass ul li::before{color:#0f6e56}
+.dbox-fail{background:#fbeae8;color:#8b2215}
+.dbox-fail .dbox-title{color:#8b2215}
+.dbox-fail ul li::before{color:#b83222}
+.dbox-doc{background:#e8f0fb;color:#0e3a7a}
+.dbox-doc .dbox-title{color:#0e3a7a}
+.dbox-doc ul li::before{color:#185FA5}
+.dbox-ref{background:#f3f0ff;color:#3a2d8a}
+.dbox-ref .dbox-title{color:#3a2d8a}
+.dbox-full{grid-column:1/-1}
+
+/* ── Footer ── */
+.footer{display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;gap:8px}
+.legend{display:flex;gap:12px;font-size:12px;color:#666}
+.leg-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle}
+.reset-btn{padding:6px 16px;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;background:#fff;color:#555;font-family:inherit}
+.reset-btn:hover{background:#f5f5ee}
+.export-btn{padding:6px 16px;border:1px solid #1a4731;border-radius:8px;cursor:pointer;font-size:13px;background:#1a4731;color:#fff;font-family:inherit}
+.export-btn:hover{background:#143826}
+
+/* ── Responsive ── */
+@media(max-width:600px){
+  .stats{grid-template-columns:repeat(3,1fr)}
+  .detail-grid{grid-template-columns:1fr}
+}
+@media print{
+  .btn-wrap,.tabs,.footer{display:none!important}
+  .sec-body{display:block!important}
+  .detail{display:block!important}
+  body{background:#fff}
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <h1>📋 Checklist GDP — สถานที่นำหรือสั่งยาแผนปัจจุบันเข้ามาในราชอาณาจักร</h1>
+  <p>ตามประกาศกระทรวงสาธารณสุข เรื่อง หลักเกณฑ์ วิธีการ และเงื่อนไขในการกระจายยาแผนปัจจุบัน พ.ศ. 2564 | บังคับใช้ 1 ม.ค. 2565</p>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-n n-all" id="s-total">0</div><div class="stat-l">รายการทั้งหมด</div></div>
+  <div class="stat"><div class="stat-n n-pass" id="s-pass">0</div><div class="stat-l">✓ ผ่าน</div></div>
+  <div class="stat"><div class="stat-n n-fail" id="s-fail">0</div><div class="stat-l">✗ ไม่ผ่าน</div></div>
+  <div class="stat"><div class="stat-n n-na" id="s-na">0</div><div class="stat-l">— N/A</div></div>
+  <div class="stat"><div class="stat-n n-crit" id="s-crit-fail">0</div><div class="stat-l">⚠ Critical ไม่ผ่าน</div></div>
+</div>
+
+<div class="prog-wrap"><div class="prog-bar" id="pbar" style="width:0%"></div></div>
+
+<div class="tabs">
+  <div class="tab active" onclick="filterItems('all',this)">ทั้งหมด</div>
+  <div class="tab" onclick="filterItems('fail',this)">ไม่ผ่าน</div>
+  <div class="tab" onclick="filterItems('pending',this)">ยังไม่ประเมิน</div>
+  <div class="tab" onclick="filterItems('critical',this)">Critical เท่านั้น</div>
+</div>
+
+<div id="sections"></div>
+
+<div class="footer">
+  <div class="legend">
+    <span><span class="leg-dot" style="background:#1D9E75"></span>ผ่าน</span>
+    <span><span class="leg-dot" style="background:#d85a30"></span>ไม่ผ่าน</span>
+    <span><span class="leg-dot" style="background:#7F77DD"></span>N/A</span>
+    <span><span class="leg-dot" style="background:#c0580a"></span>Critical</span>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="reset-btn" onclick="resetAll()">รีเซ็ตทั้งหมด</button>
+    <button class="export-btn" onclick="window.print()">🖨 พิมพ์รายงาน</button>
+  </div>
+</div>
+
+</div>
+
+<script>
+const DATA = [
+  {
+    id:1, title:"การบริหารจัดการคุณภาพ", en:"Quality Management",
+    items:[
+      {id:"1.1",critical:true,
+        title:"มีระบบการบริหารจัดการคุณภาพ (QMS) เป็นลายลักษณ์อักษร",
+        short:"นโยบาย วัตถุประสงค์ และขั้นตอนการดำเนินงาน",
+        pass:["มีเอกสารนโยบายคุณภาพ (Quality Policy) ลงนามโดยผู้บริหาร","มีการกำหนดวัตถุประสงค์คุณภาพที่วัดได้","มีคู่มือคุณภาพ (Quality Manual) ครอบคลุมทุกกระบวนงาน","เอกสารเป็นปัจจุบันและมีผู้ควบคุม"],
+        fail:["ไม่มีเอกสารนโยบายคุณภาพ","ไม่มีคู่มือคุณภาพหรือครอบคลุมไม่ครบ","เอกสารล้าสมัย ไม่ได้ทบทวน"],
+        docs:["Quality Policy ลงนามผู้บริหาร","Quality Manual","ทะเบียนเอกสาร (Document Register)"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 1 ข้อ 1.1"},
+      {id:"1.2",critical:false,
+        title:"มีการทบทวนระบบบริหารจัดการคุณภาพเป็นระยะ",
+        short:"Management Review อย่างน้อยปีละ 1 ครั้ง",
+        pass:["มีการประชุม Management Review อย่างน้อยปีละ 1 ครั้ง","มีรายงานการประชุมและมติที่ชัดเจน","มีการติดตามผลจากการประชุมครั้งก่อน"],
+        fail:["ไม่มีหลักฐานการทบทวน","ทบทวนน้อยกว่าปีละ 1 ครั้ง","ไม่มีการติดตามผล"],
+        docs:["รายงานการประชุม Management Review","บันทึกมติและแผนติดตามผล"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 1 ข้อ 1.3"},
+      {id:"1.3",critical:false,
+        title:"มีการกำหนดบทบาทและความรับผิดชอบของบุคลากร",
+        short:"Job Description ชัดเจนและลงนามรับทราบ",
+        pass:["มีคำบรรยายลักษณะงาน (JD) ทุกตำแหน่ง","แต่ละ JD ระบุหน้าที่ด้าน GDP อย่างชัดเจน","บุคลากรลงนามรับทราบ JD"],
+        fail:["ไม่มี JD หรือครอบคลุมไม่ครบ","JD ไม่ระบุหน้าที่ด้านคุณภาพ","บุคลากรไม่ทราบบทบาทตัวเอง"],
+        docs:["Job Description แต่ละตำแหน่ง","Organization Chart"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 1 ข้อ 1.4"},
+      {id:"1.4",critical:false,
+        title:"มีระบบการจัดการความเสี่ยง (Risk Management)",
+        short:"ประเมินและบริหารความเสี่ยงอย่างเป็นระบบ",
+        pass:["มีการระบุความเสี่ยงในกระบวนการกระจายยา","มีการประเมินและจัดลำดับความเสี่ยง","มีมาตรการป้องกันและบรรเทาความเสี่ยง","มีการทบทวนความเสี่ยงเป็นระยะ"],
+        fail:["ไม่มีการประเมินความเสี่ยง","ประเมินแต่ไม่มีมาตรการควบคุม"],
+        docs:["Risk Register / ทะเบียนความเสี่ยง","รายงานการประเมินความเสี่ยง"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 1 ข้อ 1.5"},
+      {id:"1.5",critical:true,
+        title:"มีการจัดทำ SOP (Standard Operating Procedures) ครบถ้วน",
+        short:"ครอบคลุมทุกกระบวนงาน และเป็นปัจจุบัน",
+        pass:["มี SOP ครบทุกกระบวนงานหลัก (รับยา จัดเก็บ จ่ายยา ฯลฯ)","SOP ผ่านการอนุมัติและเป็นเวอร์ชันปัจจุบัน","บุคลากรรู้จักและเข้าถึง SOP ได้","มีการทบทวน SOP อย่างน้อยทุก 2 ปี"],
+        fail:["ไม่มี SOP หรือ SOP ล้าสมัย","SOP ไม่ผ่านการอนุมัติ","บุคลากรไม่รู้จัก SOP"],
+        docs:["รายการ SOP ทั้งหมด (SOP Index)","SOP ฉบับล่าสุดพร้อมลงนาม","บันทึกการทบทวน SOP"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 1 ข้อ 1.2"},
+    ]
+  },
+  {
+    id:2, title:"บุคลากร", en:"Personnel",
+    items:[
+      {id:"2.1",critical:true,
+        title:"มีเภสัชกรที่มีใบอนุญาตเป็นผู้มีหน้าที่ปฏิบัติการ",
+        short:"ใบอนุญาตประกอบวิชาชีพเภสัชกรรมยังไม่หมดอายุ",
+        pass:["เภสัชกรมีใบอนุญาตประกอบวิชาชีพเภสัชกรรมที่ยังไม่หมดอายุ","ชื่อตรงกับใบอนุญาตสถานที่","มีคำรับรองผู้มีหน้าที่ปฏิบัติการที่ถูกต้อง"],
+        fail:["ไม่มีเภสัชกร","ใบอนุญาตหมดอายุ","ชื่อไม่ตรงกับใบอนุญาตสถานที่"],
+        docs:["ใบอนุญาตประกอบวิชาชีพเภสัชกรรม","คำรับรองผู้มีหน้าที่ปฏิบัติการ (สำเนา)"],
+        ref:"พ.ร.บ.ยา พ.ศ.2510 มาตรา 22"},
+      {id:"2.2",critical:true,
+        title:"เภสัชกรปฏิบัติหน้าที่ตลอดเวลาที่เปิดทำการ",
+        short:"ต้องอยู่ ณ สถานที่ตลอดเวลา ไม่มอบหมายบุคคลอื่นแทน",
+        pass:["มีเภสัชกรอยู่ตลอดเวลาทำการ","มีบันทึกเวลาเข้า-ออก","กรณีไม่อยู่มีการแจ้งแทน (เภสัชกรสำรอง) อย่างถูกต้อง"],
+        fail:["เภสัชกรไม่อยู่ระหว่างเปิดทำการ","ให้บุคคลที่ไม่ใช่เภสัชกรดูแลแทนโดยไม่มีการแจ้ง","ไม่มีหลักฐานการปฏิบัติงาน"],
+        docs:["บันทึกเวลาปฏิบัติงานเภสัชกร","แบบแจ้งการเข้าปฏิบัติหน้าที่แทน (ถ้ามี)"],
+        ref:"พ.ร.บ.ยา พ.ศ.2510 มาตรา 22"},
+      {id:"2.3",critical:false,
+        title:"มีบันทึกการฝึกอบรมบุคลากรทุกคน",
+        short:"Training Record ครบทุกตำแหน่งที่เกี่ยวข้องกับ GDP",
+        pass:["มี Training Record ระบุชื่อ วันที่ เนื้อหา ผู้ฝึกสอน","ลงนามโดยบุคลากรที่ได้รับการฝึกอบรม","เก็บรักษาบันทึกอย่างน้อย 3 ปี"],
+        fail:["ไม่มี Training Record","บันทึกไม่ครบถ้วน","เก็บรักษาไม่ครบ"],
+        docs:["Training Record แต่ละบุคคล","แผนการฝึกอบรมประจำปี (Training Plan)"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 2 ข้อ 2.3"},
+      {id:"2.4",critical:false,
+        title:"บุคลากรได้รับการฝึกอบรมด้าน GDP ก่อนเริ่มงาน",
+        short:"Initial Training ก่อนปฏิบัติงานจริง",
+        pass:["มีหลักสูตร On-boarding Training ที่ครอบคลุม GDP","บุคลากรทุกคนผ่าน Initial Training ก่อนปฏิบัติงาน","มีการทดสอบความเข้าใจหลังการอบรม"],
+        fail:["บุคลากรเริ่มงานโดยไม่ผ่านการอบรม","ไม่มีหลักสูตร On-boarding"],
+        docs:["หลักสูตร On-boarding Training","บันทึกการอบรม + ใบรับรองผ่านการอบรม"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 2 ข้อ 2.4"},
+      {id:"2.5",critical:false,
+        title:"มีการฝึกอบรมซ้ำ (Refresher Training) อย่างน้อยปีละ 1 ครั้ง",
+        short:"Re-training ต่อเนื่องครอบคลุมกระบวนงาน GDP",
+        pass:["มีการจัด Refresher Training ทุกปี","เนื้อหาครอบคลุมการเปลี่ยนแปลง SOP, กฎหมาย","มีบันทึกและหลักฐานการเข้าร่วม"],
+        fail:["ไม่มี Refresher Training","ฝึกอบรมน้อยกว่าปีละ 1 ครั้ง"],
+        docs:["บันทึก Refresher Training ประจำปี","ใบเซ็นชื่อผู้เข้าร่วม"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 2 ข้อ 2.4"},
+      {id:"2.6",critical:false,
+        title:"มีแผนภูมิองค์กร (Organization Chart) ชัดเจน",
+        short:"แสดงสายการบังคับบัญชาและตำแหน่งเภสัชกร",
+        pass:["Org Chart เป็นปัจจุบัน ระบุชื่อและตำแหน่ง","แสดงผู้รับผิดชอบด้านคุณภาพชัดเจน","ลงนามโดยผู้บริหาร"],
+        fail:["ไม่มี Org Chart","Org Chart ล้าสมัย ไม่ตรงกับปัจจุบัน"],
+        docs:["Organization Chart ฉบับล่าสุด (ลงนาม+วันที่)"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 2 ข้อ 2.2"},
+    ]
+  },
+  {
+    id:3, title:"สถานที่และอุปกรณ์", en:"Premises & Equipment",
+    items:[
+      {id:"3.1",critical:true,
+        title:"มีป้ายแสดงว่าเป็นสถานที่นำหรือสั่งยาเข้ามาในราชอาณาจักร",
+        short:"ป้ายติดในที่เปิดเผย มองเห็นได้ชัดจากภายนอก",
+        pass:["ป้ายติดหน้าสถานที่ มองเห็นได้ชัด","ข้อความตรงตามกฎกระทรวงกำหนด","ขนาด ตัวอักษร สีตามมาตรฐาน"],
+        fail:["ไม่มีป้าย","ป้ายมองไม่เห็น/ปิดบัง","ข้อความไม่ครบหรือผิด"],
+        docs:["ภาพถ่ายป้าย","ใบอนุญาตสถานที่"],
+        ref:"พ.ร.บ.ยา พ.ศ.2510 มาตรา 23"},
+      {id:"3.2",critical:true,
+        title:"ป้ายแสดงชื่อ-นามสกุล วิทยฐานะ และเวลาปฏิบัติการของเภสัชกร",
+        short:"ต้องแสดงข้อมูลผู้มีหน้าที่ปฏิบัติการชัดเจน",
+        pass:["แสดงชื่อ-นามสกุลเภสัชกรถูกต้องตรงกับใบอนุญาต","ระบุวิทยฐานะ เช่น เภสัชกร","ระบุเวลาปฏิบัติการชัดเจน"],
+        fail:["ไม่แสดงชื่อเภสัชกร","ชื่อไม่ตรงกับผู้ปฏิบัติงานจริง","ไม่ระบุเวลาทำการ"],
+        docs:["ภาพถ่ายป้าย"],
+        ref:"พ.ร.บ.ยา พ.ศ.2510 มาตรา 23"},
+      {id:"3.3",critical:true,
+        title:"พื้นที่จัดเก็บยามีขนาดเพียงพอ สะอาด และเป็นระเบียบ",
+        short:"พื้นที่ต้องไม่แออัด ไม่วางยาสัมผัสพื้น",
+        pass:["พื้นที่เพียงพอ ยาไม่แออัด","ไม่วางยาบนพื้นโดยตรง (ต้องยกสูงจากพื้น ≥15 ซม.)","ทำความสะอาดสม่ำเสมอ มีบันทึก","ไม่เก็บสิ่งของที่ไม่ใช่ยาปะปน"],
+        fail:["พื้นที่แออัด จัดเก็บไม่เป็นระเบียบ","วางยาบนพื้นโดยตรง","สกปรก มีฝุ่น หรือความชื้นสะสม"],
+        docs:["บันทึกการทำความสะอาด","แผนผังสถานที่จัดเก็บ","ภาพถ่ายพื้นที่"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 3 ข้อ 3.1"},
+      {id:"3.4",critical:true,
+        title:"ควบคุมอุณหภูมิไม่เกิน 30°C และความชื้น ≤75% RH",
+        short:"Critical — ต้องผ่านตลอดเวลา ไม่ใช่เฉพาะตอนตรวจ",
+        pass:["อุณหภูมิ ≤30°C ตลอดเวลา (พิสูจน์ด้วยบันทึก data logger)","ความชื้นสัมพัทธ์ ≤75% RH","มีระบบปรับอากาศที่เพียงพอและสำรองกรณีฉุกเฉิน"],
+        fail:["อุณหภูมิเกิน 30°C","ความชื้นเกิน 75%","ไม่มีบันทึกยืนยันการควบคุมอุณหภูมิ"],
+        docs:["บันทึก data logger ย้อนหลัง 12 เดือน","ทะเบียนบำรุงรักษาเครื่องปรับอากาศ"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 3 ข้อ 3.2"},
+      {id:"3.5",critical:false,
+        title:"มีพื้นที่แยกสำหรับยาที่ต้องควบคุมอุณหภูมิพิเศษ (Cold Chain)",
+        short:"ตู้เย็น/ห้องเย็น สำหรับยาที่ต้องการ 2-8°C",
+        pass:["มีตู้เย็น/ห้องเย็นสำหรับยา cold chain (ถ้ามีการนำเข้า)","อุณหภูมิอยู่ในช่วง 2-8°C ตลอดเวลา","มี alarm แจ้งเตือนกรณีอุณหภูมิเบี่ยงเบน"],
+        fail:["ไม่มีพื้นที่ cold chain ทั้งที่มียา cold chain","อุณหภูมิเกินช่วงที่กำหนด","ไม่มีระบบ alarm"],
+        docs:["บันทึกอุณหภูมิตู้เย็น","ทะเบียนยา cold chain","ใบรับรองการสอบเทียบ thermometer"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 3 ข้อ 3.2"},
+      {id:"3.6",critical:true,
+        title:"มีการควบคุมและบันทึกอุณหภูมิ/ความชื้นอย่างต่อเนื่อง",
+        short:"Data logger หรือระบบบันทึกอัตโนมัติ (ไม่ใช่บันทึกมือ 2 ครั้ง/วัน)",
+        pass:["มี data logger หรือระบบ monitoring อัตโนมัติ","บันทึกข้อมูลต่อเนื่อง ≥24 ชม.","มีการตรวจสอบและรายงานค่าเบี่ยงเบน","Data logger ผ่านการ calibration"],
+        fail:["ไม่มี data logger","บันทึกด้วยมือเพียงวันละ 2 ครั้ง (ไม่เพียงพอ)","ไม่มีการ calibrate"],
+        docs:["บันทึก continuous monitoring ย้อนหลัง","ใบรับรองการ calibrate data logger","รายงานค่าเบี่ยงเบนและการแก้ไข"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 3 ข้อ 3.2"},
+      {id:"3.7",critical:false,
+        title:"มีระบบป้องกันสัตว์แมลงรบกวน (Pest Control)",
+        short:"มีโปรแกรม pest control และบันทึกการดำเนินการ",
+        pass:["มีโปรแกรม pest control สม่ำเสมอ","มีบันทึกการดำเนินการ (วันที่ สารที่ใช้ ผู้ดำเนินการ)","ตรวจพบพาหะต้องแก้ไขและบันทึก"],
+        fail:["ไม่มีโปรแกรม pest control","พบร่องรอยสัตว์/แมลงโดยไม่มีการแก้ไข"],
+        docs:["สัญญา pest control (ถ้าจ้างภายนอก)","บันทึกการ pest control"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 3 ข้อ 3.3"},
+      {id:"3.8",critical:false,
+        title:"มีระบบรักษาความปลอดภัย ป้องกันการเข้าถึงโดยไม่ได้รับอนุญาต",
+        short:"กล้อง CCTV, ระบบล็อก, การควบคุมการเข้าออก",
+        pass:["มีระบบ access control ที่เหมาะสม","มีกล้อง CCTV บริเวณพื้นที่จัดเก็บยา","มีบันทึกการเข้า-ออกพื้นที่","บุคคลภายนอกต้องมีผู้ควบคุมดูแล"],
+        fail:["ไม่มีระบบควบคุมการเข้าออก","ไม่มี CCTV","คนแปลกหน้าเข้าได้โดยไม่มีการควบคุม"],
+        docs:["บันทึก access log","ระบบ CCTV (ตรวจสอบภาพ)"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 3 ข้อ 3.4"},
+      {id:"3.9",critical:true,
+        title:"มีพื้นที่กักกัน (Quarantine Area) แยกต่างหาก",
+        short:"ยารอผลตรวจสอบต้องแยกจากยาพร้อมจำหน่ายอย่างชัดเจน",
+        pass:["มีพื้นที่ quarantine แยกชัดเจน มีป้ายแสดง","ยา quarantine ไม่ปะปนกับยาที่ approved","มีการบันทึกสถานะยาใน quarantine","ยา quarantine ล็อกหรือควบคุมการเข้าถึง"],
+        fail:["ไม่มีพื้นที่ quarantine","ยา quarantine ปะปนกับยาทั่วไป","ไม่มีป้ายแสดงสถานะ"],
+        docs:["แผนผังพื้นที่ quarantine","บันทึกสถานะยาใน quarantine","SOP การ quarantine"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 5 ข้อ 5.1"},
+      {id:"3.10",critical:true,
+        title:"มีพื้นที่แยกสำหรับยาหมดอายุ ยาเรียกคืน และยารอทำลาย",
+        short:"ต้องล็อกและมีป้ายชัดเจน ห้ามนำออกมาจ่าย",
+        pass:["มีพื้นที่แยก ล็อก ป้าย 'ยาหมดอายุ/รอทำลาย'","ยาเหล่านี้ไม่สามารถหยิบจ่ายได้โดยไม่ตั้งใจ","มีการบันทึกปริมาณและวันที่ของยาที่รอทำลาย"],
+        fail:["ยาหมดอายุปะปนกับยาที่ยังดี","ไม่มีการแยก/ไม่มีป้าย","ไม่มีการบันทึก"],
+        docs:["บันทึกยาหมดอายุ/รอทำลาย","ใบรับรองการทำลายยา (ถ้ามี)"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 5 ข้อ 5.4"},
+      {id:"3.11",critical:false,
+        title:"เครื่องมือและอุปกรณ์ได้รับการสอบเทียบ (Calibration) ตามกำหนด",
+        short:"เทอร์โมมิเตอร์ data logger เครื่องชั่ง ต้องมีใบรับรอง",
+        pass:["เครื่องมือทุกชิ้นที่ส่งผลต่อคุณภาพผ่าน calibration","มีใบรับรองจากห้องปฏิบัติการที่ได้มาตรฐาน","Calibration ไม่หมดอายุ (ตรวจสอบวันที่)"],
+        fail:["เครื่องมือไม่ได้ calibrate","ใบรับรองหมดอายุ","ไม่มีทะเบียนเครื่องมือ"],
+        docs:["ทะเบียนเครื่องมือ (Equipment List)","ใบรับรอง calibration","ตารางกำหนด calibration"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 3 ข้อ 3.6"},
+      {id:"3.12",critical:false,
+        title:"มีบันทึกการบำรุงรักษาอุปกรณ์",
+        short:"Preventive Maintenance (PM) ตามแผน",
+        pass:["มีแผน PM สำหรับอุปกรณ์สำคัญ","ดำเนินการ PM ตามแผน","บันทึก PM ครบถ้วน พร้อมลายเซ็น"],
+        fail:["ไม่มีแผน PM","PM ไม่เป็นไปตามกำหนด","ไม่มีบันทึก"],
+        docs:["แผน PM ประจำปี","บันทึก PM แต่ละเครื่อง"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 3 ข้อ 3.5"},
+    ]
+  },
+  {
+    id:4, title:"เอกสารและบันทึก", en:"Documentation",
+    items:[
+      {id:"4.1",critical:true,
+        title:"มีระบบควบคุมเอกสาร (Document Control) ที่เป็นระบบ",
+        short:"เวอร์ชัน วันที่บังคับใช้ ผู้อนุมัติ ครบถ้วน",
+        pass:["เอกสารทุกฉบับมีหมายเลขเอกสาร เวอร์ชัน วันที่","มีผู้อนุมัติก่อนเผยแพร่","เอกสารเก่าถูกถอนออกจากการใช้งาน","มีทะเบียนเอกสารที่เป็นปัจจุบัน"],
+        fail:["ใช้เอกสารที่ไม่ได้อนุมัติ","ไม่มีระบบเวอร์ชัน/วันที่","เอกสารล้าสมัยยังคงอยู่ในจุดใช้งาน"],
+        docs:["Document Control Procedure (SOP)","Master Document List","ตัวอย่างเอกสารที่มี header ครบ"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 4 ข้อ 4.1"},
+      {id:"4.2",critical:true,
+        title:"มีบันทึกการรับยา พร้อม lot number และวันหมดอายุ",
+        short:"ทุก lot ที่นำเข้าต้องมีบันทึกครบ",
+        pass:["บันทึกการรับยาทุกรายการ ระบุชื่อยา lot# วันที่รับ จำนวน วันหมดอายุ","บันทึกชื่อผู้ส่งมอบและเงื่อนไขการขนส่ง","มีการอ้างอิง Purchase Order (PO)"],
+        fail:["ไม่มีบันทึกการรับยา","บันทึกไม่ระบุ lot# หรือวันหมดอายุ","บันทึกไม่ครบทุกรายการ"],
+        docs:["Receiving Record แต่ละ lot","บันทึกสภาพยาขณะรับ","PO/Invoice ที่อ้างอิง"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 4 ข้อ 4.2"},
+      {id:"4.3",critical:false,
+        title:"มีบันทึกการจ่ายยา/กระจายยา ครบถ้วน",
+        short:"ระบุผู้รับ ปริมาณ lot ที่จ่าย",
+        pass:["บันทึกการจ่ายทุกรายการ ระบุผู้รับ วันที่ lot# ที่จ่าย","สามารถ trace กลับได้ว่า lot ใดไปที่ใด","มีลายเซ็นผู้รับหรือหลักฐานการส่ง"],
+        fail:["ไม่มีบันทึกการจ่ายยา","บันทึกไม่ระบุ lot# ที่จ่าย","ไม่สามารถ trace กลับได้"],
+        docs:["Dispatch/Delivery Record","Delivery Note หรือใบส่งของ"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 4 ข้อ 4.3"},
+      {id:"4.4",critical:false,
+        title:"เก็บรักษาบันทึกตามระยะเวลาที่กำหนด",
+        short:"อย่างน้อย 1 ปีหลังยาหมดอายุ หรือ 5 ปีนับจากผลิต",
+        pass:["มีนโยบายการเก็บรักษาเอกสาร (Retention Policy)","บันทึกเก็บนานกว่าอายุยา 1 ปี หรืออย่างน้อย 5 ปี","บันทึกอ่านออก ไม่เสียหาย ค้นหาได้ง่าย"],
+        fail:["ทำลายบันทึกก่อนกำหนด","บันทึกชำรุด อ่านไม่ออก","ไม่มีนโยบายการเก็บรักษา"],
+        docs:["Document Retention Policy","ตัวอย่างบันทึกเก่าที่ยังเก็บอยู่"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 4 ข้อ 4.4"},
+      {id:"4.5",critical:true,
+        title:"มีบันทึกอุณหภูมิและความชื้นรายวัน",
+        short:"ต้องบันทึกทุกวัน พร้อมระบุค่าและผู้บันทึก",
+        pass:["บันทึกอุณหภูมิ/ความชื้นทุกวันที่เปิดทำการ","ระบุค่าสูงสุด-ต่ำสุด ผู้บันทึก และลายเซ็น","กรณีค่าเกินขอบเขต มีการบันทึกการแก้ไข"],
+        fail:["ไม่มีบันทึก","บันทึกไม่ทุกวัน","ไม่ระบุค่าหรือผู้บันทึก"],
+        docs:["บันทึกอุณหภูมิ/ความชื้น (Temperature Log) ย้อนหลัง 3 เดือน","รายงานการแก้ไขเมื่อค่าเบี่ยงเบน"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 3 ข้อ 3.2"},
+      {id:"4.6",critical:true,
+        title:"มีใบรับรองผู้ผลิต (CoA) ครบทุก lot ที่นำเข้า",
+        short:"Certificate of Analysis จาก manufacturer",
+        pass:["มี CoA จากผู้ผลิตทุก lot","CoA ระบุ lot# ค่าทดสอบ และมาตรฐานอ้างอิง","เก็บรักษา CoA อย่างน้อยตลอดอายุยา+1 ปี"],
+        fail:["ไม่มี CoA","CoA ไม่ครบทุก lot","CoA ไม่ระบุ lot# หรือค่าทดสอบ"],
+        docs:["CoA แต่ละ lot (ตัวอย่างตรวจสอบ)"],
+        ref:"พ.ร.บ.ยา พ.ศ.2510 มาตรา 27"},
+      {id:"4.7",critical:false,
+        title:"เอกสารทั้งหมดอ่านออก ถาวร และมีลายเซ็น",
+        short:"ห้ามลบ ห้ามใช้ correction fluid ต้องขีดฆ่าและเซ็นชื่อ",
+        pass:["เอกสารทุกฉบับอ่านออกได้ชัดเจน","กรณีแก้ไขใช้วิธีขีดฆ่าบรรทัดเดียว+เซ็นชื่อ+วันที่","ไม่ใช้ correction fluid (ลิกส์)","เอกสารอิเล็กทรอนิกส์มีระบบ audit trail"],
+        fail:["เอกสารอ่านไม่ออก","ใช้ลิกส์หรือลบแล้วเขียนทับ","ไม่มีลายเซ็นผู้บันทึก"],
+        docs:["ตัวอย่างเอกสารที่ผ่านการแก้ไขอย่างถูกวิธี"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 4 ข้อ 4.1"},
+    ]
+  },
+  {
+    id:5, title:"การดำเนินงาน", en:"Operations",
+    items:[
+      {id:"5.1",critical:true,
+        title:"มีขั้นตอนการรับยาเข้า (Receiving Procedure) เป็นลายลักษณ์อักษร",
+        short:"SOP รับยาต้องครอบคลุม การตรวจ การบันทึก การจัดเก็บ",
+        pass:["มี SOP Receiving ที่อนุมัติแล้ว","SOP ครอบคลุม: ตรวจสอบสภาพกล่อง/บรรจุภัณฑ์ ยืนยัน lot# ตรวจอุณหภูมิขนส่ง บันทึก quarantine ก่อน approve","ปฏิบัติตาม SOP จริง (ตรวจสอบด้วยบันทึก)"],
+        fail:["ไม่มี SOP Receiving","SOP ไม่ครอบคลุม","ปฏิบัติไม่ตาม SOP"],
+        docs:["SOP Receiving","Receiving Record ล่าสุด (ตรวจสอบการปฏิบัติ)"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 5 ข้อ 5.1"},
+      {id:"5.2",critical:false,
+        title:"มีการตรวจสอบสภาพการขนส่งและอุณหภูมิเมื่อรับยา",
+        short:"ตรวจ temperature indicator หรือ data logger ในกล่อง cold chain",
+        pass:["ตรวจสภาพกล่อง/packaging ทุกครั้ง","สำหรับ cold chain ตรวจ temperature indicator ก่อน accept","บันทึกผลการตรวจสอบ","ยาที่ขนส่งผิดสภาพต้องไม่ accept หรือ quarantine"],
+        fail:["ไม่มีการตรวจสอบสภาพขนส่ง","ไม่ตรวจ temperature indicator","ยาที่ขนส่งผิดสภาพยังรับเข้า"],
+        docs:["บันทึกการตรวจสอบขณะรับ","ภาพถ่ายกรณีพบความเสียหาย"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 5 ข้อ 5.1"},
+      {id:"5.3",critical:true,
+        title:"ยาถูกจัดเก็บตามหลัก FEFO (First Expired First Out)",
+        short:"ยาที่หมดอายุก่อนต้องจ่ายก่อน ป้องกันยาหมดอายุค้างสต็อก",
+        pass:["มี SOP ที่กำหนดให้ใช้หลัก FEFO","ยาที่หมดอายุก่อนวางด้านหน้าหรือระบุชัดเจน","มีการตรวจสอบ FEFO เป็นระยะ","บุคลากรรู้และปฏิบัติตาม FEFO"],
+        fail:["ไม่มีการจัดเก็บแบบ FEFO","ยาหมดอายุทีหลังอยู่ด้านหน้า","พบยาหมดอายุค้างในสต็อก"],
+        docs:["SOP การจัดเก็บยา (ระบุ FEFO)","บันทึกการตรวจสอบสต็อก"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 5 ข้อ 5.2"},
+      {id:"5.4",critical:false,
+        title:"มีการแยกจัดเก็บยาตามประเภท",
+        short:"ยาสามัญ ยาอันตราย ยาควบคุมพิเศษ ยาเสพติด แยกจากกัน",
+        pass:["แยกพื้นที่หรือตู้จัดเก็บตามประเภทยา","ยาควบคุมพิเศษ/เสพติดต้องล็อก","มีป้ายแสดงประเภทยาชัดเจน","ปฏิบัติตามกฎหมายยาเสพติดและวัตถุออกฤทธิ์"],
+        fail:["ยาต่างประเภทปะปนกัน","ยาควบคุมพิเศษไม่ล็อก","ไม่มีป้ายแสดงประเภท"],
+        docs:["แผนผังการจัดเก็บยาตามประเภท","ทะเบียนกุญแจตู้ยาควบคุมพิเศษ"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 5 ข้อ 5.2"},
+      {id:"5.5",critical:false,
+        title:"มีระบบ Inventory Management ที่เชื่อถือได้",
+        short:"ยอดสต็อกต้องตรงกับบัญชีและของจริง",
+        pass:["มีระบบบัญชีสต็อก (ไม่ว่า manual หรือ computer)","มีการนับสต็อกจริงเทียบกับระบบ (Stock Count) สม่ำเสมอ","กรณีพบความต่าง มีการสืบสวนและบันทึก"],
+        fail:["ยอดสต็อกไม่ตรงกับของจริงโดยไม่มีการอธิบาย","ไม่มีระบบ inventory","ไม่เคย stock count"],
+        docs:["บันทึก Inventory/Bin Card","รายงาน Stock Count","รายงานการสืบสวนกรณีพบความต่าง"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 5 ข้อ 5.2"},
+      {id:"5.6",critical:true,
+        title:"มีขั้นตอนการจัดส่งยา (Dispatch) เพื่อรักษาคุณภาพระหว่างขนส่ง",
+        short:"SOP Dispatch ครอบคลุมบรรจุภัณฑ์ อุณหภูมิ เอกสาร",
+        pass:["มี SOP Dispatch ที่ครอบคลุม: เลือกบรรจุภัณฑ์ที่เหมาะสม รักษาอุณหภูมิระหว่างขนส่ง จัดทำเอกสารส่ง","มีการตรวจสอบก่อนส่ง (Pre-shipment check)","เอกสารส่งพร้อม lot# วันหมดอายุ"],
+        fail:["ไม่มี SOP Dispatch","ไม่มีการรักษาอุณหภูมิระหว่างขนส่ง","ส่งยาโดยไม่มีเอกสาร"],
+        docs:["SOP Dispatch","Delivery Note/Invoice พร้อม lot info","บันทึกอุณหภูมิระหว่างขนส่ง (cold chain)"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 5 ข้อ 5.3"},
+      {id:"5.7",critical:false,
+        title:"มีการบันทึกสภาวะการขนส่งสำหรับยาที่ต้องควบคุมพิเศษ",
+        short:"Data logger ในกล่องขนส่ง cold chain",
+        pass:["มี temperature recorder ในกล่องขนส่ง cold chain","ดาวน์โหลดและตรวจสอบข้อมูลหลังส่งถึง","บันทึกการเบี่ยงเบนและการแก้ไข","แจ้งผู้รับกรณีอุณหภูมิออกนอกขอบเขต"],
+        fail:["ไม่มี temperature recorder ในกล่องขนส่ง","ไม่ตรวจสอบข้อมูลหลังส่ง","ไม่แจ้งผู้รับกรณีมีปัญหา"],
+        docs:["บันทึกอุณหภูมิระหว่างขนส่ง","รายงานกรณีเบี่ยงเบน"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 5 ข้อ 5.3"},
+      {id:"5.8",critical:false,
+        title:"มีระบบตรวจสอบย้อนกลับ (Traceability) ตลอดห่วงโซ่",
+        short:"สามารถ trace lot ได้ตั้งแต่นำเข้าจนถึงผู้รับปลายทาง",
+        pass:["จากหมายเลข lot สามารถทราบได้ว่ารับจากใคร เมื่อใด จ่ายให้ใคร","มีการทดสอบ traceability drill อย่างน้อยปีละ 1 ครั้ง","ผล drill บันทึกและทบทวน"],
+        fail:["ไม่สามารถ trace lot ได้","ไม่เคยทดสอบ traceability","บันทึกไม่เพียงพอในการ trace"],
+        docs:["ผล Traceability Drill","บันทึกที่แสดง trace path ของ lot ตัวอย่าง"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 5 ข้อ 5.3"},
+    ]
+  },
+  {
+    id:6, title:"ข้อร้องเรียน การคืนยา และการเรียกคืนยา", en:"Complaints, Returns & Recalls",
+    items:[
+      {id:"6.1",critical:true,
+        title:"มีขั้นตอนการรับ บันทึก และตอบสนองต่อข้อร้องเรียน",
+        short:"SOP Complaint Handling ครบวงจร",
+        pass:["มี SOP การจัดการข้อร้องเรียน","มีช่องทางรับเรื่องร้องเรียนที่เข้าถึงได้","ทุกเรื่องต้องบันทึกและสืบสวน","มีการแจ้งผลให้ผู้ร้องเรียนทราบภายในกำหนด"],
+        fail:["ไม่มี SOP","ข้อร้องเรียนไม่ได้รับการบันทึก","ไม่มีการสืบสวน"],
+        docs:["SOP Complaint Handling","Complaint Log (บันทึกข้อร้องเรียน)","ตัวอย่างการสืบสวนและการตอบสนอง"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 6 ข้อ 6.1"},
+      {id:"6.2",critical:false,
+        title:"มีการเก็บบันทึกข้อร้องเรียนทุกเรื่อง",
+        short:"Complaint Log พร้อม root cause และ CAPA",
+        pass:["Complaint Log มีข้อมูลครบ: วันที่รับ ชื่อผู้ร้อง เรื่อง","มีการวิเคราะห์ root cause","มีมาตรการแก้ไข (CAPA) และติดตามผล"],
+        fail:["บันทึกไม่ครบหรือไม่มี","ไม่มีการวิเคราะห์ root cause","ไม่มี CAPA"],
+        docs:["Complaint Log ย้อนหลัง 1 ปี","CAPA Report"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 6 ข้อ 6.1"},
+      {id:"6.3",critical:true,
+        title:"มีขั้นตอนการจัดการยาที่ถูกคืนกลับมา (Returned Goods)",
+        short:"ยาที่คืนมาต้องไม่นำกลับมาจำหน่ายทันทีโดยไม่ประเมิน",
+        pass:["มี SOP Returned Goods","ยาที่คืนมาทุกรายการต้อง quarantine ก่อน","ประเมินคุณภาพก่อนตัดสินใจ re-release หรือทำลาย","มีบันทึกการตัดสินใจและเหตุผล"],
+        fail:["นำยาที่คืนมาจำหน่ายทันทีโดยไม่ประเมิน","ไม่มี SOP","ไม่มีบันทึก"],
+        docs:["SOP Returned Goods","Returned Goods Log","บันทึกการประเมินและการตัดสินใจ"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 6 ข้อ 6.2"},
+      {id:"6.4",critical:true,
+        title:"มีขั้นตอนการเรียกคืนยา (Drug Recall) ที่เป็นลายลักษณ์อักษร",
+        short:"ครอบคลุม Voluntary Recall และ Mandatory Recall",
+        pass:["มี Recall SOP ที่ครอบคลุม: ระดับการเรียกคืน ขั้นตอนการแจ้งผู้รับ การ quarantine การรายงาน อย.","มีการกำหนด Recall Team และหน้าที่","มีการทดสอบ Mock Recall อย่างน้อยปีละ 1 ครั้ง"],
+        fail:["ไม่มี SOP Recall","ไม่มี Recall Team","ไม่เคยทดสอบ Mock Recall"],
+        docs:["SOP Drug Recall","รายชื่อ Recall Team","บันทึก Mock Recall"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 6 ข้อ 6.3"},
+      {id:"6.5",critical:false,
+        title:"สามารถติดตามและเรียกคืนยาได้ภายใน 24 ชั่วโมง",
+        short:"ตรวจสอบจากผล Mock Recall หรือ Recall จริง",
+        pass:["ผล Mock Recall แสดงว่า trace ได้ภายใน 24 ชม.","สามารถติดต่อผู้รับทุกรายได้","มีรายชื่อผู้รับยาพร้อมข้อมูลติดต่อ up-to-date"],
+        fail:["ผล Mock Recall เกิน 24 ชม.","ไม่มีรายชื่อผู้รับพร้อมข้อมูลติดต่อ"],
+        docs:["รายงาน Mock Recall (ระบุเวลาที่ใช้)","Distributor/Customer List พร้อมข้อมูลติดต่อ"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 6 ข้อ 6.3"},
+      {id:"6.6",critical:true,
+        title:"มีการแจ้ง อย. เมื่อพบยาปลอม ยาด้อยคุณภาพ หรือยาที่อาจเป็นอันตราย",
+        short:"แจ้งทันทีไม่ล่าช้า ผ่านช่องทางที่ อย. กำหนด",
+        pass:["บุคลากรรู้ช่องทางการแจ้ง อย.","มีหน้าที่ชัดเจนว่าใครเป็นผู้แจ้ง","มีบันทึกการแจ้งและการดำเนินการ"],
+        fail:["ไม่แจ้ง อย. เมื่อพบยาที่น่าสงสัย","บุคลากรไม่ทราบช่องทางการแจ้ง","แจ้งล่าช้าโดยไม่มีเหตุผล"],
+        docs:["ข้อมูลช่องทางแจ้ง อย. (ติดในสถานที่)","บันทึกกรณีเคยแจ้ง (ถ้ามี)"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 6 ข้อ 6.4"},
+    ]
+  },
+  {
+    id:7, title:"ยาปลอม", en:"Falsified Medicines",
+    items:[
+      {id:"7.1",critical:false,
+        title:"มีขั้นตอนการตรวจสอบและระบุยาปลอมหรือยาที่น่าสงสัย",
+        short:"บุคลากรรู้วิธีสังเกตยาปลอม",
+        pass:["มี SOP การตรวจสอบยาน่าสงสัย","บุคลากรฝึกอบรมวิธีสังเกต: ฉลาก hologram หมายเลข lot สีและรูปร่างยา","มีเกณฑ์การตัดสินใจ quarantine กรณีสงสัย"],
+        fail:["ไม่มี SOP","บุคลากรไม่รู้วิธีสังเกต","ไม่มีเกณฑ์การ quarantine"],
+        docs:["SOP Falsified Medicine Detection","Training Record เรื่องยาปลอม"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 6 ข้อ 6.4"},
+      {id:"7.2",critical:true,
+        title:"มีพื้นที่กักกันแยกสำหรับยาปลอมหรือน่าสงสัย พร้อมล็อก",
+        short:"แยกออกจากสต็อก ไม่นำไปจ่ายโดยเด็ดขาด",
+        pass:["มีพื้นที่/ตู้แยก ล็อก ป้าย 'ยาต้องสงสัย/ยาปลอม'","ไม่สามารถนำออกมาได้โดยไม่ได้รับอนุมัติ","มีบันทึกยาที่ถูก quarantine"],
+        fail:["ยาปลอมหรือน่าสงสัยปะปนกับสต็อกทั่วไป","ไม่มีการล็อก","ไม่มีป้ายแสดง"],
+        docs:["ภาพถ่ายพื้นที่ quarantine ยาปลอม","บันทึกยาต้องสงสัย"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 6 ข้อ 6.4"},
+      {id:"7.3",critical:false,
+        title:"มีการรายงานยาปลอมต่อ อย. และหน่วยงานที่เกี่ยวข้องทันที",
+        short:"แจ้ง อย. และ manufacturer/supplier ทันที",
+        pass:["มีขั้นตอนและผู้รับผิดชอบการรายงาน","รู้ว่าต้องแจ้ง อย. ผ่านช่องทางใด","แจ้งภายใน 24 ชม. ที่พบ"],
+        fail:["ไม่มีขั้นตอนการรายงาน","ล่าช้าในการแจ้ง","ไม่รู้ว่าต้องแจ้งใคร"],
+        docs:["SOP การรายงานยาปลอม","รายชื่อและเบอร์ติดต่อ อย. (ติดในสถานที่)"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 6 ข้อ 6.4"},
+      {id:"7.4",critical:false,
+        title:"บุคลากรได้รับการฝึกอบรมวิธีสังเกตยาปลอม",
+        short:"ต้องมีใน Training Plan ประจำปี",
+        pass:["หัวข้อยาปลอมอยู่ใน Training Plan","บุคลากรทุกคนที่เกี่ยวข้องเคยผ่านการอบรม","มี Training Record รับรอง"],
+        fail:["ไม่มีการอบรมเรื่องยาปลอม","Training Record ไม่ครบ"],
+        docs:["Training Plan (ระบุหัวข้อยาปลอม)","Training Record"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 2 ข้อ 2.4"},
+    ]
+  },
+  {
+    id:8, title:"การจ้างหน่วยงานภายนอก", en:"Outsourced Activities",
+    items:[
+      {id:"8.1",critical:false,
+        title:"มีสัญญาหรือข้อตกลงเป็นลายลักษณ์อักษรกับหน่วยงานที่จ้าง",
+        short:"Contract/Technical Agreement ครอบคลุมมาตรฐาน GDP",
+        pass:["มีสัญญาที่ลงนามโดยทั้งสองฝ่าย","สัญญาระบุหน้าที่ด้านคุณภาพชัดเจน","สัญญาระบุว่าต้องปฏิบัติตาม GDP"],
+        fail:["ไม่มีสัญญาหรือข้อตกลงเป็นลายลักษณ์อักษร","สัญญาไม่ครอบคลุมมาตรฐานคุณภาพ"],
+        docs:["Contract/Technical Agreement กับหน่วยงานที่จ้าง","รายชื่อกิจกรรมที่จ้างภายนอก"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 7"},
+      {id:"8.2",critical:false,
+        title:"หน่วยงานที่จ้างได้รับการประเมินคุณสมบัติ (Vendor Qualification)",
+        short:"ตรวจสอบและอนุมัติ supplier/vendor ก่อนใช้",
+        pass:["มีกระบวนการ Approved Vendor List (AVL)","ประเมิน vendor ก่อนใช้งานครั้งแรก","มีการตรวจสอบ vendor ซ้ำตามกำหนด"],
+        fail:["ไม่มี AVL","ใช้ vendor โดยไม่ผ่านการประเมิน"],
+        docs:["Approved Vendor List","Vendor Qualification Record"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 7"},
+      {id:"8.3",critical:false,
+        title:"ระบุบทบาทและความรับผิดชอบชัดเจนในสัญญา",
+        short:"ใครรับผิดชอบอะไร ทั้งสองฝ่าย",
+        pass:["สัญญาระบุ scope of work ชัดเจน","ระบุผู้ติดต่อรับผิดชอบทั้งสองฝ่าย","ระบุ KPI และเกณฑ์การประเมิน"],
+        fail:["สัญญาคลุมเครือ ไม่ชัดเจน","ไม่ระบุผู้รับผิดชอบ"],
+        docs:["สัญญาพร้อม scope/responsibilities section"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 7"},
+      {id:"8.4",critical:false,
+        title:"มีการติดตามประเมินผลงานของหน่วยงานภายนอกเป็นระยะ",
+        short:"Vendor Performance Review อย่างน้อยปีละ 1 ครั้ง",
+        pass:["มีการประเมิน vendor performance ตามกำหนด","มีบันทึกการประเมินและมาตรการปรับปรุง","กรณีประเมินต่ำกว่าเกณฑ์ มีการ escalate"],
+        fail:["ไม่มีการประเมิน vendor","ประเมินแล้วไม่บันทึก"],
+        docs:["Vendor Performance Review Report","บันทึกการประชุมหรือการสื่อสารกับ vendor"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 7"},
+    ]
+  },
+  {
+    id:9, title:"การตรวจสอบตนเอง", en:"Self-Inspection",
+    items:[
+      {id:"9.1",critical:true,
+        title:"มีแผนการตรวจสอบตนเองประจำปี (Self-inspection Plan)",
+        short:"แผนต้องระบุวันที่ ผู้ตรวจ และขอบเขตที่ตรวจ",
+        pass:["มีแผน Self-inspection ที่อนุมัติแล้ว","แผนครอบคลุมทุกหมวด GDP","ระบุผู้ตรวจที่ไม่ตรวจพื้นที่ตัวเอง (independent)"],
+        fail:["ไม่มีแผน","แผนครอบคลุมไม่ครบ","ผู้ตรวจไม่เป็นอิสระ (ตรวจงานตัวเอง)"],
+        docs:["Self-inspection Plan ประจำปี","รายชื่อผู้ตรวจ (Internal Auditor)"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 9 ข้อ 9.1"},
+      {id:"9.2",critical:true,
+        title:"มีการตรวจสอบตนเองอย่างน้อยปีละ 1 ครั้ง",
+        short:"ต้องมีหลักฐานการดำเนินการจริง",
+        pass:["มีรายงาน Self-inspection ย้อนหลัง","ดำเนินการตามแผนที่วางไว้","ครอบคลุมทุกหมวด GDP"],
+        fail:["ไม่เคยทำ Self-inspection","ทำน้อยกว่าปีละ 1 ครั้ง","ไม่มีรายงาน"],
+        docs:["Self-inspection Report ปีล่าสุด (พร้อมวันที่และลายเซ็น)"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 9 ข้อ 9.1"},
+      {id:"9.3",critical:false,
+        title:"มีการบันทึกผลและจัดทำรายงาน Self-inspection",
+        short:"รายงานต้องระบุข้อบกพร่องและระดับความรุนแรง",
+        pass:["รายงานระบุข้อบกพร่องแต่ละข้อ พร้อมระดับ (Critical/Major/Minor)","ลงนามโดยผู้ตรวจและผู้รับทราบ","เก็บรักษารายงานย้อนหลัง ≥3 ปี"],
+        fail:["ไม่มีรายงาน","รายงานไม่ระบุระดับความรุนแรง","ไม่มีการลงนาม"],
+        docs:["Self-inspection Report ฉบับสมบูรณ์","Finding Log"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 9 ข้อ 9.1"},
+      {id:"9.4",critical:false,
+        title:"มีแผนปฏิบัติการแก้ไข (CAPA) เมื่อพบข้อบกพร่อง",
+        short:"Corrective Action + Preventive Action พร้อมกำหนดวันเสร็จ",
+        pass:["ทุกข้อบกพร่องจาก Self-inspection มี CAPA","CAPA ระบุ root cause มาตรการแก้ไข ผู้รับผิดชอบ กำหนดเสร็จ","CAPA ผ่านการอนุมัติ"],
+        fail:["พบข้อบกพร่องแต่ไม่มี CAPA","CAPA ไม่ครบถ้วน","ไม่มีการกำหนดผู้รับผิดชอบหรือวันเสร็จ"],
+        docs:["CAPA Log/Register","ตัวอย่าง CAPA Report จาก finding ล่าสุด"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 9 ข้อ 9.2"},
+      {id:"9.5",critical:false,
+        title:"มีการติดตามผลการแก้ไข (Follow-up) จนครบถ้วน",
+        short:"ยืนยันว่าดำเนินการแก้ไขครบแล้ว ก่อนปิด CAPA",
+        pass:["มีการตรวจสอบ CAPA ภายหลังวันกำหนดเสร็จ","บันทึกหลักฐานว่าดำเนินการแก้ไขแล้ว","ปิด CAPA อย่างเป็นทางการพร้อมลายเซ็น","CAPA ที่เกินกำหนดมีการ escalate"],
+        fail:["ไม่มี follow-up","CAPA ปิดโดยไม่มีหลักฐาน","CAPA ค้างนานเกินกำหนดโดยไม่มีการ escalate"],
+        docs:["CAPA Log ที่มี status (Open/Closed)","Effectiveness Check Record"],
+        ref:"ประกาศฯ GDP พ.ศ.2564 หมวด 9 ข้อ 9.2"},
+    ]
+  }
+];
+
+const st = {};
+let totalItems = 0;
+DATA.forEach(s => s.items.forEach(i => { st[i.id]=null; totalItems++; }));
+
+function updateStats(){
+  let pass=0,fail=0,na=0,critFail=0;
+  DATA.forEach(s => s.items.forEach(i => {
+    if(st[i.id]==='pass') pass++;
+    else if(st[i.id]==='fail'){ fail++; if(i.critical) critFail++; }
+    else if(st[i.id]==='na') na++;
+  }));
+  document.getElementById('s-total').textContent=totalItems;
+  document.getElementById('s-pass').textContent=pass;
+  document.getElementById('s-fail').textContent=fail;
+  document.getElementById('s-na').textContent=na;
+  document.getElementById('s-crit-fail').textContent=critFail;
+  const pct=totalItems>0?Math.round((pass/totalItems)*100):0;
+  document.getElementById('pbar').style.width=pct+'%';
+  DATA.forEach(s=>{
+    let sp=0,sf=0,sna=0;
+    s.items.forEach(i=>{
+      if(st[i.id]==='pass') sp++;
+      else if(st[i.id]==='fail') sf++;
+      else if(st[i.id]==='na') sna++;
+    });
+    const b=document.getElementById('b'+s.id);
+    if(!b) return;
+    const ans=sp+sf+sna;
+    if(ans===0){b.className='badge b-default';b.textContent='0/'+s.items.length;}
+    else if(sf>0){b.className='badge b-fail';b.textContent=sp+'/'+s.items.length+' ⚠';}
+    else if(sp===s.items.length||(sp+sna===s.items.length&&sp>0)){b.className='badge b-pass';b.textContent=sp+'/'+s.items.length+' ✓';}
+    else{b.className='badge b-partial';b.textContent=sp+'/'+s.items.length;}
+  });
+}
+
+function setVal(id,val,el){
+  st[id]=val;
+  el.closest('.btn-wrap').querySelectorAll('.btn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  updateStats();
+  applyFilter(currentFilter);
+}
+
+function toggleSection(id){
+  const b=document.getElementById('sb'+id);
+  const a=document.getElementById('sa'+id);
+  b.classList.toggle('open');
+  a.classList.toggle('open');
+}
+
+function toggleDetail(id){
+  document.getElementById('d'+id).classList.toggle('open');
+}
+
+let currentFilter='all';
+function filterItems(f,el){
+  currentFilter=f;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  applyFilter(f);
+}
+
+function applyFilter(f){
+  document.querySelectorAll('.item').forEach(item=>{
+    const id=item.dataset.id;
+    const cr=item.dataset.critical==='true';
+    if(f==='all') item.style.display='';
+    else if(f==='fail') item.style.display=st[id]==='fail'?'':'none';
+    else if(f==='pending') item.style.display=st[id]===null?'':'none';
+    else if(f==='critical') item.style.display=cr?'':'none';
+  });
+  // open all sections on filter
+  if(f!=='all'){
+    DATA.forEach(s=>{
+      const b=document.getElementById('sb'+s.id);
+      const a=document.getElementById('sa'+s.id);
+      if(b){ b.classList.add('open'); a.classList.add('open'); }
+    });
+  }
+}
+
+function resetAll(){
+  Object.keys(st).forEach(k=>st[k]=null);
+  document.querySelectorAll('.btn').forEach(b=>b.classList.remove('on'));
+  updateStats(); applyFilter(currentFilter);
+}
+
+function render(){
+  const c=document.getElementById('sections');
+  c.innerHTML='';
+  DATA.forEach(s=>{
+    const div=document.createElement('div');
+    div.className='section';
+    const itemsHtml=s.items.map(i=>`
+      <div class="item" data-id="${i.id}" data-critical="${i.critical}">
+        <div class="item-main" onclick="toggleDetail('${i.id}')">
+          <span class="item-id">${i.id}</span>
+          <div class="item-content">
+            <div class="item-title">${i.title}${i.critical?'<span class="crit-badge">Critical</span>':''}</div>
+            <div class="item-short">${i.short}</div>
+          </div>
+          <div class="btn-wrap" onclick="event.stopPropagation()">
+            <button class="btn pass${st[i.id]==='pass'?' on':''}" onclick="setVal('${i.id}','pass',this)">ผ่าน</button>
+            <button class="btn fail${st[i.id]==='fail'?' on':''}" onclick="setVal('${i.id}','fail',this)">ไม่ผ่าน</button>
+            <button class="btn na${st[i.id]==='na'?' on':''}" onclick="setVal('${i.id}','na',this)">N/A</button>
+          </div>
+        </div>
+        <div class="detail" id="d${i.id}">
+          <div class="detail-grid">
+            <div class="dbox dbox-pass">
+              <div class="dbox-title">✓ เกณฑ์ผ่าน</div>
+              <ul>${i.pass.map(p=>`<li>${p}</li>`).join('')}</ul>
+            </div>
+            <div class="dbox dbox-fail">
+              <div class="dbox-title">✗ เกณฑ์ไม่ผ่าน</div>
+              <ul>${i.fail.map(f=>`<li>${f}</li>`).join('')}</ul>
+            </div>
+            <div class="dbox dbox-doc">
+              <div class="dbox-title">📄 หลักฐานที่ต้องแสดง</div>
+              <ul>${i.docs.map(d=>`<li>${d}</li>`).join('')}</ul>
+            </div>
+            <div class="dbox dbox-ref">
+              <div class="dbox-title">📌 อ้างอิง</div>
+              <ul><li>${i.ref}</li></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    div.innerHTML=`
+      <div class="sec-head" onclick="toggleSection(${s.id})">
+        <div class="sec-num">${s.id}</div>
+        <div class="sec-title">หมวด ${s.id} — ${s.title} <span style="font-size:12px;font-weight:400;color:#888">(${s.en})</span></div>
+        <div class="sec-meta">
+          <span class="badge b-default" id="b${s.id}">0/${s.items.length}</span>
+          <span class="arrow" id="sa${s.id}">&#9654;</span>
+        </div>
+      </div>
+      <div class="sec-body${s.id===1?' open':''}" id="sb${s.id}">${itemsHtml}</div>
+    `;
+    c.appendChild(div);
+  });
+  if(document.getElementById('sa1')) document.getElementById('sa1').classList.add('open');
+  updateStats();
+}
+
+render();
+</script>
+</body>
+</html>
