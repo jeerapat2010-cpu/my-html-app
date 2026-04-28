@@ -15,6 +15,8 @@ window.addEventListener('error', function(event) {
 });
 </script>
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
 <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
@@ -1030,44 +1032,51 @@ const DrugInteractionChecker = ({ items, darkMode }) => {
 
 // DISTRICT HEAT MAP
 const DistrictHeatMap = ({ items, darkMode }) => {
+  const mapRef = React.useRef(null);
+  const leafletMap = React.useRef(null);
+  const layersRef = React.useRef([]);
+  const [metric, setMetric] = React.useState("count");
   const [hovered, setHovered] = React.useState(null);
-  const [metric, setMetric] = React.useState("count"); // count | avg | irl
-  const card = darkMode ? "#1c2128" : "#fff";
-  const bdr  = darkMode ? "#30363d" : "#80deea";
-  const txt  = darkMode ? "#c9d1d9" : "#1a1a1a";
-  const txt2 = darkMode ? "#8b949e" : "#555";
+  const card = darkMode?"#1c2128":"#fff";
+  const bdr  = darkMode?"#30363d":"#80deea";
+  const txt  = darkMode?"#c9d1d9":"#1a1a1a";
+  const txt2 = darkMode?"#8b949e":"#555";
 
-  const AMPHOE_DATA = {
-    "เมือง":         { x:220, y:180, w:120, h:90, label:"อ.เมือง\nสมุทรปราการ" },
-    "พระประแดง":     { x:140, y:80,  w:100, h:85, label:"อ.พระประแดง" },
-    "พระสมุทรเจดีย์":{ x:110, y:185, w:110, h:80, label:"อ.พระสมุทร\nเจดีย์" },
-    "บางพลี":        { x:340, y:120, w:115, h:80, label:"อ.บางพลี" },
-    "บางบ่อ":        { x:340, y:220, w:110, h:85, label:"อ.บางบ่อ" },
-    "บางเสาธง":      { x:455, y:170, w:105, h:85, label:"อ.บางเสาธง" },
+  // Samut Prakan amphoe data with real Lat/Lng center + radius
+  const AMPHOE_GEO = {
+    "เมือง":           { lat:13.5991, lng:100.5998, r:5500,  name:"อ.เมืองสมุทรปราการ" },
+    "พระประแดง":       { lat:13.6600, lng:100.5250, r:4500,  name:"อ.พระประแดง" },
+    "พระสมุทรเจดีย์":  { lat:13.5350, lng:100.5600, r:4000,  name:"อ.พระสมุทรเจดีย์" },
+    "บางพลี":          { lat:13.6120, lng:100.7050, r:5000,  name:"อ.บางพลี" },
+    "บางบ่อ":          { lat:13.5560, lng:100.7820, r:5000,  name:"อ.บางบ่อ" },
+    "บางเสาธง":        { lat:13.5500, lng:100.8100, r:4000,  name:"อ.บางเสาธง" },
   };
 
-  // Calculate stats per amphoe
+  // Stats per amphoe
   const amphoeStats = {};
-  Object.keys(AMPHOE_DATA).forEach(amph => {
+  Object.keys(AMPHOE_GEO).forEach(amph => {
     const its = items.filter(x => x.amphoe === amph);
     const scores = its.map(x => x.userScore ?? x.total);
-    const avg = scores.length ? scores.reduce((a,b)=>a+b,0)/scores.length : 0;
-    const avgIRL = its.length ? its.reduce((s,x)=>s+(x.irl||2),0)/its.length : 0;
-    amphoeStats[amph] = { count:its.length, avg:avg.toFixed(1), avgIRL:avgIRL.toFixed(1), items:its };
+    amphoeStats[amph] = {
+      count: its.length,
+      avg: scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1) : "0",
+      avgIRL: its.length ? (its.reduce((s,x)=>s+(x.irl||2),0)/its.length).toFixed(1) : "0",
+      items: its
+    };
   });
 
-  // Color function
+  const maxCount = Math.max(...Object.values(amphoeStats).map(x=>x.count), 1);
+
   const getColor = (amph) => {
     const d = amphoeStats[amph];
-    if (!d || d.count === 0) return darkMode ? "#2a3038" : "#e8eef2";
-    const maxCount = Math.max(...Object.values(amphoeStats).map(x=>x.count));
-    const maxAvg = Math.max(...Object.values(amphoeStats).map(x=>parseFloat(x.avg)));
+    if (!d || d.count === 0) return "#90a4ae";
     if (metric === "count") {
-      const ratio = d.count / maxCount;
-      const r = Math.round(0 + ratio * 0);
-      const g = Math.round(131 + ratio * (180-131));
-      const b = Math.round(143 + ratio * (80-143));
-      return `rgb(${Math.round(4 + ratio*0)},${Math.round(77+ratio*154)},${Math.round(64+ratio*0)})`;
+      const r = d.count / maxCount;
+      if (r >= 0.8) return "#004d40";
+      if (r >= 0.6) return "#00695c";
+      if (r >= 0.4) return "#00838f";
+      if (r >= 0.2) return "#0097a7";
+      return "#26c6da";
     } else if (metric === "avg") {
       const v = parseFloat(d.avg);
       if (v >= 80) return "#1b5e20";
@@ -1077,160 +1086,156 @@ const DistrictHeatMap = ({ items, darkMode }) => {
       return "#e65100";
     } else {
       const v = parseFloat(d.avgIRL);
-      if (v >= 3.5) return "#1b5e20";
+      if (v >= 3) return "#1b5e20";
       if (v >= 2.5) return "#00838f";
-      if (v >= 1.5) return "#0097a7";
+      if (v >= 2) return "#0097a7";
       return "#c62828";
     }
   };
 
-  const getMetricValue = (amph) => {
+  const getOpacity = (amph) => {
     const d = amphoeStats[amph];
-    if (!d) return "0";
-    if (metric === "count") return d.count + " ผลงาน";
-    if (metric === "avg") return "เฉลี่ย " + d.avg;
-    return "IRL " + d.avgIRL;
+    if (!d || d.count === 0) return 0.3;
+    return 0.55 + (d.count / maxCount) * 0.35;
   };
 
-  const hoverData = hovered ? amphoeStats[hovered] : null;
+  // Initialize Leaflet map
+  React.useEffect(() => {
+    if (!mapRef.current || leafletMap.current) return;
+    if (!window.L) { console.warn("Leaflet not loaded"); return; }
+
+    // Create map
+    const map = window.L.map(mapRef.current, {
+      center: [13.5991, 100.6400],
+      zoom: 11,
+      zoomControl: true,
+      scrollWheelZoom: true,
+    });
+
+    // Tile layer — OpenStreetMap
+    window.L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+      attribution: "Tiles © Esri — Source: Esri, HERE, Garmin, USGS",
+      maxZoom: 18,
+    }).addTo(map);
+
+    leafletMap.current = map;
+  }, []);
+
+  // Draw circles whenever metric or items change
+  React.useEffect(() => {
+    const map = leafletMap.current;
+    if (!map || !window.L) return;
+
+    // Remove old layers
+    layersRef.current.forEach(l => map.removeLayer(l));
+    layersRef.current = [];
+
+    Object.entries(AMPHOE_GEO).forEach(([amph, geo]) => {
+      const d = amphoeStats[amph] || { count:0, avg:"0", items:[] };
+      const color = getColor(amph);
+      const opacity = getOpacity(amph);
+
+      // Draw filled circle
+      const circle = window.L.circle([geo.lat, geo.lng], {
+        radius: geo.r,
+        color: color,
+        weight: 2,
+        opacity: 0.9,
+        fillColor: color,
+        fillOpacity: opacity,
+      });
+
+      // Popup content
+      const popupHtml = '<div style="font-family:Sarabun,sans-serif;min-width:180px">' +
+        '<div style="font-size:14px;font-weight:800;color:' + color + ';margin-bottom:8px">📍 ' + geo.name + '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">' +
+        '<div style="background:#e0f7fa;border-radius:8px;padding:8px;text-align:center"><div style="font-size:20px;font-weight:900;color:#004d40">' + d.count + '</div><div style="font-size:10px;color:#666">ผลงาน</div></div>' +
+        '<div style="background:#e0f7fa;border-radius:8px;padding:8px;text-align:center"><div style="font-size:20px;font-weight:900;color:#00838f">' + d.avg + '</div><div style="font-size:10px;color:#666">เฉลี่ย</div></div>' +
+        '</div>' +
+        (d.items.length > 0 ? '<div style="font-size:10px;font-weight:700;color:#555;margin-bottom:4px">ผลงานในอำเภอนี้:</div>' +
+          d.items.sort((a,b)=>(b.userScore??b.total)-(a.userScore??a.total)).map(function(item) {
+            const sc = item.userScore??item.total;
+            const gc = sc>=85?"#1b5e20":sc>=75?"#00838f":sc>=65?"#e65100":"#c62828";
+            return '<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">#' + item.id + ' ' + item.name + '</span><span style="font-weight:800;color:' + gc + ';flex-shrink:0;margin-left:4px">' + sc + '</span></div>';
+          }).join("") : "") +
+        '</div>';
+
+      circle.bindPopup(popupHtml, { maxWidth: 240 });
+      circle.on("mouseover", function() { circle.openPopup(); setHovered(amph); });
+      circle.on("mouseout", function() { setHovered(null); });
+      circle.addTo(map);
+      layersRef.current.push(circle);
+
+      // Label
+      const icon = window.L.divIcon({
+        html: '<div style="font-family:Sarabun,sans-serif;text-align:center;pointer-events:none">' +
+          '<div style="font-size:11px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.8),0 0 6px rgba(0,0,0,0.5)">' +
+          amph + '</div>' +
+          '<div style="font-size:14px;font-weight:900;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.8)">' + d.count + ' ผลงาน</div>' +
+          '</div>',
+        className: "",
+        iconSize: [90, 34],
+        iconAnchor: [45, 17],
+      });
+      const marker = window.L.marker([geo.lat, geo.lng], { icon, interactive:false }).addTo(map);
+      layersRef.current.push(marker);
+    });
+  }, [metric, items]);
 
   return (
     <div>
       {/* Header */}
-      <div style={{ background:card,borderRadius:16,padding:"14px 18px",marginBottom:14,border:`1px solid ${bdr}`,display:"flex",alignItems:"center",flexWrap:"wrap",gap:12 }}>
+      <div style={{ background:card,borderRadius:16,padding:"12px 18px",marginBottom:12,border:"1px solid "+bdr,display:"flex",alignItems:"center",flexWrap:"wrap",gap:10 }}>
         <div>
           <div style={{ fontSize:15,fontWeight:800,color:darkMode?"#80deea":GOLD.main }}>🗺️ แผนที่ความร้อน — การกระจายนวัตกรรม 6 อำเภอ</div>
-          <div style={{ fontSize:11,color:txt2,marginTop:2 }}>วางเมาส์บนอำเภอเพื่อดูรายละเอียด</div>
+          <div style={{ fontSize:11,color:txt2,marginTop:2 }}>แผนที่จริง OpenStreetMap · คลิกวงกลมเพื่อดูรายละเอียด</div>
         </div>
-        <div style={{ display:"flex",gap:6,marginLeft:"auto" }}>
-          {[["count","จำนวนผลงาน"],["avg","คะแนนเฉลี่ย"],["irl","ระดับ IRL"]].map(([k,l])=>(
+        <div style={{ display:"flex",gap:6,marginLeft:"auto",flexWrap:"wrap" }}>
+          {[["count","📦 จำนวนผลงาน"],["avg","📊 คะแนนเฉลี่ย"],["irl","📈 ระดับ IRL"]].map(([k,l])=>(
             <button key={k} onClick={()=>setMetric(k)}
-              style={{ padding:"6px 14px",borderRadius:20,border:`1px solid ${bdr}`,background:metric===k?GOLD.main:(darkMode?"#21262d":"#f0fdfe"),color:metric===k?"#fff":(darkMode?"#c9d1d9":GOLD.main),fontSize:11,fontWeight:700,cursor:"pointer" }}>
+              style={{ padding:"6px 12px",borderRadius:20,border:"1px solid "+bdr,background:metric===k?GOLD.main:(darkMode?"#21262d":"#f0fdfe"),color:metric===k?"#fff":(darkMode?"#c9d1d9":GOLD.main),fontSize:11,fontWeight:700,cursor:"pointer" }}>
               {l}
             </button>
           ))}
         </div>
       </div>
 
-      <div style={{ display:"grid",gridTemplateColumns:"1fr 320px",gap:14 }}>
-        {/* SVG Map */}
-        <div style={{ background:card,borderRadius:16,padding:16,border:`1px solid ${bdr}` }}>
-          <svg viewBox="0 0 575 310" style={{ width:"100%",height:"auto" }}>
-            {/* Sea / background */}
-            <rect width="575" height="310" fill={darkMode?"#0d1117":"#e3f4ff"} rx="12"/>
-            <text x="300" y="285" textAnchor="middle" fill={darkMode?"#2a5a7a":"#93c8e8"} fontSize="12" fontFamily="Sarabun">อ่าวไทย</text>
-
-            {/* Province border hint */}
-            <path d="M 105 60 Q 200 30 350 55 Q 480 70 570 130 L 565 290 Q 490 300 390 295 Q 260 305 100 295 Z"
-              fill={darkMode?"#161b22":"#d4e9f5"} stroke={darkMode?"#30363d":"#b0cfe0"} strokeWidth="1.5"/>
-            <text x="490" y="90" fill={darkMode?"#4a6a7a":"#5a8a9a"} fontSize="10" fontFamily="Sarabun">จ.ฉะเชิงเทรา</text>
-            <text x="50" y="140" fill={darkMode?"#4a6a7a":"#5a8a9a"} fontSize="10" fontFamily="Sarabun">กรุงเทพฯ</text>
-
-            {/* Districts */}
-            {Object.entries(AMPHOE_DATA).map(([amph, d]) => {
-              const isHov = hovered === amph;
-              const col = getColor(amph);
-              const stats = amphoeStats[amph];
-              return (
-                <g key={amph} onMouseEnter={()=>setHovered(amph)} onMouseLeave={()=>setHovered(null)}
-                  style={{ cursor:"pointer", transition:"all 0.15s" }}>
-                  <rect x={d.x} y={d.y} width={d.w} height={d.h} rx="10"
-                    fill={col} stroke={isHov?"#fff":darkMode?"#30363d":"rgba(255,255,255,0.6)"} strokeWidth={isHov?3:1.5}
-                    opacity={isHov?1:0.85} filter={isHov?"url(#glow)":""} />
-                  {d.label.split("\n").map((line,i)=>(
-                    <text key={i} x={d.x+d.w/2} y={d.y+d.h/2-(d.label.includes("\n")?7:0)+i*14}
-                      textAnchor="middle" fill="#fff" fontSize="11" fontWeight="700" fontFamily="Sarabun">{line}</text>
-                  ))}
-                  <text x={d.x+d.w/2} y={d.y+d.h-10} textAnchor="middle"
-                    fill="rgba(255,255,255,0.9)" fontSize="10" fontFamily="Sarabun">
-                    {stats?.count||0} ผลงาน
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* Glow filter */}
-            <defs>
-              <filter id="glow">
-                <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#00acc1" floodOpacity="0.8"/>
-              </filter>
-            </defs>
-
-            {/* Legend */}
-            <g>
-              <rect x="10" y="10" width="130" height="56" rx="8" fill={darkMode?"rgba(0,0,0,0.5)":"rgba(255,255,255,0.85)"} stroke={darkMode?"#30363d":"#e0f7fa"} strokeWidth="1"/>
-              <text x="20" y="27" fontSize="9" fontFamily="Sarabun" fill={darkMode?"#80deea":"#004d40"} fontWeight="700">สีเข้ม = {metric==="count"?"ผลงานมาก":metric==="avg"?"คะแนนสูง":"IRL สูง"}</text>
-              {["#1b5e20","#00838f","#0097a7","#e65100"].map((c,i)=>(
-                <g key={i}>
-                  <rect x="20" y={33+i*7} width="8" height="6" rx="2" fill={c}/>
-                  <text x="33" y={40+i*7} fontSize="8" fontFamily="Sarabun" fill={darkMode?"#8b949e":"#555"}>
-                    {metric==="count"?[">3 ผลงาน","3 ผลงาน","2 ผลงาน","1 ผลงาน"][i]:metric==="avg"?["≥80","75-79","70-74","<70"][i]:["IRL 3-4","IRL 2.5","IRL 2","IRL 1"][i]}
-                  </text>
-                </g>
-              ))}
-            </g>
-          </svg>
-        </div>
-
-        {/* Side stats */}
-        <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
-          {/* Hover detail card */}
-          <div style={{ background:hovered?`${getColor(hovered)}18`:(darkMode?"#161b22":GOLD.surface),borderRadius:14,padding:"14px 16px",border:`1.5px solid ${hovered?getColor(hovered):bdr}`,minHeight:120,transition:"all 0.2s" }}>
-            {hovered && hoverData ? (
-              <>
-                <div style={{ fontSize:14,fontWeight:900,color:getColor(hovered),marginBottom:6 }}>
-                  📍 อ.{hovered}
-                </div>
-                <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10 }}>
-                  {[["ผลงาน",hoverData.count+" ชิ้น"],["เฉลี่ย",hoverData.avg+" คะแนน"],["IRL เฉลี่ย",hoverData.avgIRL]].map(([l,v])=>(
-                    <div key={l} style={{ background:darkMode?"#21262d":"rgba(255,255,255,0.7)",borderRadius:8,padding:"6px 8px" }}>
-                      <div style={{ fontSize:9,color:txt2 }}>{l}</div>
-                      <div style={{ fontSize:14,fontWeight:900,color:getColor(hovered) }}>{v}</div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ fontSize:10,fontWeight:700,color:txt2,marginBottom:5 }}>ผลงานในอำเภอนี้:</div>
-                {hoverData.items.sort((a,b)=>(b.userScore??b.total)-(a.userScore??a.total)).map(item=>{
-                  const s=item.userScore??item.total; const g=GRADE_SOLID(s);
-                  return (
-                    <div key={item.id} style={{ display:"flex",justifyContent:"space-between",fontSize:10,color:txt,marginBottom:3 }}>
-                      <span style={{ overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180 }}>#{item.id} {item.name}</span>
-                      <span style={{ fontWeight:800,color:g.color,flexShrink:0 }}>{s}</span>
-                    </div>
-                  );
-                })}
-              </>
-            ) : (
-              <div style={{ textAlign:"center",paddingTop:20,color:txt2 }}>
-                <div style={{ fontSize:28,marginBottom:6 }}>🗺️</div>
-                <div style={{ fontSize:12,fontWeight:600 }}>วางเมาส์บนอำเภอ</div>
-                <div style={{ fontSize:11,marginTop:4 }}>เพื่อดูรายละเอียดผลงาน</div>
-              </div>
-            )}
+      {/* Legend */}
+      <div style={{ display:"flex",gap:10,flexWrap:"wrap",marginBottom:10 }}>
+        {(metric==="count"
+          ? [["#004d40","มากที่สุด"],["#00838f","ปานกลาง"],["#26c6da","น้อย"],["#90a4ae","ยังไม่มี"]]
+          : metric==="avg"
+          ? [["#1b5e20","≥80 ดีเด่น"],["#00838f","70-79 ดี"],["#0097a7","65-69 พอใช้"],["#e65100","<65 ต้องพัฒนา"]]
+          : [["#1b5e20","IRL 3-4"],["#00838f","IRL 2.5"],["#0097a7","IRL 2"],["#c62828","IRL 1"]]
+        ).map(([col,label])=>(
+          <div key={label} style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:txt2 }}>
+            <div style={{ width:14,height:14,borderRadius:"50%",background:col,opacity:0.85 }} />
+            <span>{label}</span>
           </div>
+        ))}
+      </div>
 
-          {/* Rankings by amphoe */}
-          <div style={{ background:card,borderRadius:14,padding:"12px 14px",border:`1px solid ${bdr}`,flex:1 }}>
-            <div style={{ fontSize:12,fontWeight:800,color:GOLD.main,marginBottom:10 }}>📊 สรุปรายอำเภอ</div>
-            {Object.entries(amphoeStats).sort((a,b)=>b[1].count-a[1].count).map(([amph,d])=>(
-              <div key={amph} style={{ marginBottom:8,paddingBottom:8,borderBottom:`1px solid ${bdr}` }}>
-                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3 }}>
-                  <span style={{ fontSize:12,fontWeight:700,color:txt }}>อ.{amph}</span>
-                  <span style={{ fontSize:11,color:getColor(amph),fontWeight:700 }}>{d.count} ผลงาน | เฉลี่ย {d.avg}</span>
-                </div>
-                <div style={{ background:darkMode?"#30363d":"#f0f0f0",borderRadius:4,height:5,overflow:"hidden" }}>
-                  <div style={{ width:`${(d.count/Math.max(...Object.values(amphoeStats).map(x=>x.count)))*100}%`,background:getColor(amph),height:"100%" }} />
-                </div>
-              </div>
-            ))}
+      {/* Leaflet Map */}
+      <div style={{ borderRadius:16,overflow:"hidden",border:"1px solid "+bdr,boxShadow:"0 4px 20px rgba(0,0,0,0.1)",height:520 }}
+           ref={mapRef} id="leaflet-map" />
+
+      {/* Summary bar */}
+      <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginTop:12 }}>
+        {Object.entries(amphoeStats).sort((a,b)=>b[1].count-a[1].count).map(([amph,d])=>(
+          <div key={amph} style={{ background:card,borderRadius:12,padding:"10px 14px",border:"1.5px solid "+(hovered===amph?getColor(amph):bdr),transition:"border-color 0.2s" }}>
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5 }}>
+              <span style={{ fontSize:12,fontWeight:800,color:txt }}>อ.{amph}</span>
+              <span style={{ fontSize:11,fontWeight:700,color:getColor(amph) }}>{d.count} ผลงาน | เฉลี่ย {d.avg}</span>
+            </div>
+            <div style={{ background:darkMode?"#30363d":"#f0f0f0",borderRadius:4,height:6,overflow:"hidden" }}>
+              <div style={{ width:(d.count/maxCount*100)+"%",background:getColor(amph),height:"100%",transition:"width 0.4s" }} />
+            </div>
           </div>
-        </div>
+        ))}
       </div>
     </div>
   );
 };
-
-// EXPORT SUITE FUNCTIONS
 const exportToCSV = (items) => {
   const headers = ["ลำดับ","ID","ชื่อนวัตกรรม","หน่วยบริการ","อำเภอ","ประเภท","สถานะ","IRL","ค.1","ค.2","ค.3","ค.4","ค.5","รวม","ระดับ","ต้นทุน(฿)","ราคาขาย(฿)","Margin(%)","USP"];
   const rows = items.map((item,i) => {
