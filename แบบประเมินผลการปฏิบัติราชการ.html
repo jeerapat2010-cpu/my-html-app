@@ -948,415 +948,339 @@ function fmtDate(d){
   return `${parseInt(parts[2])} ${months[parseInt(parts[1])-1]} ${y}`;
 }
 
-// ─── THAI NUMERAL CONVERTER ───
-function toThai(n) {
-  const t = ['๐','๑','๒','๓','๔','๕','๖','๗','๘','๙'];
-  return String(n).replace(/[0-9]/g, d => t[parseInt(d)]);
-}
-function tNum(n, dec=2) {
-  // Format number to fixed decimals then convert to Thai
-  const s = typeof n === 'number' ? n.toFixed(dec) : String(n);
-  return toThai(s);
-}
-function tPct(n) { return toThai(n) + '%'; }
-function tDate(d) {
-  // Convert fmtDate result digits to Thai
-  return toThai(fmtDate(d));
-}
+// ─── THAI NUMERAL HELPERS ───
+function toThai(n){const t=['๐','๑','๒','๓','๔','๕','๖','๗','๘','๙'];return String(n).replace(/[0-9]/g,d=>t[+d]);}
+function tNum(n,dec=2){return toThai(typeof n==='number'?n.toFixed(dec):String(n));}
+function tPct(n){return toThai(n)+'%';}
+function tDate(d){return toThai(fmtDate(d));}
 
 // ─── EXPORT WORD ───
 function exportWord(){
   const name=g('f_name'), evaluator=g('f_evaluator');
-  const round=g('f_round'), dateStart=g('f_dateStart');
-  const dateEnd=g('f_dateEnd'), dateEval=g('f_dateEval');
+  const round=g('f_round');
   const fiscalYear=g('f_fiscalYear');
-  const roundTxt = round==='1' ? 'รอบที่ ๑' : 'รอบที่ ๒';
-  const roundTxtNum = round==='1' ? '๑' : '๒';
-  const periodTxt = `${tDate(dateStart)} ถึง ${tDate(dateEnd)}`;
-  const evalDateTxt = dateEval ? tDate(dateEval) : '';
+  const fyThai=toThai(fiscalYear);
+  const r1=round==='1', r1c=r1?'☑':'☐', r2c=r1?'☐':'☑';
+  const roundLabel=r1?'รอบที่ ๑':'รอบที่ ๒';
+  const ds=tDate(g('f_dateStart')), de=tDate(g('f_dateEnd'));
+  const evalDateTxt=g('f_dateEval')?tDate(g('f_dateEval')):'........................................';
+  const posName=gdd(dd_pos,'f_pos'), posType=gdd(dd_posType,'f_posType');
+  const posLevel=gdd(dd_posLevel,'f_posLevel'), deptName=gdd(dd_dept,'f_dept');
+  const evalPos=gdd(dd_evalPos,'f_evalPos');
+  const dot='..................................................';
 
-  const posName    = gdd(dd_pos,'f_pos');
-  const posType    = gdd(dd_posType,'f_posType');
-  const posLevel   = gdd(dd_posLevel,'f_posLevel');
-  const deptName   = gdd(dd_dept,'f_dept');
-  const evalPos    = gdd(dd_evalPos,'f_evalPos');
-  const fyThai     = toThai(fiscalYear);
+  const kpiC=kpis.reduce((s,k)=>s+k.score*k.weight/100,0);
+  const compC=comps.reduce((s,c)=>s+c.score*c.weight/100,0);
+  const kpiConv=kpiC*20, compConv=compC*20;
+  const wWork=parseInt(g('wt_work'))||70, wComp=parseInt(g('wt_comp'))||30;
+  const final=kpiConv*wWork/100+compConv*wComp/100;
 
-  const kpiC    = kpis.reduce((s,k)=>s+k.score*k.weight/100, 0);
-  const compC   = comps.reduce((s,c)=>s+c.score*c.weight/100, 0);
-  const kpiConv = kpiC*20, compConv = compC*20;
-  const wWork   = parseInt(g('wt_work'))||70;
-  const wComp   = parseInt(g('wt_comp'))||30;
-  const final   = kpiConv*wWork/100 + compConv*wComp/100;
+  const LVS=['ดีเด่น','ดีมาก','ดี','พอใช้','ต้องปรับปรุง'];
+  const LVM=[90,80,70,60,0];
+  const actLv=LVS.find((_,i)=>final>=LVM[i])||'ต้องปรับปรุง';
+  const lvBoxes=LVS.map(l=>`${l===actLv?'☑':'☐'} ${l}`).join('&nbsp;&nbsp;&nbsp;');
 
-  const LEVELS=[
-    {label:'ดีเด่น',min:90,bg:'#d1fae5',color:'#065f46'},
-    {label:'ดีมาก',min:80,bg:'#dbeafe',color:'#1e40af'},
-    {label:'ดี',min:70,bg:'#fef9c3',color:'#713f12'},
-    {label:'พอใช้',min:60,bg:'#ffedd5',color:'#9a3412'},
-    {label:'ต้องปรับปรุง',min:0,bg:'#fee2e2',color:'#991b1b'},
-  ];
-  const activeLv = LEVELS.find(l=>final>=l.min)||LEVELS[4];
-  const levelChecks = LEVELS.map(l=>{
-    const isActive = l.label===activeLv.label;
-    return `<span style="margin:0 6px;padding:3px 10px;border-radius:20px;background:${isActive?l.bg:'#f5f5f5'};color:${isActive?l.color:'#999'};font-weight:${isActive?'bold':'normal'};border:1px solid ${isActive?l.color:'#ddd'}">${isActive?'☑':'☐'} ${l.label}</span>`;
-  }).join('');
+  const F=`font-family:'TH SarabunIT9','TH SarabunPSK','TH Sarabun New',sans-serif;`;
+  const B=`border:1px solid #000;`;
+  const TD=`${B}padding:5px 8px;font-size:16px;${F}`;
+  const TH=`${B}padding:6px 8px;font-size:16px;font-weight:bold;text-align:center;${F}`;
+  const THL=`${B}padding:6px 8px;font-size:16px;font-weight:bold;text-align:left;${F}`;
 
-  // ── border shorthand ──
-  const B  = 'border:1.5px solid #bdc8d5;';
-  const BH = 'border:1.5px solid #5b8db5;';
+  const kpiRows=kpis.map((k,i)=>`<tr>
+    <td style="${TD}vertical-align:top">${toThai(i+1)}. ${k.name}</td>
+    ${k.levels.map(l=>`<td style="${TD}text-align:center;font-size:14px">${l}</td>`).join('')}
+    <td style="${TD}text-align:center;font-weight:bold">${tNum(k.score)}</td>
+    <td style="${TD}text-align:center">${tPct(k.weight)}</td>
+    <td style="${TD}text-align:center;font-weight:bold">${tNum(k.score*k.weight/100)}</td>
+  </tr>`).join('');
 
-  // Table header style
-  const TH = `${BH}padding:7px 10px;font-weight:bold;font-size:16px;text-align:center;`;
-  const THL= `${BH}padding:7px 10px;font-weight:bold;font-size:16px;text-align:left;`;
-  const TD = `${B}padding:6px 10px;font-size:16px;`;
-  const TDC= `${B}padding:6px 8px;font-size:16px;text-align:center;`;
+  const compRows=comps.map(c=>`<tr>
+    <td style="${TD}">${c.name}</td>
+    <td style="${TD}text-align:center">${toThai(c.exp)}</td>
+    <td style="${TD}text-align:center;font-weight:bold">${tNum(c.score)}</td>
+    <td style="${TD}text-align:center">${tPct(c.weight)}</td>
+    <td style="${TD}text-align:center;font-weight:bold">${tNum(c.score*c.weight/100)}</td>
+    <td style="${TD}"></td>
+  </tr>`).join('');
 
-  // KPI rows (Thai numerals)
-  const kpiRows = kpis.map((k,i)=>`
-    <tr>
-      <td style="${TD}vertical-align:top">${toThai(i+1)}. ${k.name}</td>
-      ${k.levels.map(l=>`<td style="${TDC}font-size:13px;color:#444">${l}</td>`).join('')}
-      <td style="${TDC}font-weight:bold;color:#1d4ed8;font-size:17px">${tNum(k.score)}</td>
-      <td style="${TDC}">${tPct(k.weight)}</td>
-      <td style="${TDC}font-weight:bold;color:#92400e;font-size:17px">${tNum(k.score*k.weight/100)}</td>
-    </tr>`).join('');
-
-  // Competency rows (Thai numerals)
-  const compRows = comps.map((c,i)=>`
-    <tr style="background:${i%2===0?'#fff':'#faf9ff'}">
-      <td style="${TD}">${c.name}</td>
-      <td style="${TDC}font-weight:bold">${toThai(c.exp)}</td>
-      <td style="${TDC}font-weight:bold;color:#5b21b6;font-size:17px">${tNum(c.score)}</td>
-      <td style="${TDC}">${tPct(c.weight)}</td>
-      <td style="${TDC}font-weight:bold;color:#92400e;font-size:17px">${tNum(c.score*c.weight/100)}</td>
-      <td style="${TD}"></td>
-    </tr>`).join('');
-
-  // Dev plan rows
-  const devRows = devPlan.filter(d=>d.skill||d.method||d.period).map((d,i)=>`
-    <tr style="background:${i%2===0?'#fff':'#f0fdf4'}">
-      <td style="${TD}min-height:28px">${d.skill}</td>
+  const devR=devPlan.filter(d=>d.skill||d.method||d.period);
+  const devRows=(devR.length?devR:[{skill:'',method:'',period:''},{skill:'',method:'',period:''}])
+    .map(d=>`<tr>
+      <td style="${TD}height:32px">${d.skill}</td>
       <td style="${TD}">${d.method}</td>
-      <td style="${TDC}">${d.period}</td>
-    </tr>`).join('') || `<tr><td style="${TD}" colspan="3" class="ctr" style="color:#aaa;text-align:center">- ไม่มีข้อมูล -</td></tr>`;
+      <td style="${TD}text-align:center">${d.period}</td>
+    </tr>`).join('');
 
-  // Signature block helper
-  const sigBlock = (label, extra='') => `
-    <table style="width:100%;border-collapse:collapse;margin-top:6px">
-      <tr>
-        <td style="width:55%;${B}padding:14px 16px;vertical-align:top;font-size:16px">
-          <b>${label}</b><br>
-          ${extra}
-          <br><br>
-          ลงชื่อ ..................................................<br>
-          <span style="font-size:14px;color:#555">(.................................................)</span><br>
-          ตำแหน่ง ................................................<br>
-          วันที่ .....................................................
-        </td>
-        <td style="width:45%;${B}padding:14px 16px;vertical-align:top;font-size:16px">
-          &nbsp;
-        </td>
-      </tr>
-    </table>`;
+  const credit=`<p style="text-align:center;color:#666;font-size:13px;margin-top:20px;border-top:1px dashed #ccc;padding-top:8px;${F}">ระบบประเมินผลการปฏิบัติราชการ v๒.๑ | ภก.จีรภัทร พลายงาม | กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สสจ.สมุทรปราการ</p>`;
 
-  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
-    xmlns:w="urn:schemas-microsoft-com:office:word"
-    xmlns="http://www.w3.org/TR/REC-html40">
+  const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta charset="utf-8">
 <style>
-  @page { size:A4; margin:2cm 2.2cm; }
-  body  { font-family:'TH SarabunIT9','TH SarabunPSK','TH Sarabun New',sans-serif;
-          font-size:16px; line-height:1.6; color:#1a1a1a; }
-  table { border-collapse:collapse; width:100%; }
-  p     { margin:5px 0; }
-  .pb   { page-break-before:always; }
-  .ctr  { text-align:center; }
-
-  /* ── PAGE HEADER BAND ── */
-  .pg-hdr { background:linear-gradient(135deg,#1d4ed8,#0284c7);
-            color:#fff; padding:14px 20px; border-radius:4px;
-            margin-bottom:16px; }
-  .pg-hdr-title { font-size:22px; font-weight:bold; letter-spacing:.5px; }
-  .pg-hdr-sub   { font-size:14px; opacity:.85; margin-top:3px; }
-
-  /* ── SECTION HEADER ── */
-  .sec-hdr { background:#1d4ed8; color:#fff; padding:8px 16px;
-             font-size:17px; font-weight:bold; border-radius:3px;
-             margin:16px 0 10px; }
-  .sec-hdr.green  { background:#059669; }
-  .sec-hdr.purple { background:#7c3aed; }
-  .sec-hdr.amber  { background:#b45309; }
-  .sec-hdr.red    { background:#b91c1c; }
-  .sec-hdr.teal   { background:#0f766e; }
-
-  /* ── INFO TABLE ── */
-  .info-tbl td { padding:6px 12px; font-size:16px; border-bottom:1px solid #e5e7eb; }
-  .info-lbl { background:#f0f4ff; color:#1e3a8a; font-weight:bold; width:200px; }
-
-  /* ── SCORE BOX ── */
-  .score-box { display:inline-block; background:#1d4ed8; color:#fff;
-               padding:8px 20px; border-radius:6px; font-size:26px;
-               font-weight:bold; letter-spacing:1px; margin:6px 0; }
-  .score-box.gold { background:linear-gradient(135deg,#d97706,#b45309); }
-
-  /* ── CREDIT ── */
-  .credit { text-align:center; color:#6b7280; font-size:13px;
-            margin-top:28px; padding-top:10px;
-            border-top:2px dashed #d1d5db; }
+  @page{size:A4 portrait;margin:2cm 2.2cm 2cm 2.5cm;}
+  body{font-family:'TH SarabunIT9','TH SarabunPSK','TH Sarabun New',sans-serif;font-size:16px;line-height:1.65;color:#000;}
+  table{border-collapse:collapse;width:100%;}
+  p{margin:3px 0;font-size:16px;}
+  .pb{page-break-before:always;}
+  .form-title{font-size:19px;font-weight:bold;text-align:center;margin:0 0 10px;letter-spacing:.3px;}
+  .sec-lbl{font-weight:bold;font-size:16px;margin:14px 0 6px;}
 </style>
 </head>
 <body>
 
-<!-- ═══════════════════════════════════
-     หน้า ๑ : แบบสรุปการประเมิน
-═══════════════════════════════════ -->
-<div class="pg-hdr">
-  <div class="pg-hdr-title">แบบสรุปการประเมินผลการปฏิบัติราชการ</div>
-  <div class="pg-hdr-sub">
-    ปีงบประมาณ พ.ศ. ${fyThai} &nbsp;·&nbsp; ${roundTxt} : ${periodTxt}
-    ${evalDateTxt ? `&nbsp;·&nbsp; วันที่ประเมิน ${evalDateTxt}` : ''}
-  </div>
-</div>
+<!-- หน้า ๑: แบบสรุป -->
+<p class="form-title">แบบการประเมินผลการปฏิบัติราชการ</p>
 
-<!-- ส่วนที่ ๑ -->
-<div class="sec-hdr">ส่วนที่ ๑ : ข้อมูลของผู้รับการประเมิน</div>
-<table class="info-tbl">
-  <tr><td class="info-lbl">รอบการประเมิน</td>
-      <td>${roundTxt} &nbsp;(${periodTxt})</td></tr>
-  <tr><td class="info-lbl">ชื่อ-สกุล ผู้รับการประเมิน</td>
-      <td><b>${name||'—'}</b></td></tr>
-  <tr><td class="info-lbl">ตำแหน่ง / ระดับ</td>
-      <td>${posName||'—'} &nbsp;|&nbsp; ประเภท: ${posType||'—'} &nbsp;|&nbsp; ระดับ: ${posLevel||'—'}</td></tr>
-  <tr><td class="info-lbl">สังกัด</td>
-      <td>${deptName||'—'}</td></tr>
-  <tr><td class="info-lbl">ชื่อ-สกุล ผู้ประเมิน</td>
-      <td><b>${evaluator||'—'}</b></td></tr>
-  <tr><td class="info-lbl">ตำแหน่งผู้ประเมิน</td>
-      <td>${evalPos||'—'}</td></tr>
+<p class="sec-lbl">ส่วนที่ ๑ : ข้อมูลของผู้รับการประเมิน</p>
+<table style="border:none;margin-bottom:6px">
+  <tr>
+    <td style="font-size:16px;padding:2px 0;width:220px">รอบการประเมิน</td>
+    <td style="font-size:16px;padding:2px 0">${r1c} รอบที่ ๑ &nbsp; ${ds} ถึง ${de}</td>
+  </tr>
+  <tr>
+    <td style="font-size:16px;padding:2px 0"></td>
+    <td style="font-size:16px;padding:2px 0">${r2c} รอบที่ ๒ &nbsp; ${r1?toThai('1 เมษายน '+(parseInt(fiscalYear))+' ถึง 30 กันยายน '+(parseInt(fiscalYear))):ds+' ถึง '+de}</td>
+  </tr>
+</table>
+<table style="border:none;width:100%">
+  <tr>
+    <td style="font-size:16px;padding:2px 0;width:60%">ชื่อผู้รับการประเมิน (นาย/นาง/นางสาว) <b>${name||dot}</b></td>
+    <td style="font-size:16px;padding:2px 0;text-align:right"></td>
+  </tr>
+  <tr><td style="font-size:16px;padding:2px 0" colspan="2">ตำแหน่ง <b>${posName||dot}</b> &nbsp; ประเภทตำแหน่ง <b>${posType||dot}</b> &nbsp; ระดับตำแหน่ง <b>${posLevel||dot}</b> &nbsp;</td></tr>
+  <tr><td style="font-size:16px;padding:2px 0" colspan="2">สังกัด <b>${deptName||dot}</b></td></tr>
+  <tr>
+    <td style="font-size:16px;padding:2px 0;width:60%">ชื่อผู้ประเมิน (นาย/นาง/นางสาว) <b>${evaluator||dot}</b></td>
+    <td style="font-size:16px;padding:2px 0;text-align:right"></td>
+  </tr>
+  <tr><td style="font-size:16px;padding:2px 0" colspan="2">ตำแหน่ง <b>${evalPos||dot}</b></td></tr>
 </table>
 
-<!-- ส่วนที่ ๒ -->
-<div class="sec-hdr green">ส่วนที่ ๒ : การสรุปผลการประเมิน</div>
+<p class="sec-lbl">ส่วนที่ ๒ : การสรุปผลการประเมิน</p>
 <table>
-  <tr style="background:#1d4ed8;color:#fff">
-    <td style="${THL}">องค์ประกอบการประเมิน</td>
-    <td style="${TH}width:14%">คะแนน (ก)</td>
-    <td style="${TH}width:13%">น้ำหนัก (ข)</td>
-    <td style="${TH}width:16%">รวม (ก)×(ข)</td>
+  <tr>
+    <td style="${THL}width:46%">องค์ประกอบการประเมิน</td>
+    <td style="${TH}width:18%">คะแนน (ก)</td>
+    <td style="${TH}width:18%">น้ำหนัก (ข)</td>
+    <td style="${TH}width:18%">รวมคะแนน (ก) × (ข)</td>
   </tr>
-  <tr style="background:#eff6ff">
+  <tr>
     <td style="${TD}">องค์ประกอบที่ ๑ : ผลสัมฤทธิ์ของงาน</td>
-    <td style="${TDC}font-size:20px;font-weight:bold;color:#1d4ed8">${tNum(kpiConv)}</td>
-    <td style="${TDC}">${tPct(wWork)}</td>
-    <td style="${TDC}font-weight:bold;font-size:18px">${tNum(kpiConv*wWork/100)}</td>
+    <td style="${TD}text-align:center;font-size:17px;font-weight:bold">${tNum(kpiConv)}</td>
+    <td style="${TD}text-align:center">${tPct(wWork)}</td>
+    <td style="${TD}text-align:center;font-size:17px;font-weight:bold">${tNum(kpiConv*wWork/100)}</td>
   </tr>
-  <tr style="background:#f5f3ff">
+  <tr>
     <td style="${TD}">องค์ประกอบที่ ๒ : พฤติกรรมการปฏิบัติราชการ (สมรรถนะ)</td>
-    <td style="${TDC}font-size:20px;font-weight:bold;color:#7c3aed">${tNum(compConv)}</td>
-    <td style="${TDC}">${tPct(wComp)}</td>
-    <td style="${TDC}font-weight:bold;font-size:18px">${tNum(compConv*wComp/100)}</td>
+    <td style="${TD}text-align:center;font-size:17px;font-weight:bold">${tNum(compConv)}</td>
+    <td style="${TD}text-align:center">${tPct(wComp)}</td>
+    <td style="${TD}text-align:center;font-size:17px;font-weight:bold">${tNum(compConv*wComp/100)}</td>
   </tr>
-  <tr style="background:#fefce8">
-    <td style="${B}padding:10px 12px;font-weight:bold;font-size:17px">รวมคะแนนทั้งหมด</td>
-    <td style="${B}text-align:center;font-size:16px" colspan="2">${tPct(100)}</td>
-    <td style="${B}text-align:center">
-      <div class="score-box gold">${tNum(final)}</div>
-    </td>
+  <tr>
+    <td style="${TD}">องค์ประกอบอื่นๆ (ถ้ามี)</td>
+    <td style="${TD}">&nbsp;</td><td style="${TD}">&nbsp;</td><td style="${TD}">&nbsp;</td>
+  </tr>
+  <tr>
+    <td style="${THL}">รวม</td>
+    <td style="${TH}">&nbsp;</td>
+    <td style="${TH}">${tPct(wWork+wComp)}</td>
+    <td style="${TH}font-size:19px">${tNum(final)}</td>
   </tr>
 </table>
-<div style="margin-top:12px;padding:10px 16px;background:#f8fafc;border-left:4px solid #1d4ed8;border-radius:0 6px 6px 0">
-  <b>ระดับผลการประเมิน :</b> &nbsp; ${levelChecks}
-</div>
+<p style="margin-top:8px;font-size:16px">ระดับผลการประเมิน &nbsp;&nbsp; ${lvBoxes}</p>
 
-<!-- ส่วนที่ ๓ -->
-<div class="sec-hdr amber">ส่วนที่ ๓ : แผนพัฒนาการปฏิบัติราชการรายบุคคล</div>
+<p class="sec-lbl">ส่วนที่ ๓ : แผนพัฒนาการปฏิบัติราชการรายบุคคล</p>
 <table>
-  <tr style="background:#b45309;color:#fff">
-    <td style="${THL}width:38%">ความรู้/ทักษะ/สมรรถนะที่ต้องพัฒนา</td>
+  <tr>
+    <td style="${THL}width:38%">ความรู้/ ทักษะ/ สมรรถนะ<br>ที่ต้องได้รับการพัฒนา</td>
     <td style="${TH}width:38%">วิธีการพัฒนา</td>
-    <td style="${TH}width:24%">ช่วงเวลา</td>
+    <td style="${TH}width:24%">ช่วงเวลาที่ต้องการพัฒนา</td>
   </tr>
   ${devRows}
 </table>
+${credit}
 
-<!-- ส่วนที่ ๔ -->
-<div class="sec-hdr teal">ส่วนที่ ๔ : การรับทราบผลการประเมิน</div>
-<table>
-  <tr>
-    <td style="${B}padding:12px 16px;font-size:16px;width:50%;vertical-align:top">
-      <b>ผู้รับการประเมิน</b><br>
-      ☐ ได้รับทราบผลการประเมินและแผนพัฒนาการปฏิบัติราชการรายบุคคลแล้ว<br><br>
-      ลงชื่อ .............................................<br>
-      <span style="font-size:14px;color:#666">( ${name||'.............................................'} )</span><br>
-      วันที่ .................................................
-    </td>
-    <td style="${B}padding:12px 16px;font-size:16px;width:50%;vertical-align:top">
-      <b>ผู้ให้ข้อมูล / ผู้ประเมิน</b><br>
-      ☐ ได้แจ้งผลการประเมินและผู้รับการประเมินลงนามรับทราบ<br>
-      ☐ ผู้รับการประเมินไม่ลงนาม โดยมี .................. เป็นพยาน<br><br>
-      ลงชื่อ .............................................<br>
-      <span style="font-size:14px;color:#666">( ${evaluator||'.............................................'} )</span><br>
-      วันที่ .................................................
-    </td>
-  </tr>
-</table>
-
-<!-- ส่วนที่ ๕ -->
-<div class="sec-hdr red">ส่วนที่ ๕ : ความเห็นของผู้บังคับบัญชาเหนือขึ้นไป</div>
-<table>
-  <tr>
-    <td style="${B}padding:12px 16px;font-size:16px;width:50%;vertical-align:top">
-      <b>ผู้บังคับบัญชาเหนือขึ้นไป</b><br>
-      ☐ เห็นด้วยกับผลการประเมิน<br>
-      ☐ มีความเห็นต่าง ดังนี้ ................................<br><br>
-      ลงชื่อ .............................................<br>
-      <span style="font-size:14px;color:#666">( .............................................)</span><br>
-      ตำแหน่ง ............................................<br>
-      วันที่ .................................................
-    </td>
-    <td style="${B}padding:12px 16px;font-size:16px;width:50%;vertical-align:top">
-      <b>ผู้บังคับบัญชาเหนือขึ้นไปอีกชั้นหนึ่ง (ถ้ามี)</b><br>
-      ☐ เห็นด้วยกับผลการประเมิน<br>
-      ☐ มีความเห็นต่าง ดังนี้ ................................<br><br>
-      ลงชื่อ .............................................<br>
-      <span style="font-size:14px;color:#666">( .............................................)</span><br>
-      ตำแหน่ง ............................................<br>
-      วันที่ .................................................
-    </td>
-  </tr>
-</table>
-
-<div class="credit">
-  ระบบประเมินผลการปฏิบัติราชการ v๒.๑ &nbsp;|&nbsp;
-  ภก.จีรภัทร พลายงาม &nbsp;|&nbsp;
-  กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สำนักงานสาธารณสุขจังหวัดสมุทรปราการ
-</div>
-
-
-<!-- ═══════════════════════════════════
-     หน้า ๒ : แบบประเมินผลสัมฤทธิ์ของงาน
-═══════════════════════════════════ -->
+<!-- หน้า ๒: ส่วน ๔–๕ + คำชี้แจง -->
 <div class="pb"></div>
-<div class="pg-hdr" style="background:linear-gradient(135deg,#0369a1,#0284c7)">
-  <div class="pg-hdr-title">แบบฟอร์มที่ ๒ — แบบประเมินผลสัมฤทธิ์ของงาน</div>
-  <div class="pg-hdr-sub">
-    รอบการประเมิน ${roundTxt} &nbsp;·&nbsp; ${periodTxt}
-  </div>
-</div>
-
-<table class="info-tbl" style="margin-bottom:14px">
+<p class="sec-lbl">ส่วนที่ ๔ : การรับทราบผลการประเมิน</p>
+<p style="font-weight:bold;font-size:16px;margin-bottom:2px">ผู้รับการประเมิน :</p>
+<table style="border:none;width:100%;margin-bottom:8px">
   <tr>
-    <td class="info-lbl" style="width:220px">ชื่อผู้รับการประเมิน</td>
-    <td><b>${name||'—'}</b> &nbsp;|&nbsp; ${posName||'—'} ระดับ${posLevel||'—'}</td>
+    <td style="font-size:16px;padding:4px 0;width:52%;vertical-align:top">
+      &nbsp;&nbsp;☐ ได้รับทราบผลการประเมินและแผนพัฒนา<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;การปฏิบัติราชการรายบุคคลแล้ว
+    </td>
+    <td style="font-size:16px;padding:4px 12px;vertical-align:top">
+      ลงชื่อ : ………………………………………….………<br>
+      <span style="padding-left:44px;font-size:15px">(${name||dot})</span><br>
+      ตำแหน่ง : ..................................................................<br>
+      วันที่ : ……………….…………………………………..
+    </td>
   </tr>
+</table>
+<p style="font-weight:bold;font-size:16px;margin-bottom:2px">ผู้ให้ข้อมูล :</p>
+<table style="border:none;width:100%;margin-bottom:8px">
   <tr>
-    <td class="info-lbl">ชื่อผู้บังคับบัญชา/ผู้ประเมิน</td>
-    <td><b>${evaluator||'—'}</b> &nbsp;|&nbsp; ${evalPos||'—'}</td>
+    <td style="font-size:16px;padding:4px 0;width:52%;vertical-align:top">
+      &nbsp;&nbsp;☐ ได้แจ้งผลการประเมินและผู้รับการประเมินได้ลงนามรับทราบ<br>
+      &nbsp;&nbsp;☐ ได้แจ้งผลการประเมินเมื่อวันที่ ………………………………<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;แต่ผู้รับการประเมินไม่ลงนามรับทราบ<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;โดยมี……………………………………………………เป็นพยาน<br><br>
+      &nbsp;&nbsp;(๑) ลงชื่อ : ……………………………………………พยาน<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ตำแหน่ง : ………………………………………<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;วันที่ : …………………………..…..………
+    </td>
+    <td style="font-size:16px;padding:4px 12px;vertical-align:top">
+      ลงชื่อ : ………………..………………………….……<br>
+      <span style="padding-left:44px;font-size:15px">(${evaluator||dot})</span><br>
+      ตำแหน่ง : ..................................................................<br>
+      วันที่ : ……………………………….……………….
+    </td>
   </tr>
 </table>
 
+<p class="sec-lbl">ส่วนที่ ๕ : ความเห็นของผู้บังคับบัญชาเหนือขึ้นไป</p>
+<table style="border:none;width:100%">
+  <tr>
+    <td style="font-size:16px;padding:4px 0;width:52%;vertical-align:top">
+      <b>ผู้บังคับบัญชาเหนือขึ้นไป :</b><br>
+      &nbsp;&nbsp;☐ เห็นด้วยกับผลการประเมิน<br>
+      &nbsp;&nbsp;☐ มีความเห็นต่างดังนี้<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;……………………………………………..……<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;……………………………………………..……
+    </td>
+    <td style="font-size:16px;padding:4px 12px;vertical-align:top">
+      ลงชื่อ : …………………………………………..……..&nbsp;<br>
+      <span style="padding-left:44px;font-size:15px">(...............................................)</span><br>
+      ตำแหน่ง : ………………………………………..……..&nbsp;<br>
+      วันที่ : ……………………………………………..……..
+    </td>
+  </tr>
+  <tr><td colspan="2" style="padding:8px 0">&nbsp;</td></tr>
+  <tr>
+    <td style="font-size:16px;padding:4px 0;width:52%;vertical-align:top">
+      <b>ผู้บังคับบัญชาเหนือขึ้นไปอีกชั้นหนึ่ง (ถ้ามี) :</b><br>
+      &nbsp;&nbsp;☐ เห็นด้วยกับผลการประเมิน<br>
+      &nbsp;&nbsp;☐ มีความเห็นต่างดังนี้<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;……………………………………………..……<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;……………………………………………..……
+    </td>
+    <td style="font-size:16px;padding:4px 12px;vertical-align:top">
+      ลงชื่อ : …………………………………………..……..&nbsp;<br>
+      <span style="padding-left:44px;font-size:15px">(...............................................)</span><br>
+      ตำแหน่ง : ………………………………………..……..&nbsp;<br>
+      วันที่ : ……………………………………………..……..
+    </td>
+  </tr>
+</table>
+
+<p class="sec-lbl" style="margin-top:20px">คำชี้แจง</p>
+<p style="font-weight:bold;font-size:16px">แบบสรุปการประเมินผลการปฏิบัติราชการ ประกอบด้วย</p>
+<p style="font-size:15px;margin-left:16px">ส่วนที่ ๑ : ข้อมูลของผู้รับการประเมิน เพื่อระบุรายละเอียดต่างๆ ที่เกี่ยวข้องกับผู้รับการประเมิน</p>
+<p style="font-size:15px;margin-left:16px">ส่วนที่ ๒ : สรุปผลการประเมิน ใช้เพื่อประกอบค่าคะแนนการประเมินในองค์ประกอบด้านผลสัมฤทธิ์ของงาน องค์ประกอบด้านพฤติกรรมการปฏิบัติราชการ และน้ำหนักของทั้งสององค์ประกอบ ในแบบสรุปส่วนที่ ๒ นี้ ยังใช้สำหรับคำนวณคะแนนผลการปฏิบัติราชการรวมด้วย</p>
+<p style="font-size:14px;margin-left:32px">- สำหรับคะแนนองค์ประกอบด้านผลสัมฤทธิ์ของงาน ให้นำมาจากแบบประเมินผลสัมฤทธิ์ของงาน โดยแนบท้ายแบบสรุปฉบับนี้</p>
+<p style="font-size:14px;margin-left:32px">- สำหรับคะแนนองค์ประกอบด้านพฤติกรรมการปฏิบัติราชการ ให้นำมาจากแบบประเมินสมรรถนะ โดยให้แนบท้ายแบบสรุปฉบับนี้</p>
+<p style="font-size:15px;margin-left:16px">ส่วนที่ ๓ : แผนพัฒนาการปฏิบัติราชการรายบุคคล ผู้ประเมินและผู้รับการประเมินร่วมกันจัดทำแผนพัฒนาการปฏิบัติราชการ</p>
+<p style="font-size:15px;margin-left:16px">ส่วนที่ ๔ : การรับทราบผลการประเมิน ผู้รับการประเมินลงนามรับทราบผลการประเมิน</p>
+<p style="font-size:15px;margin-left:16px">ส่วนที่ ๕ : ความเห็นของผู้บังคับบัญชาเหนือขึ้นไป ผู้บังคับบัญชาเหนือขึ้นไปกลั่นกรองผลการประเมิน แผนพัฒนาผลการปฏิบัติราชการ และให้ความเห็น</p>
+<p style="font-size:14px;margin-left:16px">คำว่า "ผู้บังคับบัญชาเหนือขึ้นไป" สำหรับผู้ประเมินตามข้อ ๓ (๒) หมายถึงหัวหน้าส่วนราชการประจำจังหวัดผู้บังคับบัญชาของผู้รับการประเมิน</p>
+${credit}
+
+<!-- หน้า ๓: แบบประเมินผลสัมฤทธิ์ของงาน -->
+<div class="pb"></div>
+<table style="border:none;margin-bottom:2px">
+  <tr>
+    <td style="font-size:15px;padding:2px 0">
+      รอบการประเมิน &nbsp;
+      ${r1c} รอบที่ ๑ &nbsp; ${ds} &nbsp;&nbsp;
+      ${r2c} รอบที่ ๒ &nbsp; ${de}
+    </td>
+  </tr>
+</table>
+<p class="form-title">แบบประเมินผลสัมฤทธิ์ของงาน</p>
+<table style="border:none;width:100%;margin-bottom:8px">
+  <tr>
+    <td style="font-size:16px;padding:2px 0;width:50%">ชื่อผู้รับการประเมิน <b>${name||dot}</b></td>
+    <td style="font-size:16px;padding:2px 0;text-align:right;width:50%">ลงนาม.......................................  รับทราบตัวชี้วัดเมื่อ.....................................</td>
+  </tr>
+  <tr>
+    <td style="font-size:16px;padding:2px 0;width:50%">ชื่อผู้บังคับบัญชาชั้นต้น/ผู้ประเมิน <b>${evaluator||dot}</b></td>
+    <td style="font-size:16px;padding:2px 0;text-align:right;width:50%">ลงนาม.......................................  รับทราบตัวชี้วัดเมื่อ.....................................</td>
+  </tr>
+</table>
 <table>
-  <tr style="background:#1d4ed8;color:#fff">
+  <tr>
     <td style="${THL}width:30%" rowspan="2">ตัวชี้วัดผลงาน</td>
     <td style="${TH}" colspan="5">คะแนนตามระดับค่าเป้าหมาย</td>
     <td style="${TH}width:9%" rowspan="2">คะแนน<br>(ก)</td>
-    <td style="${TH}width:9%" rowspan="2">น้ำหนัก<br>(ข)</td>
-    <td style="${TH}width:9%" rowspan="2">ค=ก×ข</td>
+    <td style="${TH}width:9%" rowspan="2">คะแนน<br>(ข)</td>
+    <td style="${TH}width:10%" rowspan="2">คะแนนรวม<br>(ค)<br>(ค = ก × ข)</td>
   </tr>
-  <tr style="background:#1e40af;color:#fff">
-    ${['๑','๒','๓','๔','๕'].map(n=>`<td style="${TH}width:9%">${n}</td>`).join('')}
-  </tr>
+  <tr>${['๑','๒','๓','๔','๕'].map(n=>`<td style="${TH}width:8%">${n}</td>`).join('')}</tr>
   ${kpiRows}
-  <tr style="background:#e0f2fe;font-weight:bold">
-    <td style="${B}padding:8px 10px;text-align:right;font-size:16px" colspan="6">รวม</td>
-    <td style="${TDC}" colspan="2">(ข) = ${tPct(100)}</td>
-    <td style="${TDC}color:#1d4ed8;font-size:17px">(ค) = ${tNum(kpiC)}</td>
+  <tr>
+    <td style="${TD}text-align:right;font-weight:bold" colspan="6">รวม</td>
+    <td style="${TD}text-align:center" colspan="2">(ข) = ${tPct(100)}</td>
+    <td style="${TD}text-align:center;font-weight:bold">(ค) = ${tNum(kpiC)}</td>
   </tr>
-  <tr style="background:#fefce8">
-    <td style="${B}padding:10px 14px;font-size:16px" colspan="8">
-      แปลงคะแนนรวม (ค) ข้างต้น เป็นคะแนนประเมินผลสัมฤทธิ์ของงาน
-      ที่มีฐานคะแนนเต็มเป็น ๑๐๐ คะแนน &nbsp;<b>(โดยนำ ๒๐ มาคูณ)</b>
-    </td>
-    <td style="${B}text-align:center">
-      <div class="score-box">${tNum(kpiConv)}</div>
-    </td>
+  <tr>
+    <td style="${TD}" colspan="8">แปลงคะแนนรวม (ค) ข้างต้น เป็นคะแนนประเมินผลสัมฤทธิ์ของงานที่มีฐานคะแนนเต็มเป็น ๑๐๐ คะแนน (โดยนำ ๒๐ มาคูณ)</td>
+    <td style="${TD}text-align:center;font-size:18px;font-weight:bold">(ค × ๒๐) = ${tNum(kpiConv)}</td>
   </tr>
 </table>
-<p style="font-size:14px;color:#555;margin-top:8px">
-  <b>หมายเหตุ :</b>
-  ๑ = ต้องปรับปรุง &nbsp;|&nbsp; ๒ = พอใช้ &nbsp;|&nbsp; ๓ = ดี &nbsp;|&nbsp; ๔ = ดีมาก &nbsp;|&nbsp; ๕ = ดีเด่น
-</p>
+<p style="font-size:15px;margin-top:8px"><b>หมายเหตุ</b> ให้ใส่เครื่องหมาย ✓ ในช่องการให้คะแนนตามระดับค่าเป้าหมาย</p>
+<p style="font-size:15px;margin-left:16px">๑ หมายถึง ต้องปรับปรุง &nbsp;&nbsp; ๒ หมายถึง พอใช้ &nbsp;&nbsp; ๓ หมายถึง ดี &nbsp;&nbsp; ๔ หมายถึง ดีมาก &nbsp;&nbsp; ๕ หมายถึง ดีเด่น</p>
+${credit}
 
-
-<!-- ═══════════════════════════════════
-     หน้า ๓ : แบบประเมินสมรรถนะ
-═══════════════════════════════════ -->
+<!-- หน้า ๔: แบบประเมินสมรรถนะ -->
 <div class="pb"></div>
-<div class="pg-hdr" style="background:linear-gradient(135deg,#6d28d9,#7c3aed)">
-  <div class="pg-hdr-title">แบบประเมินพฤติกรรมการปฏิบัติราชการหรือสมรรถนะ</div>
-  <div class="pg-hdr-sub">
-    รอบการประเมิน ${roundTxt} &nbsp;·&nbsp; ${periodTxt}
-  </div>
-</div>
-
-<table class="info-tbl" style="margin-bottom:14px">
+<table style="border:none;margin-bottom:2px">
   <tr>
-    <td class="info-lbl" style="width:220px;background:#f5f3ff">ชื่อผู้รับการประเมิน</td>
-    <td><b>${name||'—'}</b> &nbsp;|&nbsp; ${posName||'—'} ระดับ${posLevel||'—'}</td>
-  </tr>
-  <tr>
-    <td class="info-lbl" style="background:#f5f3ff">ชื่อผู้บังคับบัญชา/ผู้ประเมิน</td>
-    <td><b>${evaluator||'—'}</b> &nbsp;|&nbsp; ${evalPos||'—'}</td>
+    <td style="font-size:15px;padding:2px 0">
+      รอบการประเมิน &nbsp;
+      ${r1c} รอบที่ ๑ &nbsp; ${ds} &nbsp;&nbsp;
+      ${r2c} รอบที่ ๒ &nbsp; ${de}
+    </td>
   </tr>
 </table>
-
+<p class="form-title">แบบประเมินพฤติกรรมการปฏิบัติราชการหรือสมรรถนะ</p>
+<table style="border:none;width:100%;margin-bottom:8px">
+  <tr>
+    <td style="font-size:16px;padding:2px 0;width:50%">ชื่อผู้รับการประเมิน <b>${name||dot}</b></td>
+    <td style="font-size:16px;padding:2px 0;text-align:right;width:50%">ลงนาม.......................................  รับทราบตัวชี้วัดเมื่อ.....................................</td>
+  </tr>
+  <tr>
+    <td style="font-size:16px;padding:2px 0;width:50%">ชื่อผู้บังคับบัญชาชั้นต้น/ผู้ประเมิน <b>${evaluator||dot}</b></td>
+    <td style="font-size:16px;padding:2px 0;text-align:right;width:50%">ลงนาม.......................................  รับทราบตัวชี้วัดเมื่อ.....................................</td>
+  </tr>
+</table>
 <table>
-  <tr style="background:#6d28d9;color:#fff">
+  <tr>
     <td style="${THL}">สมรรถนะ</td>
-    <td style="${TH}width:12%">ระดับที่คาดหวัง</td>
-    <td style="${TH}width:10%">คะแนน (ก)</td>
-    <td style="${TH}width:10%">น้ำหนัก (ข)</td>
-    <td style="${TH}width:12%">ค=ก×ข</td>
-    <td style="${TH}width:22%">บันทึกการประเมิน</td>
+    <td style="${TH}width:12%">ระดับที่<br>คาดหวัง</td>
+    <td style="${TH}width:11%">คะแนน (ก)</td>
+    <td style="${TH}width:11%">น้ำหนัก (ข)</td>
+    <td style="${TH}width:13%">คะแนนรวม (ค)<br>(ค = ก × ข)</td>
+    <td style="${TH}width:20%">บันทึกการประเมินโดยผู้ประเมิน</td>
   </tr>
-  <tr style="background:#ede9fe">
-    <td style="${B}padding:7px 12px;font-weight:bold;font-size:16px;color:#4c1d95" colspan="6">
-      ◆ สมรรถนะหลัก
-    </td>
-  </tr>
+  <tr><td style="${THL}font-style:italic" colspan="6">สมรรถนะหลัก</td></tr>
   ${compRows}
-  <tr style="background:#e0e7ff;font-weight:bold">
-    <td style="${B}padding:8px 10px;text-align:right;font-size:16px" colspan="3">รวม</td>
-    <td style="${TDC}">(ข) = ${tPct(100)}</td>
-    <td style="${TDC}color:#6d28d9;font-size:17px">(ค) = ${tNum(compC)}</td>
-    <td style="${B}"></td>
+  <tr>
+    <td style="${TD}text-align:right;font-weight:bold" colspan="3">รวม</td>
+    <td style="${TD}text-align:center;font-weight:bold">ข = ${tPct(100)}</td>
+    <td style="${TD}text-align:center;font-weight:bold">(ค) = ${tNum(compC)}</td>
+    <td style="${TD}"></td>
   </tr>
-  <tr style="background:#faf5ff">
-    <td style="${B}padding:10px 14px;font-size:16px" colspan="5">
-      แปลงคะแนนรวม (ค) ข้างต้น เป็นคะแนนประเมินสมรรถนะ
-      ที่มีฐานคะแนนเต็มเป็น ๑๐๐ คะแนน &nbsp;<b>(โดยนำ ๒๐ มาคูณ)</b>
-    </td>
-    <td style="${B}text-align:center">
-      <div class="score-box" style="background:linear-gradient(135deg,#6d28d9,#7c3aed)">${tNum(compConv)}</div>
-    </td>
+  <tr>
+    <td style="${TD}" colspan="5">แปลงคะแนน (ค) ข้างต้น เป็นคะแนนประเมินผลสัมฤทธิ์ของงานที่มีฐานคะแนนเต็มเป็น ๑๐๐ คะแนน (โดยนำ ๒๐ มาคูณ)</td>
+    <td style="${TD}text-align:center;font-size:18px;font-weight:bold">${tNum(compConv)}</td>
   </tr>
 </table>
-
-<div style="margin-top:14px;padding:10px 16px;background:#faf5ff;border:1.5px solid #ddd6fe;border-radius:6px;font-size:14px;color:#555">
-  <b>หมายเหตุเกณฑ์การให้คะแนนสมรรถนะ :</b><br>
-  ๐ = ไม่สังเกตเห็น (Not Observe) &nbsp;|&nbsp;
-  ๑–๒ = กำลังพัฒนา (Developing) &nbsp;|&nbsp;
-  ๓ = กำลังพัฒนา &nbsp;|&nbsp;
-  ๔ = ใช้งานได้ (Sufficient) &nbsp;|&nbsp;
-  ๕ = เป็นแบบอย่างที่ดี (Role Model)
-</div>
-
-<div class="credit">
-  ระบบประเมินผลการปฏิบัติราชการ v๒.๑ &nbsp;|&nbsp;
-  ภก.จีรภัทร พลายงาม &nbsp;|&nbsp;
-  กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สำนักงานสาธารณสุขจังหวัดสมุทรปราการ
-</div>
+<p style="font-weight:bold;font-size:16px;margin-top:12px">แนวทางการประเมินพฤติกรรมการปฏิบัติราชการ</p>
+<p style="font-size:15px;margin-left:16px">๑. ระบุสมรรถนะที่คาดหวังตามมาตรฐานที่ ก.พ. กำหนดในแต่ละประเภทและระดับตำแหน่ง</p>
+<p style="font-size:15px;margin-left:16px">๒. กำหนดน้ำหนัก (ข) ในแต่ละสมรรถนะโดยพิจารณาจากลักษณะงานที่ปฏิบัติเท่ากันทุกข้อ รวม ๑๐๐%</p>
+<p style="font-size:15px;margin-left:16px">๓. ทำการประเมินพฤติกรรมในการปฏิบัติราชการ (สมรรถนะ) เปรียบเทียบกับระดับที่คาดหวังในพจนานุกรมสมรรถนะ โดยให้คะแนนตามเกณฑ์การประเมิน (ก)</p>
+<p style="font-size:15px;margin-left:16px">๔. คำนวณผลการประเมินโดยนำผลรวมคูณด้วย ๒๐ เพื่อแปลงคะแนนรวมที่มีฐานเป็น ๑๐๐</p>
+${credit}
 
 </body></html>`;
 
@@ -1364,7 +1288,7 @@ function exportWord(){
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;
-  a.download=`แบบประเมินผลการปฏิบัติราชการ_${name||'ไม่ระบุ'}_${roundTxt}_${fyThai}.doc`;
+  a.download=`แบบประเมินผลการปฏิบัติราชการ_${name||'ไม่ระบุ'}_${roundLabel}_${fyThai}.doc`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
