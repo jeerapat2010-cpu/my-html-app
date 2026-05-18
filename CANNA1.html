@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard กัญชา PC จังหวัดสมุทรปราการ 18569</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --deep-green: #064e3b;
+      --dark-green: #065f46;
+      --main-green: #047857;
+      --soft-green: #d1fae5;
+      --pale-green: #ecfdf5;
+      --gold: #facc15;
+      --danger: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background:
+        radial-gradient(circle at 8% 6%, rgba(16,185,129,.16), transparent 30%),
+        radial-gradient(circle at 92% 4%, rgba(250,204,21,.13), transparent 28%),
+        linear-gradient(180deg, #f1f8f3 0%, #edf7ef 48%, #f8fafc 100%);
+    }
+    .glass-card {
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(6,95,70,.12);
+    }
+    .tab-btn { transition: all .25s ease; }
+    .tab-btn.active {
+      background: linear-gradient(135deg, #064e3b, #047857);
+      color: #fff;
+      border-color: #065f46;
+      box-shadow: 0 10px 22px rgba(6,78,59,.24);
+      transform: translateY(-1px);
+    }
+    .tab-btn:not(.active):hover {
+      background: #d1fae5;
+      color: #064e3b;
+      border-color: #10b981;
+    }
+    .metric-select:focus, .district-select:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(16,185,129,.25);
+      border-color: #10b981;
+    }
+    .table-container::-webkit-scrollbar { height: 9px; width: 9px; }
+    .table-container::-webkit-scrollbar-track { background: #e7f7ed; border-radius: 99px; }
+    .table-container::-webkit-scrollbar-thumb { background: #10b981; border-radius: 99px; }
+    .table-container::-webkit-scrollbar-thumb:hover { background: #047857; }
+
+    .green-update-marquee {
+      position: relative;
+      width: min(470px, 100%);
+      height: 40px;
+      overflow: hidden;
+      border-radius: 999px;
+      border: 1px solid rgba(167,243,208,.9);
+      background:
+        radial-gradient(circle at 12% 50%, rgba(255,255,255,.9) 0 2px, transparent 3px),
+        radial-gradient(circle at 78% 35%, rgba(255,255,255,.8) 0 1.8px, transparent 3px),
+        linear-gradient(100deg, #064e3b 0%, #047857 28%, #22c55e 52%, #a3e635 76%, #0f766e 100%);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.15) inset, 0 8px 24px rgba(4,120,87,.32), 0 0 26px rgba(163,230,53,.26);
+    }
+    .green-update-marquee::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(115deg, transparent 0%, rgba(255,255,255,.08) 35%, rgba(255,255,255,.72) 48%, rgba(255,255,255,.12) 60%, transparent 100%);
+      transform: translateX(-120%);
+      animation: greenShine 2.8s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .green-update-marquee::after {
+      content: "✦ ✨ ✦";
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #ecfccb;
+      text-shadow: 0 0 8px #fff, 0 0 16px #a3e635;
+      animation: sparkleBlink 1.25s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+    .green-update-marquee .marquee-track {
+      position: absolute;
+      white-space: nowrap;
+      line-height: 40px;
+      color: #ecfdf5;
+      font-size: 14px;
+      font-weight: 800;
+      text-shadow: 0 1px 3px rgba(0,0,0,.38);
+      animation: updateRun 11s linear infinite;
+      padding-left: 100%;
+    }
+    .green-update-marquee:hover .marquee-track { animation-play-state: paused; }
+    @keyframes updateRun { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+    @keyframes greenShine { 0% { transform: translateX(-120%); opacity: .2; } 45% { opacity: 1; } 100% { transform: translateX(120%); opacity: .2; } }
+    @keyframes sparkleBlink { from { opacity: .45; filter: drop-shadow(0 0 2px #ecfccb); } to { opacity: 1; filter: drop-shadow(0 0 10px #fff); } }
+
+    .kpi-card {
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::after {
+      content: "";
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      border-radius: 999px;
+      right: -72px;
+      top: -88px;
+      background: rgba(16,185,129,.12);
+    }
+    .status-pass { background: #dcfce7; color: #166534; }
+    .status-risk { background: #fef3c7; color: #92400e; }
+    .status-fail { background: #fee2e2; color: #991b1b; }
+
+    @media print {
+      body { background: white !important; }
+      .no-print { display: none !important; }
+      .glass-card, .shadow-xl, .shadow-sm { box-shadow: none !important; border: 1px solid #d1d5db !important; }
+      .green-update-marquee { background: #ecfdf5 !important; box-shadow: none !important; }
+      .green-update-marquee .marquee-track { animation: none !important; transform: none !important; padding-left: 1rem !important; color: #064e3b !important; }
+    }
+  </style>
+</head>
+
+<body class="text-slate-800 antialiased p-4 md:p-6 lg:p-8">
+  <div class="max-w-7xl mx-auto space-y-6">
+    <header class="rounded-3xl shadow-xl p-7 md:p-8 text-white flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6"
+      style="background: linear-gradient(135deg, #022c22 0%, #064e3b 34%, #047857 78%, #14532d 100%);">
+      <div class="min-w-0">
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <div class="inline-block px-4 py-1 bg-white/16 rounded-full text-sm font-semibold tracking-wide backdrop-blur-sm border border-white/25">
+            ระบบรายงานผลการดำเนินงาน ปีงบประมาณ 2569
+          </div>
+          <div class="green-update-marquee" aria-label="อัปเดตล่าสุด 18 พฤษภาคม 2569">
+            <div class="marquee-track">📅 อัปเดตข้อมูลล่าสุด: 18 พ.ค. 2569 • ข้อมูล HDC ณ วันที่ 18/5/2026 • Dashboard กัญชา PC ธีมเขียวแก่ ✨</div>
+          </div>
+        </div>
+        <h1 class="text-2xl md:text-3xl lg:text-4xl font-bold leading-tight">
+          ร้อยละผู้ป่วยระยะประคับประคอง (Palliative Care)
+        </h1>
+        <p class="mt-2 text-emerald-100 text-lg">
+          ที่ได้รับการรักษาด้วยยากัญชาทางการแพทย์ • จังหวัดสมุทรปราการ / เขตสุขภาพที่ 6
+        </p>
+      </div>
+      <div class="flex flex-col items-start lg:items-end shrink-0">
+        <div class="text-sm text-emerald-100 mb-1">เป้าหมายตัวชี้วัด</div>
+        <div class="text-4xl font-extrabold text-lime-200 bg-white/10 px-6 py-2 rounded-2xl border border-white/20 shadow-inner">
+          ≥ 5.00%
+        </div>
+        <div class="mt-2 text-xs text-emerald-100">คำนวณช่องว่างด้วยสูตร A/B × 100</div>
+      </div>
+    </header>
+
+    <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div class="kpi-card glass-card rounded-2xl p-6 shadow-sm border-l-4 border-emerald-700">
+        <p class="text-sm font-medium text-slate-500 mb-1">ภาพรวมประเทศ</p>
+        <h3 class="text-3xl font-bold text-slate-900">1.78%</h3>
+        <p class="text-xs text-emerald-700 mt-2 font-medium">1,670/93,600 คน • ต้องเพิ่ม 3,010 คน</p>
+      </div>
+      <div class="kpi-card glass-card rounded-2xl p-6 shadow-sm border-l-4 border-lime-600">
+        <p class="text-sm font-medium text-slate-500 mb-1">เขตสุขภาพที่ 6</p>
+        <h3 class="text-3xl font-bold text-slate-900">0.89%</h3>
+        <p class="text-xs text-lime-700 mt-2 font-medium">58/6,481 คน • ขาดอีก 267 คน</p>
+      </div>
+      <div class="kpi-card glass-card rounded-2xl p-6 shadow-sm border-l-4 border-amber-500">
+        <p class="text-sm font-medium text-slate-500 mb-1">จังหวัดสมุทรปราการ</p>
+        <h3 class="text-3xl font-bold text-slate-900">1.51%</h3>
+        <p class="text-xs text-amber-700 mt-2 font-medium">ลำดับที่ 2 ในเขต 6 • ต้องเพิ่ม 47 คน</p>
+      </div>
+      <div class="kpi-card glass-card rounded-2xl p-6 shadow-sm border-l-4 border-teal-500">
+        <p class="text-sm font-medium text-slate-500 mb-1">บริการในสมุทรปราการ</p>
+        <h3 class="text-3xl font-bold text-slate-900">20<span class="text-base font-normal text-slate-500"> คน</span></h3>
+        <p class="text-xs text-teal-700 mt-2 font-medium">จากเป้าหมายขั้นต่ำ 67 คน • ช่องว่าง 47 คน</p>
+      </div>
+    </section>
+
+    <section class="glass-card rounded-3xl shadow-sm overflow-hidden relative">
+      <div class="bg-emerald-50/90 p-4 border-b border-emerald-100 flex flex-wrap gap-2 no-print sticky top-0 z-10">
+        <button onclick="changeView('country')" id="btn-country" class="tab-btn active px-5 py-2.5 rounded-xl font-semibold text-sm border bg-white text-slate-700">ระดับประเทศ (รายเขต)</button>
+        <button onclick="changeView('province')" id="btn-province" class="tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm border bg-white text-slate-700">ระดับเขต 6 (รายจังหวัด)</button>
+        <button onclick="changeView('district')" id="btn-district" class="tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm border bg-white text-slate-700">ระดับจังหวัด (รายอำเภอ)</button>
+        <button onclick="changeView('hospital')" id="btn-hospital" class="tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm border bg-white text-slate-700">ระดับอำเภอ (รายหน่วยบริการ)</button>
+        <button onclick="window.print()" class="ml-auto px-4 py-2.5 rounded-xl font-semibold text-sm bg-slate-900 text-white hover:bg-emerald-900 transition flex items-center gap-2">🖨️ พิมพ์รายงาน</button>
+      </div>
+
+      <div class="p-6 md:p-8 space-y-8">
+        <div class="flex flex-col">
+          <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+            <div>
+              <h2 id="chart-title" class="text-xl font-bold text-slate-900">หัวข้อกราฟ</h2>
+              <p id="chart-subtitle" class="text-sm text-slate-500 mt-1">เลือกมุมมองและตัวชี้วัดเพื่อวิเคราะห์รายละเอียด</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+              <div class="flex items-center gap-2">
+                <label for="metric-select" class="text-sm font-semibold text-slate-600">เลือกตัวชี้วัด:</label>
+                <select id="metric-select" class="metric-select px-3 py-2 border border-emerald-200 rounded-lg text-sm text-slate-700 bg-white" onchange="refreshCurrentView()"></select>
+              </div>
+              <div id="district-filter-container" class="hidden items-center gap-2">
+                <label for="district-select" class="text-sm font-semibold text-slate-600">เลือกอำเภอ:</label>
+                <select id="district-select" class="district-select px-3 py-2 border border-emerald-200 rounded-lg text-sm text-slate-700 bg-white" onchange="filterHospitalData()">
+                  <option value="all">ทุกอำเภอ (Top 25 ในกราฟ)</option>
+                  <option value="เมือง">เมืองสมุทรปราการ</option>
+                  <option value="บางบ่อ">บางบ่อ</option>
+                  <option value="บางพลี">บางพลี</option>
+                  <option value="พระประแดง">พระประแดง</option>
+                  <option value="พระสมุทรเจดีย์">พระสมุทรเจดีย์</option>
+                  <option value="บางเสาธง">บางเสาธง</option>
+                </select>
+              </div>
+              <span class="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs rounded-full font-bold border border-emerald-200 whitespace-nowrap">ข้อมูลปี 2569</span>
+            </div>
+          </div>
+          <div class="relative h-[430px] w-full"><canvas id="mainChart"></canvas></div>
+        </div>
+
+        <div id="disease-section" class="border-t-2 border-dashed border-emerald-100 pt-8">
+          <div class="flex items-center gap-3 mb-5">
+            <div class="bg-emerald-700 p-2.5 rounded-xl text-white shadow-md">🌿</div>
+            <div>
+              <h3 class="font-bold text-xl text-slate-900">ภาพรวมกลุ่มโรค PC จังหวัดสมุทรปราการ</h3>
+              <p class="text-slate-500 text-sm">ใช้ข้อมูลจากไฟล์ระดับอำเภอ/หน่วยบริการ แยกตามกลุ่มรหัสโรคสำคัญ</p>
+            </div>
+          </div>
+          <div id="disease-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6"></div>
+          <div class="bg-emerald-50/70 rounded-2xl p-5 border border-emerald-100">
+            <div class="relative h-[320px] w-full"><canvas id="diseaseChart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="border-t border-emerald-100 pt-6">
+          <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+            <h3 class="font-bold text-lg text-slate-900">ตารางข้อมูลรายละเอียด</h3>
+            <div id="table-note" class="text-xs text-slate-500"></div>
+          </div>
+          <div class="table-container overflow-x-auto rounded-2xl border border-emerald-100">
+            <table class="w-full text-left border-collapse bg-white">
+              <thead>
+                <tr class="bg-emerald-900 text-white text-sm">
+                  <th id="th-name" class="py-4 px-4 font-semibold min-w-[250px]">ชื่อพื้นที่/หน่วยบริการ</th>
+                  <th class="py-4 px-4 font-semibold text-right">B ทั้งหมด</th>
+                  <th class="py-4 px-4 font-semibold text-right">A ได้รับบริการ</th>
+                  <th class="py-4 px-4 font-semibold text-right">ร้อยละ (%)</th>
+                  <th class="py-4 px-4 font-semibold text-right">ช่องว่างถึง 5%</th>
+                  <th class="py-4 px-4 font-semibold text-center">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody id="table-body" class="text-sm"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="mt-8 bg-gradient-to-br from-emerald-50 via-lime-50 to-white rounded-2xl p-6 border border-emerald-100 shadow-sm no-print">
+          <div class="flex items-center gap-3 mb-4 border-b border-emerald-200 pb-3">
+            <div class="p-2 bg-emerald-700 rounded-lg text-white shadow-sm">⚡</div>
+            <h3 class="font-bold text-emerald-950 text-xl">บทวิเคราะห์เชิงลึกและกลยุทธ์ประจำหน้า (AI Insights)</h3>
+          </div>
+          <div id="insights-content" class="text-slate-700 text-[15px] leading-relaxed"></div>
+        </div>
+
+        <div class="mt-4 p-5 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-sm flex items-start gap-4 shadow-sm">
+          <div class="p-2 bg-amber-100 rounded-full flex-shrink-0">⚠️</div>
+          <div>
+            <strong class="text-base text-amber-800 block mb-1">หมายเหตุการประมวลผล:</strong>
+            Dashboard นี้ประมวลผลจาก Excel 4 ไฟล์ที่แนบมา โดยใช้คอลัมน์ B เป็นฐานทั้งหมด, A เป็นจำนวนที่ได้รับบริการ และคำนวณร้อยละเป็น A/B × 100 ข้อมูล ณ วันที่ 18/5/2026 จึงควรใช้เป็นข้อมูลระหว่างกาลสำหรับติดตามและเร่งรัดงานรายพื้นที่
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="text-center text-slate-500 text-sm py-4 mt-4">
+      จัดทำโดย ภก.จีรภัทร พลายงาม • ประมวลผลจากไฟล์ Excel: ประเทศ-เขต, เขต-จังหวัด, จังหวัด-อำเภอ, หน่วยบริการ • Theme: Deep Green Dashboard
+    </footer>
+  </div>
+
+<script>
+const TARGET = 5.00;
+const DB = {"country":{"title":"ระดับประเทศ: เปรียบเทียบรายเขตสุขภาพ","thName":"เขตสุขภาพ","metrics":["people","visits"],"data":[{"name":"เขตสุขภาพที่ 1","people":{"total":6370,"received":54,"percent":0.85},"visits":{"total":15143,"received":106,"percent":0.7},"gapCases":265},{"name":"เขตสุขภาพที่ 2","people":{"total":6306,"received":105,"percent":1.67},"visits":{"total":18166,"received":191,"percent":1.05},"gapCases":211},{"name":"เขตสุขภาพที่ 3","people":{"total":3929,"received":76,"percent":1.93},"visits":{"total":10087,"received":130,"percent":1.29},"gapCases":121},{"name":"เขตสุขภาพที่ 4","people":{"total":6849,"received":132,"percent":1.93},"visits":{"total":13944,"received":290,"percent":2.08},"gapCases":211},{"name":"เขตสุขภาพที่ 5","people":{"total":4872,"received":27,"percent":0.55},"visits":{"total":14973,"received":56,"percent":0.37},"gapCases":217},{"name":"เขตสุขภาพที่ 6","people":{"total":6481,"received":58,"percent":0.89},"visits":{"total":15748,"received":78,"percent":0.5},"gapCases":267},{"name":"เขตสุขภาพที่ 7","people":{"total":5035,"received":34,"percent":0.68},"visits":{"total":14772,"received":64,"percent":0.43},"gapCases":218},{"name":"เขตสุขภาพที่ 8","people":{"total":15260,"received":725,"percent":4.75},"visits":{"total":39573,"received":1152,"percent":2.91},"gapCases":38},{"name":"เขตสุขภาพที่ 9","people":{"total":12340,"received":116,"percent":0.94},"visits":{"total":26466,"received":232,"percent":0.88},"gapCases":501},{"name":"เขตสุขภาพที่ 10","people":{"total":13393,"received":88,"percent":0.66},"visits":{"total":31051,"received":140,"percent":0.45},"gapCases":582},{"name":"เขตสุขภาพที่ 11","people":{"total":7590,"received":217,"percent":2.86},"visits":{"total":18199,"received":455,"percent":2.5},"gapCases":163},{"name":"เขตสุขภาพที่ 12","people":{"total":5175,"received":38,"percent":0.73},"visits":{"total":12010,"received":68,"percent":0.57},"gapCases":221},{"name":"เขตสุขภาพที่ 13","people":{"total":0,"received":0,"percent":0},"visits":{"total":0,"received":0,"percent":0},"gapCases":0}],"summary":{"name":"รวม","people":{"total":93600,"received":1670,"percent":1.78},"visits":{"total":230132,"received":2962,"percent":1.29},"gapCases":3010}},"province":{"title":"ระดับเขตสุขภาพที่ 6: เปรียบเทียบรายจังหวัด","thName":"จังหวัด","metrics":["people","visits"],"data":[{"name":"สมุทรปราการ","people":{"total":1322,"received":20,"percent":1.51},"visits":{"total":2117,"received":27,"percent":1.28},"gapCases":47},{"name":"ชลบุรี","people":{"total":702,"received":9,"percent":1.28},"visits":{"total":1358,"received":10,"percent":0.74},"gapCases":27},{"name":"ระยอง","people":{"total":528,"received":0,"percent":0.0},"visits":{"total":1598,"received":0,"percent":0.0},"gapCases":27},{"name":"จันทบุรี","people":{"total":557,"received":1,"percent":0.18},"visits":{"total":1385,"received":2,"percent":0.14},"gapCases":27},{"name":"ตราด","people":{"total":253,"received":4,"percent":1.58},"visits":{"total":557,"received":7,"percent":1.26},"gapCases":9},{"name":"ฉะเชิงเทรา","people":{"total":1281,"received":7,"percent":0.55},"visits":{"total":2911,"received":9,"percent":0.31},"gapCases":58},{"name":"ปราจีนบุรี","people":{"total":164,"received":0,"percent":0.0},"visits":{"total":549,"received":0,"percent":0.0},"gapCases":9},{"name":"สระแก้ว","people":{"total":1674,"received":17,"percent":1.02},"visits":{"total":5273,"received":23,"percent":0.44},"gapCases":67}],"summary":{"name":"รวม","people":{"total":6481,"received":58,"percent":0.89},"visits":{"total":15748,"received":78,"percent":0.5},"gapCases":267}},"district":{"title":"จังหวัดสมุทรปราการ: เปรียบเทียบรายอำเภอ","thName":"อำเภอ","metrics":["people","visits","age0_14","child_cancer","age15plus","adult_cancer","stroke","dementia","ckd5","copd","heart_failure","frailty"],"data":[{"name":"เมืองสมุทรปราการ","gapCases":23,"people":{"total":478,"received":1,"percent":0.21},"visits":{"total":697,"received":1,"percent":0.14},"age0_14":{"total":9,"received":0,"percent":0.0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":469,"received":1,"percent":0.21},"adult_cancer":{"total":161,"received":1,"percent":0.62},"stroke":{"total":122,"received":0,"percent":0.0},"dementia":{"total":14,"received":0,"percent":0.0},"ckd5":{"total":39,"received":0,"percent":0.0},"copd":{"total":28,"received":0,"percent":0.0},"heart_failure":{"total":77,"received":0,"percent":0.0},"frailty":{"total":4,"received":0,"percent":0.0}},{"name":"บางบ่อ","gapCases":6,"people":{"total":165,"received":3,"percent":1.82},"visits":{"total":247,"received":5,"percent":2.02},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":165,"received":3,"percent":1.82},"adult_cancer":{"total":57,"received":2,"percent":3.51},"stroke":{"total":45,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":9,"received":0,"percent":0.0},"copd":{"total":6,"received":0,"percent":0.0},"heart_failure":{"total":25,"received":1,"percent":4.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"บางพลี","gapCases":7,"people":{"total":210,"received":4,"percent":1.9},"visits":{"total":435,"received":8,"percent":1.84},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":210,"received":4,"percent":1.9},"adult_cancer":{"total":64,"received":0,"percent":0.0},"stroke":{"total":47,"received":1,"percent":2.13},"dementia":{"total":11,"received":0,"percent":0.0},"ckd5":{"total":22,"received":0,"percent":0.0},"copd":{"total":17,"received":1,"percent":5.88},"heart_failure":{"total":38,"received":0,"percent":0.0},"frailty":{"total":3,"received":0,"percent":0.0}},{"name":"พระประแดง","gapCases":0,"people":{"total":223,"received":12,"percent":5.38},"visits":{"total":271,"received":13,"percent":4.8},"age0_14":{"total":1,"received":0,"percent":0.0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":222,"received":12,"percent":5.41},"adult_cancer":{"total":69,"received":3,"percent":4.35},"stroke":{"total":61,"received":6,"percent":9.84},"dementia":{"total":7,"received":2,"percent":28.57},"ckd5":{"total":21,"received":1,"percent":4.76},"copd":{"total":16,"received":0,"percent":0.0},"heart_failure":{"total":38,"received":1,"percent":2.63},"frailty":{"total":0,"received":0,"percent":0}},{"name":"พระสมุทรเจดีย์","gapCases":7,"people":{"total":121,"received":0,"percent":0.0},"visits":{"total":205,"received":0,"percent":0.0},"age0_14":{"total":1,"received":0,"percent":0.0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":120,"received":0,"percent":0.0},"adult_cancer":{"total":29,"received":0,"percent":0.0},"stroke":{"total":50,"received":0,"percent":0.0},"dementia":{"total":6,"received":0,"percent":0.0},"ckd5":{"total":15,"received":0,"percent":0.0},"copd":{"total":12,"received":0,"percent":0.0},"heart_failure":{"total":21,"received":0,"percent":0.0},"frailty":{"total":16,"received":0,"percent":0.0}},{"name":"บางเสาธง","gapCases":7,"people":{"total":125,"received":0,"percent":0.0},"visits":{"total":262,"received":0,"percent":0.0},"age0_14":{"total":2,"received":0,"percent":0.0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":123,"received":0,"percent":0.0},"adult_cancer":{"total":24,"received":0,"percent":0.0},"stroke":{"total":37,"received":0,"percent":0.0},"dementia":{"total":4,"received":0,"percent":0.0},"ckd5":{"total":16,"received":0,"percent":0.0},"copd":{"total":5,"received":0,"percent":0.0},"heart_failure":{"total":15,"received":0,"percent":0.0},"frailty":{"total":4,"received":0,"percent":0.0}}],"summary":{"name":"รวม","gapCases":47,"people":{"total":1322,"received":20,"percent":1.51},"visits":{"total":2117,"received":27,"percent":1.28},"age0_14":{"total":13,"received":0,"percent":0.0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":1309,"received":20,"percent":1.53},"adult_cancer":{"total":404,"received":6,"percent":1.49},"stroke":{"total":362,"received":7,"percent":1.93},"dementia":{"total":42,"received":2,"percent":4.76},"ckd5":{"total":122,"received":1,"percent":0.82},"copd":{"total":84,"received":1,"percent":1.19},"heart_failure":{"total":214,"received":2,"percent":0.93},"frailty":{"total":27,"received":0,"percent":0.0}}},"hospital":{"title":"ระดับหน่วยบริการ: จำแนกตามอำเภอ","thName":"หน่วยบริการ","metrics":["people","visits","age0_14","child_cancer","age15plus","adult_cancer","stroke","dementia","ckd5","copd","heart_failure","frailty"],"data":[{"name":"00933:โรงพยาบาลส่งเสริมสุขภาพตำบลสำโรงเหนือ","gapCases":2,"amphoe":"เมือง","code":"00933","people":{"total":26,"received":0,"percent":0.0},"visits":{"total":32,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":26,"received":0,"percent":0.0},"adult_cancer":{"total":8,"received":0,"percent":0.0},"stroke":{"total":9,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":2,"received":0,"percent":0.0},"heart_failure":{"total":3,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00934:โรงพยาบาลส่งเสริมสุขภาพตำบลบางเมือง","gapCases":1,"amphoe":"เมือง","code":"00934","people":{"total":20,"received":0,"percent":0.0},"visits":{"total":23,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":20,"received":0,"percent":0.0},"adult_cancer":{"total":7,"received":0,"percent":0.0},"stroke":{"total":4,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00935:สถานีอนามัยเฉลิมพระเกียรติ 60 พรรษา นวมินทราชินี บ้านคลองบางปิ้ง","gapCases":2,"amphoe":"เมือง","code":"00935","people":{"total":27,"received":0,"percent":0.0},"visits":{"total":33,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":27,"received":0,"percent":0.0},"adult_cancer":{"total":7,"received":0,"percent":0.0},"stroke":{"total":5,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":3,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":5,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00936:โรงพยาบาลส่งเสริมสุขภาพตำบลบางปูใหม่","gapCases":2,"amphoe":"เมือง","code":"00936","people":{"total":29,"received":0,"percent":0.0},"visits":{"total":36,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":29,"received":0,"percent":0.0},"adult_cancer":{"total":5,"received":0,"percent":0.0},"stroke":{"total":8,"received":0,"percent":0.0},"dementia":{"total":2,"received":0,"percent":0.0},"ckd5":{"total":5,"received":0,"percent":0.0},"copd":{"total":3,"received":0,"percent":0.0},"heart_failure":{"total":7,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00937:โรงพยาบาลส่งเสริมสุขภาพตำบลแพรกษา","gapCases":2,"amphoe":"เมือง","code":"00937","people":{"total":35,"received":0,"percent":0.0},"visits":{"total":56,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":35,"received":0,"percent":0.0},"adult_cancer":{"total":17,"received":0,"percent":0.0},"stroke":{"total":12,"received":0,"percent":0.0},"dementia":{"total":2,"received":0,"percent":0.0},"ckd5":{"total":3,"received":0,"percent":0.0},"copd":{"total":2,"received":0,"percent":0.0},"heart_failure":{"total":5,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00938:โรงพยาบาลส่งเสริมสุขภาพตำบลบางโปรง","gapCases":1,"amphoe":"เมือง","code":"00938","people":{"total":17,"received":0,"percent":0.0},"visits":{"total":19,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":17,"received":0,"percent":0.0},"adult_cancer":{"total":4,"received":0,"percent":0.0},"stroke":{"total":6,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":2,"received":0,"percent":0.0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00939:โรงพยาบาลส่งเสริมสุขภาพตำบลบางปู","gapCases":2,"amphoe":"เมือง","code":"00939","people":{"total":23,"received":0,"percent":0.0},"visits":{"total":34,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":23,"received":0,"percent":0.0},"adult_cancer":{"total":11,"received":0,"percent":0.0},"stroke":{"total":3,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":2,"received":0,"percent":0.0},"heart_failure":{"total":2,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00940:โรงพยาบาลส่งเสริมสุขภาพตำบลบางด้วน","gapCases":1,"amphoe":"เมือง","code":"00940","people":{"total":11,"received":0,"percent":0.0},"visits":{"total":15,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":11,"received":0,"percent":0.0},"adult_cancer":{"total":1,"received":0,"percent":0.0},"stroke":{"total":2,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":2,"received":0,"percent":0.0},"heart_failure":{"total":2,"received":0,"percent":0.0},"frailty":{"total":1,"received":0,"percent":0.0}},{"name":"00941:โรงพยาบาลส่งเสริมสุขภาพตำบลบางเมืองใหม่","gapCases":2,"amphoe":"เมือง","code":"00941","people":{"total":25,"received":0,"percent":0.0},"visits":{"total":33,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":25,"received":0,"percent":0.0},"adult_cancer":{"total":4,"received":0,"percent":0.0},"stroke":{"total":8,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":2,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":2,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00942:โรงพยาบาลส่งเสริมสุขภาพตำบลเทพารักษ์","gapCases":2,"amphoe":"เมือง","code":"00942","people":{"total":23,"received":0,"percent":0.0},"visits":{"total":32,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":23,"received":0,"percent":0.0},"adult_cancer":{"total":9,"received":0,"percent":0.0},"stroke":{"total":6,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":2,"received":0,"percent":0.0},"copd":{"total":2,"received":0,"percent":0.0},"heart_failure":{"total":6,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00943:โรงพยาบาลส่งเสริมสุขภาพตำบลท้ายบ้านใหม่","gapCases":2,"amphoe":"เมือง","code":"00943","people":{"total":37,"received":0,"percent":0.0},"visits":{"total":77,"received":0,"percent":0.0},"age0_14":{"total":8,"received":0,"percent":0.0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":29,"received":0,"percent":0.0},"adult_cancer":{"total":10,"received":0,"percent":0.0},"stroke":{"total":5,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":2,"received":0,"percent":0.0},"copd":{"total":3,"received":0,"percent":0.0},"heart_failure":{"total":2,"received":0,"percent":0.0},"frailty":{"total":1,"received":0,"percent":0.0}},{"name":"00944:โรงพยาบาลส่งเสริมสุขภาพตำบลแพรกษาใหม่","gapCases":2,"amphoe":"เมือง","code":"00944","people":{"total":33,"received":0,"percent":0.0},"visits":{"total":78,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":33,"received":0,"percent":0.0},"adult_cancer":{"total":13,"received":0,"percent":0.0},"stroke":{"total":8,"received":0,"percent":0.0},"dementia":{"total":2,"received":0,"percent":0.0},"ckd5":{"total":2,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":7,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00945:โรงพยาบาลส่งเสริมสุขภาพตำบลบางบ่อ","gapCases":2,"amphoe":"บางบ่อ","code":"00945","people":{"total":22,"received":0,"percent":0.0},"visits":{"total":38,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":22,"received":0,"percent":0.0},"adult_cancer":{"total":9,"received":0,"percent":0.0},"stroke":{"total":4,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":2,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00946:โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านระกาศ หมู่ 3","gapCases":0,"amphoe":"บางบ่อ","code":"00946","people":{"total":10,"received":1,"percent":10.0},"visits":{"total":12,"received":1,"percent":8.33},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":10,"received":1,"percent":10.0},"adult_cancer":{"total":5,"received":1,"percent":20.0},"stroke":{"total":2,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00947:โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านระกาศ หมู่ 8","gapCases":1,"amphoe":"บางบ่อ","code":"00947","people":{"total":4,"received":0,"percent":0.0},"visits":{"total":4,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":4,"received":0,"percent":0.0},"adult_cancer":{"total":0,"received":0,"percent":0},"stroke":{"total":1,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":2,"received":0,"percent":0.0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00948:โรงพยาบาลส่งเสริมสุขภาพตำบลบางพลีน้อย หมู่ที่ 3","gapCases":1,"amphoe":"บางบ่อ","code":"00948","people":{"total":8,"received":0,"percent":0.0},"visits":{"total":12,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":8,"received":0,"percent":0.0},"adult_cancer":{"total":3,"received":0,"percent":0.0},"stroke":{"total":2,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":2,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00949:โรงพยาบาลส่งเสริมสุขภาพตำบลบางพลีน้อย หมู่ที่ 5","gapCases":1,"amphoe":"บางบ่อ","code":"00949","people":{"total":6,"received":0,"percent":0.0},"visits":{"total":8,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":6,"received":0,"percent":0.0},"adult_cancer":{"total":2,"received":0,"percent":0.0},"stroke":{"total":2,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":0,"received":0,"percent":0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00950:โรงพยาบาลส่งเสริมสุขภาพตำบลบางพลีน้อย หมู่ที่ 8","gapCases":1,"amphoe":"บางบ่อ","code":"00950","people":{"total":2,"received":0,"percent":0.0},"visits":{"total":3,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":2,"received":0,"percent":0.0},"adult_cancer":{"total":0,"received":0,"percent":0},"stroke":{"total":1,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":0,"received":0,"percent":0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00951:โรงพยาบาลส่งเสริมสุขภาพตำบลบางเพรียง","gapCases":1,"amphoe":"บางบ่อ","code":"00951","people":{"total":11,"received":0,"percent":0.0},"visits":{"total":14,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":11,"received":0,"percent":0.0},"adult_cancer":{"total":4,"received":0,"percent":0.0},"stroke":{"total":2,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":5,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00952:โรงพยาบาลส่งเสริมสุขภาพตำบลคลองด่าน หมู่ที่ 1","gapCases":2,"amphoe":"บางบ่อ","code":"00952","people":{"total":31,"received":0,"percent":0.0},"visits":{"total":39,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":31,"received":0,"percent":0.0},"adult_cancer":{"total":7,"received":0,"percent":0.0},"stroke":{"total":17,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":3,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00953:โรงพยาบาลส่งเสริมสุขภาพตำบลคลองด่าน หมู่ที่ 13","gapCases":1,"amphoe":"บางบ่อ","code":"00953","people":{"total":15,"received":0,"percent":0.0},"visits":{"total":21,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":15,"received":0,"percent":0.0},"adult_cancer":{"total":5,"received":0,"percent":0.0},"stroke":{"total":5,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":2,"received":0,"percent":0.0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00954:โรงพยาบาลส่งเสริมสุขภาพตำบลคลองสวน","gapCases":1,"amphoe":"บางบ่อ","code":"00954","people":{"total":6,"received":0,"percent":0.0},"visits":{"total":8,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":6,"received":0,"percent":0.0},"adult_cancer":{"total":3,"received":0,"percent":0.0},"stroke":{"total":2,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00955:โรงพยาบาลส่งเสริมสุขภาพตำบลเปร็ง","gapCases":0,"amphoe":"บางบ่อ","code":"00955","people":{"total":10,"received":1,"percent":10.0},"visits":{"total":15,"received":2,"percent":13.33},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":10,"received":1,"percent":10.0},"adult_cancer":{"total":3,"received":0,"percent":0.0},"stroke":{"total":3,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":1,"received":1,"percent":100.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00956:โรงพยาบาลส่งเสริมสุขภาพตำบลนิยมยาตรา","gapCases":1,"amphoe":"บางบ่อ","code":"00956","people":{"total":4,"received":0,"percent":0.0},"visits":{"total":4,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":4,"received":0,"percent":0.0},"adult_cancer":{"total":2,"received":0,"percent":0.0},"stroke":{"total":0,"received":0,"percent":0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00957:โรงพยาบาลส่งเสริมสุขภาพตำบลบางแก้ว","gapCases":2,"amphoe":"บางพลี","code":"00957","people":{"total":24,"received":0,"percent":0.0},"visits":{"total":30,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":24,"received":0,"percent":0.0},"adult_cancer":{"total":7,"received":0,"percent":0.0},"stroke":{"total":2,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":2,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":5,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00958:โรงพยาบาลส่งเสริมสุขภาพตำบลวัดสลุด ตำบลบางแก้ว","gapCases":0,"amphoe":"บางพลี","code":"00958","people":{"total":19,"received":1,"percent":5.26},"visits":{"total":43,"received":1,"percent":2.33},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":19,"received":1,"percent":5.26},"adult_cancer":{"total":8,"received":0,"percent":0.0},"stroke":{"total":6,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":2,"received":0,"percent":0.0},"copd":{"total":2,"received":0,"percent":0.0},"heart_failure":{"total":3,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00959:โรงพยาบาลส่งเสริมสุขภาพตำบลบางปลา","gapCases":1,"amphoe":"บางพลี","code":"00959","people":{"total":9,"received":0,"percent":0.0},"visits":{"total":14,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":9,"received":0,"percent":0.0},"adult_cancer":{"total":2,"received":0,"percent":0.0},"stroke":{"total":1,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":2,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":2,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00960:โรงพยาบาลส่งเสริมสุขภาพตำบลคลองสี่","gapCases":1,"amphoe":"บางพลี","code":"00960","people":{"total":12,"received":0,"percent":0.0},"visits":{"total":28,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":12,"received":0,"percent":0.0},"adult_cancer":{"total":4,"received":0,"percent":0.0},"stroke":{"total":1,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":4,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00961:โรงพยาบาลส่งเสริมสุขภาพตำบลบางโฉลง","gapCases":1,"amphoe":"บางพลี","code":"00961","people":{"total":10,"received":0,"percent":0.0},"visits":{"total":23,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":10,"received":0,"percent":0.0},"adult_cancer":{"total":2,"received":0,"percent":0.0},"stroke":{"total":3,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":2,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00962:โรงพยาบาลส่งเสริมสุขภาพตำบลราชาเทวะ","gapCases":2,"amphoe":"บางพลี","code":"00962","people":{"total":33,"received":0,"percent":0.0},"visits":{"total":71,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":33,"received":0,"percent":0.0},"adult_cancer":{"total":9,"received":0,"percent":0.0},"stroke":{"total":10,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":4,"received":0,"percent":0.0},"copd":{"total":3,"received":0,"percent":0.0},"heart_failure":{"total":6,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00963:โรงพยาบาลส่งเสริมสุขภาพตำบลหนองปรือ","gapCases":1,"amphoe":"บางพลี","code":"00963","people":{"total":7,"received":0,"percent":0.0},"visits":{"total":8,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":7,"received":0,"percent":0.0},"adult_cancer":{"total":2,"received":0,"percent":0.0},"stroke":{"total":4,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00964:โรงพยาบาลส่งเสริมสุขภาพตำบลบางพึ่ง","gapCases":0,"amphoe":"พระประแดง","code":"00964","people":{"total":19,"received":2,"percent":10.53},"visits":{"total":20,"received":3,"percent":15.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":19,"received":2,"percent":10.53},"adult_cancer":{"total":3,"received":0,"percent":0.0},"stroke":{"total":9,"received":2,"percent":22.22},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":3,"received":0,"percent":0.0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":2,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00965:โรงพยาบาลส่งเสริมสุขภาพตำบลบางจาก","gapCases":0,"amphoe":"พระประแดง","code":"00965","people":{"total":14,"received":1,"percent":7.14},"visits":{"total":15,"received":1,"percent":6.67},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":14,"received":1,"percent":7.14},"adult_cancer":{"total":3,"received":0,"percent":0.0},"stroke":{"total":4,"received":1,"percent":25.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":3,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00966:โรงพยาบาลส่งเสริมสุขภาพตำบลบางครุ","gapCases":0,"amphoe":"พระประแดง","code":"00966","people":{"total":18,"received":1,"percent":5.56},"visits":{"total":24,"received":1,"percent":4.17},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":18,"received":1,"percent":5.56},"adult_cancer":{"total":8,"received":0,"percent":0.0},"stroke":{"total":5,"received":1,"percent":20.0},"dementia":{"total":2,"received":0,"percent":0.0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":0,"received":0,"percent":0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00967:โรงพยาบาลส่งเสริมสุขภาพตำบลบางหญ้าแพรก","gapCases":1,"amphoe":"พระประแดง","code":"00967","people":{"total":14,"received":0,"percent":0.0},"visits":{"total":18,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":14,"received":0,"percent":0.0},"adult_cancer":{"total":5,"received":0,"percent":0.0},"stroke":{"total":3,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":5,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00968:โรงพยาบาลส่งเสริมสุขภาพตำบลบางหัวเสือ","gapCases":1,"amphoe":"พระประแดง","code":"00968","people":{"total":17,"received":0,"percent":0.0},"visits":{"total":18,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":17,"received":0,"percent":0.0},"adult_cancer":{"total":5,"received":0,"percent":0.0},"stroke":{"total":5,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":3,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":6,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00969:โรงพยาบาลส่งเสริมสุขภาพตำบลบางยอ","gapCases":0,"amphoe":"พระประแดง","code":"00969","people":{"total":12,"received":2,"percent":16.67},"visits":{"total":14,"received":2,"percent":14.29},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":12,"received":2,"percent":16.67},"adult_cancer":{"total":4,"received":1,"percent":25.0},"stroke":{"total":2,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":4,"received":0,"percent":0.0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00970:โรงพยาบาลส่งเสริมสุขภาพตำบลบางกะเจ้า","gapCases":1,"amphoe":"พระประแดง","code":"00970","people":{"total":11,"received":0,"percent":0.0},"visits":{"total":18,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":11,"received":0,"percent":0.0},"adult_cancer":{"total":8,"received":0,"percent":0.0},"stroke":{"total":0,"received":0,"percent":0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":3,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00971:โรงพยาบาลส่งเสริมสุขภาพตำบลบางน้ำผึ้ง","gapCases":1,"amphoe":"พระประแดง","code":"00971","people":{"total":10,"received":0,"percent":0.0},"visits":{"total":10,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":10,"received":0,"percent":0.0},"adult_cancer":{"total":4,"received":0,"percent":0.0},"stroke":{"total":3,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":0,"received":0,"percent":0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00972:โรงพยาบาลส่งเสริมสุขภาพตำบลบางกระสอบ","gapCases":1,"amphoe":"พระประแดง","code":"00972","people":{"total":3,"received":0,"percent":0.0},"visits":{"total":3,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":3,"received":0,"percent":0.0},"adult_cancer":{"total":1,"received":0,"percent":0.0},"stroke":{"total":1,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00973:โรงพยาบาลส่งเสริมสุขภาพตำบลบางกอบัว","gapCases":1,"amphoe":"พระประแดง","code":"00973","people":{"total":10,"received":0,"percent":0.0},"visits":{"total":10,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":10,"received":0,"percent":0.0},"adult_cancer":{"total":2,"received":0,"percent":0.0},"stroke":{"total":1,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":2,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00974:โรงพยาบาลส่งเสริมสุขภาพตำบลบางกอ","gapCases":1,"amphoe":"พระประแดง","code":"00974","people":{"total":2,"received":0,"percent":0.0},"visits":{"total":2,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":2,"received":0,"percent":0.0},"adult_cancer":{"total":0,"received":0,"percent":0},"stroke":{"total":2,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":0,"received":0,"percent":0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00975:โรงพยาบาลส่งเสริมสุขภาพตำบลทรงคนอง","gapCases":0,"amphoe":"พระประแดง","code":"00975","people":{"total":17,"received":1,"percent":5.88},"visits":{"total":21,"received":1,"percent":4.76},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":17,"received":1,"percent":5.88},"adult_cancer":{"total":5,"received":1,"percent":20.0},"stroke":{"total":5,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":2,"received":0,"percent":0.0},"copd":{"total":2,"received":0,"percent":0.0},"heart_failure":{"total":3,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00976:โรงพยาบาลส่งเสริมสุขภาพตำบลสำโรง","gapCases":1,"amphoe":"พระประแดง","code":"00976","people":{"total":16,"received":0,"percent":0.0},"visits":{"total":21,"received":0,"percent":0.0},"age0_14":{"total":1,"received":0,"percent":0.0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":15,"received":0,"percent":0.0},"adult_cancer":{"total":2,"received":0,"percent":0.0},"stroke":{"total":5,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":4,"received":0,"percent":0.0},"copd":{"total":2,"received":0,"percent":0.0},"heart_failure":{"total":5,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00977:โรงพยาบาลส่งเสริมสุขภาพตำบลสำโรงกลาง","gapCases":1,"amphoe":"พระประแดง","code":"00977","people":{"total":8,"received":0,"percent":0.0},"visits":{"total":11,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":8,"received":0,"percent":0.0},"adult_cancer":{"total":3,"received":0,"percent":0.0},"stroke":{"total":3,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00978:โรงพยาบาลส่งเสริมสุขภาพตำบลสำโรงใต้","gapCases":1,"amphoe":"พระประแดง","code":"00978","people":{"total":14,"received":0,"percent":0.0},"visits":{"total":18,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":14,"received":0,"percent":0.0},"adult_cancer":{"total":3,"received":0,"percent":0.0},"stroke":{"total":3,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":2,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00979:โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านขุนสมุทรไทย","gapCases":1,"amphoe":"พระสมุทรเจดีย์","code":"00979","people":{"total":5,"received":0,"percent":0.0},"visits":{"total":5,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":5,"received":0,"percent":0.0},"adult_cancer":{"total":2,"received":0,"percent":0.0},"stroke":{"total":3,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":0,"received":0,"percent":0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00980:โรงพยาบาลส่งเสริมสุขภาพตำบลนาเกลือ","gapCases":1,"amphoe":"พระสมุทรเจดีย์","code":"00980","people":{"total":14,"received":0,"percent":0.0},"visits":{"total":34,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":14,"received":0,"percent":0.0},"adult_cancer":{"total":3,"received":0,"percent":0.0},"stroke":{"total":6,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":2,"received":0,"percent":0.0},"copd":{"total":2,"received":0,"percent":0.0},"heart_failure":{"total":3,"received":0,"percent":0.0},"frailty":{"total":2,"received":0,"percent":0.0}},{"name":"00981:โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านคลองทะเล","gapCases":1,"amphoe":"พระสมุทรเจดีย์","code":"00981","people":{"total":4,"received":0,"percent":0.0},"visits":{"total":4,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":4,"received":0,"percent":0.0},"adult_cancer":{"total":0,"received":0,"percent":0},"stroke":{"total":3,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":2,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00982:โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านคลองสวน","gapCases":1,"amphoe":"พระสมุทรเจดีย์","code":"00982","people":{"total":5,"received":0,"percent":0.0},"visits":{"total":5,"received":0,"percent":0.0},"age0_14":{"total":1,"received":0,"percent":0.0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":4,"received":0,"percent":0.0},"adult_cancer":{"total":1,"received":0,"percent":0.0},"stroke":{"total":2,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00983:โรงพยาบาลส่งเสริมสุขภาพตำบลแหลมฟ้าผ่า","gapCases":1,"amphoe":"พระสมุทรเจดีย์","code":"00983","people":{"total":14,"received":0,"percent":0.0},"visits":{"total":24,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":14,"received":0,"percent":0.0},"adult_cancer":{"total":3,"received":0,"percent":0.0},"stroke":{"total":6,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":2,"received":0,"percent":0.0},"copd":{"total":4,"received":0,"percent":0.0},"heart_failure":{"total":2,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00984:โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านขุนสมุทร","gapCases":1,"amphoe":"พระสมุทรเจดีย์","code":"00984","people":{"total":1,"received":0,"percent":0.0},"visits":{"total":1,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":1,"received":0,"percent":0.0},"adult_cancer":{"total":0,"received":0,"percent":0},"stroke":{"total":0,"received":0,"percent":0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":0,"received":0,"percent":0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00985:โรงพยาบาลส่งเสริมสุขภาพตำบลในคลองบางปลากด","gapCases":1,"amphoe":"พระสมุทรเจดีย์","code":"00985","people":{"total":16,"received":0,"percent":0.0},"visits":{"total":21,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":16,"received":0,"percent":0.0},"adult_cancer":{"total":6,"received":0,"percent":0.0},"stroke":{"total":9,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":2,"received":0,"percent":0.0},"heart_failure":{"total":2,"received":0,"percent":0.0},"frailty":{"total":2,"received":0,"percent":0.0}},{"name":"00986:โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านคู่สร้าง","gapCases":2,"amphoe":"พระสมุทรเจดีย์","code":"00986","people":{"total":21,"received":0,"percent":0.0},"visits":{"total":32,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":21,"received":0,"percent":0.0},"adult_cancer":{"total":4,"received":0,"percent":0.0},"stroke":{"total":8,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":4,"received":0,"percent":0.0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":4,"received":0,"percent":0.0},"frailty":{"total":3,"received":0,"percent":0.0}},{"name":"00987:โรงพยาบาลส่งเสริมสุขภาพตำบลเมืองใหม่บางพลี","gapCases":1,"amphoe":"บางเสาธง","code":"00987","people":{"total":13,"received":0,"percent":0.0},"visits":{"total":31,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":13,"received":0,"percent":0.0},"adult_cancer":{"total":2,"received":0,"percent":0.0},"stroke":{"total":4,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":2,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":3,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00988:โรงพยาบาลส่งเสริมสุขภาพตำบลเสาธงกลาง ตำบลบางเสาธง","gapCases":1,"amphoe":"บางเสาธง","code":"00988","people":{"total":20,"received":0,"percent":0.0},"visits":{"total":42,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":20,"received":0,"percent":0.0},"adult_cancer":{"total":5,"received":0,"percent":0.0},"stroke":{"total":7,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":3,"received":0,"percent":0.0},"copd":{"total":2,"received":0,"percent":0.0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":1,"received":0,"percent":0.0}},{"name":"00989:โรงพยาบาลส่งเสริมสุขภาพตำบลบางเสาธง","gapCases":0,"amphoe":"บางเสาธง","code":"00989","people":{"total":0,"received":0,"percent":0},"visits":{"total":0,"received":0,"percent":0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":0,"received":0,"percent":0},"adult_cancer":{"total":0,"received":0,"percent":0},"stroke":{"total":0,"received":0,"percent":0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":0,"received":0,"percent":0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00990:โรงพยาบาลส่งเสริมสุขภาพตำบลศรีษะจระเข้น้อย","gapCases":2,"amphoe":"บางเสาธง","code":"00990","people":{"total":22,"received":0,"percent":0.0},"visits":{"total":72,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":22,"received":0,"percent":0.0},"adult_cancer":{"total":5,"received":0,"percent":0.0},"stroke":{"total":5,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":3,"received":0,"percent":0.0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":4,"received":0,"percent":0.0},"frailty":{"total":1,"received":0,"percent":0.0}},{"name":"00991:โรงพยาบาลส่งเสริมสุขภาพตำบลศีรษะจรเข้ใหญ่","gapCases":1,"amphoe":"บางเสาธง","code":"00991","people":{"total":15,"received":0,"percent":0.0},"visits":{"total":18,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":15,"received":0,"percent":0.0},"adult_cancer":{"total":3,"received":0,"percent":0.0},"stroke":{"total":5,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":0,"received":0,"percent":0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"00992:โรงพยาบาลส่งเสริมสุขภาพตำบลวัดศรีวารีน้อย ตำบลศีรษะจรเข้ใหญ่","gapCases":1,"amphoe":"บางเสาธง","code":"00992","people":{"total":12,"received":0,"percent":0.0},"visits":{"total":27,"received":0,"percent":0.0},"age0_14":{"total":1,"received":0,"percent":0.0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":11,"received":0,"percent":0.0},"adult_cancer":{"total":1,"received":0,"percent":0.0},"stroke":{"total":2,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":2,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"10685:โรงพยาบาลสมุทรปราการ","gapCases":0,"amphoe":"เมือง","code":"10685","people":{"total":0,"received":0,"percent":0},"visits":{"total":0,"received":0,"percent":0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":0,"received":0,"percent":0},"adult_cancer":{"total":0,"received":0,"percent":0},"stroke":{"total":0,"received":0,"percent":0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":0,"received":0,"percent":0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"10752:โรงพยาบาลบางบ่อ","gapCases":0,"amphoe":"บางบ่อ","code":"10752","people":{"total":0,"received":0,"percent":0},"visits":{"total":0,"received":0,"percent":0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":0,"received":0,"percent":0},"adult_cancer":{"total":0,"received":0,"percent":0},"stroke":{"total":0,"received":0,"percent":0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":0,"received":0,"percent":0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"10753:โรงพยาบาลบางพลี","gapCases":0,"amphoe":"บางพลี","code":"10753","people":{"total":0,"received":0,"percent":0},"visits":{"total":0,"received":0,"percent":0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":0,"received":0,"percent":0},"adult_cancer":{"total":0,"received":0,"percent":0},"stroke":{"total":0,"received":0,"percent":0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":0,"received":0,"percent":0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"10754:โรงพยาบาลบางจาก","gapCases":0,"amphoe":"พระประแดง","code":"10754","people":{"total":24,"received":5,"percent":20.83},"visits":{"total":29,"received":5,"percent":17.24},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":24,"received":5,"percent":20.83},"adult_cancer":{"total":10,"received":1,"percent":10.0},"stroke":{"total":5,"received":2,"percent":40.0},"dementia":{"total":2,"received":2,"percent":100.0},"ckd5":{"total":3,"received":1,"percent":33.33},"copd":{"total":2,"received":0,"percent":0.0},"heart_failure":{"total":2,"received":1,"percent":50.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"10755:โรงพยาบาลพระสมุทรเจดีย์สวาทยานนท์","gapCases":2,"amphoe":"พระสมุทรเจดีย์","code":"10755","people":{"total":30,"received":0,"percent":0.0},"visits":{"total":61,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":30,"received":0,"percent":0.0},"adult_cancer":{"total":5,"received":0,"percent":0.0},"stroke":{"total":8,"received":0,"percent":0.0},"dementia":{"total":3,"received":0,"percent":0.0},"ckd5":{"total":4,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":6,"received":0,"percent":0.0},"frailty":{"total":9,"received":0,"percent":0.0}},{"name":"12251:โรงพยาบาลยุวประสาทไวทโยปถัมภ์","gapCases":0,"amphoe":"เมือง","code":"12251","people":{"total":0,"received":0,"percent":0},"visits":{"total":0,"received":0,"percent":0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":0,"received":0,"percent":0},"adult_cancer":{"total":0,"received":0,"percent":0},"stroke":{"total":0,"received":0,"percent":0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":0,"received":0,"percent":0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"13812:โรงพยาบาลส่งเสริมสุขภาพตำบลท้ายบ้าน","gapCases":1,"amphoe":"เมือง","code":"13812","people":{"total":14,"received":0,"percent":0.0},"visits":{"total":15,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":14,"received":0,"percent":0.0},"adult_cancer":{"total":7,"received":0,"percent":0.0},"stroke":{"total":2,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":1,"received":0,"percent":0.0}},{"name":"15048:ศูนย์สุขภาพชุมชนเมือง โรงพยาบาลสมุทรปราการ","gapCases":1,"amphoe":"เมือง","code":"15048","people":{"total":38,"received":1,"percent":2.63},"visits":{"total":44,"received":1,"percent":2.27},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":38,"received":1,"percent":2.63},"adult_cancer":{"total":13,"received":1,"percent":7.69},"stroke":{"total":10,"received":0,"percent":0.0},"dementia":{"total":2,"received":0,"percent":0.0},"ckd5":{"total":6,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":10,"received":0,"percent":0.0},"frailty":{"total":1,"received":0,"percent":0.0}},{"name":"23032:ศูนย์สุขภาพชุมชนรพ.บางบ่อ","gapCases":0,"amphoe":"บางบ่อ","code":"23032","people":{"total":18,"received":1,"percent":5.56},"visits":{"total":36,"received":2,"percent":5.56},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":18,"received":1,"percent":5.56},"adult_cancer":{"total":7,"received":1,"percent":14.29},"stroke":{"total":3,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":3,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"23034:ศูนย์แพทย์ชุมชนวัดบางพลีใหญ่กลาง","gapCases":2,"amphoe":"บางพลี","code":"23034","people":{"total":55,"received":1,"percent":1.82},"visits":{"total":133,"received":2,"percent":1.5},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":55,"received":1,"percent":1.82},"adult_cancer":{"total":19,"received":0,"percent":0.0},"stroke":{"total":10,"received":0,"percent":0.0},"dementia":{"total":4,"received":0,"percent":0.0},"ckd5":{"total":7,"received":0,"percent":0.0},"copd":{"total":5,"received":1,"percent":20.0},"heart_failure":{"total":13,"received":0,"percent":0.0},"frailty":{"total":1,"received":0,"percent":0.0}},{"name":"23911:โรงพยาบาลส่งเสริมสุขภาพตำบลคลองด่าน หมู่ 7","gapCases":1,"amphoe":"บางบ่อ","code":"23911","people":{"total":18,"received":0,"percent":0.0},"visits":{"total":33,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":18,"received":0,"percent":0.0},"adult_cancer":{"total":7,"received":0,"percent":0.0},"stroke":{"total":1,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":4,"received":0,"percent":0.0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":5,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"23944:โรงพยาบาลส่งเสริมสุขภาพตำบลอยู่เจริญ","gapCases":1,"amphoe":"พระประแดง","code":"23944","people":{"total":14,"received":0,"percent":0.0},"visits":{"total":19,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":14,"received":0,"percent":0.0},"adult_cancer":{"total":3,"received":0,"percent":0.0},"stroke":{"total":5,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":2,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"23945:สถานีอนามัยเฉลิมพระเกียรติ 60 พรรษา นวมินทราชินี สาขาวัดบางปิ้ง","gapCases":1,"amphoe":"เมือง","code":"23945","people":{"total":16,"received":0,"percent":0.0},"visits":{"total":33,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":16,"received":0,"percent":0.0},"adult_cancer":{"total":8,"received":0,"percent":0.0},"stroke":{"total":2,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":4,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"24027:โรงพยาบาลส่งเสริมสุขภาพตำบลพุทธรักษา","gapCases":1,"amphoe":"เมือง","code":"24027","people":{"total":15,"received":0,"percent":0.0},"visits":{"total":19,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":15,"received":0,"percent":0.0},"adult_cancer":{"total":5,"received":0,"percent":0.0},"stroke":{"total":4,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":3,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"24028:โรงพยาบาลส่งเสริมสุขภาพตำบลร่มโพธิ์","gapCases":1,"amphoe":"เมือง","code":"24028","people":{"total":18,"received":0,"percent":0.0},"visits":{"total":19,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":18,"received":0,"percent":0.0},"adult_cancer":{"total":8,"received":0,"percent":0.0},"stroke":{"total":3,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":3,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":3,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"24029:โรงพยาบาลส่งเสริมสุขภาพตำบลบุญศิริ","gapCases":1,"amphoe":"เมือง","code":"24029","people":{"total":19,"received":0,"percent":0.0},"visits":{"total":37,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":19,"received":0,"percent":0.0},"adult_cancer":{"total":7,"received":0,"percent":0.0},"stroke":{"total":8,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":4,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"24410:โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านคลองนาเกลือน้อย","gapCases":1,"amphoe":"พระสมุทรเจดีย์","code":"24410","people":{"total":6,"received":0,"percent":0.0},"visits":{"total":11,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":6,"received":0,"percent":0.0},"adult_cancer":{"total":2,"received":0,"percent":0.0},"stroke":{"total":3,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":0,"received":0,"percent":0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"24411:โรงพยาบาลส่งเสริมสุขภาพตำบลเจริญราษฎร์","gapCases":1,"amphoe":"บางเสาธง","code":"24411","people":{"total":13,"received":0,"percent":0.0},"visits":{"total":13,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":13,"received":0,"percent":0.0},"adult_cancer":{"total":2,"received":0,"percent":0.0},"stroke":{"total":4,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"24412:โรงพยาบาลส่งเสริมสุขภาพตำบลกัลปพฤกษ์ ตำบลบางเสาธง","gapCases":2,"amphoe":"บางเสาธง","code":"24412","people":{"total":22,"received":0,"percent":0.0},"visits":{"total":34,"received":0,"percent":0.0},"age0_14":{"total":1,"received":0,"percent":0.0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":21,"received":0,"percent":0.0},"adult_cancer":{"total":4,"received":0,"percent":0.0},"stroke":{"total":6,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":4,"received":0,"percent":0.0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":4,"received":0,"percent":0.0},"frailty":{"total":2,"received":0,"percent":0.0}},{"name":"24559:โรงพยาบาลส่งเสริมสุขภาพตำบลคลองกระออม","gapCases":1,"amphoe":"พระสมุทรเจดีย์","code":"24559","people":{"total":5,"received":0,"percent":0.0},"visits":{"total":7,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":5,"received":0,"percent":0.0},"adult_cancer":{"total":3,"received":0,"percent":0.0},"stroke":{"total":2,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"24675:โรงพยาบาลส่งเสริมสุขภาพบัวเกราะ ตำบลราชาเทวะ","gapCases":1,"amphoe":"บางพลี","code":"24675","people":{"total":6,"received":0,"percent":0.0},"visits":{"total":6,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":6,"received":0,"percent":0.0},"adult_cancer":{"total":1,"received":0,"percent":0.0},"stroke":{"total":3,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":1,"received":0,"percent":0.0},"copd":{"total":1,"received":0,"percent":0.0},"heart_failure":{"total":1,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"24702:โรงพยาบาลส่งเสริมสุขภาพตำบลเทศบาลตำบลสำโรงเหนือ","gapCases":1,"amphoe":"เมือง","code":"24702","people":{"total":12,"received":0,"percent":0.0},"visits":{"total":13,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":12,"received":0,"percent":0.0},"adult_cancer":{"total":2,"received":0,"percent":0.0},"stroke":{"total":5,"received":0,"percent":0.0},"dementia":{"total":1,"received":0,"percent":0.0},"ckd5":{"total":0,"received":0,"percent":0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":4,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"28785:โรงพยาบาลบางเสาธง","gapCases":1,"amphoe":"บางเสาธง","code":"28785","people":{"total":8,"received":0,"percent":0.0},"visits":{"total":25,"received":0,"percent":0.0},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":8,"received":0,"percent":0.0},"adult_cancer":{"total":2,"received":0,"percent":0.0},"stroke":{"total":4,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":3,"received":0,"percent":0.0},"copd":{"total":0,"received":0,"percent":0},"heart_failure":{"total":0,"received":0,"percent":0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"28826:โรงพยาบาลส่งเสริมสุขภาพมังกรทอง","gapCases":2,"amphoe":"เมือง","code":"28826","people":{"total":40,"received":0,"percent":0.0},"visits":{"total":49,"received":0,"percent":0.0},"age0_14":{"total":1,"received":0,"percent":0.0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":39,"received":0,"percent":0.0},"adult_cancer":{"total":15,"received":0,"percent":0.0},"stroke":{"total":12,"received":0,"percent":0.0},"dementia":{"total":0,"received":0,"percent":0},"ckd5":{"total":4,"received":0,"percent":0.0},"copd":{"total":2,"received":0,"percent":0.0},"heart_failure":{"total":5,"received":0,"percent":0.0},"frailty":{"total":0,"received":0,"percent":0}},{"name":"99826:ศูนย์สุขภาพชุมชน1 รพ.บางพลี","gapCases":0,"amphoe":"บางพลี","code":"99826","people":{"total":35,"received":2,"percent":5.71},"visits":{"total":79,"received":5,"percent":6.33},"age0_14":{"total":0,"received":0,"percent":0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":35,"received":2,"percent":5.71},"adult_cancer":{"total":10,"received":0,"percent":0.0},"stroke":{"total":7,"received":1,"percent":14.29},"dementia":{"total":3,"received":0,"percent":0.0},"ckd5":{"total":2,"received":0,"percent":0.0},"copd":{"total":2,"received":0,"percent":0.0},"heart_failure":{"total":2,"received":0,"percent":0.0},"frailty":{"total":2,"received":0,"percent":0.0}}],"summary":{"name":"รวม","gapCases":47,"people":{"total":1322,"received":20,"percent":1.51},"visits":{"total":2117,"received":27,"percent":1.28},"age0_14":{"total":13,"received":0,"percent":0.0},"child_cancer":{"total":0,"received":0,"percent":0},"age15plus":{"total":1309,"received":20,"percent":1.53},"adult_cancer":{"total":404,"received":6,"percent":1.49},"stroke":{"total":362,"received":7,"percent":1.93},"dementia":{"total":42,"received":2,"percent":4.76},"ckd5":{"total":122,"received":1,"percent":0.82},"copd":{"total":84,"received":1,"percent":1.19},"heart_failure":{"total":214,"received":2,"percent":0.93},"frailty":{"total":27,"received":0,"percent":0.0}}}};
+const INSIGHTS = {"country": "\n<div class=\"grid grid-cols-1 md:grid-cols-3 gap-6\">\n  <div class=\"bg-white p-4 rounded-xl shadow-sm border border-emerald-100\">\n    <h4 class=\"font-bold text-emerald-900 mb-2\">📊 วิเคราะห์ภาพรวมประเทศ</h4>\n    <p class=\"text-sm\">ภาพรวมประเทศอยู่ที่ <b>1.78%</b> (1,670/93,600 คน) ยังต่ำกว่าเป้าหมาย 5.00% โดยต้องเพิ่มอีกประมาณ <b>3,010 คน</b> เพื่อแตะเกณฑ์ขั้นต่ำ</p>\n  </div>\n  <div class=\"bg-white p-4 rounded-xl shadow-sm border border-amber-100\">\n    <h4 class=\"font-bold text-amber-800 mb-2\">⚠️ สถานะเขตสุขภาพที่ 6</h4>\n    <p class=\"text-sm\"><b>เขตสุขภาพที่ 6 = 0.89%</b> (58/6,481 คน) อยู่ลำดับที่ 7 จาก 13 เขต และต้องเพิ่มอย่างน้อย <b>267 คน</b></p>\n  </div>\n  <div class=\"bg-white p-4 rounded-xl shadow-sm border border-lime-100\">\n    <h4 class=\"font-bold text-lime-800 mb-2\">💡 ข้อเสนอเชิงระบบ</h4>\n    <p class=\"text-sm\">ให้ใช้พื้นที่ที่ทำได้สูงกว่าเป็น Benchmark แล้วทำ Case Finding ผู้ป่วย PC ที่เข้าเกณฑ์ + ส่งต่อคลินิกกัญชาทางการแพทย์ + ตรวจสอบรหัสก่อนส่ง HDC เป็นวงจรเดียวกัน</p>\n  </div>\n</div>", "province": "\n<div class=\"grid grid-cols-1 md:grid-cols-3 gap-6\">\n  <div class=\"bg-white p-4 rounded-xl shadow-sm border border-emerald-100\">\n    <h4 class=\"font-bold text-emerald-900 mb-2\">📊 วิเคราะห์เขต 6 รายจังหวัด</h4>\n    <p class=\"text-sm\">ภาพรวมเขต 6 อยู่ที่ <b>0.89%</b> (58/6,481 คน) โดยจังหวัดสูงสุดคือ <b>ตราด 1.58%</b></p>\n  </div>\n  <div class=\"bg-white p-4 rounded-xl shadow-sm border border-amber-100\">\n    <h4 class=\"font-bold text-amber-800 mb-2\">⚠️ สมุทรปราการ</h4>\n    <p class=\"text-sm\"><b>สมุทรปราการ = 1.51%</b> (20/1,322 คน) เป็นลำดับที่ 2 จาก 8 จังหวัดในเขต แต่ยังต้องเพิ่มอีก <b>47 คน</b> เพื่อถึง 5%</p>\n  </div>\n  <div class=\"bg-white p-4 rounded-xl shadow-sm border border-lime-100\">\n    <h4 class=\"font-bold text-lime-800 mb-2\">💡 กลยุทธ์ Sprint</h4>\n    <p class=\"text-sm\">ให้เร่ง 3 เรื่อง: ตรวจรายชื่อ PC รายหน่วย, เปิดนัดบริการกัญชาทางการแพทย์ในกลุ่มอาการเหมาะสม, และติดตามการบันทึก A/B หลังบริการทุกสัปดาห์</p>\n  </div>\n</div>", "district": "\n<div class=\"grid grid-cols-1 md:grid-cols-3 gap-6\">\n  <div class=\"bg-white p-4 rounded-xl shadow-sm border border-emerald-100\">\n    <h4 class=\"font-bold text-emerald-900 mb-2\">📊 วิเคราะห์รายอำเภอ</h4>\n    <p class=\"text-sm\">จังหวัดสมุทรปราการอยู่ที่ <b>1.51%</b> (20/1,322 คน) อำเภอที่ผ่านเกณฑ์คือ <b>พระประแดง</b></p>\n  </div>\n  <div class=\"bg-white p-4 rounded-xl shadow-sm border border-amber-100\">\n    <h4 class=\"font-bold text-amber-800 mb-2\">⚠️ คอขวดเชิงพื้นที่</h4>\n    <p class=\"text-sm\"><b>เมืองสมุทรปราการ</b> มีช่องว่างเชิงจำนวนมากสุด ต้องเพิ่มอย่างน้อย <b>23 คน</b> ขณะที่พระสมุทรเจดีย์และบางเสาธงยังไม่มีผู้รับบริการในชุดข้อมูลนี้</p>\n  </div>\n  <div class=\"bg-white p-4 rounded-xl shadow-sm border border-lime-100\">\n    <h4 class=\"font-bold text-lime-800 mb-2\">💡 Intervention รายอำเภอ</h4>\n    <p class=\"text-sm\">จัด War Room รายอำเภอแบบ “ทะเบียนรายชื่อ–นัดบริการ–ปิดรหัส” โดยเริ่มจากอำเภอฐานผู้ป่วยสูงและอำเภอที่ค่า A = 0 ก่อน เพื่อให้ผลวิ่งทันรอบข้อมูลถัดไป</p>\n  </div>\n</div>", "hospital": "\n<div class=\"grid grid-cols-1 md:grid-cols-3 gap-6\">\n  <div class=\"bg-white p-4 rounded-xl shadow-sm border border-emerald-100\">\n    <h4 class=\"font-bold text-emerald-900 mb-2\">📊 วิเคราะห์รายหน่วยบริการ</h4>\n    <p class=\"text-sm\">มีหน่วยบริการที่ผ่านเกณฑ์ 5% จำนวน <b>11 แห่ง</b> และมีหน่วยที่มีผลงาน A มากกว่า 0 จำนวน <b>13 แห่ง</b> จากทั้งหมด 85 แห่ง</p>\n  </div>\n  <div class=\"bg-white p-4 rounded-xl shadow-sm border border-amber-100\">\n    <h4 class=\"font-bold text-amber-800 mb-2\">🏆 ตัวเด่น/ตัวเร่ง</h4>\n    <p class=\"text-sm\">หน่วยที่สูงสุดคือ <b>10754:โรงพยาบาลบางจาก</b> ที่ <b>20.83%</b> ส่วนกลุ่มที่ A=0 มี 72 แห่ง ควรเริ่มตรวจที่ฐานผู้ป่วยสูง เช่นรหัส <b>28826, 00943, 00937, 00944, 00962</b></p>\n  </div>\n  <div class=\"bg-white p-4 rounded-xl shadow-sm border border-lime-100\">\n    <h4 class=\"font-bold text-lime-800 mb-2\">💡 แผนปฏิบัติการ</h4>\n    <p class=\"text-sm\">ทำบัญชีรายชื่อผู้ป่วย PC รายหน่วยบริการ แยกโรคหลัก C00-C97, I60-I69, F03, N185, J44, I50, R54 แล้วโทรนัด/ติดตาม Home Visit พร้อมตรวจ 43 แฟ้มหลังให้บริการ</p>\n  </div>\n</div>"};
+const METRIC_LABELS = {"people": "รวม: จำนวนคน", "visits": "รวม: จำนวนครั้ง", "age0_14": "อายุ 0-14 ปี: รวม", "child_cancer": "อายุ 0-14 ปี: C00-C97", "age15plus": "อายุ 15 ปีขึ้นไป: รวม", "adult_cancer": "อายุ 15 ปีขึ้นไป: C00-C97 มะเร็ง", "stroke": "I60-I69 โรคหลอดเลือดสมอง", "dementia": "F03 ภาวะสมองเสื่อม", "ckd5": "N185 ไตวายเรื้อรังระยะ 5", "copd": "J44 COPD", "heart_failure": "I50 หัวใจล้มเหลว", "frailty": "R54 Senility/Frailty"};
+const DISEASE_METRICS = ["adult_cancer", "stroke", "dementia", "ckd5", "copd", "heart_failure", "frailty", "age0_14"];
+
+let currentView = 'district';
+let mainChartInstance = null;
+let diseaseChartInstance = null;
+
+const targetLinePlugin = {
+  id: 'targetLinePlugin',
+  beforeDraw(chart) {
+    const yAxis = chart.scales.y;
+    if (!yAxis) return;
+    const yPixel = yAxis.getPixelForValue(TARGET);
+    if (yPixel < chart.chartArea.top || yPixel > chart.chartArea.bottom) return;
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(chart.chartArea.left, yPixel);
+    ctx.lineTo(chart.chartArea.right, yPixel);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#16a34a';
+    ctx.setLineDash([6, 6]);
+    ctx.stroke();
+    ctx.fillStyle = '#166534';
+    ctx.font = 'bold 12px Sarabun';
+    ctx.fillText('เป้าหมาย ' + TARGET.toFixed(2) + '%', chart.chartArea.right - 118, yPixel - 8);
+    ctx.restore();
+  }
+};
+Chart.register(targetLinePlugin);
+
+function fmt(n) { return Number(n || 0).toLocaleString('th-TH'); }
+function pct(n) { return Number(n || 0).toFixed(2) + '%'; }
+function calcGap(metricObj) {
+  const total = Number(metricObj?.total || 0);
+  const received = Number(metricObj?.received || 0);
+  return Math.max(0, Math.ceil((TARGET / 100) * total) - received);
+}
+function getMetric(row, metricKey) {
+  return row[metricKey] || row.people || {total: 0, received: 0, percent: 0};
+}
+function statusBadge(metricObj) {
+  const p = Number(metricObj.percent || 0);
+  const total = Number(metricObj.total || 0);
+  if (total === 0) return `<span class="px-2 py-1 status-risk rounded-md text-xs font-bold">ไม่มีฐาน</span>`;
+  if (p >= TARGET) return `<span class="px-2 py-1 status-pass rounded-md text-xs font-bold">ผ่าน</span>`;
+  if (p > 0) return `<span class="px-2 py-1 status-risk rounded-md text-xs font-bold">ต่ำกว่าเป้า</span>`;
+  return `<span class="px-2 py-1 status-fail rounded-md text-xs font-bold">ยังไม่มี A</span>`;
+}
+
+function setActiveButton(viewType) {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.remove('active');
+    btn.classList.add('bg-white', 'text-slate-700');
+  });
+  const btn = document.getElementById(`btn-${viewType}`);
+  if (btn) {
+    btn.classList.remove('bg-white', 'text-slate-700');
+    btn.classList.add('active');
+  }
+}
+
+function populateMetricOptions(viewType) {
+  const select = document.getElementById('metric-select');
+  const oldValue = select.value || 'people';
+  const allowed = DB[viewType].metrics;
+  select.innerHTML = allowed.map(key => `<option value="${key}">${METRIC_LABELS[key] || key}</option>`).join('');
+  select.value = allowed.includes(oldValue) ? oldValue : 'people';
+}
+
+function renderMainChart(viewData, rows, metricKey, viewType) {
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  if (mainChartInstance) mainChartInstance.destroy();
+
+  const labelText = METRIC_LABELS[metricKey] || metricKey;
+  const maxPercent = rows.length ? Math.max(...rows.map(row => Number(getMetric(row, metricKey).percent || 0))) : 0;
+  const yMax = Math.max(TARGET * 1.3, Math.ceil(maxPercent * 1.25 + 1));
+
+  const bgColors = rows.map(row => {
+    const m = getMetric(row, metricKey);
+    if (viewType === 'country' && row.name.includes('6')) return '#064e3b';
+    if (viewType === 'province' && row.name === 'สมุทรปราการ') return '#f59e0b';
+    if (m.percent >= TARGET) return '#16a34a';
+    if (m.percent > 0) return '#fbbf24';
+    return '#ef4444';
+  });
+
+  mainChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: rows.map(d => d.name),
+      datasets: [{
+        label: labelText + ' (%)',
+        data: rows.map(d => getMetric(d, metricKey).percent),
+        backgroundColor: bgColors,
+        borderRadius: 7,
+        maxBarThickness: viewType === 'hospital' ? 34 : 56
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          titleFont: { family: 'Sarabun', weight: 'bold' },
+          bodyFont: { family: 'Sarabun' },
+          callbacks: {
+            label(context) {
+              const row = rows[context.dataIndex];
+              const m = getMetric(row, metricKey);
+              return [`ร้อยละ: ${pct(m.percent)}`, `A: ${fmt(m.received)}`, `B: ${fmt(m.total)}`, `ช่องว่างถึงเป้า: ${fmt(calcGap(m))}`];
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          suggestedMax: yMax,
+          grid: { color: '#dcfce7' },
+          ticks: { font: { family: 'Sarabun' } }
+        },
+        x: {
+          grid: { display: false },
+          ticks: {
+            font: { family: 'Sarabun', size: 11 },
+            maxRotation: viewType === 'hospital' ? 55 : 35,
+            minRotation: viewType === 'hospital' ? 45 : 0,
+            callback(value) {
+              const label = this.getLabelForValue(value);
+              return label.length > 28 ? label.substring(0, 28) + '…' : label;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderTable(viewData, rows, metricKey) {
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+  document.getElementById('th-name').innerText = viewData.thName;
+  document.getElementById('table-note').innerHTML = `แสดงตัวชี้วัด: <b>${METRIC_LABELS[metricKey] || metricKey}</b>`;
+
+  let sumTotal = 0, sumReceived = 0;
+  rows.forEach((row, index) => {
+    const m = getMetric(row, metricKey);
+    sumTotal += Number(m.total || 0);
+    sumReceived += Number(m.received || 0);
+    const gap = calcGap(m);
+    const percentClass = m.percent >= TARGET ? 'text-emerald-700' : (m.percent > 0 ? 'text-amber-700' : 'text-red-600');
+    const tr = document.createElement('tr');
+    tr.className = `border-b border-emerald-50 hover:bg-emerald-50/60 transition ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`;
+    const displayName = row.amphoe ? `<div class="font-semibold text-slate-800">${row.name}</div><div class="text-xs text-emerald-700 mt-1">อำเภอ${row.amphoe}</div>` : `<div class="font-semibold text-slate-800">${row.name}</div>`;
+    tr.innerHTML = `
+      <td class="py-3 px-4">${displayName}</td>
+      <td class="py-3 px-4 text-right">${fmt(m.total)}</td>
+      <td class="py-3 px-4 text-right text-emerald-800 font-semibold">${fmt(m.received)}</td>
+      <td class="py-3 px-4 text-right font-extrabold ${percentClass}">${pct(m.percent)}</td>
+      <td class="py-3 px-4 text-right font-semibold">${fmt(gap)}</td>
+      <td class="py-3 px-4 text-center">${statusBadge(m)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const totalPercent = sumTotal > 0 ? (sumReceived / sumTotal) * 100 : 0;
+  const summaryObj = {total: sumTotal, received: sumReceived, percent: totalPercent};
+  const trSum = document.createElement('tr');
+  trSum.className = 'bg-emerald-900 text-white border-t-2 border-emerald-700 font-bold';
+  trSum.innerHTML = `
+    <td class="py-4 px-4">รวมข้อมูลที่แสดง</td>
+    <td class="py-4 px-4 text-right">${fmt(sumTotal)}</td>
+    <td class="py-4 px-4 text-right">${fmt(sumReceived)}</td>
+    <td class="py-4 px-4 text-right">${pct(totalPercent)}</td>
+    <td class="py-4 px-4 text-right">${fmt(calcGap(summaryObj))}</td>
+    <td class="py-4 px-4 text-center">-</td>
+  `;
+  tbody.appendChild(trSum);
+}
+
+function renderDiseaseSection() {
+  const summary = DB.district.summary;
+  const cards = document.getElementById('disease-cards');
+  cards.innerHTML = DISEASE_METRICS.map(key => {
+    const m = summary[key];
+    const label = METRIC_LABELS[key] || key;
+    const tone = m.percent >= TARGET ? 'border-emerald-400 text-emerald-800 bg-emerald-50' : (m.percent > 0 ? 'border-amber-300 text-amber-800 bg-amber-50' : 'border-red-200 text-red-700 bg-red-50');
+    return `<div class="rounded-2xl border-l-4 ${tone} p-4 shadow-sm">
+      <div class="text-xs font-bold opacity-80 mb-1">${label}</div>
+      <div class="text-2xl font-extrabold">${pct(m.percent)}</div>
+      <div class="text-xs mt-1">A/B = ${fmt(m.received)}/${fmt(m.total)} คน</div>
+    </div>`;
+  }).join('');
+
+  const ctx = document.getElementById('diseaseChart').getContext('2d');
+  if (diseaseChartInstance) diseaseChartInstance.destroy();
+  const rows = DISEASE_METRICS.map(key => ({ key, label: METRIC_LABELS[key], ...summary[key] }));
+  diseaseChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: rows.map(r => r.label),
+      datasets: [{
+        label: 'ร้อยละได้รับยากัญชาทางการแพทย์',
+        data: rows.map(r => r.percent),
+        backgroundColor: rows.map(r => r.percent >= TARGET ? '#16a34a' : (r.percent > 0 ? '#f59e0b' : '#ef4444')),
+        borderRadius: 7,
+        maxBarThickness: 52
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          titleFont: { family: 'Sarabun', weight: 'bold' },
+          bodyFont: { family: 'Sarabun' },
+          callbacks: {
+            label(context) {
+              const r = rows[context.dataIndex];
+              return [`ร้อยละ: ${pct(r.percent)}`, `A: ${fmt(r.received)}`, `B: ${fmt(r.total)}`];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          suggestedMax: Math.max(TARGET * 1.3, 6),
+          grid: { color: '#dcfce7' },
+          ticks: { font: { family: 'Sarabun' } }
+        },
+        y: { grid: { display: false }, ticks: { font: { family: 'Sarabun', size: 12 } } }
+      }
+    }
+  });
+}
+
+function renderInsight(viewType) {
+  document.getElementById('insights-content').innerHTML = INSIGHTS[viewType] || '';
+}
+
+function prepareRows(viewType) {
+  const viewData = DB[viewType];
+  const metricKey = document.getElementById('metric-select').value || 'people';
+  let rows = [...viewData.data];
+
+  if (viewType === 'hospital') {
+    const selected = document.getElementById('district-select').value;
+    if (selected !== 'all') rows = rows.filter(r => r.amphoe === selected);
+    rows.sort((a,b) => getMetric(b, metricKey).percent - getMetric(a, metricKey).percent || getMetric(b, metricKey).received - getMetric(a, metricKey).received || getMetric(b, metricKey).total - getMetric(a, metricKey).total);
+    const chartRows = selected === 'all' ? rows.slice(0, 25) : rows;
+    return { rows, chartRows };
+  }
+
+  rows.sort((a,b) => {
+    if (viewType === 'country') return 0;
+    return getMetric(b, metricKey).percent - getMetric(a, metricKey).percent;
+  });
+  return { rows, chartRows: rows };
+}
+
+function refreshCurrentView() {
+  const viewData = DB[currentView];
+  const metricKey = document.getElementById('metric-select').value || 'people';
+  const { rows, chartRows } = prepareRows(currentView);
+  const selectedDistrict = document.getElementById('district-select').value;
+  let title = viewData.title;
+  if (currentView === 'hospital') {
+    title = selectedDistrict === 'all' ? 'ระดับหน่วยบริการ: ทุกอำเภอ (Top 25 ตามร้อยละ)' : `ระดับหน่วยบริการ: อำเภอ${selectedDistrict}`;
+  }
+  document.getElementById('chart-title').innerText = title;
+  document.getElementById('chart-subtitle').innerText = `กราฟแสดงร้อยละของ ${METRIC_LABELS[metricKey] || metricKey} เทียบเป้าหมาย ${TARGET.toFixed(2)}%`;
+  renderMainChart(viewData, chartRows, metricKey, currentView);
+  renderTable(viewData, rows, metricKey);
+  renderInsight(currentView);
+  renderDiseaseSection();
+}
+
+function changeView(viewType) {
+  currentView = viewType;
+  setActiveButton(viewType);
+  populateMetricOptions(viewType);
+  const filterContainer = document.getElementById('district-filter-container');
+  if (viewType === 'hospital') {
+    filterContainer.classList.remove('hidden');
+    filterContainer.classList.add('flex');
+  } else {
+    filterContainer.classList.add('hidden');
+    filterContainer.classList.remove('flex');
+  }
+  refreshCurrentView();
+}
+
+function filterHospitalData() {
+  if (currentView !== 'hospital') currentView = 'hospital';
+  refreshCurrentView();
+}
+
+window.onload = () => {
+  Chart.defaults.font.family = 'Sarabun';
+  changeView('district');
+};
+</script>
+</body>
+</html>
