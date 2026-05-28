@@ -274,7 +274,19 @@ table.it tr:hover td{background:#EFF6FF}
 .add-issue-btn{padding:4px 10px;border:1.5px dashed #FCA5A5;border-radius:7px;background:transparent;color:#EF4444;font-family:'Sarabun',sans-serif;font-size:.72rem;cursor:pointer;transition:all .2s;display:none}
 .edit-mode .add-issue-btn{display:inline-flex}
 
-/* ── BUNDLE IMPORT ── */
+/* ── DUAL NAV BUTTON ── */
+.dnavbtn{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border:none;border-radius:8px;cursor:pointer;font-family:'Sarabun',sans-serif;font-size:.7rem;font-weight:700;transition:all .2s;white-space:nowrap;background:linear-gradient(135deg,rgba(88,28,135,.12),rgba(59,130,246,.12));color:#1D4ED8;border:1.5px solid rgba(99,102,241,.3);position:relative}
+.dnavbtn:hover{background:linear-gradient(135deg,rgba(88,28,135,.22),rgba(59,130,246,.22));transform:translateY(-1px);box-shadow:0 3px 10px rgba(59,130,246,.25);border-color:rgba(99,102,241,.6)}
+.dnavbtn:active{transform:translateY(0)}
+.dnavbtn .dnavbtn-pdf{color:#7C3AED;font-size:.68rem}
+.dnavbtn .dnavbtn-sep{color:#94A3B8;margin:0 1px}
+.dnavbtn .dnavbtn-crit{color:#1D4ED8;font-size:.68rem}
+.dnavbtn-pulse{animation:dnav-pulse 2s ease-in-out infinite}
+@keyframes dnav-pulse{0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,.4)}50%{box-shadow:0 0 0 5px rgba(99,102,241,0)}}
+/* fail row highlight */
+.fail-row-hl{background:linear-gradient(90deg,rgba(239,68,68,.04),transparent)!important}
+
+/* BUNDLE IMPORT */
 .import-drop{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;cursor:pointer;border:2.5px dashed rgba(52,211,153,.4);margin:10px;border-radius:16px;transition:all .2s;background:rgba(5,196,107,.02);min-height:180px}
 .import-drop:hover,.import-drop.ov{border-color:var(--acc);background:rgba(5,196,107,.06);transform:scale(1.01)}
 .bundle-preview{display:flex;flex-direction:column;gap:.5rem}
@@ -1644,7 +1656,7 @@ function printApproval(){window.print();}
 // ════════════════════════════════════════
 // RENDER RESULT (SHARED)
 // ════════════════════════════════════════
-const pg=(n)=>n?`<span class="tag tpg" onclick="jumpPg(${n})" title="คลิกดูหน้า ${n} ใน PDF">📄 หน้า ${n}</span>`:'';
+const pg=(n)=>n?`<span class="tag tpg" onclick="jumpPg(${n})" title="คลิกดูหน้า ${n} ใน PDF เอกสาร">📄 หน้า ${n}</span>`:'';
 const cr=(c)=>{
   if(!c)return'';
   const m=c.match(/ข้อ[\s]*(\d+)/);
@@ -1653,6 +1665,50 @@ const cr=(c)=>{
   const oc=cpg?`jumpCritPage(${cpg})`:`jumpCritPage(1)`;
   return `<span class="tag tcr" onclick="${oc}" title="เกณฑ์ ICT ${c}${cpg?' → หน้า '+cpg:''}" style="cursor:pointer">📌 ${c}</span>`;
 };
+
+// ── DUAL NAV: กดปุ่มเดียวเปิดทั้งเอกสารที่เสนอ + เกณฑ์ ICT พร้อมกัน ──
+function jumpBoth(pdfPage, critRef){
+  // Navigate submitted doc
+  if(pdfPage) jumpPg(pdfPage);
+  // Navigate criteria PDF
+  if(critRef){
+    const m = String(critRef).match(/ข้อ[\s]*(\d+)/);
+    const no = m ? parseInt(m[1]) : null;
+    const cpg = no && typeof CRIT_MAP!=='undefined' ? CRIT_MAP[no] : null;
+    if(cpg) jumpCritPage(cpg);
+    else if(pdfPage) jumpCritPage(1); // open at least
+  }
+}
+
+// Generates a dual-nav button; only renders if at least ONE reference exists
+// isFail = true → always show (must-fix / ไม่ผ่าน), false → show only if data available
+function pgcrBtn(pdfPage, criteriaRef, isFail){
+  if(!pdfPage && !criteriaRef) return '';
+  const hasPdf  = !!pdfPage;
+  const hasCrit = !!criteriaRef;
+  // Both available → dual button (main use-case)
+  if(hasPdf && hasCrit){
+    return `<button class="dnavbtn${isFail?' dnavbtn-pulse':''}"
+      onclick="jumpBoth(${pdfPage||'null'},'${(criteriaRef||'').replace(/'/g,"\\'")}')"
+      title="เปิดพร้อมกัน: เอกสารที่เสนอ หน้า ${pdfPage} + เกณฑ์ ICT ${criteriaRef}">
+      <span class="dnavbtn-pdf">📄${pdfPage}</span><span class="dnavbtn-sep">+</span><span class="dnavbtn-crit">📋${criteriaRef}</span>
+    </button>`;
+  }
+  // Only PDF page
+  if(hasPdf){
+    return `<button class="dnavbtn" onclick="jumpPg(${pdfPage})" title="ไปหน้า ${pdfPage} ในเอกสารที่เสนอ">
+      <span class="dnavbtn-pdf">📄 หน้า ${pdfPage}</span>
+    </button>`;
+  }
+  // Only criteria ref
+  const m2 = String(criteriaRef).match(/ข้อ[\s]*(\d+)/);
+  const no2 = m2?parseInt(m2[1]):null;
+  const cpg2 = no2&&typeof CRIT_MAP!=='undefined'?CRIT_MAP[no2]:null;
+  const oc2 = cpg2?`jumpCritPage(${cpg2})`:`jumpCritPage(1)`;
+  return `<button class="dnavbtn" onclick="${oc2}" title="เปิดเกณฑ์ ICT ${criteriaRef}">
+    <span class="dnavbtn-crit">📋 ${criteriaRef}</span>
+  </button>`;
+}
 const rs=(r)=>{if(!r||r==='ไม่ระบุ')return'<span class="tag tw">—</span>';if(r==='ผ่าน')return'<span class="tag tp">✅ ผ่าน</span>';if(r.includes('เกิน')||r==='ไม่ผ่าน')return`<span class="tag tf">❌ ${r}</span>`;return`<span class="tag tw">⚠️ ${r}</span>`;}
 const cik=(v)=>v===true?'✅':v===false?'❌':'⚠️';
 const catCls=(r)=>r==='ผ่าน'?'crp':r==='ผ่านมีเงื่อนไข'?'crw':r==='ไม่ผ่าน'?'crf':'crn';
@@ -1672,7 +1728,9 @@ function renderRC(r,el,withApprBtn=false){
     // Spec sub-table with editable dropdowns per spec point
     const specs=(it.specChecks||[]).map((s,si)=>{
       const sid=`${iid}_s${si}`;
-      return`<tr id="${sid}">
+      const isFail = s.result==='ไม่ผ่าน';
+      const rowBg = isFail ? '#FFF5F5' : '';
+      return`<tr id="${sid}" style="background:${rowBg}">
         <td style="color:#64748B;padding:2px 5px;font-size:.7rem">${s.point||''}</td>
         <td style="color:#1B6CA8;font-weight:600;padding:2px 5px;font-size:.7rem">${s.required||''}</td>
         <td style="padding:2px 5px;font-size:.7rem">
@@ -1691,7 +1749,9 @@ function renderRC(r,el,withApprBtn=false){
             <option value="ไม่ระบุ" ${!s.result||s.result==='ไม่ระบุ'?'selected':''}>— ไม่ระบุ</option>
           </select>
         </td>
-        <td style="padding:2px 5px">${s.pdfPage?pg(s.pdfPage):''}</td>
+        <td style="padding:2px 5px;vertical-align:middle">
+          ${isFail ? pgcrBtn(s.pdfPage, it.criteriaNo, true) : (s.pdfPage?pg(s.pdfPage):'')}
+        </td>
       </tr>`;
     }).join('');
     const sub=specs?`<div class="subs"><table style="width:100%">
@@ -1749,7 +1809,11 @@ function renderRC(r,el,withApprBtn=false){
           <option value="ไม่ระบุ" ${!it.overallSpecResult||it.overallSpecResult==='ไม่ระบุ'?'selected':''}>— ไม่ระบุ</option>
         </select>
       </td>
-      <td style="vertical-align:top;padding:7px 8px">${it.pdfPage?pg(it.pdfPage):''}</td>
+      <td style="vertical-align:top;padding:7px 8px">${
+        (it.priceResult==='เกิน'||it.overallSpecResult==='ไม่ผ่าน'||it.overallSpecResult==='บางส่วน')
+          ? pgcrBtn(it.pdfPage, it.criteriaNo, it.priceResult==='เกิน'||it.overallSpecResult==='ไม่ผ่าน')
+          : (it.pdfPage?pg(it.pdfPage):'')
+      }</td>
     </tr>`;
   }).join('');
   // Doc checks
@@ -1786,7 +1850,9 @@ function renderRC(r,el,withApprBtn=false){
           <option value="ไม่มีข้อมูล" ${!cat.result||cat.result==='ไม่มีข้อมูล'?'selected':''}>— ไม่มีข้อมูล</option>
         </select></div>${(cat.checks||[]).map((ck,ci)=>{
     const ckid=`ck_${cat.id}_${ci}`;
-    return`<div class="chk">
+    const isFailing = ck.ok===false;
+    const rowBg = isFailing ? 'background:rgba(239,68,68,.04);border-radius:6px;padding:3px 4px;margin:1px 0' : '';
+    return`<div class="chk${isFailing?' fail-row-hl':''}" style="${rowBg}">
       <span style="width:16px;flex-shrink:0;text-align:center;font-size:.8rem" id="${ckid}_ic">${cik(ck.ok)}</span>
       <select class="chk-sel" id="${ckid}_sel" onchange="updateChk('${cat.id}',${ci},this.value)">
         <option value="true" ${ck.ok===true?'selected':''}>✅ ผ่าน</option>
@@ -1795,7 +1861,10 @@ function renderRC(r,el,withApprBtn=false){
       </select>
       <div style="flex:1;margin-left:4px">
         <div style="font-size:.76rem;color:#334155;line-height:1.4">${ck.text||''}</div>
-        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px">${pg(ck.pdfPage)}${cr(ck.criteriaRef)}</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;align-items:center">
+          ${isFailing ? pgcrBtn(ck.pdfPage, ck.criteriaRef, true) : ''}
+          ${pg(ck.pdfPage)}${cr(ck.criteriaRef)}
+        </div>
         <input class="chk-note" id="${ckid}_note" value="${(ck.note||'').replace(/"/g,'&quot;')}" placeholder="เพิ่มหมายเหตุ...">
       </div>
     </div>`;
@@ -1806,7 +1875,9 @@ function renderRC(r,el,withApprBtn=false){
     <div style="flex:1">
       <div class="iit">${m.title||''}</div>
       <div class="iidtl" id="mfdetail_${mi}">${m.detail||''}</div>
-      <div class="iirefs" style="margin-top:3px">${pg(m.pdfPage)}${cr(m.criteriaRef)}
+      <div class="iirefs" style="margin-top:4px;gap:4px;flex-wrap:wrap">
+        ${pgcrBtn(m.pdfPage, m.criteriaRef, true)}
+        ${pg(m.pdfPage)}${cr(m.criteriaRef)}
         <select class="ii-sel" id="mfsel_${mi}" onchange="updateMF(${mi},this.value)">
           <option value="must">🔴 ต้องแก้ไข</option>
           <option value="resolved">✅ แก้ไขแล้ว</option>
@@ -1817,7 +1888,7 @@ function renderRC(r,el,withApprBtn=false){
       </div>
     </div>
   </div>`).join('')}</div></div>`:'';
-  const condH=co.length?`<div class="ib iw"><div class="ibh">⚠️ ข้อสังเกต <span style="background:rgba(245,158,11,.2);padding:1px 7px;border-radius:8px;font-size:.67rem">${co.length} รายการ</span></div><div class="ibb">${co.map(c=>`<div class="ii"><div class="iid">🟡</div><div><div class="iit">${c.title||''}</div><div class="iidtl">${c.detail||''}</div><div class="iirefs">${pg(c.pdfPage)}${cr(c.criteriaRef)}</div></div></div>`).join('')}</div></div>`:'';
+  const condH=co.length?`<div class="ib iw"><div class="ibh">⚠️ ข้อสังเกต <span style="background:rgba(245,158,11,.2);padding:1px 7px;border-radius:8px;font-size:.67rem">${co.length} รายการ</span></div><div class="ibb">${co.map(c=>`<div class="ii"><div class="iid">🟡</div><div style="flex:1"><div class="iit">${c.title||''}</div><div class="iidtl">${c.detail||''}</div><div class="iirefs" style="margin-top:4px;gap:4px">${pgcrBtn(c.pdfPage,c.criteriaRef,false)}${pg(c.pdfPage)}${cr(c.criteriaRef)}</div></div></div>`).join('')}</div></div>`:'';
   const recH=(r.recommendations||[]).length?`<div class="sc"><div class="sch"><span>💡</span><div class="sct">ข้อเสนอแนะ</div></div><div class="scb">${(r.recommendations||[]).map((rec,i)=>`<div style="display:flex;gap:8px;font-size:.8rem;padding:.45rem;background:#F8FAFC;border-radius:7px;margin-bottom:.4rem;border-left:3px solid var(--acc2)"><div style="width:20px;height:20px;background:linear-gradient(135deg,var(--acc2),var(--acc));border-radius:50%;color:#fff;font-size:.65rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i+1}</div><span>${rec}</span></div>`).join('')}</div></div>`:'';
   el.innerHTML=`
     <div class="bnn" style="background:${bg}">
