@@ -274,6 +274,26 @@ table.it tr:hover td{background:#EFF6FF}
 .add-issue-btn{padding:4px 10px;border:1.5px dashed #FCA5A5;border-radius:7px;background:transparent;color:#EF4444;font-family:'Sarabun',sans-serif;font-size:.72rem;cursor:pointer;transition:all .2s;display:none}
 .edit-mode .add-issue-btn{display:inline-flex}
 
+/* ── BUNDLE IMPORT ── */
+.import-drop{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;cursor:pointer;border:2.5px dashed rgba(52,211,153,.4);margin:10px;border-radius:16px;transition:all .2s;background:rgba(5,196,107,.02);min-height:180px}
+.import-drop:hover,.import-drop.ov{border-color:var(--acc);background:rgba(5,196,107,.06);transform:scale(1.01)}
+.bundle-preview{display:flex;flex-direction:column;gap:.5rem}
+.bundle-item{background:var(--card);border-radius:11px;border:1px solid var(--border);padding:.75rem 1rem;display:flex;align-items:center;gap:.75rem;box-shadow:var(--sh);transition:all .15s}
+.bundle-item:hover{border-color:var(--acc2)}
+.bundle-item.sel{border-color:var(--acc);background:var(--passbg)}
+.bundle-item input[type=checkbox]{width:16px;height:16px;accent-color:var(--acc2);cursor:pointer;flex-shrink:0}
+.bundle-meta{background:linear-gradient(135deg,rgba(6,78,59,.05),rgba(52,211,153,.08));border-radius:12px;border:1px solid rgba(52,211,153,.2);padding:1rem 1.25rem;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;margin-bottom:.75rem}
+.bm-stat{display:flex;flex-direction:column;align-items:center;min-width:70px}
+.bm-n{font-family:'Prompt',sans-serif;font-size:1.5rem;font-weight:800;color:var(--blue)}
+.bm-l{font-size:.62rem;color:var(--muted);font-weight:700;text-transform:uppercase}
+.import-mode-sel{display:flex;gap:.5rem;flex-wrap:wrap}
+.imode{padding:6px 14px;border:1.5px solid var(--border);border-radius:9px;cursor:pointer;font-family:'Sarabun',sans-serif;font-size:.78rem;font-weight:700;transition:all .2s;background:var(--card)}
+.imode.on{border-color:var(--acc2);background:var(--passbg);color:#065F46}
+.bundle-progress{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:.3rem}
+.bundle-progress-bar{height:100%;background:linear-gradient(90deg,var(--acc2),var(--acc));border-radius:3px;transition:width .4s ease}
+.exc-bundle{background:linear-gradient(135deg,rgba(6,78,59,.06),rgba(52,211,153,.1));border-color:rgba(52,211,153,.4)!important}
+.exc-bundle:hover{border-color:var(--acc)!important;background:linear-gradient(135deg,rgba(6,78,59,.1),rgba(52,211,153,.16))!important}
+
 /* NOTIFY */
 .notif{position:fixed;bottom:1rem;right:1rem;background:var(--nav);color:#fff;padding:.7rem 1.1rem;border-radius:12px;font-size:.82rem;font-weight:600;box-shadow:var(--shlg);z-index:2000;display:none;align-items:center;gap:8px;max-width:300px}
 .notif.on{display:flex;animation:slidein .3s ease}
@@ -340,6 +360,7 @@ table.it tr:hover td{background:#EFF6FF}
     <div class="ndiv"></div>
     <div class="ns">จัดการ</div>
     <div class="ni" onclick="nav_('export')" id="n-export"><span class="ni-ic">📤</span>ส่งออกรายงาน</div>
+    <div class="ni" onclick="nav_('import')" id="n-import"><span class="ni-ic">📥</span>นำเข้าผลตรวจ<span class="ni-badge" id="ni-badge" style="display:none;background:#059669">●</span></div>
     <div class="ni" onclick="nav_('appr')" id="n-appr"><span class="ni-ic">✅</span>อนุมัติเอกสาร</div>
     <div class="ndiv"></div>
     <div class="ns">อื่นๆ</div>
@@ -484,6 +505,35 @@ table.it tr:hover td{background:#EFF6FF}
     <!-- ── EXPORT ── -->
     <div class="view" id="v-export">
       <div class="fv">
+        <!-- BUNDLE SECTION -->
+        <div class="sc" style="border:2px solid rgba(52,211,153,.3);background:linear-gradient(135deg,rgba(6,78,59,.02),rgba(52,211,153,.04))">
+          <div class="sch" style="background:linear-gradient(90deg,rgba(6,78,59,.06),rgba(52,211,153,.08))">
+            <span style="font-size:1.2rem">📦</span>
+            <div class="sct" style="color:#065F46">Bundle — ส่งออกผลตรวจทั้งหมดเพื่อส่งกรรมการ</div>
+            <span style="font-size:.68rem;background:rgba(52,211,153,.2);color:#065F46;padding:2px 9px;border-radius:8px;font-weight:700">🔑 ไม่ต้องใช้ API Key</span>
+          </div>
+          <div class="scb">
+            <div style="font-size:.78rem;color:var(--muted);margin-bottom:.85rem;line-height:1.7">
+              ส่งออกผลการตรวจสอบ <strong>ทุกหน่วยบริการ</strong> ที่ประมวลแล้วเป็นไฟล์ <code style="background:#F0FDF4;padding:1px 6px;border-radius:4px;color:#065F46;font-size:.75rem">.ictbundle</code> 
+              แล้วนำไปเปิดด้วยปุ่ม <strong>📥 นำเข้าผลตรวจ</strong> บนเครื่องอื่น — กรรมการสามารถดูผล ปรับแก้ และอนุมัติได้ทันทีโดยไม่ต้องวิเคราะห์ใหม่
+            </div>
+            <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+              <div class="exc exc-bundle" onclick="exportBundle()" style="flex:1;min-width:220px;cursor:pointer">
+                <div class="exc-ic">📦</div>
+                <div class="exc-t">Export Bundle (ทุกหน่วย)</div>
+                <div class="exc-d">มัดรวมผลตรวจทุกหน่วยเป็นไฟล์เดียว — นำเข้าเครื่องอื่นได้เลย ไม่ต้องประมวลใหม่</div>
+                <button class="btn bp bsm">📦 สร้าง Bundle</button>
+              </div>
+              <div class="exc exc-bundle" onclick="exportBundleSelected()" style="flex:1;min-width:220px;cursor:pointer">
+                <div class="exc-ic">🎯</div>
+                <div class="exc-t">Export Bundle (เลือกหน่วย)</div>
+                <div class="exc-d">เลือกเฉพาะบางหน่วยบริการที่ต้องการส่งออก</div>
+                <button class="btn bs bsm">🎯 เลือกและ Export</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- ORIGINAL EXPORTS -->
         <div class="sc"><div class="sch"><span>📤</span><div class="sct">ส่งออกและบันทึกรายงาน</div></div>
           <div class="scb"><div class="exp-grid">
             <div class="exc" onclick="expDetailReport()"><div class="exc-ic">📋</div><div class="exc-t">พิมพ์รายงานสรุปแบบละเอียด</div><div class="exc-d">ตารางสรุปแนวนอนทุกหน่วย ครบทุกหัวข้อ รายการติดเกณฑ์ละเอียด พร้อมพิมพ์ส่งกรรมการ</div><button class="btn bp bsm">🖨️ สร้างรายงาน</button></div>
@@ -493,6 +543,88 @@ table.it tr:hover td{background:#EFF6FF}
             <div class="exc" onclick="expEmail()"><div class="exc-ic">📧</div><div class="exc-t">ส่ง Email</div><div class="exc-d">เปิด Email Client พร้อมรายงานในรูปแบบข้อความ</div><button class="btn bp bsm">ส่ง Email</button></div>
             <div class="exc" onclick="expClip()"><div class="exc-ic">📋</div><div class="exc-t">คัดลอกสรุป</div><div class="exc-d">คัดลอกผลสรุปไปยัง Clipboard ส่งต่อ LINE/Chat ได้</div><button class="btn bg bsm">คัดลอก</button></div>
           </div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── IMPORT ── -->
+    <div class="view" id="v-import">
+      <div class="fv">
+        <!-- HEADER CARD -->
+        <div class="sc" style="border:2px solid rgba(52,211,153,.3)">
+          <div class="sch" style="background:linear-gradient(90deg,rgba(6,78,59,.06),rgba(52,211,153,.08))">
+            <span style="font-size:1.2rem">📥</span>
+            <div class="sct" style="color:#065F46">นำเข้าผลตรวจ — Reviewer Mode</div>
+            <span style="font-size:.68rem;background:rgba(52,211,153,.2);color:#065F46;padding:2px 9px;border-radius:8px;font-weight:700">🔑 ไม่ต้อง API Key</span>
+          </div>
+          <div class="scb" id="importZoneWrap">
+            <div style="font-size:.78rem;color:var(--muted);margin-bottom:.85rem;line-height:1.7">
+              รับไฟล์ <code style="background:#F0FDF4;padding:1px 6px;border-radius:4px;color:#065F46">.ictbundle</code> จากผู้ตรวจสอบ — 
+              นำเข้าแล้วดูผล ปรับแก้ผล และลงนามอนุมัติได้เลย <strong>โดยไม่ต้องประมวลผลใหม่</strong>
+            </div>
+            <!-- DROP ZONE -->
+            <input type="file" id="bundleFile" accept=".ictbundle,.json" style="display:none" onchange="onBundleFile(event)">
+            <div class="import-drop" id="importDrop"
+              ondragover="this.classList.add('ov');event.preventDefault()"
+              ondragleave="this.classList.remove('ov')"
+              ondrop="onBundleDrop(event)"
+              onclick="document.getElementById('bundleFile').click()">
+              <div style="font-size:3rem;margin-bottom:.5rem;filter:drop-shadow(0 2px 8px rgba(5,196,107,.3))">📦</div>
+              <div style="font-weight:700;font-size:.92rem;margin-bottom:.25rem">ลากวาง หรือคลิกเลือกไฟล์ Bundle</div>
+              <div style="font-size:.75rem;color:var(--muted);margin-bottom:.75rem">รองรับ <strong>.ictbundle</strong> ที่ Export จาก IT Spec Checker</div>
+              <button class="btn bp bsm" onclick="event.stopPropagation();document.getElementById('bundleFile').click()">📂 เลือกไฟล์ .ictbundle</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- BUNDLE PREVIEW (hidden until file loaded) -->
+        <div class="sc" id="bundlePreviewCard" style="display:none">
+          <div class="sch" style="background:linear-gradient(90deg,rgba(6,78,59,.06),rgba(52,211,153,.08))">
+            <span>📋</span>
+            <div class="sct" id="bundlePreviewTitle">ข้อมูล Bundle</div>
+            <button class="btn bg bsm" onclick="resetImport()">✕ ปิด</button>
+          </div>
+          <div class="scb" style="display:flex;flex-direction:column;gap:.85rem">
+            <!-- Meta stats -->
+            <div class="bundle-meta" id="bundleMeta"></div>
+            <!-- Import mode -->
+            <div>
+              <div style="font-size:.72rem;font-weight:700;color:var(--blue);margin-bottom:.4rem">วิธีนำเข้า</div>
+              <div class="import-mode-sel">
+                <div class="imode on" id="imode-merge" onclick="setImportMode('merge')">🔗 ผสาน (Merge)</div>
+                <div class="imode" id="imode-replace" onclick="setImportMode('replace')">🔄 แทนที่ทั้งหมด (Replace)</div>
+                <div class="imode" id="imode-new" onclick="setImportMode('new')">➕ เพิ่มใหม่ทั้งหมด</div>
+              </div>
+              <div id="imode-desc" style="font-size:.72rem;color:var(--muted);margin-top:.35rem">ผสานกับข้อมูลที่มีอยู่ — หากชื่อหน่วยซ้ำจะอัปเดตเป็นข้อมูลใหม่จาก Bundle</div>
+            </div>
+            <!-- Select all / none -->
+            <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+              <div style="font-size:.72rem;font-weight:700;color:var(--blue)">เลือกหน่วยที่จะนำเข้า</div>
+              <button class="btn bg bsm" onclick="selectAllBundle(true)">เลือกทั้งหมด</button>
+              <button class="btn bg bsm" onclick="selectAllBundle(false)">ยกเลิกทั้งหมด</button>
+              <span id="bundleSelCount" style="font-size:.73rem;color:var(--muted);margin-left:auto"></span>
+            </div>
+            <!-- Bundle items list -->
+            <div class="bundle-preview" id="bundleList"></div>
+            <!-- Progress bar (hidden) -->
+            <div id="importProgressWrap" style="display:none">
+              <div class="bundle-progress"><div class="bundle-progress-bar" id="importProgressBar" style="width:0%"></div></div>
+              <div id="importProgressMsg" style="font-size:.73rem;color:var(--muted);margin-top:.3rem;text-align:center"></div>
+            </div>
+            <!-- Confirm button -->
+            <div style="display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap">
+              <button class="btn bg" onclick="resetImport()">ยกเลิก</button>
+              <button class="btn bp" id="confirmImportBtn" onclick="confirmImport()">
+                📥 นำเข้าข้อมูลที่เลือก
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- IMPORTED NOTICE -->
+        <div class="sc" id="importDoneCard" style="display:none">
+          <div class="sch"><span>✅</span><div class="sct">นำเข้าสำเร็จ</div></div>
+          <div class="scb" id="importDoneMsg" style="font-size:.83rem;color:#065F46"></div>
         </div>
       </div>
     </div>
@@ -585,7 +717,7 @@ const votes={};
 // NAVIGATION
 // ════════════════════════════════════════
 function nav_(v){
-  ['single','batch','dash','hist','export','appr','sug','about'].forEach(x=>{
+  ['single','batch','dash','hist','export','import','appr','sug','about'].forEach(x=>{
     document.getElementById('v-'+x)?.classList.toggle('on',x===v);
     document.getElementById('n-'+x)?.classList.toggle('on',x===v);
   });
@@ -2069,6 +2201,308 @@ function updateSpecOffered(ii, si, val){
 function updateItemRemark(ii, val){
   if(!unitResult||!unitResult.items[ii]) return;
   unitResult.items[ii].remarks = val;
+}
+
+// ════════════════════════════════════════
+// BUNDLE EXPORT
+// ════════════════════════════════════════
+const BUNDLE_FORMAT = 'ITSpecBundle';
+const BUNDLE_VERSION = '5.0';
+
+function buildBundle(records){
+  return {
+    format: BUNDLE_FORMAT,
+    version: BUNDLE_VERSION,
+    exportedAt: new Date().toISOString(),
+    exportedBy: 'IT Spec Checker v5.0 · ภก.จีรภัทร พลายงาม',
+    province: 'สมุทรปราการ',
+    totalRecords: records.length,
+    records: records,
+    approvals: S.approvals || {}
+  };
+}
+
+function downloadBundle(bundle, suffix){
+  const json = JSON.stringify(bundle, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const dateStr = new Date().toISOString().slice(0,10);
+  a.download = `ผลตรวจICT_${suffix||'ทุกหน่วย'}_${dateStr}.ictbundle`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function exportBundle(){
+  const all = getHist();
+  if(!all.length){ notify('ยังไม่มีข้อมูล — ตรวจสอบเอกสารก่อนค่ะ','err'); return; }
+  const bundle = buildBundle(all);
+  downloadBundle(bundle, `${all.length}หน่วย`);
+  notify(`📦 Export Bundle สำเร็จ — ${all.length} หน่วยบริการ ✅`,'ok');
+}
+
+function exportBundleSelected(){
+  const all = getHist();
+  if(!all.length){ notify('ยังไม่มีข้อมูล','err'); return; }
+  // Show import view with checkboxes in "select to export" mode
+  nav_('import');
+  // Pre-load the current history as preview for selection
+  setTimeout(()=>{ previewBundleData({format:BUNDLE_FORMAT,version:BUNDLE_VERSION,exportedAt:new Date().toISOString(),exportedBy:'local',province:'สมุทรปราการ',totalRecords:all.length,records:all,approvals:S.approvals||{}}, true); }, 100);
+}
+
+// ════════════════════════════════════════
+// BUNDLE IMPORT
+// ════════════════════════════════════════
+let bundleData = null;       // parsed bundle object
+let importMode = 'merge';    // merge | replace | new
+let exportSelectMode = false; // true = selecting to export (not import)
+
+function setImportMode(m){
+  importMode = m;
+  ['merge','replace','new'].forEach(x=>{
+    document.getElementById('imode-'+x)?.classList.toggle('on', x===m);
+  });
+  const desc={
+    merge:'ผสานกับข้อมูลที่มีอยู่ — หากชื่อหน่วยซ้ำจะอัปเดตเป็นข้อมูลใหม่จาก Bundle',
+    replace:'ลบข้อมูลเดิมทั้งหมดแล้วแทนที่ด้วยข้อมูลจาก Bundle',
+    new:'เพิ่มข้อมูลทั้งหมดจาก Bundle เป็นรายการใหม่ (อาจซ้ำชื่อ)'
+  };
+  const el = document.getElementById('imode-desc');
+  if(el) el.textContent = desc[m]||'';
+}
+
+function onBundleFile(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  readBundleFile(f);
+  e.target.value='';
+}
+
+function onBundleDrop(e){
+  e.preventDefault();
+  document.getElementById('importDrop')?.classList.remove('ov');
+  const f = e.dataTransfer.files[0];
+  if(f) readBundleFile(f);
+}
+
+function readBundleFile(f){
+  if(f.size > 50*1024*1024){ showErr('ไฟล์ใหญ่เกิน 50MB'); return; }
+  const r = new FileReader();
+  r.onload = ev => {
+    try{
+      const parsed = JSON.parse(ev.target.result);
+      if(parsed.format !== BUNDLE_FORMAT){
+        // Allow plain array of history items (old format fallback)
+        if(Array.isArray(parsed)){
+          previewBundleData({format:BUNDLE_FORMAT,version:'legacy',exportedAt:new Date().toISOString(),exportedBy:'unknown',province:'unknown',totalRecords:parsed.length,records:parsed,approvals:{}});
+        } else {
+          showErr('ไฟล์นี้ไม่ใช่ Bundle ที่สร้างจาก IT Spec Checker ค่ะ');
+        }
+        return;
+      }
+      previewBundleData(parsed);
+    } catch(err){
+      showErr('อ่านไฟล์ไม่ได้: '+err.message);
+    }
+  };
+  r.onerror = ()=>showErr('อ่านไฟล์ไม่ได้');
+  r.readAsText(f, 'UTF-8');
+}
+
+function previewBundleData(data, selectExportMode){
+  bundleData = data;
+  exportSelectMode = !!selectExportMode;
+  const recs = data.records || [];
+
+  // Show preview card
+  document.getElementById('bundlePreviewCard').style.display='block';
+  document.getElementById('importDoneCard').style.display='none';
+
+  // Update title
+  const titleEl = document.getElementById('bundlePreviewTitle');
+  if(titleEl) titleEl.textContent = exportSelectMode
+    ? `เลือกหน่วยที่ต้องการ Export (${recs.length} หน่วย)`
+    : `Bundle: ${data.province||''} — ${recs.length} หน่วยบริการ`;
+
+  // Hide drop zone when preview is shown
+  document.getElementById('importZoneWrap').style.display = 'none';
+
+  // Meta stats
+  const passN = recs.filter(r=>(r.verdict||r.data?.verdict)==='ผ่าน').length;
+  const warnN = recs.filter(r=>(r.verdict||r.data?.verdict)==='ผ่านมีเงื่อนไข').length;
+  const failN = recs.filter(r=>(r.verdict||r.data?.verdict)==='ไม่ผ่าน').length;
+  const totalBudget = recs.reduce((s,r)=>s+(r.totalBudget||r.data?.totalBudget||0),0);
+  const expDate = data.exportedAt ? new Date(data.exportedAt).toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+
+  document.getElementById('bundleMeta').innerHTML=`
+    <div class="bm-stat"><div class="bm-n">${recs.length}</div><div class="bm-l">หน่วย</div></div>
+    <div class="bm-stat"><div class="bm-n" style="color:#10B981">${passN}</div><div class="bm-l">ผ่าน ✅</div></div>
+    <div class="bm-stat"><div class="bm-n" style="color:#F59E0B">${warnN}</div><div class="bm-l">มีเงื่อนไข ⚠️</div></div>
+    <div class="bm-stat"><div class="bm-n" style="color:#EF4444">${failN}</div><div class="bm-l">ไม่ผ่าน ❌</div></div>
+    <div class="bm-stat"><div class="bm-n" style="font-size:1.1rem">${totalBudget.toLocaleString()}</div><div class="bm-l">บาท 💰</div></div>
+    <div style="margin-left:auto;text-align:right;font-size:.7rem;color:var(--muted)">
+      <div>ส่งออกเมื่อ: ${expDate}</div>
+      <div>โดย: ${data.exportedBy||'—'}</div>
+      <div>เวอร์ชัน: v${data.version||'—'}</div>
+    </div>`;
+
+  // Show/hide import mode (not needed for export select mode)
+  document.querySelectorAll('.imode, #imode-desc, [style*="วิธีนำเข้า"]').forEach(el=>{
+    if(el.closest('.scb')) el.closest('.scb').querySelector('[style*="วิธีนำเข้า"]')
+  });
+
+  // Render list
+  const listEl = document.getElementById('bundleList');
+  listEl.innerHTML = recs.map((r,i)=>{
+    const verdict = r.verdict || r.data?.verdict || '—';
+    const name = r.unitName || r.data?.unitName || '—';
+    const budget = (r.totalBudget || r.data?.totalBudget || 0).toLocaleString();
+    const mfN = (r.data?.mustFix || r.mustFix || []).length;
+    const date = r.date ? new Date(r.date).toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'2-digit'}) : '—';
+    const vc = verdict==='ผ่าน'?'#065F46':verdict==='ไม่ผ่าน'?'#991B1B':'#92400E';
+    const vbg = verdict==='ผ่าน'?'var(--passbg)':verdict==='ไม่ผ่าน'?'var(--failbg)':'var(--warnbg)';
+    const vi = verdict==='ผ่าน'?'✅':verdict==='ผ่านมีเงื่อนไข'?'⚠️':'❌';
+    return`<div class="bundle-item" id="bi_${i}">
+      <input type="checkbox" id="bichk_${i}" checked onchange="updateBundleSelCount()">
+      <div style="width:32px;height:32px;border-radius:8px;background:${vbg};display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0">${vi}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</div>
+        <div style="font-size:.7rem;color:var(--muted)">${budget} บาท · ${date}${mfN?' · ❌ ต้องแก้ '+mfN+' รายการ':''}</div>
+      </div>
+      <span style="padding:2px 10px;border-radius:9px;font-size:.72rem;font-weight:700;background:${vbg};color:${vc};flex-shrink:0">${verdict}</span>
+      ${!exportSelectMode?`<button class="btn bg bsm" style="flex-shrink:0" onclick="previewSingleBundle(${i})">👁 ดู</button>`:''}
+    </div>`;
+  }).join('');
+
+  updateBundleSelCount();
+
+  // Update confirm button text
+  const btn = document.getElementById('confirmImportBtn');
+  if(btn) btn.textContent = exportSelectMode ? '📦 Export Bundle ที่เลือก' : '📥 นำเข้าข้อมูลที่เลือก';
+}
+
+function updateBundleSelCount(){
+  if(!bundleData) return;
+  const total = (bundleData.records||[]).length;
+  const sel = document.querySelectorAll('[id^="bichk_"]:checked').length;
+  const el = document.getElementById('bundleSelCount');
+  if(el) el.textContent = `เลือก ${sel} / ${total} หน่วย`;
+}
+
+function selectAllBundle(state){
+  document.querySelectorAll('[id^="bichk_"]').forEach(cb=>{ cb.checked=state; });
+  updateBundleSelCount();
+}
+
+function previewSingleBundle(i){
+  const recs = bundleData?.records||[];
+  const r = recs[i];
+  if(!r) return;
+  // Load into single view for review
+  const data = r.data || r;
+  S.singleRes = data;
+  nav_('single');
+  renderRC(data, document.getElementById('rc'), true);
+  document.getElementById('rc').style.display='flex';
+  document.getElementById('empState').style.display='none';
+  document.getElementById('rstBtn').style.display='inline-flex';
+  notify(`👁 แสดงผล: ${data.unitName||'—'}`, 'ok');
+}
+
+function confirmImport(){
+  if(!bundleData) return;
+  if(exportSelectMode){ confirmExportSelected(); return; }
+
+  const recs = bundleData.records||[];
+  const selected = recs.filter((_,i)=>document.getElementById('bichk_'+i)?.checked);
+  if(!selected.length){ notify('เลือกอย่างน้อย 1 หน่วยค่ะ','err'); return; }
+
+  // Show progress
+  document.getElementById('importProgressWrap').style.display='block';
+  const bar = document.getElementById('importProgressBar');
+  const msg = document.getElementById('importProgressMsg');
+
+  let h = importMode==='replace' ? [] : getHist();
+  let added=0, updated=0;
+
+  selected.forEach((r,i)=>{
+    const rec = {
+      id: r.id || Date.now()+i,
+      date: r.date || new Date().toISOString(),
+      unitName: r.unitName || r.data?.unitName || 'ไม่ระบุ',
+      verdict: r.verdict || r.data?.verdict || '—',
+      totalBudget: r.totalBudget || r.data?.totalBudget || 0,
+      data: r.data || r
+    };
+    // Ensure data has basic fields
+    if(!rec.data.unitName) rec.data.unitName = rec.unitName;
+
+    if(importMode==='new'){
+      rec.id = Date.now()+i+Math.random()*1000|0;
+      h.unshift(rec); added++;
+    } else {
+      const idx = h.findIndex(x=>x.unitName===rec.unitName);
+      if(idx>=0){ h[idx]=rec; updated++; } else { h.unshift(rec); added++; }
+    }
+
+    const pct = Math.round((i+1)/selected.length*100);
+    bar.style.width=pct+'%';
+    msg.textContent=`นำเข้า ${i+1}/${selected.length} — ${rec.unitName}`;
+  });
+
+  // Save
+  if(h.length>100) h=h.slice(0,100);
+  localStorage.setItem(HKEY, JSON.stringify(h));
+
+  // Import approvals too
+  if(bundleData.approvals && Object.keys(bundleData.approvals).length){
+    Object.assign(S.approvals, bundleData.approvals);
+  }
+
+  // Update badges
+  const nhb=document.getElementById('nh-badge');if(nhb){nhb.textContent=h.length;nhb.style.display='inline';}
+  const ndb=document.getElementById('nd-badge');if(ndb)ndb.style.display='inline';
+  const nib=document.getElementById('ni-badge');if(nib){nib.style.display='inline';}
+
+  // Done
+  document.getElementById('bundlePreviewCard').style.display='none';
+  document.getElementById('importDoneCard').style.display='block';
+  document.getElementById('importDoneMsg').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:.6rem">
+      <div style="font-size:1.1rem;font-weight:700;color:#065F46">✅ นำเข้าสำเร็จค่ะ!</div>
+      <div>📥 นำเข้าแล้ว <strong>${selected.length} หน่วยบริการ</strong> (เพิ่มใหม่ ${added} · อัปเดต ${updated})</div>
+      <div>🗃️ ข้อมูลใน History ทั้งหมด: <strong>${h.length} หน่วย</strong></div>
+      <div style="display:flex;gap:.6rem;margin-top:.4rem;flex-wrap:wrap">
+        <button class="btn bp bsm" onclick="nav_('hist')">📋 ดูประวัติ</button>
+        <button class="btn bs bsm" onclick="nav_('dash')">📊 ดู Dashboard</button>
+        <button class="btn bg bsm" onclick="nav_('appr')">✅ อนุมัติเอกสาร</button>
+        <button class="btn bg bsm" onclick="resetImport()">📥 นำเข้าเพิ่มเติม</button>
+      </div>
+    </div>`;
+
+  notify(`✅ นำเข้าสำเร็จ ${selected.length} หน่วย · History อัปเดตแล้วค่ะ`,'ok');
+}
+
+function confirmExportSelected(){
+  const recs = bundleData?.records||[];
+  const selected = recs.filter((_,i)=>document.getElementById('bichk_'+i)?.checked);
+  if(!selected.length){ notify('เลือกอย่างน้อย 1 หน่วยค่ะ','err'); return; }
+  const bundle = buildBundle(selected);
+  downloadBundle(bundle, `${selected.length}หน่วยที่เลือก`);
+  notify(`📦 Export Bundle สำเร็จ — ${selected.length} หน่วยบริการ ✅`,'ok');
+}
+
+function resetImport(){
+  bundleData = null;
+  exportSelectMode = false;
+  document.getElementById('bundlePreviewCard').style.display='none';
+  document.getElementById('importDoneCard').style.display='none';
+  document.getElementById('importZoneWrap').style.display='block';
+  document.getElementById('bundleList').innerHTML='';
+  document.getElementById('bundleMeta').innerHTML='';
+  document.getElementById('importProgressWrap').style.display='none';
+  document.getElementById('importProgressBar').style.width='0%';
+  setImportMode('merge');
 }
 
 // ════════════════════════════════════════
