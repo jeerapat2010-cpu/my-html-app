@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Cute Pill Diary 💊</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap');
+  * { font-family: 'Prompt', sans-serif; }
+  body { background:#fff1f2; -webkit-tap-highlight-color:transparent; }
+  .spinner { border:2px solid #f97316; border-top-color:transparent; border-radius:50%; width:1rem; height:1rem; animation:spin 1s linear infinite; display:inline-block; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .tab { display:none; }
+  .tab.show { display:block; }
+  @media print { .no-print{display:none!important} body{background:white!important} #tab-list{display:block!important} }
+</style>
+</head>
+<body class="text-gray-800" style="padding-bottom:5.5rem">
+
+<!-- SETTINGS MODAL -->
+<div id="modal-settings" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4 backdrop-blur-sm">
+  <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
+    <div class="bg-gradient-to-r from-orange-400 to-pink-500 p-5 flex justify-between items-center">
+      <div class="flex items-center gap-3 text-white">
+        <div class="bg-white/20 p-2 rounded-xl"><i data-lucide="key" class="w-5 h-5"></i></div>
+        <div><p class="font-bold text-base">Anthropic API Key</p><p class="text-xs text-orange-100">สำหรับให้จินนี่อ่านฉลากยาค่ะ</p></div>
+      </div>
+      <button onclick="closeModal('modal-settings')" class="bg-white/20 hover:bg-white/30 text-white p-2 rounded-xl transition-all"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <div class="p-5 space-y-4">
+      <div class="bg-orange-50 border border-orange-200 rounded-xl p-3 flex gap-3">
+        <span class="text-xl flex-shrink-0">🤖</span>
+        <div class="text-xs text-orange-800">
+          <p class="font-bold">claude-haiku-4-5-20251001</p>
+          <p class="mt-0.5">อ่านรูปภาพ + ภาษาไทยได้แม่นยำค่ะ</p>
+          <a href="https://console.anthropic.com/keys" target="_blank" class="text-orange-600 underline font-bold mt-1 block">👉 รับ Key ที่ console.anthropic.com</a>
+        </div>
+      </div>
+      <div id="modal-status" class="flex items-center gap-3 p-3 rounded-xl border-2 bg-gray-50 border-gray-200">
+        <div id="m-dot" class="w-3 h-3 rounded-full bg-gray-400 flex-shrink-0"></div>
+        <div><p id="m-title" class="text-sm font-bold text-gray-600">ยังไม่ได้เชื่อมต่อ</p><p id="m-desc" class="text-xs text-gray-400">กรอก Key แล้วกดทดสอบค่ะ</p></div>
+      </div>
+      <div class="relative">
+        <input type="password" id="inp-key" placeholder="sk-ant-api03-..."
+          class="w-full p-3 pr-12 rounded-xl border-2 border-gray-200 focus:border-orange-400 outline-none font-mono text-sm bg-gray-50 focus:bg-white transition-all">
+        <button onclick="toggleKeyViz()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-orange-500">
+          <i data-lucide="eye" id="eye-icon" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <button id="clear-key-btn" onclick="clearKey()" class="hidden text-xs text-red-400 hover:text-red-600 items-center gap-1 transition-colors">
+        <i data-lucide="trash-2" class="w-3.5 h-3.5 inline mr-1"></i>ลบ Key ออก
+      </button>
+      <div class="flex gap-3">
+        <button onclick="testKey()" id="test-btn" class="flex-1 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white font-bold py-3 rounded-xl text-sm transition-all">
+          <i data-lucide="wifi" class="w-4 h-4"></i><span id="test-text">ทดสอบ</span>
+        </button>
+        <button onclick="saveKey()" class="flex-1 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-sm transition-all">
+          <i data-lucide="save" class="w-4 h-4"></i>บันทึก
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header class="bg-white shadow-sm pt-6 pb-4 px-5 rounded-b-3xl flex items-center justify-between no-print sticky top-0 z-30">
+  <div class="flex items-center gap-3">
+    <div class="bg-pink-100 p-2 rounded-full"><i data-lucide="pill" class="text-pink-500 w-6 h-6"></i></div>
+    <div>
+      <h1 class="text-xl font-bold text-pink-600">Cute Pill Diary</h1>
+      <p class="text-[10px] text-gray-400">ภก.จีรภัทร พลายงาม • น้องจินนี่ 💖</p>
+    </div>
+  </div>
+  <button id="hdr-api-btn" onclick="openModal('modal-settings')"
+    class="flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 border-red-200 bg-red-50 hover:bg-red-100 cursor-pointer transition-all">
+    <div id="hdr-dot" class="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0"></div>
+    <span id="hdr-txt" class="text-xs font-bold text-red-600">ตั้งค่า API</span>
+    <i data-lucide="settings" class="w-4 h-4 text-red-400"></i>
+  </button>
+</header>
+
+<!-- MAIN -->
+<main class="max-w-2xl mx-auto px-4 pt-5">
+
+  <!-- TAB: ADD -->
+  <div id="tab-add" class="tab show">
+    <div class="bg-white rounded-3xl shadow-xl border border-pink-100 p-6">
+      <h2 class="text-lg font-bold text-gray-700 mb-5 flex items-center gap-2">
+        <i data-lucide="pill" class="w-5 h-5 text-pink-500"></i>
+        <span id="form-title">เพิ่มข้อมูลยาใหม่</span>
+      </h2>
+
+      <!-- OCR -->
+      <div class="mb-6 rounded-2xl border-2 border-dashed border-orange-200 overflow-hidden">
+        <div class="bg-orange-50 px-4 py-3 flex items-center justify-between">
+          <div>
+            <p class="text-sm font-bold text-orange-700">🤖 สแกนฉลากยาด้วย Claude AI</p>
+            <p class="text-xs text-orange-400 mt-0.5">ถ่ายหรืออัปโหลดรูปฉลาก จินนี่อ่านให้อัตโนมัติค่ะ</p>
+          </div>
+          <button onclick="openModal('modal-settings')" id="ocr-badge"
+            class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-100 text-red-600 border border-red-200 cursor-pointer flex-shrink-0 ml-2">
+            <div id="ocr-dot" class="w-2 h-2 rounded-full bg-red-500"></div>
+            <span id="ocr-txt">ตั้งค่า Key</span>
+          </button>
+        </div>
+        <div class="p-4">
+          <div id="img-wrap" class="hidden mb-4 text-center">
+            <div class="relative inline-block">
+              <img id="img-prev" src="" class="max-h-44 rounded-xl shadow border-2 border-orange-200 object-contain">
+              <button onclick="clearPrev()" class="absolute top-1 right-1 bg-white rounded-full p-1 shadow text-gray-400 hover:text-red-500"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+          </div>
+          <div class="flex justify-center gap-4">
+            <button onclick="document.getElementById('inp-cam').click()"
+              class="flex flex-col items-center gap-2 p-4 bg-white rounded-xl shadow-sm hover:shadow-md border border-orange-100 hover:border-orange-300 text-orange-500 transition-all">
+              <i data-lucide="camera" class="w-8 h-8"></i>
+              <span class="text-xs font-semibold">ถ่ายรูป</span>
+            </button>
+            <button onclick="document.getElementById('inp-gal').click()"
+              class="flex flex-col items-center gap-2 p-4 bg-white rounded-xl shadow-sm hover:shadow-md border border-pink-100 hover:border-pink-300 text-pink-500 transition-all">
+              <i data-lucide="image" class="w-8 h-8"></i>
+              <span class="text-xs font-semibold">อัลบั้ม</span>
+            </button>
+          </div>
+          <input type="file" id="inp-cam" class="hidden" accept="image/*" capture="environment" onchange="doScan(event)">
+          <input type="file" id="inp-gal" class="hidden" accept="image/*" onchange="doScan(event)">
+          <div id="ocr-load" class="hidden mt-4 flex items-center justify-center gap-2 text-orange-500">
+            <div class="spinner"></div>
+            <span class="text-sm font-medium">Claude กำลังอ่านฉลากยาค่ะ...</span>
+          </div>
+          <div id="ocr-retry" class="hidden mt-3 text-center">
+            <button onclick="clearPrev()" class="text-xs text-orange-500 underline">📸 ถ่ายใหม่ / เลือกรูปอีกครั้ง</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notice -->
+      <div id="ocr-notice" class="hidden mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2">
+        <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5"></i>
+        <p id="notice-txt" class="text-xs text-amber-700"></p>
+      </div>
+
+      <!-- Form fields -->
+      <div class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-semibold text-gray-600 flex items-center gap-1 mb-1"><i data-lucide="user" class="w-4 h-4"></i> ชื่อผู้ใช้ยา</label>
+            <input id="f-user" type="text" required placeholder="เช่น คุณแม่, น้องบี"
+              class="w-full p-3 rounded-xl border border-gray-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-100 outline-none transition-all">
+          </div>
+          <div>
+            <label class="text-sm font-semibold text-gray-600 flex items-center gap-1 mb-1"><i data-lucide="pill" class="w-4 h-4"></i> ชื่อยา</label>
+            <input id="f-med" type="text" required placeholder="เช่น Paracetamol"
+              class="w-full p-3 rounded-xl border border-gray-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-100 outline-none transition-all">
+          </div>
+        </div>
+        <div>
+          <label class="text-sm font-semibold text-gray-600 flex items-center gap-1 mb-1"><i data-lucide="info" class="w-4 h-4"></i> วิธีรับประทาน</label>
+          <input id="f-dose" type="text" placeholder="เช่น ครั้งละ 1 เม็ด หลังอาหาร"
+            class="w-full p-3 rounded-xl border border-gray-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-100 outline-none transition-all">
+        </div>
+        <div>
+          <label class="text-sm font-semibold text-gray-600 block mb-2">มื้อที่ทาน</label>
+          <div id="meal-btns" class="flex flex-wrap gap-2"></div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-semibold text-gray-600 flex items-center gap-1 mb-1"><i data-lucide="file-text" class="w-4 h-4"></i> คำแนะนำ</label>
+            <input id="f-rec" type="text" placeholder="เช่น ดื่มน้ำตามมากๆ"
+              class="w-full p-3 rounded-xl border border-gray-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-100 outline-none transition-all">
+          </div>
+          <div>
+            <label class="text-sm font-semibold text-gray-600 flex items-center gap-1 mb-1"><i data-lucide="alert-triangle" class="w-4 h-4"></i> ข้อควรระวัง</label>
+            <input id="f-prec" type="text" placeholder="เช่น อาจมีอาการง่วงนอน"
+              class="w-full p-3 rounded-xl border border-gray-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-100 outline-none transition-all">
+          </div>
+        </div>
+        <div>
+          <label class="text-sm font-semibold text-gray-600 flex items-center gap-1 mb-1">
+            <i data-lucide="hash" class="w-4 h-4"></i> จำนวนเม็ดยาทั้งหมด
+            <span class="text-orange-500 text-xs">(ใช้คำนวณตารางเตือน)</span>
+          </label>
+          <input id="f-pills" type="number" min="1" placeholder="ระบุตัวเลข เช่น 20"
+            class="w-full p-3 rounded-xl border border-gray-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-100 outline-none transition-all">
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button onclick="saveMed()"
+            class="flex-1 bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-pink-200 flex items-center justify-center gap-2 transition-all">
+            <i data-lucide="save" class="w-5 h-5"></i>
+            <span id="form-btn">บันทึกข้อมูลยา</span>
+          </button>
+          <button id="cancel-btn" onclick="cancelEdit()" class="hidden px-6 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-xl transition-all">
+            ยกเลิก
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: IMPORT -->
+  <div id="tab-import" class="tab space-y-5">
+    <!-- Multi image -->
+    <div class="bg-white rounded-3xl shadow-xl border border-orange-100 p-6">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="bg-orange-100 p-2.5 rounded-2xl"><i data-lucide="images" class="w-5 h-5 text-orange-500"></i></div>
+        <div>
+          <h3 class="font-bold text-gray-700">📷 สแกนหลายรูปพร้อมกัน</h3>
+          <p class="text-xs text-gray-400">Claude อ่านทีละใบ รองรับสูงสุด 20 รูปค่ะ</p>
+        </div>
+      </div>
+      <div onclick="document.getElementById('inp-multi').click()"
+        class="border-2 border-dashed border-orange-200 rounded-2xl p-6 text-center cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition-all">
+        <i data-lucide="image-plus" class="w-10 h-10 text-orange-300 mx-auto mb-2"></i>
+        <p class="text-sm font-semibold text-orange-500">แตะเพื่อเลือกรูปฉลากยา</p>
+        <p class="text-xs text-gray-400 mt-1">เลือกได้หลายรูปพร้อมกันค่ะ</p>
+        <input type="file" id="inp-multi" class="hidden" accept="image/*" multiple onchange="addMulti(event)">
+      </div>
+      <div id="multi-q" class="hidden mt-4 space-y-2"></div>
+      <div id="multi-act" class="hidden mt-3 flex gap-3">
+        <button onclick="runMulti()" id="multi-btn" class="flex-1 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-sm transition-all">
+          <i data-lucide="scan" class="w-4 h-4"></i><span id="multi-btn-txt">เริ่มสแกนทั้งหมด</span>
+        </button>
+        <button onclick="clearMulti()" class="px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-500 hover:bg-gray-50 text-sm font-semibold transition-all">ล้าง</button>
+      </div>
+      <div id="multi-res" class="hidden mt-5">
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-sm font-bold text-gray-600">ผลการสแกน — ตรวจสอบก่อนบันทึก</p>
+          <button onclick="saveMulti()" class="flex items-center gap-1.5 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-xl transition-all">
+            <i data-lucide="save" class="w-3.5 h-3.5"></i> บันทึกที่เลือก
+          </button>
+        </div>
+        <div id="multi-res-list" class="space-y-3"></div>
+      </div>
+    </div>
+
+    <!-- CSV -->
+    <div class="bg-white rounded-3xl shadow-xl border border-teal-100 p-6">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="bg-teal-100 p-2.5 rounded-2xl"><i data-lucide="file-spreadsheet" class="w-5 h-5 text-teal-600"></i></div>
+        <div>
+          <h3 class="font-bold text-gray-700">📄 นำเข้าจากไฟล์ CSV</h3>
+          <p class="text-xs text-gray-400">นำเข้าข้อมูลยาหลายรายการจากสเปรดชีตค่ะ</p>
+        </div>
+      </div>
+      <div class="bg-teal-50 border border-teal-200 rounded-xl p-3 mb-4 flex items-center justify-between gap-3">
+        <div>
+          <p class="text-xs font-bold text-teal-700">📋 ดาวน์โหลด Template CSV</p>
+          <p class="text-[11px] text-teal-500">มี header และตัวอย่างให้กรอกได้เลยค่ะ</p>
+        </div>
+        <button onclick="dlTemplate()" class="flex items-center gap-1.5 px-3 py-2 bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold rounded-xl flex-shrink-0 transition-all">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i> Template
+        </button>
+      </div>
+      <div onclick="document.getElementById('inp-csv').click()"
+        class="border-2 border-dashed border-teal-200 rounded-2xl p-6 text-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-all">
+        <i data-lucide="file-up" class="w-10 h-10 text-teal-300 mx-auto mb-2"></i>
+        <p class="text-sm font-semibold text-teal-600">แตะเพื่อเลือกไฟล์ CSV</p>
+        <p class="text-xs text-gray-400 mt-1">รองรับ .csv UTF-8</p>
+        <input type="file" id="inp-csv" class="hidden" accept=".csv,.txt" onchange="loadCsv(event)">
+      </div>
+      <div id="csv-prev" class="hidden mt-4">
+        <div class="flex items-center justify-between mb-3">
+          <p id="csv-sum" class="text-sm font-bold text-gray-600"></p>
+          <div class="flex gap-2 text-xs">
+            <button onclick="selAllCsv(true)" class="text-teal-600 underline">ทั้งหมด</button>
+            <span class="text-gray-300">|</span>
+            <button onclick="selAllCsv(false)" class="text-gray-400 underline">ยกเลิก</button>
+          </div>
+        </div>
+        <div id="csv-rows" class="space-y-2 max-h-72 overflow-y-auto"></div>
+        <button onclick="saveCsv()" class="mt-4 w-full flex items-center justify-center gap-2 bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 rounded-xl text-sm transition-all">
+          <i data-lucide="save" class="w-4 h-4"></i><span id="csv-btn">บันทึกรายการที่เลือก</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: LIST -->
+  <div id="tab-list" class="tab space-y-4">
+    <div class="flex justify-between items-center no-print">
+      <h2 class="text-xl font-bold text-gray-700">รายการยาที่ใช้อยู่</h2>
+      <button onclick="window.print()" id="print-btn" class="hidden items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 shadow-sm text-sm transition-all">
+        <i data-lucide="printer" class="w-4 h-4"></i> พิมพ์
+      </button>
+    </div>
+    <div id="empty-list" class="text-center py-16 text-gray-400">
+      <i data-lucide="pill" class="w-12 h-12 mx-auto mb-3 opacity-30"></i>
+      <p class="font-semibold">ยังไม่มีข้อมูลยาค่ะ</p>
+      <p class="text-sm mt-1">กดแท็บ "เพิ่มยา" เพื่อเริ่มต้นค่ะ</p>
+    </div>
+    <div id="med-list" class="space-y-4"></div>
+  </div>
+
+  <!-- TAB: SCHEDULE -->
+  <div id="tab-schedule" class="tab">
+    <div class="bg-gradient-to-r from-pink-500 to-rose-400 rounded-3xl p-6 text-white mb-5">
+      <h2 class="text-lg font-bold mb-1">📅 ตารางแจ้งเตือนยา</h2>
+      <p class="text-xs text-pink-100">เลือกยาเพื่อดูและส่งออกตารางค่ะ</p>
+    </div>
+    <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 mb-4">
+      <label class="text-sm font-semibold text-gray-600 block mb-2">เลือกยา</label>
+      <select id="sch-sel" onchange="onSchSel()" class="w-full p-3 rounded-xl border border-gray-200 focus:border-pink-400 outline-none bg-white">
+        <option value="">-- กรุณาเลือกยา --</option>
+      </select>
+    </div>
+    <div id="sch-empty" class="hidden text-center py-10 text-gray-400">
+      <i data-lucide="calendar-clock" class="w-10 h-10 mx-auto mb-2 opacity-30"></i>
+      <p class="text-sm">ยังไม่มีตารางสำหรับยานี้ค่ะ<br>กดปุ่ม "เตือน" ในหน้ายาเพื่อสร้างตารางค่ะ</p>
+    </div>
+    <div id="sch-box" class="hidden">
+      <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 mb-4 flex flex-wrap items-center justify-between gap-3 no-print">
+        <p class="text-sm text-gray-600">เลือกแล้ว <span id="sch-cnt" class="font-bold text-pink-500">0</span> รายการ</p>
+        <div class="flex gap-2">
+          <button onclick="doNotify()" class="flex items-center gap-1.5 px-3 py-2 bg-pink-500 hover:bg-pink-600 text-white text-xs font-bold rounded-xl transition-all">
+            <i data-lucide="bell" class="w-3.5 h-3.5"></i> เตือนผ่านเว็บ
+          </button>
+          <button onclick="prepCal()" class="flex items-center gap-1.5 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold rounded-xl transition-all">
+            <i data-lucide="external-link" class="w-3.5 h-3.5"></i> เปิดปฏิทิน
+          </button>
+        </div>
+      </div>
+      <div id="cal-wrap" class="hidden mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+        <p class="text-xs font-bold text-blue-700 mb-2">📅 กดทีละมื้อเพื่อเปิด Google Calendar ค่ะ</p>
+        <div id="cal-btns" class="flex flex-wrap gap-2"></div>
+        <p class="text-[11px] text-blue-400 mt-2">💡 กดทีละปุ่ม — เปิด 1 Google Calendar tab ต่อ 1 มื้อค่ะ</p>
+      </div>
+      <div id="sch-list" class="space-y-3"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- BOTTOM NAV -->
+<nav class="fixed bottom-0 w-full bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] no-print z-40" style="padding-bottom:env(safe-area-inset-bottom)">
+  <div class="max-w-2xl mx-auto flex justify-around py-2 px-2">
+    <button id="nav-add" onclick="goTab('add')"
+      class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-pink-500 transition-all">
+      <div class="p-1.5 rounded-xl bg-pink-50"><i data-lucide="camera" class="w-5 h-5"></i></div>
+      <span class="text-[10px] font-semibold">เพิ่มยา</span>
+    </button>
+    <button id="nav-import" onclick="goTab('import')"
+      class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-gray-400 transition-all">
+      <div class="p-1.5 rounded-xl"><i data-lucide="upload" class="w-5 h-5"></i></div>
+      <span class="text-[10px] font-semibold">นำเข้า</span>
+    </button>
+    <button id="nav-list" onclick="goTab('list')"
+      class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-gray-400 transition-all relative">
+      <div class="p-1.5 rounded-xl relative">
+        <i data-lucide="file-text" class="w-5 h-5"></i>
+        <span id="bdg-list" class="hidden absolute -top-0.5 -right-0.5 w-2 h-2 bg-pink-500 rounded-full"></span>
+      </div>
+      <span class="text-[10px] font-semibold">ข้อมูลยา</span>
+    </button>
+    <button id="nav-schedule" onclick="goTab('schedule')"
+      class="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-gray-400 transition-all relative">
+      <div class="p-1.5 rounded-xl relative">
+        <i data-lucide="calendar-days" class="w-5 h-5"></i>
+        <span id="bdg-sch" class="hidden absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-500 rounded-full"></span>
+      </div>
+      <span class="text-[10px] font-semibold">ตารางเตือน</span>
+    </button>
+  </div>
+</nav>
+
+<script>
+'use strict';
+// ─── constants ───────────────────────────────────────────────────────────────
+const MODEL = 'claude-haiku-4-5-20251001';
+const STORE = 'cpd_claude_key';
+const MEALS = ['เช้า','กลางวัน','เย็น','ก่อนนอน'];
+const MHOUR = {เช้า:8,กลางวัน:12,เย็น:18,ก่อนนอน:20};
+const MEMOJI= {เช้า:'🌅',กลางวัน:'☀️',เย็น:'🌆',ก่อนนอน:'🌙'};
+const OCR_P = `ในฐานะเภสัชกรผู้เชี่ยวชาญ อ่านฉลากยาจากรูปนี้แล้วสกัดข้อมูล ตอบเป็น JSON object เท่านั้น ห้าม markdown ห้ามมโน ถ้าไม่มีในรูปให้เป็น "" หรือ [] mealTimes เลือกจาก ["เช้า","กลางวัน","เย็น","ก่อนนอน"] เท่านั้น {"userName":"","medName":"","dosage":"","mealTimes":[],"recommendations":"","precautions":"","totalPills":""}`;
+
+// ─── state ────────────────────────────────────────────────────────────────────
+let meds=[], scheds=[], editId=null, selMeals=[], curMed=null, multiQ=[], csvData=[];
+
+// ─── init ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',()=>{
+  lucide.createIcons();
+  renderMealBtns();
+  syncApiUI();
+  const k=localStorage.getItem(STORE);
+  if(k) document.getElementById('inp-key').value=k;
+});
+
+// ─── tabs ─────────────────────────────────────────────────────────────────────
+function goTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('show'));
+  const el=document.getElementById('tab-'+name);
+  if(el) el.classList.add('show');
+  ['add','import','list','schedule'].forEach(n=>{
+    const btn=document.getElementById('nav-'+n);
+    if(!btn) return;
+    const ico=btn.querySelector('div');
+    if(n===name){ btn.classList.add('text-pink-500'); btn.classList.remove('text-gray-400'); ico&&ico.classList.add('bg-pink-50'); }
+    else{ btn.classList.remove('text-pink-500'); btn.classList.add('text-gray-400'); ico&&ico.classList.remove('bg-pink-50'); }
+  });
+  if(name==='list') renderList();
+  if(name==='schedule'){ fillSchSel(); renderSch(); }
+}
+
+// ─── modal ────────────────────────────────────────────────────────────────────
+function openModal(id){ const m=document.getElementById(id); if(m){m.style.display='flex'; lucide.createIcons();} }
+function closeModal(id){ const m=document.getElementById(id); if(m) m.style.display='none'; }
+
+// ─── api key ──────────────────────────────────────────────────────────────────
+function syncApiUI(){
+  const k=localStorage.getItem(STORE);
+  setHdrStatus(k?'ok':'none');
+  if(k) document.getElementById('clear-key-btn').style.display='flex';
+}
+function setHdrStatus(s){
+  const btn=document.getElementById('hdr-api-btn');
+  const dot=document.getElementById('hdr-dot');
+  const txt=document.getElementById('hdr-txt');
+  const ob =document.getElementById('ocr-badge');
+  const od =document.getElementById('ocr-dot');
+  const ot =document.getElementById('ocr-txt');
+  const S={
+    none:   {bc:'border-red-200 bg-red-50 hover:bg-red-100',   dc:'bg-red-500',   tc:'text-red-600',   t:'ตั้งค่า API', obc:'bg-red-100 text-red-600 border-red-200',   odc:'bg-red-500',   otx:'ตั้งค่า Key'},
+    ok:     {bc:'border-green-200 bg-green-50 hover:bg-green-100', dc:'bg-green-500 shadow-[0_0_6px_rgba(34,197,94,.5)]', tc:'text-green-600', t:'Claude ✓', obc:'bg-green-100 text-green-700 border-green-200', odc:'bg-green-500', otx:'Claude พร้อม ✓'},
+    err:    {bc:'border-red-200 bg-red-50',   dc:'bg-red-500',   tc:'text-red-600',   t:'Key ผิด/แก้', obc:'bg-red-100 text-red-600 border-red-200', odc:'bg-red-500', otx:'Key ไม่ถูก'},
+    check:  {bc:'border-orange-200 bg-orange-50', dc:'bg-orange-400 animate-pulse', tc:'text-orange-600', t:'กำลังเช็ค...', obc:'bg-orange-100 text-orange-600 border-orange-200', odc:'bg-orange-400 animate-pulse', otx:'กำลังเช็ค...'},
+  };
+  const v=S[s]||S.none;
+  if(btn) btn.className=`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 ${v.bc} cursor-pointer transition-all`;
+  if(dot) dot.className=`w-2.5 h-2.5 rounded-full ${v.dc} flex-shrink-0`;
+  if(txt){ txt.textContent=v.t; txt.className=`text-xs font-bold ${v.tc}`; }
+  if(ob)  ob.className=`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border cursor-pointer flex-shrink-0 ml-2 ${v.obc}`;
+  if(od)  od.className=`w-2 h-2 rounded-full ${v.odc}`;
+  if(ot)  ot.textContent=v.otx;
+}
+function setMStatus(s,desc){
+  const box=document.getElementById('modal-status'); const dot=document.getElementById('m-dot');
+  const tit=document.getElementById('m-title');       const dsc=document.getElementById('m-desc');
+  if(!box) return;
+  const C={
+    none:   {b:'bg-gray-50 border-gray-200',    d:'bg-gray-400',              t:'ยังไม่ได้เชื่อมต่อ',    tc:'text-gray-600'},
+    check:  {b:'bg-orange-50 border-orange-200', d:'bg-orange-400 animate-pulse', t:'กำลังทดสอบ...',    tc:'text-orange-600'},
+    ok:     {b:'bg-green-50 border-green-200',   d:'bg-green-500',             t:'✅ เชื่อมต่อสำเร็จ!',  tc:'text-green-700'},
+    err:    {b:'bg-red-50 border-red-200',        d:'bg-red-500',               t:'❌ เชื่อมต่อล้มเหลว',  tc:'text-red-600'},
+  };
+  const c=C[s]||C.none;
+  box.className=`flex items-center gap-3 p-3 rounded-xl border-2 ${c.b}`;
+  dot.className=`w-3 h-3 rounded-full ${c.d} flex-shrink-0`;
+  tit.textContent=c.t; tit.className=`text-sm font-bold ${c.tc}`;
+  dsc.textContent=desc||''; dsc.className=`text-xs ${c.tc} opacity-80`;
+}
+function toggleKeyViz(){
+  const i=document.getElementById('inp-key'), e=document.getElementById('eye-icon');
+  i.type=i.type==='password'?'text':'password';
+  e.setAttribute('data-lucide',i.type==='password'?'eye':'eye-off');
+  lucide.createIcons();
+}
+async function testKey(){
+  const k=document.getElementById('inp-key').value.trim();
+  if(!k){ setMStatus('err','กรุณากรอก API Key ก่อนค่ะ'); return; }
+  const btn=document.getElementById('test-btn'); btn.disabled=true;
+  document.getElementById('test-text').textContent='กำลังทดสอบ...';
+  setMStatus('check','กำลังเชื่อมต่อ Anthropic...');
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/models',{headers:{'x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}});
+    if(r.ok){ setMStatus('ok',`${MODEL} พร้อมอ่านฉลากยาค่ะ ✨`); setHdrStatus('ok'); }
+    else{ const j=await r.json().catch(()=>({})); setMStatus('err',j?.error?.message||`HTTP ${r.status}`); setHdrStatus('err'); }
+  }catch{ setMStatus('err','เชื่อมต่อไม่ได้ ตรวจสอบเน็ตด้วยนะคะ'); setHdrStatus('err'); }
+  finally{ btn.disabled=false; document.getElementById('test-text').textContent='ทดสอบ'; }
+}
+function saveKey(){
+  const k=document.getElementById('inp-key').value.trim();
+  if(!k){ alert('⚠️ กรุณากรอก API Key ก่อนค่ะ'); return; }
+  localStorage.setItem(STORE,k);
+  document.getElementById('clear-key-btn').style.display='flex';
+  const t=document.getElementById('m-title').textContent;
+  if(t.includes('สำเร็จ')){ closeModal('modal-settings'); alert('✅ บันทึกเรียบร้อยค่ะ! Claude พร้อมแล้ว 💖'); }
+  else testKey().then(()=>{ if(document.getElementById('m-title').textContent.includes('สำเร็จ')) setTimeout(()=>{ closeModal('modal-settings'); alert('✅ บันทึกและเชื่อมต่อสำเร็จค่ะ 💖'); },500); });
+}
+function clearKey(){
+  if(!confirm('ต้องการลบ API Key ออกจากเครื่องจริงๆ ใช่ไหมคะ?')) return;
+  localStorage.removeItem(STORE);
+  document.getElementById('inp-key').value='';
+  document.getElementById('clear-key-btn').style.display='none';
+  setMStatus('none',''); setHdrStatus('none');
+}
+
+// ─── image compress ───────────────────────────────────────────────────────────
+function compress(file){
+  return new Promise(res=>{
+    const r=new FileReader(); r.readAsDataURL(file);
+    r.onload=e=>{
+      const img=new Image(); img.src=e.target.result;
+      img.onload=()=>{
+        let w=img.width,h=img.height,M=1200;
+        if(w>M||h>M){ if(w>h){h=Math.round(h*M/w);w=M;}else{w=Math.round(w*M/h);h=M;} }
+        const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+        cv.getContext('2d').drawImage(img,0,0,w,h);
+        const u=cv.toDataURL('image/jpeg',.9);
+        res({b64:u.split(',')[1],mime:'image/jpeg',prev:u});
+      };
+      img.onerror=()=>{ const u=e.target.result; res({b64:u.split(',')[1],mime:file.type||'image/jpeg',prev:u}); };
+    };
+  });
+}
+
+// ─── json parser ─────────────────────────────────────────────────────────────
+function pJson(t){
+  if(!t) return null;
+  let s=t.trim().replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/\s*```$/i,'').trim();
+  try{return JSON.parse(s);}catch(_){}
+  const m=s.match(/\{[\s\S]*\}/); if(m) try{return JSON.parse(m[0]);}catch(_){}
+  return null;
+}
+
+// ─── call claude ──────────────────────────────────────────────────────────────
+async function claude(b64,mime,prompt){
+  const k=localStorage.getItem(STORE); if(!k) throw new Error('NO_KEY');
+  const r=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:MODEL,max_tokens:1024,messages:[{role:'user',content:[
+      {type:'image',source:{type:'base64',media_type:mime,data:b64}},
+      {type:'text',text:prompt}
+    ]}]})
+  });
+  if(!r.ok){const j=await r.json().catch(()=>({})); throw new Error(`[${r.status}] ${j?.error?.message||r.statusText}`);}
+  const j=await r.json(); return j.content?.[0]?.text||'';
+}
+
+// ─── single scan ──────────────────────────────────────────────────────────────
+async function doScan(e){
+  const file=e.target.files[0]; if(!file) return; e.target.value='';
+  const k=localStorage.getItem(STORE);
+  if(!k){ alert('⚠️ ยังไม่มี Claude API Key ค่ะ!\nกดปุ่มตั้งค่าที่มุมขวาบนเพื่อใส่ Key นะคะ 🔑'); openModal('modal-settings'); return; }
+  const ld=document.getElementById('ocr-load'); ld.style.display='flex';
+  document.getElementById('ocr-notice').style.display='none';
+  document.getElementById('ocr-retry').style.display='none';
+  try{
+    const {b64,mime,prev}=await compress(file);
+    document.getElementById('img-prev').src=prev;
+    document.getElementById('img-wrap').style.display='block';
+    lucide.createIcons();
+    const raw=await claude(b64,mime,OCR_P);
+    const d=pJson(raw); if(!d) throw new Error('AI ตอบกลับรูปแบบที่อ่านไม่ได้ค่ะ');
+    document.getElementById('f-user').value=d.userName||'';
+    document.getElementById('f-med').value=d.medName||'';
+    document.getElementById('f-dose').value=d.dosage||'';
+    document.getElementById('f-rec').value=d.recommendations||'';
+    document.getElementById('f-prec').value=d.precautions||'';
+    document.getElementById('f-pills').value=d.totalPills||'';
+    selMeals=Array.isArray(d.mealTimes)?d.mealTimes:[];
+    renderMealBtns();
+    const miss=[]; if(!d.userName)miss.push('ชื่อผู้ป่วย'); if(!d.medName)miss.push('ชื่อยา'); if(!d.totalPills)miss.push('จำนวนเม็ด'); if(!selMeals.length)miss.push('มื้อยา');
+    const nb=document.getElementById('ocr-notice');
+    document.getElementById('notice-txt').textContent=miss.length?`จินนี่หาไม่เจอ: ${miss.join(', ')} — รบกวนเติมด้วยนะคะ 💖`:'✅ Claude อ่านสำเร็จครบถ้วนค่ะ! ตรวจสอบก่อนบันทึกนะคะ';
+    nb.className=`mb-4 p-3 ${miss.length?'bg-amber-50 border-amber-200':'bg-green-50 border-green-200'} border rounded-xl flex items-start gap-2`;
+    nb.style.display='flex'; document.getElementById('ocr-retry').style.display='block';
+  }catch(err){
+    const m=err.message||'';
+    alert(m.includes('NO_KEY')?'⚠️ ยังไม่มี API Key ค่ะ กดปุ่มตั้งค่า 🔑':m.includes('401')||m.includes('403')?'⚠️ API Key ไม่ถูกต้องค่ะ 🔑':m.includes('429')?'⚠️ Rate Limit ค่ะ รอสักครู่แล้วลองใหม่ ⏳':`⚠️ เกิดข้อผิดพลาด:\n${m}\n\nลองถ่ายรูปใหม่ให้ชัดขึ้นนะคะ 📸`);
+    document.getElementById('ocr-retry').style.display='block';
+  }finally{ ld.style.display='none'; }
+}
+function clearPrev(){
+  document.getElementById('img-wrap').style.display='none';
+  document.getElementById('img-prev').src='';
+  document.getElementById('ocr-retry').style.display='none';
+  document.getElementById('ocr-notice').style.display='none';
+}
+
+// ─── meal buttons ─────────────────────────────────────────────────────────────
+function renderMealBtns(){
+  const c=document.getElementById('meal-btns'); if(!c) return;
+  c.innerHTML=MEALS.map(m=>{
+    const s=selMeals.includes(m);
+    return `<button type="button" onclick="togMeal('${m}')" class="px-4 py-2 rounded-xl border text-sm font-semibold transition-all ${s?'bg-pink-500 text-white border-pink-500 shadow-md':'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}">${m}</button>`;
+  }).join('');
+}
+function togMeal(m){ selMeals.includes(m)?selMeals=selMeals.filter(x=>x!==m):selMeals.push(m); renderMealBtns(); }
+
+// ─── save / edit med ──────────────────────────────────────────────────────────
+function saveMed(){
+  const user=document.getElementById('f-user').value.trim();
+  const med=document.getElementById('f-med').value.trim();
+  if(!user||!med){ alert('⚠️ กรุณากรอกชื่อผู้ป่วยและชื่อยาอย่างน้อยค่ะ'); return; }
+  const obj={id:editId||'med_'+Date.now(),userName:user,medName:med,dosage:document.getElementById('f-dose').value.trim(),mealTimes:[...selMeals],recommendations:document.getElementById('f-rec').value.trim(),precautions:document.getElementById('f-prec').value.trim(),totalPills:parseInt(document.getElementById('f-pills').value)||0};
+  if(editId){ const i=meds.findIndex(x=>x.id===editId); if(i>=0) meds[i]=obj; editId=null; }
+  else meds.push(obj);
+  resetForm(); updBadges(); goTab('list');
+}
+function resetForm(){
+  ['f-user','f-med','f-dose','f-rec','f-prec','f-pills'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  selMeals=[]; renderMealBtns(); clearPrev();
+  document.getElementById('form-title').textContent='เพิ่มข้อมูลยาใหม่';
+  document.getElementById('form-btn').textContent='บันทึกข้อมูลยา';
+  document.getElementById('cancel-btn').style.display='none';
+  lucide.createIcons();
+}
+function cancelEdit(){ editId=null; resetForm(); goTab('list'); }
+function editMed(id){
+  const m=meds.find(x=>x.id===id); if(!m) return;
+  editId=id;
+  document.getElementById('f-user').value=m.userName;
+  document.getElementById('f-med').value=m.medName;
+  document.getElementById('f-dose').value=m.dosage||'';
+  document.getElementById('f-rec').value=m.recommendations||'';
+  document.getElementById('f-prec').value=m.precautions||'';
+  document.getElementById('f-pills').value=m.totalPills||'';
+  selMeals=[...(m.mealTimes||[])]; renderMealBtns();
+  document.getElementById('form-title').textContent='แก้ไขข้อมูลยา';
+  document.getElementById('form-btn').textContent='อัปเดต';
+  document.getElementById('cancel-btn').style.display='inline-flex';
+  goTab('add');
+}
+function delMed(id){
+  if(!confirm('ต้องการลบรายการยานี้จริงๆ ใช่ไหมคะ?')) return;
+  meds=meds.filter(x=>x.id!==id); scheds=scheds.filter(x=>x.medId!==id);
+  if(curMed===id) curMed=null;
+  updBadges(); renderList();
+}
+
+// ─── render list ──────────────────────────────────────────────────────────────
+function renderList(){
+  const el=document.getElementById('med-list'); const em=document.getElementById('empty-list');
+  if(!meds.length){ if(em) em.style.display='block'; if(el) el.innerHTML=''; return; }
+  if(em) em.style.display='none';
+  if(!el) return;
+  el.innerHTML=meds.map(m=>`
+    <div class="bg-white rounded-2xl shadow-md border-l-4 border-l-pink-400 p-5 hover:shadow-lg transition-all">
+      <div class="flex justify-between items-start">
+        <div><h3 class="font-bold text-lg text-gray-800">${m.medName}</h3><p class="text-sm text-pink-500 font-medium">ผู้ใช้: ${m.userName}</p></div>
+        <div class="flex gap-1 flex-shrink-0">
+          <button onclick="genSch('${m.id}')" class="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 text-blue-600 font-semibold hover:bg-blue-100 rounded-lg transition-all text-xs">
+            <i data-lucide="calendar-clock" class="w-4 h-4"></i> เตือน
+          </button>
+          <button onclick="editMed('${m.id}')" class="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-all"><i data-lucide="edit" class="w-5 h-5"></i></button>
+          <button onclick="delMed('${m.id}')" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+        </div>
+      </div>
+      <div class="mt-3 space-y-1 text-sm text-gray-600">
+        ${m.dosage?`<p><span class="font-semibold text-gray-700">วิธีทาน:</span> ${m.dosage}</p>`:''}
+        ${m.mealTimes?.length?`<p><span class="font-semibold text-gray-700">มื้อ:</span> ${m.mealTimes.join(', ')}</p>`:''}
+        ${m.totalPills?`<p><span class="font-semibold text-gray-700">จำนวน:</span> ${m.totalPills} เม็ด</p>`:''}
+      </div>
+    </div>`).join('');
+  lucide.createIcons();
+}
+function updBadges(){
+  document.getElementById('bdg-list').style.display=meds.length?'block':'none';
+  document.getElementById('bdg-sch').style.display=scheds.length?'block':'none';
+  const p=document.getElementById('print-btn'); if(p) p.style.display=meds.length?'flex':'none';
+}
+
+// ─── schedule generation ──────────────────────────────────────────────────────
+function genSch(id){
+  const m=meds.find(x=>x.id===id); if(!m) return;
+  if(!m.totalPills||m.totalPills<=0){ alert('⚠️ กรุณาระบุจำนวนเม็ดยาก่อนนะคะ'); return; }
+  if(!m.mealTimes?.length){ alert('⚠️ กรุณาเลือกมื้อที่ทานก่อนนะคะ'); return; }
+  const ordered=MEALS.filter(x=>m.mealTimes.includes(x));
+  let pills=m.totalPills, day=new Date(), h=day.getHours(), si=0;
+  for(let i=0;i<ordered.length;i++){
+    if(h<MHOUR[ordered[i]]){si=i;break;}
+    if(i===ordered.length-1){day.setDate(day.getDate()+1);si=0;}
+  }
+  const ns=[]; let c=Date.now();
+  while(pills>0){
+    for(let i=si;i<ordered.length&&pills>0;i++){
+      const d=new Date(day); d.setHours(MHOUR[ordered[i]],0,0,0);
+      ns.push({id:'s_'+(c++),medId:m.id,medName:m.medName,userName:m.userName,dosage:m.dosage,meal:ordered[i],date:d,selected:true});
+      pills--;
+    }
+    day=new Date(day); day.setDate(day.getDate()+1); si=0;
+  }
+  scheds=[...scheds.filter(x=>x.medId!==m.id),...ns];
+  curMed=m.id; updBadges();
+  alert(`✨ สร้างตารางแจ้งเตือน ${ns.length} รายการเรียบร้อยค่ะ!`);
+  goTab('schedule');
+}
+
+// ─── schedule tab ─────────────────────────────────────────────────────────────
+function fillSchSel(){
+  const sel=document.getElementById('sch-sel');
+  sel.innerHTML='<option value="">-- กรุณาเลือกยา --</option>'+
+    meds.map(m=>`<option value="${m.id}"${m.id===curMed?' selected':''}>${m.medName} (${m.userName})</option>`).join('');
+}
+function onSchSel(){
+  curMed=document.getElementById('sch-sel').value;
+  document.getElementById('cal-wrap').style.display='none';
+  renderSch();
+}
+function renderSch(){
+  const em=document.getElementById('sch-empty'); const box=document.getElementById('sch-box'); const list=document.getElementById('sch-list');
+  if(!curMed){em.style.display='none';box.style.display='none';return;}
+  const items=scheds.filter(x=>x.medId===curMed);
+  if(!items.length){em.style.display='block';box.style.display='none';return;}
+  em.style.display='none'; box.style.display='block';
+  document.getElementById('sch-cnt').textContent=items.filter(x=>x.selected).length;
+  items.sort((a,b)=>a.date-b.date);
+  const g={};
+  items.forEach(s=>{const k=s.date.toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});if(!g[k])g[k]=[];g[k].push(s);});
+  list.innerHTML=Object.entries(g).map(([dl,rows])=>`
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div class="bg-gray-50 px-4 py-3 border-b border-gray-100 font-bold text-gray-700 text-sm">📅 ${dl}</div>
+      <div class="divide-y divide-gray-50">
+        ${rows.map(s=>`
+          <div class="flex items-center justify-between p-4 transition-all ${s.selected?'bg-pink-50/30':'opacity-60'}">
+            <div class="flex items-center gap-3 flex-1 cursor-pointer" onclick="togSch('${s.id}')">
+              <i data-lucide="${s.selected?'check-square':'square'}" class="w-6 h-6 ${s.selected?'text-pink-500':'text-gray-300'}"></i>
+              <div>
+                <div class="font-semibold text-gray-800 flex items-center gap-2 text-sm">
+                  <span class="bg-pink-100 text-pink-700 text-xs px-2 py-0.5 rounded-full">${s.meal}</span>
+                  ${s.date.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})} น.
+                </div>
+                <div class="text-xs text-gray-400 mt-0.5">ทาน ${s.dosage||'1 เม็ด'}</div>
+              </div>
+            </div>
+            <button onclick="delSch('${s.id}')" class="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+  lucide.createIcons();
+}
+function togSch(id){const s=scheds.find(x=>x.id===id);if(s)s.selected=!s.selected;renderSch();}
+function delSch(id){scheds=scheds.filter(x=>x.id!==id);updBadges();renderSch();}
+
+function doNotify(){
+  const sel=scheds.filter(x=>x.medId===curMed&&x.selected);
+  if(!sel.length){alert('กรุณาเลือกรายการก่อนนะคะ');return;}
+  if(!('Notification'in window)){alert('⚠️ เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือนค่ะ');return;}
+  Notification.requestPermission().then(p=>{
+    if(p!=='granted'){alert('เจ้านายไม่อนุญาตสิทธิ์การแจ้งเตือนค่ะ');return;}
+    let cnt=0;
+    sel.forEach(s=>{const d=s.date.getTime()-Date.now();if(d>0){cnt++;setTimeout(()=>new Notification(`💊 ทานยา: ${s.medName}`,{body:`มื้อ: ${s.meal}\n${s.dosage||''}`}),d);}});
+    alert(`✅ ตั้งค่าแจ้งเตือน ${cnt} รายการเรียบร้อยค่ะ!`);
+  });
+}
+
+function prepCal(){
+  const sel=scheds.filter(x=>x.medId===curMed&&x.selected);
+  if(!sel.length){alert('กรุณาเลือกรายการก่อนนะคะ');return;}
+  const p=n=>String(n).padStart(2,'0');
+  const g={};
+  sel.forEach(s=>{if(!g[s.meal])g[s.meal]=[];g[s.meal].push(s);});
+  const list=document.getElementById('cal-btns'); list.innerHTML='';
+  MEALS.forEach(meal=>{
+    if(!g[meal]) return;
+    const rows=g[meal].sort((a,b)=>a.date-b.date);
+    const d1=rows[0].date, d2=new Date(d1.getTime()+30*60000);
+    const fmt=d=>`${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}T${p(d.getHours())}${p(d.getMinutes())}00`;
+    const tt=encodeURIComponent(`💊 ทานยา ${rows[0].medName} (${meal})`);
+    const dt=encodeURIComponent(`ผู้ใช้: ${rows[0].userName}\nมื้อ: ${meal}\nวิธีทาน: ${rows[0].dosage||'-'}\n\nCute Pill Diary — ภก.จีรภัทร พลายงาม`);
+    let url=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${tt}&dates=${fmt(d1)}/${fmt(d2)}&details=${dt}`;
+    if(rows.length>1) url+=`&recur=RRULE:FREQ=DAILY;COUNT=${rows.length}`;
+    const a=document.createElement('a');
+    a.href=url; a.target='_blank'; a.rel='noopener noreferrer';
+    a.className='flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-blue-300 hover:border-blue-500 hover:bg-blue-50 text-blue-700 font-bold rounded-xl shadow-sm transition-all text-sm';
+    a.innerHTML=`<span>${MEMOJI[meal]||'💊'}</span><div><div class="text-xs font-bold">${meal}</div><div class="text-[10px] text-blue-500">${rows.length} วัน</div></div><i data-lucide="external-link" class="w-3.5 h-3.5 ml-1 opacity-60"></i>`;
+    list.appendChild(a);
+  });
+  document.getElementById('cal-wrap').style.display='block';
+  lucide.createIcons();
+}
+
+// ─── multi image scan ─────────────────────────────────────────────────────────
+async function addMulti(e){
+  const files=Array.from(e.target.files).slice(0,20); e.target.value=''; if(!files.length) return;
+  for(const f of files){ const c=await compress(f); multiQ.push({file:f,b64:c.b64,mime:c.mime,prev:c.prev,status:'pending',result:null,id:Date.now()+Math.random()}); }
+  renderMQ(); document.getElementById('multi-q').style.display='block'; document.getElementById('multi-act').style.display='flex';
+}
+function renderMQ(){
+  const el=document.getElementById('multi-q');
+  el.innerHTML=multiQ.map((it,i)=>{
+    const bdg={pending:'<span class="text-xs text-gray-400">รอสแกน</span>',scanning:'<span class="text-xs text-orange-500 animate-pulse">กำลังสแกน...</span>',done:'<span class="text-xs text-green-600 font-bold">✅ สำเร็จ</span>',error:'<span class="text-xs text-red-500">❌ ล้มเหลว</span>'}[it.status]||'';
+    return `<div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+      <img src="${it.prev}" class="w-14 h-14 object-cover rounded-lg flex-shrink-0 border border-gray-200">
+      <div class="flex-1 min-w-0"><p class="text-xs font-semibold text-gray-600 truncate">${it.file.name}</p><div class="mt-0.5">${bdg}</div>${it.result?.medName?`<p class="text-xs text-green-700 truncate mt-0.5">💊 ${it.result.medName}</p>`:''}</div>
+      <button onclick="rmMQ(${i})" class="text-gray-300 hover:text-red-400 flex-shrink-0"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>`;
+  }).join('');
+  lucide.createIcons();
+}
+function rmMQ(i){ multiQ.splice(i,1); if(!multiQ.length) clearMulti(); else renderMQ(); }
+function clearMulti(){
+  multiQ=[];
+  document.getElementById('multi-q').innerHTML=''; document.getElementById('multi-q').style.display='none';
+  document.getElementById('multi-act').style.display='none'; document.getElementById('multi-res').style.display='none';
+}
+async function runMulti(){
+  const k=localStorage.getItem(STORE); if(!k){alert('⚠️ ยังไม่มี API Key ค่ะ');openModal('modal-settings');return;}
+  const pending=multiQ.filter(x=>x.status==='pending'||x.status==='error');
+  if(!pending.length){alert('ไม่มีรูปที่รอสแกนค่ะ');return;}
+  const btn=document.getElementById('multi-btn'); btn.disabled=true;
+  let done=0;
+  for(let i=0;i<multiQ.length;i++){
+    const it=multiQ[i]; if(it.status!=='pending'&&it.status!=='error') continue;
+    it.status='scanning'; document.getElementById('multi-btn-txt').textContent=`สแกน ${done+1}/${pending.length}...`; renderMQ();
+    try{ const raw=await claude(it.b64,it.mime,OCR_P); const p=pJson(raw); it.result=p||{}; it.status=p?.medName?'done':'error'; }
+    catch{ it.status='error'; it.result={}; }
+    done++; renderMQ();
+    if(i<multiQ.length-1) await new Promise(r=>setTimeout(r,700));
+  }
+  btn.disabled=false; document.getElementById('multi-btn-txt').textContent='สแกนอีกครั้ง';
+  const ok=multiQ.filter(x=>x.status==='done'&&x.result?.medName);
+  if(!ok.length){alert('ไม่มีรายการที่สแกนสำเร็จค่ะ');return;}
+  document.getElementById('multi-res').style.display='block';
+  document.getElementById('multi-res-list').innerHTML=ok.map((it,i)=>{
+    const r=it.result;
+    return `<div class="border-2 border-gray-100 rounded-2xl overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-100">
+        <div class="flex items-center gap-2"><input type="checkbox" id="mc${i}" checked class="w-4 h-4 accent-orange-500"><label for="mc${i}" class="text-xs font-bold text-gray-700 cursor-pointer">💊 ${r.medName}</label></div>
+        <img src="${it.prev}" class="w-8 h-8 rounded-lg object-cover border border-gray-200">
+      </div>
+      <div class="p-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-600">
+        <div><span class="text-gray-400">ผู้ป่วย:</span> ${r.userName||'—'}</div>
+        <div><span class="text-gray-400">มื้อ:</span> ${(r.mealTimes||[]).join(',')||'—'}</div>
+        <div class="col-span-2"><span class="text-gray-400">วิธีใช้:</span> ${r.dosage||'—'}</div>
+        <div><span class="text-gray-400">จำนวน:</span> ${r.totalPills||'—'} เม็ด</div>
+      </div>
+    </div>`;
+  }).join('');
+  // store reference for save
+  window._multiOk=ok;
+}
+function saveMulti(){
+  const ok=window._multiOk||[]; let cnt=0;
+  ok.forEach((it,i)=>{ const c=document.getElementById(`mc${i}`); if(!c?.checked) return; const r=it.result; meds.push({id:'med_'+Date.now()+Math.random(),userName:r.userName||'',medName:r.medName,dosage:r.dosage||'',mealTimes:r.mealTimes||[],recommendations:r.recommendations||'',precautions:r.precautions||'',totalPills:parseInt(r.totalPills)||0}); cnt++; });
+  if(!cnt){alert('กรุณาเลือกอย่างน้อย 1 รายการค่ะ');return;}
+  alert(`✅ บันทึก ${cnt} รายการเรียบร้อยค่ะ!`);
+  clearMulti(); updBadges(); goTab('list');
+}
+
+// ─── csv ──────────────────────────────────────────────────────────────────────
+function dlTemplate(){
+  const h='ชื่อผู้ป่วย,ชื่อยา,วิธีรับประทาน,มื้อยา (คั่นด้วย|),คำแนะนำ,ข้อควรระวัง,จำนวนเม็ด';
+  const ex='"คุณแม่","Amoxicillin 500mg","ครั้งละ 1 เม็ด หลังอาหาร","เช้า|กลางวัน|เย็น","ดื่มน้ำตาม","แจ้งแพทย์ถ้าแพ้","21"';
+  const b=new Blob(['\uFEFF'+h+'\n'+ex],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='CutePillDiary_Template.csv'; a.click();
+}
+function loadCsv(e){ const f=e.target.files[0]; if(!f) return; e.target.value=''; const r=new FileReader(); r.onload=ev=>parseCsv(ev.target.result.replace(/^\uFEFF/,'')); r.readAsText(f,'UTF-8'); }
+function parseCsv(text){
+  const lines=text.trim().split(/\r?\n/).filter(Boolean);
+  if(lines.length<2){alert('ไฟล์ต้องมีอย่างน้อย 1 แถวข้อมูลค่ะ');return;}
+  const hdr=csvLn(lines[0]).map(h=>h.trim().toLowerCase());
+  const ci=names=>{ for(const n of names){ const i=hdr.findIndex(h=>h.includes(n)); if(i>=0) return i; } return -1; };
+  const iU=ci(['ชื่อผู้ป่วย','username','user']); const iM=ci(['ชื่อยา','medname','med']);
+  const iD=ci(['วิธีรับประทาน','dosage','dose']); const iMl=ci(['มื้อยา','mealtimes','meal']);
+  const iR=ci(['คำแนะนำ','rec']); const iP=ci(['ข้อควรระวัง','prec']); const iPl=ci(['จำนวนเม็ด','pills']);
+  csvData=lines.slice(1).map((ln,i)=>{
+    const c=csvLn(ln); const g=idx=>idx>=0?(c[idx]||'').trim():'';
+    const meals=g(iMl).split('|').map(m=>m.trim()).filter(m=>MEALS.includes(m));
+    return{id:i,sel:true,userName:g(iU),medName:g(iM),dosage:g(iD),mealTimes:meals,recommendations:g(iR),precautions:g(iP),totalPills:g(iPl)};
+  }).filter(r=>r.medName);
+  if(!csvData.length){alert('ไม่พบข้อมูลยาในไฟล์ค่ะ');return;}
+  renderCsvP();
+}
+function csvLn(l){ const r=[]; let cur='',q=false; for(const ch of l){ if(ch==='"'){q=!q;continue;} if(ch===','&&!q){r.push(cur);cur='';continue;} cur+=ch; } r.push(cur); return r; }
+function renderCsvP(){
+  document.getElementById('csv-prev').style.display='block';
+  document.getElementById('csv-sum').textContent=`พบ ${csvData.length} รายการ`;
+  document.getElementById('csv-rows').innerHTML=csvData.map(r=>`
+    <div id="cr${r.id}" class="flex items-start gap-3 p-3 rounded-xl border-2 ${r.sel?'border-teal-200 bg-teal-50':'border-gray-100'} transition-all">
+      <input type="checkbox" id="cc${r.id}" ${r.sel?'checked':''} class="mt-0.5 w-4 h-4 accent-teal-500 flex-shrink-0" onchange="togCsv(${r.id})">
+      <label for="cc${r.id}" class="flex-1 cursor-pointer min-w-0">
+        <p class="text-sm font-bold text-gray-700 truncate">💊 ${r.medName}</p>
+        <div class="grid grid-cols-2 mt-1 gap-x-3 text-xs text-gray-500">
+          <span><span class="text-gray-400">ผู้ป่วย:</span> ${r.userName||'—'}</span>
+          <span><span class="text-gray-400">มื้อ:</span> ${r.mealTimes.join(',')||'—'}</span>
+          <span class="col-span-2 truncate"><span class="text-gray-400">วิธีใช้:</span> ${r.dosage||'—'}</span>
+        </div>
+      </label>
+    </div>`).join('');
+  updCsvBtn();
+}
+function togCsv(id){
+  const r=csvData.find(x=>x.id===id); if(!r) return; r.sel=!r.sel;
+  const el=document.getElementById(`cr${id}`); if(el) el.className=`flex items-start gap-3 p-3 rounded-xl border-2 ${r.sel?'border-teal-200 bg-teal-50':'border-gray-100'} transition-all`;
+  updCsvBtn();
+}
+function selAllCsv(v){ csvData.forEach(r=>{ r.sel=v; const c=document.getElementById(`cc${r.id}`); if(c) c.checked=v; const el=document.getElementById(`cr${r.id}`); if(el) el.className=`flex items-start gap-3 p-3 rounded-xl border-2 ${v?'border-teal-200 bg-teal-50':'border-gray-100'} transition-all`; }); updCsvBtn(); }
+function updCsvBtn(){ document.getElementById('csv-btn').textContent=`บันทึก ${csvData.filter(r=>r.sel).length} รายการที่เลือก`; }
+function saveCsv(){
+  const s=csvData.filter(r=>r.sel); if(!s.length){alert('กรุณาเลือกอย่างน้อย 1 รายการค่ะ');return;}
+  s.forEach(r=>meds.push({id:'med_'+Date.now()+Math.random(),userName:r.userName,medName:r.medName,dosage:r.dosage,mealTimes:r.mealTimes,recommendations:r.recommendations,precautions:r.precautions,totalPills:parseInt(r.totalPills)||0}));
+  alert(`✅ บันทึก ${s.length} รายการจาก CSV เรียบร้อยค่ะ!`);
+  csvData=[]; document.getElementById('csv-prev').style.display='none'; document.getElementById('inp-csv').value='';
+  updBadges(); goTab('list');
+}
+</script>
+</body>
+</html>
