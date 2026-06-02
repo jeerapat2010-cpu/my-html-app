@@ -659,8 +659,10 @@ function getList(q,cat){
 }
 
 // ─── PANELS ───
+let p1query='', p2query='';
+
 function panel1(){
-  const q=(document.getElementById('p1q')||{value:''}).value;
+  const q=p1query;
   const list=getList(q,selCat);
   return `<div class="panel">
     <div class="panel-hd">
@@ -668,24 +670,33 @@ function panel1(){
       <div><div class="panel-title">ค้นหาตามอาการ / หมวดหมู่</div><div class="panel-sub">เลือกหมวดหรือพิมพ์ค้นหา</div></div>
     </div>
     <div class="chips">${CATS.map(c=>`<button class="chip${selCat===c?' on':''}" onclick="selCat='${selCat===c?'':c}';renderPanel()">${c}</button>`).join('')}</div>
-    <input type="text" id="p1q" placeholder="ค้นหาชื่อยา หรืออาการ..." oninput="renderPanel()" style="margin-bottom:.625rem">
-    <div class="cnt">🌿 พบ ${list.length} รายการ</div>
-    <div class="cards">${list.length?list.map(cardHtml).join(''):'<div class="empty">ไม่พบรายการที่ตรงกัน</div>'}</div>
+    <input type="text" id="p1q" placeholder="ค้นหาชื่อยา หรืออาการ..." value="${q.replace(/"/g,'&quot;')}"
+      oninput="p1query=this.value;updateCards('p1cards','p1cnt',getList(this.value,selCat))" style="margin-bottom:.625rem">
+    <div class="cnt" id="p1cnt">🌿 พบ ${list.length} รายการ</div>
+    <div class="cards" id="p1cards">${list.length?list.map(cardHtml).join(''):'<div class="empty">ไม่พบรายการที่ตรงกัน</div>'}</div>
   </div>`;
 }
 
 function panel2(){
-  const q=(document.getElementById('p2q')||{value:''}).value;
+  const q=p2query;
   const list=getList(q,'');
   return `<div class="panel">
     <div class="panel-hd">
       <div class="panel-hd-icon">📋</div>
       <div><div class="panel-title">รายละเอียดยา & ความคุ้มค่า</div><div class="panel-sub">กดการ์ดเพื่อดูรายละเอียดเต็ม</div></div>
     </div>
-    <input type="text" id="p2q" placeholder="ค้นหาชื่อยา..." oninput="renderPanel()" style="margin-bottom:.625rem">
-    <div class="cnt">🌿 พบ ${list.length} รายการ</div>
-    <div class="cards">${list.length?list.map(cardHtml).join(''):'<div class="empty">ไม่พบ</div>'}</div>
+    <input type="text" id="p2q" placeholder="ค้นหาชื่อยา..." value="${q.replace(/"/g,'&quot;')}"
+      oninput="p2query=this.value;updateCards('p2cards','p2cnt',getList(this.value,''))" style="margin-bottom:.625rem">
+    <div class="cnt" id="p2cnt">🌿 พบ ${list.length} รายการ</div>
+    <div class="cards" id="p2cards">${list.length?list.map(cardHtml).join(''):'<div class="empty">ไม่พบ</div>'}</div>
   </div>`;
+}
+
+function updateCards(cardsId,cntId,list){
+  const c=document.getElementById(cardsId);
+  const n=document.getElementById(cntId);
+  if(c) c.innerHTML=list.length?list.map(cardHtml).join(''):'<div class="empty">ไม่พบรายการที่ตรงกัน</div>';
+  if(n) n.textContent='🌿 พบ '+list.length+' รายการ';
 }
 
 function panel3(){
@@ -791,23 +802,32 @@ function panel4(){
   </div>`;
 }
 
+let p5query='', p6query='', p6cat='';
+
 function panel5(){
-  const q=((document.getElementById('p5q')||{value:''}).value||'').trim();
-  const matches=q.length>=2?D.filter(d=>d.alt&&d.alt.toLowerCase().includes(q.toLowerCase())):[];
+  const q=p5query;
+  const matches=q.length>=2?D.filter(d=>d.alt&&d.alt!=='-'&&d.alt.toLowerCase().includes(q.toLowerCase())):[];
   return `<div class="panel">
     <div class="panel-hd">
       <div class="panel-hd-icon">🔎</div>
       <div><div class="panel-title">ค้นหายาแผนปัจจุบัน → หาสมุนไพรทดแทน</div><div class="panel-sub">พิมพ์ชื่อยาแผนปัจจุบัน</div></div>
     </div>
-    <input type="text" id="p5q" placeholder="เช่น Diclofenac, Paracetamol, NSAIDs, Bisacodyl..." oninput="renderPanel()" style="margin-bottom:.75rem">
+    <input type="text" id="p5q" placeholder="เช่น Diclofenac, Paracetamol, NSAIDs, Bisacodyl..." value="${q.replace(/"/g,'&quot;')}"
+      oninput="p5query=this.value;renderPanel5()" autofocus style="margin-bottom:.75rem">
     ${q.length<2?'<div class="empty">พิมพ์อย่างน้อย 2 ตัวอักษร</div>':matches.length?matches.map(d=>`
-    <div class="match-card">
+    <div class="match-card" onclick="openDrugModal(${d.id})" style="cursor:pointer">
       <div class="match-name">${d.name} ${d.price?`<span class="dprice" style="font-size:11px">≤${d.price}฿</span>`:''}</div>
       <div class="match-sub">${d.ind}</div>
       <div class="match-alt">💊 ทดแทน: ${d.alt}</div>
       <div class="dtags" style="margin-top:6px">${cycleTag(d.cycle)}</div>
     </div>`).join(''):`<div class="empty">ไม่พบยาสมุนไพรที่ทดแทน "<strong>${q}</strong>" ได้</div>`}
   </div>`;
+}
+
+function renderPanel5(){
+  document.getElementById('panelArea').innerHTML=panel5();
+  const el=document.getElementById('p5q');
+  if(el){el.focus();const len=el.value.length;el.setSelectionRange(len,len);}
 }
 
 function panel6(){
@@ -950,7 +970,7 @@ function renderPanel(){
 
 function setMenu(id){
   curMenu = curMenu===id ? null : id;
-  selCat=null; openDrug=null; pg=1;
+  selCat=null; openDrug=null; pg=1; p5query=''; p1query=''; p2query='';
   document.getElementById('modalArea').innerHTML='';
   renderMenu(); renderPanel();
   if(curMenu) document.getElementById('panelArea').scrollIntoView({behavior:'smooth',block:'start'});
