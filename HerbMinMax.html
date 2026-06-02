@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ยาสมุนไพร MIN MAX Interval — ระบบช่วยตัดสินใจสั่งจ่ายยา</title>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --g0: #fff7ed; --g1: #ffedd5; --g2: #fed7aa; --g3: #fb923c;
+  --g4: #f97316; --g5: #ea580c; --g6: #c2410c; --g7: #9a3412;
+  --g8: #7c2d12; --g9: #431407;
+  --gold: #fb923c; --amber: #f97316; --orange: #ea580c;
+  --white: #fff; --off: #fffdf7; --dark: #1c0a00;
+  --txt: #431407; --txt2: #9a3412; --txt3: #c2410c;
+  --border: rgba(249,115,22,.22); --card-bg: rgba(255,255,255,.95);
+  --shadow: 0 4px 24px rgba(234,88,12,.14);
+  --shadow-lg: 0 12px 48px rgba(234,88,12,.22);
+  --r: 16px; --r-sm: 10px; --r-lg: 24px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Sarabun', sans-serif;
+  background: var(--g0);
+  color: var(--txt);
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 10% 0%, rgba(251,146,60,.35) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 100%, rgba(249,115,22,.2) 0%, transparent 50%);
+}
+
+/* ─── SHIMMER KEYFRAMES ─── */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes glow-pulse {
+  0%,100% { box-shadow: 0 0 10px rgba(249,115,22,.5), 0 4px 20px rgba(234,88,12,.3); }
+  50%      { box-shadow: 0 0 26px rgba(249,115,22,.9), 0 8px 30px rgba(234,88,12,.55); }
+}
+@keyframes sparkle {
+  0%   { opacity:0; transform:scale(0) rotate(0deg); }
+  50%  { opacity:1; transform:scale(1.2) rotate(180deg); }
+  100% { opacity:0; transform:scale(0) rotate(360deg); }
+}
+@keyframes float-up {
+  from { opacity:0; transform:translateY(6px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* ─── HEADER ─── */
+.header {
+  background: linear-gradient(135deg, #c2410c 0%, #ea580c 50%, #f97316 100%);
+  padding: 1.25rem 1.5rem 1rem;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 20px rgba(0,0,0,.25);
+}
+.header-inner { max-width: 900px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+.header-logo {
+  width: 42px; height: 42px; border-radius: 12px;
+  background: rgba(255,255,255,.15);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; flex-shrink: 0; border: 1px solid rgba(255,255,255,.25);
+}
+.header-text { flex: 1; }
+.header-title { font-family: 'Prompt', sans-serif; font-size: 16px; font-weight: 600; color: #fff; line-height: 1.2; }
+.header-sub { font-size: 11px; color: rgba(255,255,255,.7); margin-top: 1px; }
+.header-badge {
+  font-size: 10px; background: #fff7ed; color: #c2410c;
+  padding: 3px 8px; border-radius: 20px; font-weight: 600; white-space: nowrap;
+}
+
+/* ─── MAIN ─── */
+.main { max-width: 900px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+
+/* ─── MENU GRID ─── */
+.menu-grid {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 8px;
+  margin-bottom: 1.25rem;
+}
+.menu-btn {
+  background: var(--card-bg);
+  border: 1.5px solid rgba(249,115,22,.3);
+  border-radius: var(--r); padding: 14px 8px 12px;
+  cursor: pointer; text-align: center;
+  transition: all .22s ease;
+  box-shadow: var(--shadow);
+  position: relative; overflow: hidden;
+}
+/* shimmer sweep overlay */
+.menu-btn::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(110deg,
+    transparent 20%,
+    rgba(251,146,60,.25) 40%,
+    rgba(255,255,255,.45) 50%,
+    rgba(251,146,60,.25) 60%,
+    transparent 80%);
+  background-size: 200% 100%;
+  animation: shimmer 2.8s linear infinite;
+  pointer-events: none;
+}
+.menu-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(234,88,12,.35);
+  border-color: var(--g3);
+  animation: glow-pulse .8s ease-in-out infinite;
+}
+.menu-btn.active {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  border-color: var(--g3);
+  box-shadow: 0 0 22px rgba(249,115,22,.7), 0 6px 24px rgba(234,88,12,.45);
+  animation: glow-pulse 1.4s ease-in-out infinite;
+}
+/* gold shimmer on active — brighter */
+.menu-btn.active::before {
+  background: linear-gradient(110deg,
+    transparent 20%,
+    rgba(255,255,255,.12) 40%,
+    rgba(255,255,255,.38) 50%,
+    rgba(255,255,255,.12) 60%,
+    transparent 80%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+.menu-num {
+  position: absolute; top: 6px; left: 8px;
+  font-size: 10px; font-weight: 700; color: var(--g5);
+  font-family: 'Prompt', sans-serif;
+}
+.menu-btn.active .menu-num { color: rgba(255,255,255,.65); }
+.menu-icon { font-size: 26px; display: block; margin-bottom: 5px; position: relative; z-index: 1; }
+.menu-btn.active .menu-icon { filter: brightness(0) invert(1); }
+.menu-label {
+  font-size: 11px; color: var(--txt2); line-height: 1.35;
+  position: relative; z-index: 1;
+}
+.menu-btn.active .menu-label { color: rgba(255,255,255,.92); font-weight: 500; }
+
+/* ─── PANEL ─── */
+.panel {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 1.25rem;
+  box-shadow: var(--shadow-lg);
+  animation: float-up .25s ease;
+}
+
+.panel-hd {
+  display: flex; align-items: center; gap: 10px;
+  padding-bottom: .875rem; border-bottom: 1.5px solid var(--g1);
+  margin-bottom: 1rem;
+}
+.panel-hd-icon {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: linear-gradient(135deg, #fb923c, #f97316);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.panel-title { font-family: 'Prompt', sans-serif; font-size: 15px; font-weight: 600; color: var(--g8); }
+.panel-sub { font-size: 11px; color: var(--txt3); margin-top: 1px; }
+
+/* ─── INPUTS ─── */
+input[type=text], input[type=number], select {
+  width: 100%; padding: 9px 12px; border: 1.5px solid var(--g2);
+  border-radius: var(--r-sm); background: #fff; font-family: 'Sarabun', sans-serif;
+  font-size: 13px; color: var(--txt); outline: none; transition: border-color .15s;
+}
+input:focus, select:focus { border-color: var(--g4); box-shadow: 0 0 0 3px rgba(249,115,22,.18); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: .875rem; }
+
+/* ─── CHIP FILTERS ─── */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: .875rem; }
+.chip {
+  padding: 5px 12px; border-radius: 20px; font-size: 12px;
+  border: 1.5px solid var(--g3); background: #fff; color: var(--g7);
+  cursor: pointer; transition: all .15s; font-family: 'Sarabun', sans-serif;
+}
+.chip:hover { background: var(--g1); }
+.chip.on { background: #f97316; border-color: #f97316; color: #fff; font-weight: 600; }
+
+/* ─── CARDS GRID ─── */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(255px,1fr)); gap: 10px; margin-top: .75rem; }
+.dcard {
+  background: #fff; border: 1.5px solid var(--g1);
+  border-radius: var(--r); padding: .875rem;
+  cursor: pointer; transition: all .2s; position: relative; overflow: hidden;
+}
+.dcard::after {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: linear-gradient(180deg, #fb923c, #ea580c);
+  border-radius: 3px 0 0 3px;
+}
+.dcard:hover { border-color: var(--g3); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(249,115,22,.22); }
+.dcard-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; margin-bottom: 5px; }
+.dname { font-size: 13px; font-weight: 600; color: var(--g8); line-height: 1.4; font-family: 'Prompt', sans-serif; }
+.dprice { font-size: 11px; background: var(--g1); color: var(--g7); padding: 2px 8px; border-radius: 12px; white-space: nowrap; flex-shrink: 0; font-weight: 600; border: 1px solid var(--g2); }
+.dind { font-size: 12px; color: var(--txt2); line-height: 1.5; margin-bottom: 7px; }
+.dtags { display: flex; gap: 5px; flex-wrap: wrap; }
+.dtag { font-size: 10px; padding: 2px 7px; border-radius: 8px; font-weight: 500; }
+.dtag-cycle { background: #fef3c7; color: var(--g7); border: 1px solid var(--g2); }
+.dtag-alt { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.dtag-high { background: #fef9c3; color: #854d0e; border: 1px solid #fde68a; }
+
+/* ─── MODAL ─── */
+.modal-overlay {
+  background: rgba(124,45,18,.4); border-radius: var(--r-lg);
+  padding: 1rem; margin-bottom: 1rem;
+  animation: fadeIn .2s ease;
+}
+@keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+.modal {
+  background: #fff; border-radius: var(--r-lg);
+  max-width: 540px; margin: 0 auto;
+  border: 1.5px solid var(--g2); overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,.2);
+}
+.modal-header {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  padding: 1rem 1.125rem; display: flex; align-items: flex-start; gap: 10px;
+}
+.modal-title-wrap { flex: 1; }
+.modal-title { font-family: 'Prompt', sans-serif; font-size: 15px; font-weight: 600; color: #fff; line-height: 1.4; }
+.modal-cat { font-size: 11px; color: rgba(255,255,255,.7); margin-top: 2px; }
+.modal-close {
+  background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.25);
+  width: 28px; height: 28px; border-radius: 8px; cursor: pointer;
+  color: #fff; font-size: 15px; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background .15s;
+}
+.modal-close:hover { background: rgba(255,255,255,.25); }
+.modal-body { padding: 1rem 1.125rem; }
+.stat4 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: .875rem; }
+.sc { background: var(--g0); border-radius: var(--r-sm); padding: .625rem .875rem; border: 1px solid var(--g1); }
+.sc-lbl { font-size: 10px; color: var(--txt3); margin-bottom: 2px; text-transform: uppercase; letter-spacing: .04em; }
+.sc-val { font-size: 14px; font-weight: 600; color: var(--g6); font-family: 'Prompt', sans-serif; }
+.sc-val.dark { color: var(--txt); }
+.msect { font-size: 10px; color: var(--txt3); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; margin-top: .75rem; }
+.ibox { background: var(--g0); border-radius: var(--r-sm); padding: .625rem .875rem; font-size: 12.5px; color: var(--txt2); line-height: 1.65; border-left: 3px solid var(--g3); }
+.altbox { background: #eff6ff; border-radius: var(--r-sm); padding: .625rem .875rem; font-size: 12px; color: #1d4ed8; margin-top: .5rem; border-left: 3px solid #60a5fa; }
+.vbox { border-radius: var(--r-sm); padding: .625rem .875rem; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 7px; margin-top: .625rem; }
+.vg { background: #ffedd5; color: #c2410c; border: 1px solid var(--g3); }
+.vm { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
+.vi { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+.modal-footer { padding: .875rem 1.125rem; border-top: 1px solid var(--g1); display: flex; gap: 8px; }
+.btn-ask {
+  flex: 1; padding: 9px 14px; border-radius: var(--r-sm); font-size: 12.5px;
+  font-weight: 600; cursor: pointer; font-family: 'Sarabun', sans-serif;
+  background: linear-gradient(135deg, #fb923c, #f97316);
+  color: #fff; border: none; transition: all .15s;
+}
+.btn-ask:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(234,88,12,.4); }
+.btn-sec { padding: 9px 14px; border-radius: var(--r-sm); font-size: 12.5px; font-weight: 600; cursor: pointer; font-family: 'Sarabun', sans-serif; background: var(--g1); color: var(--g7); border: 1.5px solid var(--g3); transition: all .15s; }
+.btn-sec:hover { background: var(--g2); }
+
+/* ─── COMPARE ─── */
+.cmp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: .75rem; }
+.cside { background: var(--g0); border-radius: var(--r); padding: .875rem; border: 1.5px solid var(--g2); }
+.cside-hd { font-size: 12px; font-weight: 600; color: var(--g8); margin-bottom: .625rem; padding-bottom: .5rem; border-bottom: 1px solid var(--g2); font-family: 'Prompt', sans-serif; }
+.crow { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px dashed var(--g2); }
+.crow:last-child { border: none; }
+.crow-lbl { color: var(--txt3); }
+.crow-val { font-weight: 600; color: var(--txt); }
+.winner-box {
+  background: linear-gradient(135deg, #fff7ed, #ffedd5);
+  border: 1.5px solid var(--g3); border-radius: var(--r);
+  padding: .75rem 1rem; display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 600; color: var(--g7);
+}
+
+/* ─── CALC ─── */
+.res-box {
+  background: linear-gradient(135deg, #ea580c, #f97316);
+  border-radius: var(--r); padding: 1.125rem;
+  margin-top: .875rem;
+}
+.res-big { font-size: 24px; font-weight: 700; color: #fff; font-family: 'Prompt', sans-serif; margin-bottom: 4px; }
+.res-sub { font-size: 12px; color: rgba(255,255,255,.8); line-height: 1.6; }
+
+/* ─── SCAN ─── */
+.match-card {
+  background: #fff; border: 1.5px solid var(--g2); border-radius: var(--r);
+  padding: .875rem; margin-top: 8px; position: relative; overflow: hidden;
+}
+.match-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(180deg, #fb923c, #ea580c); }
+.match-name { font-size: 13px; font-weight: 600; color: var(--g9); font-family: 'Prompt', sans-serif; margin-bottom: 3px; }
+.match-sub { font-size: 12px; color: var(--txt2); line-height: 1.5; }
+.match-alt { font-size: 11px; color: var(--txt3); margin-top: 4px; }
+
+/* ─── TABLE ─── */
+.tbl-wrap { overflow-x: auto; margin-top: .5rem; border-radius: var(--r-sm); border: 1px solid var(--g2); }
+table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 560px; }
+thead { background: linear-gradient(135deg, #ea580c, #f97316); }
+th { padding: 9px 10px; text-align: left; font-weight: 600; color: #fff; font-family: 'Prompt', sans-serif; white-space: nowrap; font-size: 11px; }
+td { padding: 7px 10px; border-bottom: 1px solid var(--g1); color: var(--txt); vertical-align: top; }
+tr:hover td { background: var(--g0); }
+.td-name { color: var(--g7); cursor: pointer; font-weight: 500; }
+.td-name:hover { color: var(--g4); text-decoration: underline; }
+.tpill { font-size: 10px; padding: 1px 6px; border-radius: 8px; display: inline-block; }
+.tpill-g { background: var(--g1); color: var(--g8); }
+.tpill-b { background: #dbeafe; color: #1d4ed8; }
+.pg { display: flex; align-items: center; gap: 8px; margin-top: .875rem; justify-content: center; }
+.pg-btn { padding: 5px 14px; border-radius: var(--r-sm); background: var(--g1); color: var(--g8); border: 1.5px solid var(--g2); cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; }
+.pg-btn:hover:not(:disabled) { background: var(--g2); }
+.pg-btn:disabled { opacity: .4; cursor: not-allowed; }
+.pg-info { font-size: 12px; color: var(--txt3); font-weight: 500; }
+
+.cnt { font-size: 11px; color: var(--txt3); margin-bottom: .5rem; font-weight: 500; }
+.empty { text-align: center; padding: 2rem; color: var(--txt3); font-size: 13px; }
+
+/* ─── PILL CALCULATOR ─── */
+.pill-calc {
+  background: linear-gradient(135deg, #fff7ed, #ffedd5);
+  border: 1.5px solid var(--g3); border-radius: var(--r);
+  padding: .875rem 1rem; margin-top: .75rem;
+}
+.pill-calc-title {
+  font-size: 11px; font-weight: 700; color: var(--g8);
+  text-transform: uppercase; letter-spacing: .06em; margin-bottom: .625rem;
+  display: flex; align-items: center; gap: 5px;
+}
+.pill-input-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: .625rem;
+}
+.pill-input-row label { font-size: 12px; color: var(--txt2); white-space: nowrap; min-width: 120px; }
+.pill-input-row input {
+  width: 90px; padding: 6px 10px; border: 1.5px solid var(--g3);
+  border-radius: var(--r-sm); font-size: 13px; font-weight: 600;
+  color: var(--g8); background: #fff; text-align: center;
+}
+.pill-input-row input:focus { border-color: var(--g4); outline: none; }
+.pill-input-row span { font-size: 12px; color: var(--txt3); }
+.pill-result {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: .5rem;
+}
+.pill-res-card {
+  background: #fff; border: 1.5px solid var(--g2);
+  border-radius: var(--r-sm); padding: .5rem .75rem; text-align: center;
+}
+.pill-res-lbl { font-size: 10px; color: var(--txt3); margin-bottom: 3px; text-transform: uppercase; letter-spacing: .04em; }
+.pill-res-num { font-size: 20px; font-weight: 700; color: var(--g7); font-family: 'Prompt', sans-serif; line-height: 1.1; }
+.pill-res-sub { font-size: 10px; color: var(--txt3); margin-top: 2px; }
+.pill-no-mg { font-size: 12px; color: var(--txt3); font-style: italic; padding: .375rem 0; }
+.pill-pkg-row {
+  display: flex; align-items: center; gap: 8px; margin-top: .5rem; padding-top: .5rem;
+  border-top: 1px dashed var(--g2);
+}
+.pill-pkg-row label { font-size: 12px; color: var(--txt2); white-space: nowrap; min-width: 120px; }
+.pill-pkg-result { font-size: 13px; font-weight: 600; color: var(--g8); }
+.sep { border: none; border-top: 1.5px solid var(--g1); margin: .875rem 0; }
+.sect-lbl { font-size: 10px; color: var(--txt3); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+.mb { margin-bottom: .75rem; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-logo">🌿</div>
+    <div class="header-text">
+      <div class="header-title">ระบบช่วยตัดสินใจสั่งจ่ายยาสมุนไพร MIN MAX Interval</div>
+      <div class="header-sub">ใช้ข้อมูลเกณฑ์ที่กำหนด โดย สปสช. วันที่ 20 พ.ย. 68 — 106 รายการ (110 sub-items)</div>
+    </div>
+    <div class="header-badge">UC สมุนไพร</div>
+    <div style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);border-radius:14px;padding:3px 10px;font-size:11px;font-weight:700;color:var(--gold);white-space:nowrap;">v1.1</div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="menu-grid" id="menuGrid"></div>
+  <div id="modalArea"></div>
+  <div id="panelArea"></div>
+</div>
+
+<script>
+const MENUS = [
+  {id:1, icon:'🔍', lbl:'ค้นหาตาม\nอาการ/หมวด'},
+  {id:2, icon:'📋', lbl:'รายละเอียดยา\n& ความคุ้มค่า'},
+  {id:3, icon:'⚖️', lbl:'เปรียบเทียบ\nสมุนไพร vs ปัจจุบัน'},
+  {id:4, icon:'🧮', lbl:'คำนวณ\nปริมาณยา/course'},
+  {id:5, icon:'🔎', lbl:'ค้นยาปัจจุบัน\n→ หาสมุนไพรทดแทน'},
+  {id:6, icon:'📊', lbl:'ตารางรายการ\nยาทั้งหมด'},
+  {id:7, icon:'⭐', lbl:'รายการโปรด\n& ประวัติล่าสุด'},
+  {id:8, icon:'🛒', lbl:'สรุปค่าตอบแทน\nชดเชยรวม'},
+];
+
+const CATS = ['ปวด','ไข้','ไอ','ท้อง','ผิวหนัง','ลม','ปัสสาวะ','สตรี','กัญชา','บุหรี่'];
+
+const D = [
+  {id:1,name:'ยาไพล สูตร 1',price:65,ind:'บรรเทาบวม ฟกช้ำ เคล็ดยอก',alt:'Analgesic balm, Topical NSAIDs',min:1,max:2,unit:'หลอด',cycle:30,cat:'ปวด'},
+  {id:2,name:'ยาไพล สูตร 2',price:65,ind:'บรรเทาปวดเมื่อย เคล็ดขัดยอก',alt:'Analgesic balm, Topical NSAIDs',min:1,max:2,unit:'หลอด',cycle:30,cat:'ปวด'},
+  {id:3,name:'ยาขี้ผึ้งไพล สูตร 1',price:65,ind:'บรรเทาอาการปวดเมื่อย',alt:'Analgesic balm, Topical NSAIDs',min:1,max:2,unit:'หลอด',cycle:30,cat:'ปวด'},
+  {id:4,name:'ยาขี้ผึ้งไพล สูตร 2',price:65,ind:'บรรเทาอาการปวดเมื่อย',alt:'Analgesic balm, Topical NSAIDs',min:1,max:2,unit:'หลอด',cycle:30,cat:'ปวด'},
+  {id:5,name:'ยาน้ำมันไพล',price:65,ind:'บรรเทาบวม ฟกช้ำ เคล็ดยอก',alt:'Analgesic balm, Topical NSAIDs',min:1,max:2,unit:'หลอด',cycle:30,cat:'ปวด'},
+  {id:6,name:'ยาเถาวัลย์เปรียง',price:84,ind:'บรรเทาปวดกล้ามเนื้อ ลดการอักเสบ',alt:'Diclofenac, Ibuprofen, Naproxen',min:21000,max:42000,unit:'มก.',cycle:15,cat:'ปวด'},
+  {id:7,name:'ยาสารสกัดเถาวัลย์เปรียง',price:86,ind:'ปวดหลังส่วนล่าง ข้อเข่าเสื่อม (Knee OA)',alt:'Diclofenac, Ibuprofen, Naproxen',min:8400,max:11200,unit:'มก.',cycle:15,cat:'ปวด'},
+  {id:8,name:'ยาผสมเถาวัลย์เปรียง สูตร 1',price:86,ind:'บรรเทาปวดเมื่อยตามร่างกาย',alt:'Diclofenac, Ibuprofen, Naproxen',min:18900,max:31500,unit:'มก.',cycle:7,cat:'ปวด'},
+  {id:9,name:'ยาผสมเถาวัลย์เปรียง สูตร 2',price:86,ind:'บรรเทาปวดเมื่อยตามร่างกาย',alt:'Diclofenac, Ibuprofen, Naproxen',min:18900,max:31500,unit:'มก.',cycle:7,cat:'ปวด'},
+  {id:10,name:'ยาประคบ',price:100,ind:'ลดปวด คลายกล้ามเนื้อ เอ็น ข้อ',alt:'Analgesic balm, Topical NSAIDs',min:1,max:2,unit:'ลูก',cycle:7,cat:'ปวด'},
+  {id:11,name:'ยาสหัสธารา',price:73,ind:'ขับลมในเส้น แก้โรคลมกองหยาบ',alt:'Muscle relaxant (Orphenadrine, Tolperisone)',min:21000,max:31500,unit:'มก.',cycle:7,cat:'ปวด'},
+  {id:12,name:'ยาสารสกัดขมิ้นชัน',price:195,ind:'บรรเทาปวดในข้อ ข้อเข่าเสื่อม',alt:'NSAIDs',min:21000,max:21000,unit:'มก.',cycle:15,cat:'ปวด'},
+  {id:13,name:'ยาพริก 0.025%',price:40,ind:'บรรเทาปวดข้อ ปวดกล้ามเนื้อ',alt:'Topical NSAIDs, Methyl salicylate',min:1,max:1,unit:'หลอด',cycle:30,cat:'ปวด'},
+  {id:14,name:'ยาพริก 0.075%',price:180,ind:'ปวดระบบประสาทส่วนปลาย (neuropathic)',alt:'Topical NSAIDs, Methyl salicylate',min:1,max:1,unit:'หลอด',cycle:30,cat:'ปวด'},
+  {id:15,name:'ยาสเปรย์กระดูกไก่ดำ',price:120,ind:'แก้ปวดกล้ามเนื้อ ฟกช้ำ เคล็ดขัดยอก',alt:'Topical NSAIDs',min:1,max:2,unit:'ขวด',cycle:15,cat:'ปวด'},
+  {id:16,name:'ยาแก้ลมแก้เส้น (แคปซูล)',price:420,ind:'แก้ลมในเส้น ปวดกล้ามเนื้อ มือเท้าชา',alt:'Orphenadrine, Tolperisone, NSAIDs',min:28000,max:112000,unit:'มก.',cycle:15,cat:'ปวด'},
+  {id:17,name:'ยาแก้ลมแก้เส้น (ผง)',price:390,ind:'แก้ลมในเส้น ปวดกล้ามเนื้อ มือเท้าชา',alt:'Orphenadrine, Tolperisone, NSAIDs',min:28000,max:112000,unit:'มก.',cycle:15,cat:'ปวด'},
+  {id:18,name:'ยาทำลายพระสุเมรุ (แคปซูล)',price:270,ind:'เสริมฟื้นฟูกล้ามเนื้ออ่อนแรง อัมพฤกษ์อัมพาต',alt:'Tolperisone, กายภาพบำบัด',min:56000,max:56000,unit:'มก.',cycle:7,cat:'ปวด'},
+  {id:19,name:'ยาทำลายพระสุเมรุ (ผง)',price:240,ind:'เสริมฟื้นฟูกล้ามเนื้ออ่อนแรง อัมพฤกษ์อัมพาต',alt:'Tolperisone, กายภาพบำบัด',min:56000,max:56000,unit:'มก.',cycle:7,cat:'ปวด'},
+  {id:20,name:'ยาปราบชมพูทวีป',price:170,ind:'บรรเทาหวัดระยะแรก โรคจมูกอักเสบภูมิแพ้ น้ำมูกไหล คัดจมูก จาม',alt:'Cetirizine, Loratadine, Chlorpheniramine',min:21000,max:28000,unit:'มก.',cycle:7,cat:'ไข้'},
+  {id:21,name:'ยาฟ้าทะลายโจร (ผง)',price:92,ind:'ท้องเสียไม่ติดเชื้อ เจ็บคอ ไข้หวัด โควิด 19',alt:'Paracetamol, Serratiopeptidase',min:10000,max:60000,unit:'มก.',cycle:7,cat:'ไข้'},
+  {id:22,name:'ยาฟ้าทะลายโจร (สารสกัด)',price:105,ind:'ไข้หวัด ไข้หวัดใหญ่ไม่รุนแรง โควิด 19',alt:'Paracetamol',min:300,max:900,unit:'มก.',cycle:7,cat:'ไข้'},
+  {id:23,name:'ยาเขียวหอม',price:70,ind:'ไข้ร้อนใน กระหายน้ำ พิษหัด อีสุกอีใส',alt:'Paracetamol',min:14000,max:28000,unit:'มก.',cycle:7,cat:'ไข้'},
+  {id:24,name:'ยามะระขี้นก',price:130,ind:'แก้ไข้ แก้ร้อนใน เจริญอาหาร',alt:'Cyproheptadine',min:10500,max:42000,unit:'มก.',cycle:15,cat:'ไข้'},
+  {id:25,name:'ยาจันทลีลา',price:97,ind:'ไข้ตัวร้อน ไข้เปลี่ยนฤดู',alt:'Paracetamol, Aspirin',min:9000,max:36000,unit:'มก.',cycle:7,cat:'ไข้'},
+  {id:26,name:'ยาห้าราก',price:48,ind:'บรรเทาไข้ กระทุ้งพิษไข้',alt:'Paracetamol',min:4500,max:13500,unit:'มก.',cycle:7,cat:'ไข้'},
+  {id:27,name:'ยาบัวบก (แคปซูล/ชง)',price:28,ind:'แก้ไข้ ร้อนใน ช้ำใน',alt:'Paracetamol',min:8400,max:84000,unit:'มก.',cycle:7,cat:'ไข้'},
+  {id:28,name:'ยารางจืด',price:86,ind:'ถอนพิษไข้ แก้ร้อนใน',alt:'Activated Charcoal',min:21000,max:126000,unit:'มก.',cycle:7,cat:'ไข้'},
+  {id:29,name:'ยาหญ้าปักกิ่ง',price:84,ind:'แก้ไข้ ร้อนใน น้ำเหลืองเสีย',alt:'Paracetamol',min:8400,max:63000,unit:'มก.',cycle:7,cat:'ไข้'},
+  {id:30,name:'ยาแก้ไอผสมมะขามป้อม สูตร 1',price:84,ind:'บรรเทาไอ ขับเสมหะ ชุ่มคอ',alt:'Ambroxol, Bromhexine, GG',min:1,max:2,unit:'ขวด',cycle:7,cat:'ไอ'},
+  {id:31,name:'ยาแก้ไอผสมมะขามป้อม สูตร 2',price:84,ind:'บรรเทาไอ ขับเสมหะ ชุ่มคอ',alt:'Ambroxol, Bromhexine, GG',min:1,max:2,unit:'ขวด',cycle:7,cat:'ไอ'},
+  {id:32,name:'ยาแก้ไอผสมมะขามป้อม สูตร 3',price:84,ind:'บรรเทาไอ ขับเสมหะ ชุ่มคอ',alt:'Ambroxol, Bromhexine, GG',min:1,max:2,unit:'ขวด',cycle:7,cat:'ไอ'},
+  {id:33,name:'ยาประสะมะแว้ง',price:50,ind:'ไอ มีเสมหะ ชุ่มคอ',alt:'Bromhexine, GG',min:14000,max:19600,unit:'มก.',cycle:7,cat:'ไอ'},
+  {id:34,name:'ยาตรีผลา',price:100,ind:'บรรเทาไอ ขับเสมหะ ระบาย',alt:'Ambroxol, Bromhexine',min:8400,max:56000,unit:'มก.',cycle:7,cat:'ไอ'},
+  {id:35,name:'ยาธาตุอบเชย',price:84,ind:'ขับลม ท้องอืด ท้องเฟ้อ',alt:'Simethicone, M.carminative',min:315,max:630,unit:'มล.',cycle:7,cat:'ท้อง'},
+  {id:36,name:'ยาขมิ้นชัน',price:67,ind:'แน่นจุกเสียด ท้องอืด Functional dyspepsia',alt:'Simethicone, Omeprazole',min:28000,max:56000,unit:'มก.',cycle:15,cat:'ท้อง'},
+  {id:37,name:'ยามะขามแขก',price:31,ind:'บรรเทาท้องผูก',alt:'Bisacodyl, Senna',min:2400,max:14000,unit:'มก.',cycle:7,cat:'ท้อง'},
+  {id:38,name:'ยาขิง',price:84,ind:'ท้องอืด ขับลม คลื่นไส้ เมารถเมาเรือ',alt:'Dimenhydrinate',min:14000,max:28000,unit:'มก.',cycle:7,cat:'ท้อง'},
+  {id:39,name:'ยากล้วย',price:65,ind:'รักษาแผลในกระเพาะอาหาร',alt:'Al(OH)₃+Mg(OH)₂',min:90000,max:90000,unit:'มก.',cycle:7,cat:'ท้อง'},
+  {id:40,name:'ยาเหลืองปิดสมุทร',price:37,ind:'ท้องเสียไม่ติดเชื้อ ไม่มีไข้',alt:'Activated Charcoal, Pectin+Kaolin',min:4000,max:5000,unit:'มก.',cycle:7,cat:'ท้อง'},
+  {id:41,name:'ยาธาตุบรรจบ',price:55,ind:'ท้องอืด ท้องเฟ้อ',alt:'Loperamide, Simethicone',min:10500,max:21000,unit:'มก.',cycle:7,cat:'ท้อง'},
+  {id:42,name:'ยาชุมเห็ดเทศ',price:60,ind:'บรรเทาท้องผูก',alt:'Bisacodyl, Milk of Magnesia',min:21000,max:42000,unit:'มก.',cycle:7,cat:'ท้อง'},
+  {id:43,name:'ยาธรณีสันฑะฆาต',price:80,ind:'แก้เถาดาน ท้องผูก',alt:'Bisacodyl, Milk of Magnesia',min:3500,max:7000,unit:'มก.',cycle:7,cat:'ท้อง'},
+  {id:44,name:'ยาเบญจกูล',price:108,ind:'ท้องอืด ท้องเฟ้อ',alt:'Simethicone, Digestive enzyme',min:16800,max:42000,unit:'มก.',cycle:7,cat:'ท้อง'},
+  {id:45,name:'ยาว่านหางจระเข้',price:67,ind:'แผลไฟไหม้ น้ำร้อนลวก',alt:'Silver sulfadiazine',min:1,max:2,unit:'หลอด',cycle:7,cat:'ผิวหนัง'},
+  {id:46,name:'ยาว่านหางจระเข้ ≥87%',price:67,ind:'ลดผิวหนังอักเสบจากรังสีรักษา',alt:'Silver sulfadiazine',min:1,max:2,unit:'หลอด',cycle:7,cat:'ผิวหนัง'},
+  {id:47,name:'ยาเปลือกมังคุด',price:60,ind:'ทาแผลสด แผลเรื้อรัง',alt:'Povidone iodine',min:1,max:2,unit:'ขวด',cycle:7,cat:'ผิวหนัง'},
+  {id:48,name:'ยาพญายอ',price:33,ind:'เริม งูสวัด แผลในปาก ผดผื่นคัน แมลงกัดต่อย',alt:'Acyclovir cream, Calamine lotion',min:1,max:2,unit:'ขวด/หลอด',cycle:7,cat:'ผิวหนัง'},
+  {id:49,name:'ยาทิงเจอร์ทองพันชั่ง',price:48,ind:'กลากเกลื้อน เชื้อรา น้ำกัดเท้า',alt:'Topical Antifungals',min:1,max:2,unit:'ขวด',cycle:7,cat:'ผิวหนัง'},
+  {id:50,name:'ยาบัวบก (ภายนอก)',price:46,ind:'สมานแผล',alt:'Wound healing agent',min:1,max:2,unit:'หลอด',cycle:7,cat:'ผิวหนัง'},
+  {id:51,name:'ยาทิงเจอร์พลู',price:70,ind:'ผิวหนังอักเสบ แมลงกัดต่อย',alt:'Triamcinolone cream',min:1,max:2,unit:'ขวด',cycle:15,cat:'ผิวหนัง'},
+  {id:52,name:'ยาผสมเพชรสังฆาต สูตร 1',price:204,ind:'ริดสีดวงทวารหนัก',alt:'Daflon (Diosmin+Hesperidine)',min:21000,max:50400,unit:'มก.',cycle:15,cat:'ผิวหนัง'},
+  {id:53,name:'ยาผสมเพชรสังฆาต สูตร 2',price:204,ind:'ริดสีดวงทวารหนัก',alt:'Daflon (Diosmin+Hesperidine)',min:21000,max:50400,unit:'มก.',cycle:15,cat:'ผิวหนัง'},
+  {id:54,name:'ยาหอมนวโกฐ',price:70,ind:'ลมวิงเวียน คลื่นเหียน อาเจียน ลมปลายไข้',alt:'Dimenhydrinate',min:21000,max:42000,unit:'มก.',cycle:7,cat:'ลม'},
+  {id:55,name:'ยาหอมเทพจิตร',price:70,ind:'หน้ามืด ตาลาย สะวิงสวาย ใจสั่น',alt:'Dimenhydrinate, Cinnarizine',min:21000,max:29400,unit:'มก.',cycle:7,cat:'ลม'},
+  {id:56,name:'ยาหอมอินทจักร์',price:90,ind:'ลมบาดทะจิต คลื่นเหียนอาเจียน ลมจุกเสียด',alt:'Dimenhydrinate, Flunarizine',min:15000,max:30000,unit:'มก.',cycle:7,cat:'ลม'},
+  {id:57,name:'ยาหอมทิพโอสถ',price:70,ind:'แก้ลมวิงเวียน',alt:'Dimenhydrinate, Flunarizine',min:15000,max:21000,unit:'มก.',cycle:7,cat:'ลม'},
+  {id:58,name:'ยาศุขไสยาศน์ (แคปซูล)',price:420,ind:'นอนไม่หลับ เจริญอาหาร',alt:'Benzodiazepine (Diazepam, Lorazepam)',min:7000,max:28000,unit:'มก.',cycle:15,cat:'ลม'},
+  {id:59,name:'ยาศุขไสยาศน์ (ผง)',price:330,ind:'นอนไม่หลับ เจริญอาหาร',alt:'Benzodiazepine (Diazepam, Lorazepam)',min:7000,max:28000,unit:'มก.',cycle:15,cat:'ลม'},
+  {id:60,name:'ยาหญ้าหนวดแมว',price:61,ind:'ขับปัสสาวะ แก้ขัดเบา ขับนิ่วขนาดเล็ก',alt:'Sodium Potassium Citrate (SPC)',min:84000,max:126000,unit:'มก.',cycle:15,cat:'ปัสสาวะ'},
+  {id:61,name:'ยากระเจี๊ยบแดง',price:85,ind:'ขับปัสสาวะ แก้ขัดเบา',alt:'Lisinopril',min:42000,max:63000,unit:'มก.',cycle:7,cat:'ปัสสาวะ'},
+  {id:62,name:'ยาประสะไพล',price:67,ind:'ระดูมาไม่สม่ำเสมอ ปวดประจำเดือน ขับน้ำคาวปลา',alt:'Mefenamic acid, Ibuprofen',min:45000,max:45000,unit:'มก.',cycle:15,cat:'สตรี'},
+  {id:63,name:'ยาบำรุงโลหิต',price:139,ind:'บำรุงโลหิต',alt:'Ferrous Sulfate, Ferrous Fumarate',min:60000,max:60000,unit:'มก.',cycle:30,cat:'สตรี'},
+  {id:64,name:'ยาน้ำมันกัญชา THC 2mg/ml',price:344,ind:'ปวดเรื้อรัง นอนไม่หลับ เจริญอาหารในผู้ป่วยมะเร็ง',alt:'Benzodiazepine+Cyproheptadine',min:1,max:2,unit:'ขวด',cycle:30,cat:'กัญชา'},
+  {id:65,name:'ยาน้ำมันกัญชาทั้งห้า',price:600,ind:'เสริมการรักษาปวดกล้ามเนื้อ-ข้อ ที่ไม่ตอบสนองยามาตรฐาน',alt:'Benzodiazepine, NSAIDs',min:2,max:4,unit:'ขวด',cycle:null,cat:'กัญชา'},
+  {id:66,name:'ยา CBD 100mg/ml 10ml — ลมชัก',price:2000,ind:'โรคลมชักรักษายาก ดื้อต่อการรักษา',alt:'ยาต้านลมชัก',min:1,max:1,unit:'ขวด',cycle:30,cat:'กัญชา'},
+  {id:67,name:'ยา CBD 100mg/ml 30ml — ลมชัก',price:6000,ind:'โรคลมชักรักษายาก ดื้อต่อการรักษา',alt:'ยาต้านลมชัก',min:1,max:1,unit:'ขวด',cycle:30,cat:'กัญชา'},
+  {id:68,name:'ยา CBD:THC 1:1 — MS/มะเร็งระยะท้าย',price:1800,ind:'Multiple Sclerosis / มะเร็งระยะท้าย ปวด-นอนไม่หลับ',alt:'Baclofen, opioid analgesics',min:2,max:2,unit:'ขวด',cycle:30,cat:'กัญชา'},
+  {id:69,name:'ยา THC ≤0.5mg/drop — เคมีบำบัด',price:1000,ind:'คลื่นไส้จากเคมีบำบัด มะเร็งระยะท้าย ปวดปานกลาง-รุนแรง',alt:'Antiemetics, Benzodiazepine',min:2,max:2,unit:'ขวด',cycle:30,cat:'กัญชา'},
+  {id:70,name:'ยา THC ≤3mg/drop — เคมีบำบัด',price:1625,ind:'คลื่นไส้จากเคมีบำบัด มะเร็งระยะท้าย ปวดปานกลาง-รุนแรง',alt:'Antiemetics, Benzodiazepine',min:1,max:1,unit:'ขวด',cycle:30,cat:'กัญชา'},
+  {id:71,name:'ยาหญ้าดอกขาว',price:null,ind:'ลดความอยากบุหรี่',alt:'Nicotine replacement, Nortriptyline',min:112000,max:112000,unit:'มก.',cycle:15,cat:'บุหรี่'},
+  {id:72,name:'ยาอมสารสกัดหญ้าดอกขาว',price:null,ind:'ลดความอยากบุหรี่',alt:'Nicotine replacement',min:630,max:1260,unit:'มก.',cycle:15,cat:'บุหรี่'},
+  {id:73,name:'ยาผสมหญ้าดอกขาว',price:null,ind:'ลดความอยากบุหรี่',alt:'Nicotine, Nortriptyline, 0.5% Sodium nitrate',min:16800,max:28000,unit:'มก.',cycle:15,cat:'บุหรี่'},
+  {id:74,name:'ยาประสะเปราะใหญ่',price:null,priceNote:'48.5 point',ind:'ถอนพิษสำหรับเด็ก อาการปวดท้อง ท้องอืด ถ่ายเหลว เบื่ออาหาร',alt:'-',min:4500,max:9000,unit:'มก.',cycle:7,cat:'ท้อง'},
+  {id:75,name:'ยาประสะกะเพรา',price:null,priceNote:'165 point',ind:'บรรเทาอาการท้องอืด ท้องเฟ้อ จุกเสียด',alt:'-',min:5600,max:8400,unit:'มก.',cycle:7,cat:'ท้อง'},
+  {id:76,name:'ยาประสะกานพลู',price:null,priceNote:'104.5 point',ind:'บรรเทาอาการปวดท้อง จุกเสียด แน่นเฟ้อจากอาหารไม่ย่อย',alt:'-',min:21000,max:21000,unit:'มก.',cycle:7,cat:'ท้อง'},
+  {id:77,name:'ยามหาจักรใหญ่',price:null,priceNote:'35.5 point',ind:'บรรเทาอาการท้องอืด ท้องเฟ้อ',alt:'-',min:21000,max:21000,unit:'มก.',cycle:7,cat:'ท้อง'},
+  {id:78,name:'ยาอภัยสาลี',price:null,priceNote:'54 point',ind:'บรรเทาอาการจุกเสียดแน่น',alt:'-',min:90000,max:120000,unit:'มก.',cycle:30,cat:'ท้อง'},
+  {id:79,name:'ยาถ่ายดีเกลือฝรั่ง',price:null,priceNote:'48 point',ind:'บรรเทาอาการท้องผูกเรื้อรัง ที่ใช้ยาอื่นแล้วไม่ได้ผล',alt:'-',min:3000,max:7500,unit:'มก.',cycle:7,cat:'ท้อง'},
+  {id:80,name:'ยาริดสีดวงมหากาฬ',price:null,priceNote:'204 point',ind:'บรรเทาอาการริดสีดวงทวารหนัก',alt:'-',min:72000,max:90000,unit:'มก.',cycle:30,cat:'ผิวหนัง'},
+  {id:81,name:'ยาเลือดงาม',price:null,priceNote:'264.5 point',ind:'บรรเทาอาการปวดประจำเดือน ช่วยให้ประจำเดือนมาปกติ แก้มุตกิด',alt:'-',min:21000,max:42000,unit:'มก.',cycle:7,cat:'สตรี'},
+  {id:82,name:'ยาไฟประลัยกัลป์',price:null,priceNote:'167.5 point',ind:'ขับน้ำคาวปลาในเรือนไฟ ช่วยให้มดลูกเข้าอู่',alt:'-',min:42000,max:42000,unit:'มก.',cycle:15,cat:'สตรี'},
+  {id:83,name:'ยาไฟห้ากอง',price:null,priceNote:'167.5 point',ind:'ขับน้ำคาวปลาในเรือนไฟ ช่วยให้มดลูกเข้าอู่',alt:'-',min:42000,max:63000,unit:'มก.',cycle:15,cat:'สตรี'},
+  {id:84,name:'ยาปลูกไฟธาตุ',price:null,priceNote:'167.5 point',ind:'บำรุงไฟธาตุ ขับโลหิตระดู บำรุงน้ำนม',alt:'-',min:21000,max:63000,unit:'มก.',cycle:15,cat:'สตรี'},
+  {id:85,name:'ยาสตรีหลังคลอด',price:null,priceNote:'167.5 point',ind:'ขับน้ำคาวปลา บำรุงเลือด ช่วยให้มดลูกเข้าอู่เร็วในหญิงหลังคลอด',alt:'-',min:21000,max:63000,unit:'มก.',cycle:15,cat:'สตรี'},
+  {id:86,name:'ยาประสะจันทน์แดง',price:null,priceNote:'177.5 point',ind:'บรรเทาอาการไข้ตัวร้อน (ไข้พิษ) แก้ร้อนใน กระหายน้ำ',alt:'-',min:9000,max:18000,unit:'มก.',cycle:7,cat:'ไข้'},
+  {id:87,name:'ยามหานิลแท่งทอง',price:null,priceNote:'37.5 point',ind:'แก้ไข้กาฬ หัด อีสุกอีใส แก้ไข้ แก้ร้อนใน กระหายน้ำ',alt:'-',min:3000,max:12000,unit:'มก.',cycle:7,cat:'ไข้'},
+  {id:88,name:'ยาแก้ไอพื้นบ้านอีสาน',price:null,priceNote:'43 point',ind:'บรรเทาอาการไอ ขับเสมหะ',alt:'-',min:1,max:2,unit:'ขวด',cycle:7,cat:'ไอ'},
+  {id:89,name:'ยาอมฤควาที',price:null,priceNote:'206 point',ind:'บรรเทาอาการไอ ขับเสมหะ',alt:'-',min:3500,max:7000,unit:'มก.',cycle:7,cat:'ไอ'},
+  {id:90,name:'ยาแก้ลมอัมพฤกษ์',price:null,priceNote:'259 point',ind:'บรรเทาอาการปวดตามเส้นเอ็น กล้ามเนื้อ มือเท้าตึงและชา',alt:'-',min:21000,max:21000,unit:'มก.',cycle:7,cat:'ปวด'},
+  {id:91,name:'ยากษัยเส้น',price:null,priceNote:'207.5 point',ind:'บรรเทาอาการปวดหลัง ปวดเอว ปวดเมื่อยตามร่างกาย',alt:'-',min:21000,max:28000,unit:'มก.',cycle:7,cat:'ปวด'},
+  {id:92,name:'ยาผสมโคคลาน สูตร 1',price:null,priceNote:'59.5 point',ind:'บรรเทาอาการปวดเมื่อยตามร่างกาย',alt:'-',min:21000,max:21000,unit:'มก.',cycle:7,cat:'ปวด'},
+  {id:93,name:'ยาผสมโคคลาน สูตร 2',price:null,priceNote:'59.5 point',ind:'บรรเทาอาการปวดเมื่อยตามร่างกาย',alt:'-',min:21000,max:21000,unit:'มก.',cycle:7,cat:'ปวด'},
+  {id:94,name:'ยาผสมโคคลาน สูตร 3',price:null,priceNote:'59.5 point',ind:'บรรเทาอาการปวดเมื่อยตามร่างกาย',alt:'-',min:21000,max:21000,unit:'มก.',cycle:7,cat:'ปวด'},
+  {id:95,name:'ยาตรีเกสรมาส',price:null,priceNote:'95 point',ind:'แก้อ่อนเพลีย ปรับธาตุในผู้ป่วยที่เพิ่งฟื้นจากการเจ็บป่วย เช่น ไข้ ท้องเสีย',alt:'-',min:120000,max:120000,unit:'มก.',cycle:30,cat:'สตรี'},
+  {id:96,name:'ยาตรีพิกัด',price:null,priceNote:'109 point',ind:'ปรับสมดุลธาตุ',alt:'-',min:5250,max:31500,unit:'มก.',cycle:7,cat:'ท้อง'},
+  {id:97,name:'ยาทาขมิ้นชันและกัญชา',price:null,priceNote:'300 point',ind:'รักษาริดสีดวงทวารหนัก',alt:'-',min:3,max:3,unit:'ขวด',cycle:30,cat:'กัญชา'},
+  {id:98,name:'ยาบรรเทาริดสีดวงทวารหนัก',price:null,priceNote:'204 point',ind:'บรรเทาอาการริดสีดวงทวารหนัก',alt:'-',min:42000,max:150000,unit:'มก.',cycle:30,cat:'ผิวหนัง'},
+  {id:99,name:'ยาอัมฤตย์โอสถ',price:null,priceNote:'207.5 point',ind:'แก้ลมกษัย บรรเทาอาการปวดเมื่อยตึงกล้ามเนื้อเรื้อรัง',alt:'-',min:28000,max:56000,unit:'มก.',cycle:15,cat:'ปวด'},
+  {id:100,name:'ยาเมล็ดน้อยหน่า',price:null,priceNote:'30 point',ind:'กำจัดเหา',alt:'-',min:1,max:1,unit:'หลอด',cycle:15,cat:'ผิวหนัง'},
+  {id:101,name:'ยาทาแก้เชื้อราที่เล็บ',price:null,priceNote:'48 point',ind:'รักษาเชื้อราที่เล็บ',alt:'-',min:1,max:1,unit:'ขวด',cycle:15,cat:'ผิวหนัง'},
+  {id:102,name:'ยาประสะกัญชา',price:null,priceNote:'330 point',ind:'ช่วยให้นอนหลับ',alt:'-',min:14000,max:14000,unit:'มก.',cycle:15,cat:'กัญชา'},
+  {id:103,name:'ยาบำรุงน้ำนม',price:null,priceNote:'93 point',ind:'บำรุงน้ำนม เพิ่มปริมาณน้ำนมในสตรีหลังคลอด',alt:'-',min:22500,max:75000,unit:'มก.',cycle:15,cat:'สตรี'},
+  {id:104,name:'ยาทาพระเส้น',price:null,priceNote:'97 point',ind:'แก้ลมจับโปง บรรเทาอาการปวดจากข้อเข่าเสื่อม แก้ปวดเมื่อย เคล็ดขัดยอก',alt:'-',min:1,max:1,unit:'ขวด',cycle:15,cat:'ปวด'},
+  {id:105,name:'ยาหอมแก้ลมวิงเวียน',price:null,priceNote:'63 point',ind:'แก้ลมวิงเวียน อ่อนเพลีย นอนไม่หลับ',alt:'-',min:9000,max:15000,unit:'มก.',cycle:7,cat:'ลม'},
+  {id:106,name:'ยาแก้ไอผสมกานพลู',price:null,priceNote:'19 point',ind:'บรรเทาอาการไอ ขับเสมหะ ทำให้ชุ่มคอ',alt:'-',min:8400,max:12600,unit:'มก.',cycle:7,cat:'ไอ'},
+  {id:107,name:'ยาแก้ไอผสมมะนาวดอง',price:null,priceNote:'17 point',ind:'บรรเทาอาการไอ ขับเสมหะ ทำให้ชุ่มคอ',alt:'-',min:8400,max:12600,unit:'มก.',cycle:7,cat:'ไอ'},
+  {id:108,name:'ยาประสะเจตพังคี',price:null,priceNote:'48.5 point',ind:'แก้จุกเสียด ขับผายลม',alt:'-',min:14000,max:14000,unit:'มก.',cycle:7,cat:'ท้อง'},
+  {id:109,name:'ยามันทธาตุ',price:null,priceNote:'104.5 point',ind:'บรรเทาอาการท้องอืด ท้องเฟ้อ แก้ธาตุไม่ปกติ',alt:'-',min:10500,max:21000,unit:'มก.',cycle:7,cat:'ท้อง'},
+  {id:110,name:'ยาวิสัมพยาใหญ่',price:null,priceNote:'50.5 point',ind:'บรรเทาอาการท้องอืด ท้องเฟ้อ จุกเสียด',alt:'-',min:42000,max:42000,unit:'มก.',cycle:7,cat:'ท้อง'},
+];
+
+let curMenu=null, selCat=null, openDrug=null, cmpA=null, cmpB=null, pg=1, tblSort={col:'',asc:true};
+const PER=10;
+const WARN={1:'ห้ามใช้กับแผลเปิด บาดแผลสด',2:'ห้ามใช้กับแผลเปิด',3:'ห้ามใช้กับแผลเปิด',4:'ห้ามใช้กับแผลเปิด',5:'ห้ามใช้กับแผลเปิด',6:'ระวังโรคไต ตับ / ห้ามใช้ในหญิงตั้งครรภ์',7:'ระวังโรคไต ตับ / ห้ามใช้ในหญิงตั้งครรภ์',8:'ระวังโรคไต / ห้ามใช้ในหญิงตั้งครรภ์',9:'ระวังโรคไต / ห้ามใช้ในหญิงตั้งครรภ์',10:'ระวังผู้ที่แพ้ความร้อน',11:'ห้ามใช้ในหญิงตั้งครรภ์ / ระวังโรคไต',12:'ระวังโรคแผลกระเพาะ / ห้ามใช้ในหญิงตั้งครรภ์',13:'ห้ามใช้กับแผลเปิด / ระวังผู้แพ้ Capsaicin',14:'ห้ามใช้กับแผลเปิด / ระวังผู้แพ้ Capsaicin',16:'ห้ามใช้ในหญิงตั้งครรภ์ / ระวังโรคตับ',17:'ห้ามใช้ในหญิงตั้งครรภ์ / ระวังโรคตับ',18:'ห้ามใช้ในหญิงตั้งครรภ์',19:'ห้ามใช้ในหญิงตั้งครรภ์',20:'ห้ามใช้ในหญิงตั้งครรภ์ / ระวังต้อหิน ต่อมลูกหมากโต',21:'ห้ามใช้เมื่อท้องเสียจากติดเชื้อ / ระวังหญิงตั้งครรภ์',22:'ห้ามใช้เมื่อท้องเสียจากติดเชื้อ',23:'ระวังหญิงตั้งครรภ์',24:'ระวังหญิงตั้งครรภ์',36:'ระวังโรคนิ่วในถุงน้ำดี',37:'ห้ามใช้ในหญิงตั้งครรภ์',42:'ห้ามใช้ในหญิงตั้งครรภ์',43:'ห้ามใช้ในหญิงตั้งครรภ์',52:'ระวังหญิงตั้งครรภ์ / ยาต้านการแข็งตัวเลือด',53:'ระวังหญิงตั้งครรภ์ / ยาต้านการแข็งตัวเลือด',58:'ห้ามขับรถหลังใช้ / ระวังโรคตับ ไต',59:'ห้ามขับรถหลังใช้ / ระวังโรคตับ ไต',62:'ห้ามใช้ในหญิงตั้งครรภ์ไตรมาสแรก',64:'ต้องมีใบสั่งแพทย์ / ห้ามใช้ในหญิงตั้งครรภ์ เด็ก',65:'ต้องมีใบสั่งแพทย์',66:'ต้องมีใบสั่งแพทย์ผู้เชี่ยวชาญ',67:'ต้องมีใบสั่งแพทย์ผู้เชี่ยวชาญ',68:'ต้องมีใบสั่งแพทย์ / ห้ามใช้ในหญิงตั้งครรภ์',69:'ต้องมีใบสั่งแพทย์',70:'ต้องมีใบสั่งแพทย์',71:'ห้ามใช้ในหญิงตั้งครรภ์ ให้นมบุตร',72:'ห้ามใช้ในหญิงตั้งครรภ์ ให้นมบุตร',73:'ห้ามใช้ในหญิงตั้งครรภ์ ให้นมบุตร',97:'ต้องมีใบสั่งแพทย์',102:'ต้องมีใบสั่งแพทย์'};
+function getFavs(){try{return JSON.parse(localStorage.getItem('herbFavs')||'[]')}catch{return[]}}
+function toggleFav(id,e){if(e)e.stopPropagation();let f=getFavs();f=f.includes(id)?f.filter(x=>x!==id):[...f,id];localStorage.setItem('herbFavs',JSON.stringify(f));renderPanel();if(openDrug===id){const d=D.find(x=>x.id===id);document.getElementById('modalArea').innerHTML=buildModal(d);}}
+function isFav(id){return getFavs().includes(id)}
+function addRecent(id){try{let r=JSON.parse(localStorage.getItem('herbRecent')||'[]');r=[id,...r.filter(x=>x!==id)].slice(0,8);localStorage.setItem('herbRecent',JSON.stringify(r))}catch{}}
+function getRecent(){try{return JSON.parse(localStorage.getItem('herbRecent')||'[]')}catch{return[]}}
+let cart=[];
+function toggleCart(id,e){if(e)e.stopPropagation();cart=cart.includes(id)?cart.filter(x=>x!==id):[...cart,id];renderPanel();}
+
+function verdict(d){
+  if(!d.price) return {cls:'vi',ic:'ℹ️',txt:'ระบบ point — ไม่มีอัตราจ่ายตายตัว'};
+  if(d.price<=80) return {cls:'vg',ic:'✅',txt:'คุ้มค่ามาก — อัตราจ่าย ≤80 บาท/course'};
+  if(d.price<=200) return {cls:'vm',ic:'⚠️',txt:'คุ้มค่าปานกลาง — ควรพิจารณาตามข้อบ่งชี้'};
+  return {cls:'vm',ic:'⚠️',txt:'อัตราจ่ายสูง — ประเมินผลลัพธ์การรักษาก่อน'};
+}
+
+function cycleTag(c){
+  if(!c) return '';
+  return `<span class="dtag dtag-cycle">📅 ${c}วัน</span>`;
+}
+
+function cardHtml(d){
+  const p=d.price?`≤${d.price}฿`:'point';
+  const fav=isFav(d.id);
+  const incart=cart.includes(d.id);
+  const warn=WARN[d.id];
+  return `<div class="dcard" onclick="openDrugModal(${d.id})">
+    <div class="dcard-top">
+      <div class="dname">${d.name}</div>
+      <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
+        <div class="dprice">${p}</div>
+        <button onclick="toggleFav(${d.id},event)" style="background:none;border:none;cursor:pointer;font-size:16px;padding:0;line-height:1" title="${fav?'ลบจากโปรด':'เพิ่มในโปรด'}">${fav?'⭐':'☆'}</button>
+        <button onclick="toggleCart(${d.id},event)" style="background:none;border:none;cursor:pointer;font-size:14px;padding:0;line-height:1;color:${incart?'#f97316':'#9ca3af'}" title="${incart?'ลบออกจากสรุป':'เพิ่มในสรุปค่าตอบแทน'}">${incart?'🛒':'＋'}</button>
+      </div>
+    </div>
+    <div class="dind">${d.ind.length>65?d.ind.slice(0,65)+'…':d.ind}</div>
+    ${warn?`<div style="font-size:11px;color:#c2410c;background:#fff7ed;border-radius:6px;padding:2px 7px;margin-top:4px;display:inline-block">⚠️ ${warn}</div>`:''}
+    <div class="dtags" style="margin-top:5px">${cycleTag(d.cycle)}${d.alt&&d.alt!=='-'?'<span class="dtag dtag-alt">🔄 ทดแทนได้</span>':''}</div>
+  </div>`;
+}
+
+function buildModal(d){
+  const v=verdict(d);
+  const p=d.price?`≤${d.price} บาท`:'ระบบ point';
+  const isMg = d.unit==='มก.' && d.min;
+  const calcId = 'mc_'+d.id;
+  const pkgId = 'mp_'+d.id;
+  const warn=WARN[d.id];
+  const fav=isFav(d.id);
+  const incart=cart.includes(d.id);
+  const pillCalc = isMg ? `
+    <div class="pill-calc" id="pillCalc_${d.id}">
+      <div class="pill-calc-title">💊 คำนวณจำนวนเม็ด / แคปซูล / ซอง</div>
+      <div class="pill-input-row">
+        <label>ขนาดต่อเม็ด/แคปซูล/ซอง</label>
+        <input type="number" id="${calcId}" min="1" value="500"
+          oninput="calcPills(${d.id},${d.min},${d.max})" style="width:80px">
+        <span>มก./เม็ด</span>
+      </div>
+      <div id="pillResult_${d.id}">
+        ${pillResultHtml(d.min,d.max,500)}
+      </div>
+      <div class="pill-pkg-row">
+        <label>จำนวนต่อ Package/ซอง</label>
+        <input type="number" id="${pkgId}" min="1" value="30"
+          oninput="calcPkg(${d.id},${d.min},${d.max})" style="width:70px">
+        <span>เม็ด/pkg →</span>
+        <span class="pill-pkg-result" id="pkgResult_${d.id}">—</span>
+      </div>
+    </div>` : `<div class="pill-calc" style="opacity:.6">
+      <div class="pill-calc-title">💊 คำนวณจำนวนเม็ด / แคปซูล</div>
+      <div class="pill-no-mg">ยานี้มีหน่วยเป็น ${d.unit} — ไม่ใช้หน่วยมิลลิกรัม จึงไม่สามารถคำนวณจำนวนเม็ดได้</div>
+    </div>`;
+  return `<div class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <div class="modal-title">${d.name}</div>
+        <div class="modal-cat">🌿 หมวด${d.cat}</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button onclick="toggleFav(${d.id},event)" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:4px 8px;cursor:pointer;font-size:15px;color:#fff" title="${fav?'ลบจากโปรด':'บันทึกโปรด'}">${fav?'⭐':'☆'}</button>
+        <button onclick="toggleCart(${d.id},event)" style="background:${incart?'rgba(163,230,53,.3)':'rgba(255,255,255,.15)'};border:1px solid ${incart?'rgba(163,230,53,.6)':'rgba(255,255,255,.25)'};border-radius:8px;padding:4px 8px;cursor:pointer;font-size:12px;color:#fff;font-weight:600" title="${incart?'ลบออกจากสรุป':'เพิ่มในสรุปค่าตอบแทน'}">${incart?'🛒 เพิ่มแล้ว':'+ สรุปค่าตอบแทน'}</button>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+    </div>
+    ${warn?`<div style="background:#fff7ed;border-left:4px solid #f97316;padding:.625rem 1rem;font-size:12.5px;font-weight:600;color:#c2410c;display:flex;align-items:center;gap:7px">⚠️ ข้อควรระวัง/ห้ามใช้: ${warn}</div>`:''}
+    <div class="modal-body">
+      <div class="stat4">
+        <div class="sc"><div class="sc-lbl">อัตราจ่ายต่อ course</div><div class="sc-val">${p}</div></div>
+        <div class="sc"><div class="sc-lbl">รอบการเบิกจ่าย</div><div class="sc-val dark">${d.cycle?d.cycle+' วัน':'—'}</div></div>
+        <div class="sc"><div class="sc-lbl">ปริมาณ min</div><div class="sc-val dark">${d.min?d.min.toLocaleString()+' '+d.unit:'—'}</div></div>
+        <div class="sc"><div class="sc-lbl">ปริมาณ max</div><div class="sc-val dark">${d.max?d.max.toLocaleString()+' '+d.unit:'—'}</div></div>
+      </div>
+      ${pillCalc}
+      <div class="msect">ข้อบ่งใช้</div>
+      <div class="ibox">${d.ind}</div>
+      ${d.alt&&d.alt!=='-'?`<div class="msect" style="margin-top:.75rem">ยาแผนปัจจุบันที่ทดแทน</div><div class="altbox">💊 ${d.alt}</div>`:''}
+      <div class="vbox ${v.cls}" style="margin-top:.75rem">${v.ic} ${v.txt}</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sec" onclick="closeModal()">ปิด</button>
+      <button class="btn-ask" onclick="window.open('','_self')">🤖 วิเคราะห์เพิ่มเติม</button>
+    </div>
+  </div></div>`;
+}
+
+function pillResultHtml(mn,mx,mgPerPill){
+  if(!mgPerPill||mgPerPill<=0) return '<div class="pill-no-mg">กรุณาใส่ขนาดต่อเม็ด</div>';
+  const minPill=Math.ceil(mn/mgPerPill);
+  const maxPill=Math.ceil(mx/mgPerPill);
+  return `<div class="pill-result">
+    <div class="pill-res-card">
+      <div class="pill-res-lbl">จำนวนเม็ด (min)</div>
+      <div class="pill-res-num">${minPill.toLocaleString()}</div>
+      <div class="pill-res-sub">เม็ด/แคปซูล/ซอง</div>
+    </div>
+    <div class="pill-res-card">
+      <div class="pill-res-lbl">จำนวนเม็ด (max)</div>
+      <div class="pill-res-num">${maxPill.toLocaleString()}</div>
+      <div class="pill-res-sub">เม็ด/แคปซูล/ซอง</div>
+    </div>
+  </div>`;
+}
+
+function calcPills(drugId,mn,mx){
+  const mg=parseFloat(document.getElementById('mc_'+drugId).value)||0;
+  document.getElementById('pillResult_'+drugId).innerHTML=pillResultHtml(mn,mx,mg);
+  calcPkg(drugId,mn,mx);
+}
+
+function calcPkg(drugId,mn,mx){
+  const mg=parseFloat(document.getElementById('mc_'+drugId).value)||0;
+  const pkg=parseInt(document.getElementById('mp_'+drugId).value)||0;
+  const el=document.getElementById('pkgResult_'+drugId);
+  if(!mg||!pkg||!mn){ el.textContent='—'; return; }
+  const minPill=Math.ceil(mn/mg);
+  const maxPill=Math.ceil(mx/mg);
+  const minPkg=Math.ceil(minPill/pkg);
+  const maxPkg=Math.ceil(maxPill/pkg);
+  el.textContent = minPkg===maxPkg ? `${minPkg} package` : `${minPkg}–${maxPkg} package`;
+}
+
+function openDrugModal(id){
+  openDrug=id;
+  addRecent(id);
+  const d=D.find(x=>x.id===id);
+  document.getElementById('modalArea').innerHTML=buildModal(d);
+  document.getElementById('modalArea').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function closeModal(){ openDrug=null; document.getElementById('modalArea').innerHTML=''; }
+
+function getList(q,cat){
+  return D.filter(d=>(!cat||d.cat===cat)&&(!q||d.name.toLowerCase().includes(q.toLowerCase())||d.ind.toLowerCase().includes(q.toLowerCase())||(d.alt&&d.alt.toLowerCase().includes(q.toLowerCase()))));
+}
+
+// ─── PANELS ───
+function panel1(){
+  const q=(document.getElementById('p1q')||{value:''}).value;
+  const list=getList(q,selCat);
+  return `<div class="panel">
+    <div class="panel-hd">
+      <div class="panel-hd-icon">🔍</div>
+      <div><div class="panel-title">ค้นหาตามอาการ / หมวดหมู่</div><div class="panel-sub">เลือกหมวดหรือพิมพ์ค้นหา</div></div>
+    </div>
+    <div class="chips">${CATS.map(c=>`<button class="chip${selCat===c?' on':''}" onclick="selCat='${selCat===c?'':c}';renderPanel()">${c}</button>`).join('')}</div>
+    <input type="text" id="p1q" placeholder="ค้นหาชื่อยา หรืออาการ..." oninput="renderPanel()" style="margin-bottom:.625rem">
+    <div class="cnt">🌿 พบ ${list.length} รายการ</div>
+    <div class="cards">${list.length?list.map(cardHtml).join(''):'<div class="empty">ไม่พบรายการที่ตรงกัน</div>'}</div>
+  </div>`;
+}
+
+function panel2(){
+  const q=(document.getElementById('p2q')||{value:''}).value;
+  const list=getList(q,'');
+  return `<div class="panel">
+    <div class="panel-hd">
+      <div class="panel-hd-icon">📋</div>
+      <div><div class="panel-title">รายละเอียดยา & ความคุ้มค่า</div><div class="panel-sub">กดการ์ดเพื่อดูรายละเอียดเต็ม</div></div>
+    </div>
+    <input type="text" id="p2q" placeholder="ค้นหาชื่อยา..." oninput="renderPanel()" style="margin-bottom:.625rem">
+    <div class="cnt">🌿 พบ ${list.length} รายการ</div>
+    <div class="cards">${list.length?list.map(cardHtml).join(''):'<div class="empty">ไม่พบ</div>'}</div>
+  </div>`;
+}
+
+function panel3(){
+  const aOpts=`<option value="">— เลือกยา A —</option>`+D.map(d=>`<option value="${d.id}"${cmpA===d.id?' selected':''}>${d.name}</option>`).join('');
+  const bOpts=`<option value="">— เลือกยา B —</option>`+D.map(d=>`<option value="${d.id}"${cmpB===d.id?' selected':''}>${d.name}</option>`).join('');
+  let cmpHtml='';
+  if(cmpA&&cmpB){
+    const a=D.find(x=>x.id===cmpA), b=D.find(x=>x.id===cmpB);
+    const cheaper=a.price&&b.price?(a.price<=b.price?a:b):null;
+    cmpHtml=`<div class="sep"></div>
+    <div class="cmp-grid">
+      <div class="cside"><div class="cside-hd">🅰️ ${a.name}</div>
+        <div class="crow"><span class="crow-lbl">อัตราจ่าย/course</span><span class="crow-val">${a.price?a.price+'฿':'—'}</span></div>
+        <div class="crow"><span class="crow-lbl">รอบ</span><span class="crow-val">${a.cycle?a.cycle+' วัน':'—'}</span></div>
+        <div class="crow"><span class="crow-lbl">min-max</span><span class="crow-val">${a.min?a.min.toLocaleString():'-'}–${a.max?a.max.toLocaleString():'-'} ${a.unit}</span></div>
+        <div class="crow"><span class="crow-lbl">หมวด</span><span class="crow-val">${a.cat}</span></div>
+      </div>
+      <div class="cside"><div class="cside-hd">🅱️ ${b.name}</div>
+        <div class="crow"><span class="crow-lbl">อัตราจ่าย/course</span><span class="crow-val">${b.price?b.price+'฿':'—'}</span></div>
+        <div class="crow"><span class="crow-lbl">รอบ</span><span class="crow-val">${b.cycle?b.cycle+' วัน':'—'}</span></div>
+        <div class="crow"><span class="crow-lbl">min-max</span><span class="crow-val">${b.min?b.min.toLocaleString():'-'}–${b.max?b.max.toLocaleString():'-'} ${b.unit}</span></div>
+        <div class="crow"><span class="crow-lbl">หมวด</span><span class="crow-val">${b.cat}</span></div>
+      </div>
+    </div>
+    ${cheaper?`<div class="winner-box">🏆 ${cheaper.name} — คุ้มค่ากว่า (${cheaper.price} บาท/course)</div>`:''}`;
+  }
+  return `<div class="panel">
+    <div class="panel-hd">
+      <div class="panel-hd-icon">⚖️</div>
+      <div><div class="panel-title">เปรียบเทียบยาสมุนไพร vs ยาแผนปัจจุบัน</div><div class="panel-sub">เลือก 2 รายการเพื่อเปรียบเทียบ</div></div>
+    </div>
+    <div class="row2 mb">
+      <div><div class="sect-lbl">ยา A</div><select onchange="cmpA=parseInt(this.value)||null;renderPanel()">${aOpts}</select></div>
+      <div><div class="sect-lbl">ยา B</div><select onchange="cmpB=parseInt(this.value)||null;renderPanel()">${bOpts}</select></div>
+    </div>
+    ${cmpHtml||'<div class="empty">เลือกยาทั้ง 2 รายการเพื่อเปรียบเทียบ</div>'}
+  </div>`;
+}
+
+function panel4(){
+  const selId=parseInt((document.getElementById('p4drug')||{value:''}).value)||null;
+  const qty=parseInt((document.getElementById('p4qty')||{value:'1'}).value)||1;
+  const mgPerPill=parseFloat((document.getElementById('p4mg')||{value:'500'}).value)||500;
+  const pkgSz=parseInt((document.getElementById('p4pkg')||{value:'30'}).value)||30;
+  const drug=selId?D.find(d=>d.id===selId):null;
+  const opts=`<option value="">— เลือกยา —</option>`+D.map(d=>`<option value="${d.id}"${selId===d.id?' selected':''}>${d.name}</option>`).join('');
+  let resHtml='<div class="empty">เลือกยาเพื่อคำนวณ</div>';
+  if(drug){
+    const total=drug.price?drug.price*qty:null;
+    const mn=drug.min?(drug.min*qty).toLocaleString():'—';
+    const mx=drug.max?(drug.max*qty).toLocaleString():'—';
+    const isMg=drug.unit==='มก.'&&drug.min;
+    let pillHtml='';
+    if(isMg&&mgPerPill>0){
+      const minPill=Math.ceil((drug.min*qty)/mgPerPill);
+      const maxPill=Math.ceil((drug.max*qty)/mgPerPill);
+      const minPkg=Math.ceil(minPill/pkgSz);
+      const maxPkg=Math.ceil(maxPill/pkgSz);
+      pillHtml=`
+      <div style="border-top:1px solid rgba(255,255,255,.2);margin-top:.75rem;padding-top:.75rem">
+        <div style="font-size:11px;color:rgba(255,255,255,.6);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.05em">💊 จำนวนเม็ด / แคปซูล / ซอง (${mgPerPill} มก./เม็ด)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:.5rem;text-align:center">
+            <div style="font-size:10px;color:rgba(255,255,255,.6);margin-bottom:2px">จำนวน (min)</div>
+            <div style="font-size:20px;font-weight:700;color:#fff;font-family:'Prompt',sans-serif">${minPill.toLocaleString()}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.5)">เม็ด</div>
+          </div>
+          <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:.5rem;text-align:center">
+            <div style="font-size:10px;color:rgba(255,255,255,.6);margin-bottom:2px">จำนวน (max)</div>
+            <div style="font-size:20px;font-weight:700;color:#fbbf24;font-family:'Prompt',sans-serif">${maxPill.toLocaleString()}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.5)">เม็ด</div>
+          </div>
+          <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:.5rem;text-align:center">
+            <div style="font-size:10px;color:rgba(255,255,255,.6);margin-bottom:2px">Package (${pkgSz}เม็ด)</div>
+            <div style="font-size:18px;font-weight:700;color:#f97316;font-family:'Prompt',sans-serif">${minPkg===maxPkg?minPkg:minPkg+'–'+maxPkg}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.5)">กล่อง/ซอง</div>
+          </div>
+        </div>
+      </div>`;
+    }
+    resHtml=`<div class="res-box">
+      <div style="font-size:11px;color:rgba(255,255,255,.7);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">ผลลัพธ์ ${qty} course — ${drug.name}</div>
+      <div class="res-big">${drug.min?`${mn} – ${mx} ${drug.unit}`:'—'}</div>
+      <div class="res-sub">${total?`💰 ค่าใช้จ่ายรวม ≤ ${total.toLocaleString()} บาท (${drug.price}฿ × ${qty} course)`:'ยานี้ใช้ระบบ point'}</div>
+      ${drug.cycle?`<div class="res-sub">📅 ระยะเวลารวม ${drug.cycle*qty} วัน</div>`:''}
+      ${pillHtml}
+    </div>`;
+  }
+  return `<div class="panel">
+    <div class="panel-hd">
+      <div class="panel-hd-icon">🧮</div>
+      <div><div class="panel-title">คำนวณปริมาณยาต่อ course</div><div class="panel-sub">คำนวณขนาดยา จำนวนเม็ด และค่าใช้จ่าย</div></div>
+    </div>
+    <div class="row2 mb">
+      <div><div class="sect-lbl">เลือกยา</div><select id="p4drug" onchange="renderPanel()">${opts}</select></div>
+      <div><div class="sect-lbl">จำนวน course</div><input type="number" id="p4qty" min="1" max="12" value="${qty}" oninput="renderPanel()"></div>
+    </div>
+    <div class="row2 mb">
+      <div><div class="sect-lbl">💊 ขนาดต่อเม็ด/แคปซูล/ซอง (มก.)</div><input type="number" id="p4mg" min="1" value="${mgPerPill}" placeholder="เช่น 500" oninput="renderPanel()"></div>
+      <div><div class="sect-lbl">📦 จำนวนต่อ Package (เม็ด)</div><input type="number" id="p4pkg" min="1" value="${pkgSz}" placeholder="เช่น 30" oninput="renderPanel()"></div>
+    </div>
+    ${resHtml}
+  </div>`;
+}
+
+function panel5(){
+  const q=((document.getElementById('p5q')||{value:''}).value||'').trim();
+  const matches=q.length>=2?D.filter(d=>d.alt&&d.alt.toLowerCase().includes(q.toLowerCase())):[];
+  return `<div class="panel">
+    <div class="panel-hd">
+      <div class="panel-hd-icon">🔎</div>
+      <div><div class="panel-title">ค้นหายาแผนปัจจุบัน → หาสมุนไพรทดแทน</div><div class="panel-sub">พิมพ์ชื่อยาแผนปัจจุบัน</div></div>
+    </div>
+    <input type="text" id="p5q" placeholder="เช่น Diclofenac, Paracetamol, NSAIDs, Bisacodyl..." oninput="renderPanel()" style="margin-bottom:.75rem">
+    ${q.length<2?'<div class="empty">พิมพ์อย่างน้อย 2 ตัวอักษร</div>':matches.length?matches.map(d=>`
+    <div class="match-card">
+      <div class="match-name">${d.name} ${d.price?`<span class="dprice" style="font-size:11px">≤${d.price}฿</span>`:''}</div>
+      <div class="match-sub">${d.ind}</div>
+      <div class="match-alt">💊 ทดแทน: ${d.alt}</div>
+      <div class="dtags" style="margin-top:6px">${cycleTag(d.cycle)}</div>
+    </div>`).join(''):`<div class="empty">ไม่พบยาสมุนไพรที่ทดแทน "<strong>${q}</strong>" ได้</div>`}
+  </div>`;
+}
+
+function panel6(){
+  const q=((document.getElementById('p6q')||{value:''}).value||'').toLowerCase();
+  const cat=(document.getElementById('p6cat')||{value:''}).value;
+  let list=D.filter(d=>(!cat||d.cat===cat)&&(!q||d.name.toLowerCase().includes(q)));
+  if(tblSort.col){
+    list=[...list].sort((a,b)=>{
+      let va=a[tblSort.col]??-1, vb=b[tblSort.col]??-1;
+      if(typeof va==='string') va=va.localeCompare(vb,'th');
+      else va=va-vb;
+      return tblSort.asc?va:-va;
+    });
+  }
+  const total=list.length, pages=Math.max(1,Math.ceil(total/PER));
+  if(pg>pages) pg=1;
+  const sl=list.slice((pg-1)*PER,pg*PER);
+  const catOpts=`<option value="">ทุกหมวด</option>`+CATS.map(c=>`<option value="${c}"${cat===c?' selected':''}>${c}</option>`).join('');
+  function th(label,col){
+    const act=tblSort.col===col;
+    return `<th style="cursor:pointer;user-select:none" onclick="tblSort={col:'${col}',asc:${act?!tblSort.asc:true}};renderPanel()">${label}${act?(tblSort.asc?' ▲':' ▼'):' ⇅'}</th>`;
+  }
+  return `<div class="panel">
+    <div class="panel-hd">
+      <div class="panel-hd-icon">📊</div>
+      <div><div class="panel-title">ตารางรายการยาทั้งหมด</div><div class="panel-sub">110 รายการ — กดหัวคอลัมน์เพื่อเรียงลำดับ</div></div>
+    </div>
+    <div class="row2" style="margin-bottom:.625rem">
+      <input type="text" id="p6q" placeholder="ค้นหา..." oninput="pg=1;renderPanel()">
+      <select id="p6cat" onchange="pg=1;renderPanel()">${catOpts}</select>
+    </div>
+    <div class="cnt">🌿 พบ ${total} รายการ</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>#</th>${th('ชื่อยา','name')}${th('หมวด','cat')}${th('อัตราจ่าย','price')}${th('รอบ(วัน)','cycle')}${th('min','min')}${th('max','max')}<th>หน่วย</th></tr></thead>
+      <tbody>${sl.map((d,i)=>`<tr>
+        <td style="color:var(--txt3)">${(pg-1)*PER+i+1}</td>
+        <td class="td-name" onclick="openDrugModal(${d.id})">${d.name}${WARN[d.id]?' ⚠️':''}</td>
+        <td><span class="tpill tpill-g">${d.cat}</span></td>
+        <td>${d.price?`<span class="tpill tpill-g">${d.price}฿</span>`:'<span class="tpill" style="background:#f1f5f9;color:#64748b">pt</span>'}</td>
+        <td>${d.cycle||'—'}</td>
+        <td>${d.min?d.min.toLocaleString():'—'}</td>
+        <td>${d.max?d.max.toLocaleString():'—'}</td>
+        <td>${d.unit||'—'}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+    ${pages>1?`<div class="pg">
+      <button class="pg-btn" onclick="if(pg>1){pg--;renderPanel()}" ${pg<=1?'disabled':''}>◀ ก่อนหน้า</button>
+      <span class="pg-info">หน้า ${pg} / ${pages}</span>
+      <button class="pg-btn" onclick="if(pg<${pages}){pg++;renderPanel()}" ${pg>=pages?'disabled':''}>ถัดไป ▶</button>
+    </div>`:''}
+  </div>`;
+}
+
+function panel7(){
+  const favIds=getFavs();
+  const recentIds=getRecent();
+  const favDrugs=favIds.map(id=>D.find(d=>d.id===id)).filter(Boolean);
+  const recentDrugs=recentIds.map(id=>D.find(d=>d.id===id)).filter(Boolean);
+  return `<div class="panel">
+    <div class="panel-hd">
+      <div class="panel-hd-icon">⭐</div>
+      <div><div class="panel-title">รายการโปรด & ประวัติค้นหาล่าสุด</div><div class="panel-sub">บันทึกไว้ใน Browser — ใช้ได้ทุกครั้งที่เปิด</div></div>
+    </div>
+    <div style="font-size:13px;font-weight:600;color:var(--g7);margin-bottom:.5rem">⭐ รายการโปรด (${favDrugs.length})</div>
+    ${favDrugs.length?`<div class="cards">${favDrugs.map(cardHtml).join('')}</div>`:'<div class="empty" style="padding:1rem">ยังไม่มีรายการโปรด — กดดาว ☆ ในการ์ดหรือหน้ารายละเอียดเพื่อบันทึก</div>'}
+    <div style="border-top:1.5px solid var(--g1);margin:1rem 0"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+      <div style="font-size:13px;font-weight:600;color:var(--g7)">🕐 ดูล่าสุด (${recentDrugs.length})</div>
+      ${recentDrugs.length?`<button onclick="localStorage.removeItem('herbRecent');renderPanel()" style="font-size:11px;padding:3px 10px;color:#dc2626;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;cursor:pointer">ล้างประวัติ</button>`:''}
+    </div>
+    ${recentDrugs.length?`<div class="cards">${recentDrugs.map(cardHtml).join('')}</div>`:'<div class="empty" style="padding:1rem">ยังไม่มีประวัติการดูยา — กดการ์ดยาใดก็ได้เพื่อเริ่มบันทึก</div>'}
+  </div>`;
+}
+
+function panel8(){
+  const items=cart.map(id=>D.find(d=>d.id===id)).filter(Boolean);
+  const totalPrice=items.reduce((s,d)=>s+(d.price||0),0);
+  const priced=items.filter(d=>d.price);
+  const pointed=items.filter(d=>!d.price);
+  return `<div class="panel">
+    <div class="panel-hd">
+      <div class="panel-hd-icon">🛒</div>
+      <div><div class="panel-title">สรุปค่าตอบแทนชดเชยรวม</div><div class="panel-sub">เลือกยาหลายรายการ แล้วกด + ในการ์ดเพื่อเพิ่ม</div></div>
+    </div>
+    ${items.length===0?'<div class="empty">ยังไม่มีรายการ — กดปุ่ม <strong>＋</strong> ในการ์ดยาเพื่อเพิ่มเข้าสรุป</div>':`
+    <div class="tbl-wrap" style="margin-bottom:.875rem"><table>
+      <thead><tr><th>#</th><th>ชื่อยา</th><th>หมวด</th><th>อัตราจ่าย/course</th><th>รอบ</th><th></th></tr></thead>
+      <tbody>${items.map((d,i)=>`<tr>
+        <td style="color:var(--txt3)">${i+1}</td>
+        <td class="td-name" onclick="openDrugModal(${d.id})">${d.name}</td>
+        <td><span class="tpill tpill-g">${d.cat}</span></td>
+        <td>${d.price?`<span style="font-weight:700;color:var(--g7)">${d.price} ฿</span>`:'<span style="color:#64748b;font-size:11px">point</span>'}</td>
+        <td>${d.cycle?d.cycle+' วัน':'—'}</td>
+        <td><button onclick="toggleCart(${d.id})" style="background:#fee2e2;border:1px solid #fca5a5;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:11px;color:#dc2626">ลบ</button></td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+    <div style="background:linear-gradient(135deg,#ea580c,#f97316);border-radius:var(--r);padding:1rem 1.25rem">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:.75rem">
+        <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:.625rem;text-align:center">
+          <div style="font-size:10px;color:rgba(255,255,255,.6);margin-bottom:3px">รายการทั้งหมด</div>
+          <div style="font-size:22px;font-weight:700;color:#fff;font-family:'Prompt',sans-serif">${items.length}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.5)">รายการ</div>
+        </div>
+        <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:.625rem;text-align:center">
+          <div style="font-size:10px;color:rgba(255,255,255,.6);margin-bottom:3px">มีอัตราจ่ายชัดเจน</div>
+          <div style="font-size:22px;font-weight:700;color:#fbbf24;font-family:'Prompt',sans-serif">${priced.length}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.5)">รายการ</div>
+        </div>
+        <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:.625rem;text-align:center">
+          <div style="font-size:10px;color:rgba(255,255,255,.6);margin-bottom:3px">ระบบ point</div>
+          <div style="font-size:22px;font-weight:700;color:#f97316;font-family:'Prompt',sans-serif">${pointed.length}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.5)">รายการ</div>
+        </div>
+      </div>
+      <div style="border-top:1px solid rgba(255,255,255,.2);padding-top:.75rem">
+        <div style="font-size:11px;color:rgba(255,255,255,.6);margin-bottom:4px">ค่าตอบแทนชดเชยรวม (รายการที่มีอัตราจ่าย)</div>
+        <div style="font-size:28px;font-weight:800;color:#fff;font-family:'Prompt',sans-serif">≤ ${totalPrice.toLocaleString()} <span style="font-size:16px;font-weight:400">บาท / course</span></div>
+        ${pointed.length?`<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:4px">+ ${pointed.length} รายการระบบ point (คำนวณตามปริมาณที่ใช้จริง)</div>`:''}
+      </div>
+    </div>
+    <button onclick="cart=[];renderPanel()" style="width:100%;margin-top:.75rem;font-size:12px;background:#fee2e2;border:1.5px solid #fca5a5;border-radius:var(--r-sm);padding:8px;cursor:pointer;color:#dc2626;font-weight:600">🗑️ ล้างรายการทั้งหมด</button>
+    `}
+  </div>`;
+}
+
+function renderMenu(){
+  document.getElementById('menuGrid').innerHTML=MENUS.map(m=>`
+    <button class="menu-btn${curMenu===m.id?' active':''}" onclick="setMenu(${m.id})">
+      <span class="menu-num">${m.id}</span>
+      <span class="menu-icon">${m.icon}</span>
+      <span class="menu-label">${m.lbl.replace('\n','<br>')}</span>
+    </button>`).join('');
+}
+
+function renderPanel(){
+  if(!curMenu){ document.getElementById('panelArea').innerHTML=''; return; }
+  const fns={1:panel1,2:panel2,3:panel3,4:panel4,5:panel5,6:panel6,7:panel7,8:panel8};
+  document.getElementById('panelArea').innerHTML=fns[curMenu]();
+}
+
+function setMenu(id){
+  curMenu = curMenu===id ? null : id;
+  selCat=null; openDrug=null; pg=1;
+  document.getElementById('modalArea').innerHTML='';
+  renderMenu(); renderPanel();
+  if(curMenu) document.getElementById('panelArea').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+renderMenu();
+</script>
+
+<footer style="background:linear-gradient(135deg,#7c2d12,#c2410c,#f97316);padding:1.25rem 1rem 1.5rem;margin-top:2rem;">
+  <div style="max-width:900px;margin:0 auto;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">🌿</div>
+        <div>
+          <div style="font-family:'Prompt',sans-serif;font-size:14px;font-weight:700;color:#fff;line-height:1.3;">ระบบช่วยตัดสินใจสั่งจ่ายยาสมุนไพร MIN MAX Interval</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:2px;">Herbal Medicine Prescribing Decision Support Tool</div>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);border-radius:20px;padding:4px 14px;display:flex;align-items:center;gap:6px;align-self:flex-start;">
+        <span style="font-size:10px;color:var(--gold);font-weight:700;letter-spacing:.08em;">VERSION</span>
+        <span style="font-size:16px;font-weight:800;color:var(--gold);font-family:'Prompt',sans-serif;">v1.1</span>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid rgba(255,255,255,.1);margin-top:1rem;padding-top:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+      <div>
+        <div style="font-size:10px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">ผู้พัฒนา</div>
+        <div style="font-size:14px;font-weight:600;color:#fff;font-family:'Prompt',sans-serif;">ภก.จีรภัทร พลายงาม</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:1px;">เภสัชกรชำนาญการ</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">หน่วยงาน</div>
+        <div style="font-size:13px;font-weight:600;color:#fff;font-family:'Prompt',sans-serif;line-height:1.4;">กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:1px;">สำนักงานสาธารณสุขจังหวัดสมุทรปราการ</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">ข้อมูลอ้างอิง</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.75);line-height:1.5;">รายการยาสมุนไพร 106 รายการ (110 sub-items)<br>ใช้ข้อมูลเกณฑ์ที่กำหนด โดย สปสช. วันที่ 20 พ.ย. 68</div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid rgba(255,255,255,.08);margin-top:.875rem;padding-top:.75rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:11px;color:rgba(255,255,255,.35);">สร้างด้วย</span>
+        <span style="font-size:11px;color:rgba(255,255,255,.55);font-weight:500;">Claude AI × Anthropic</span>
+        <span style="font-size:11px;color:rgba(255,255,255,.2);">•</span>
+        <span style="font-size:11px;color:rgba(255,255,255,.35);">เขตสุขภาพที่ 6</span>
+      </div>
+      <div style="font-size:10px;color:rgba(255,255,255,.25);">© 2568 กลุ่มงานการแพทย์แผนไทยฯ สสจ.สมุทรปราการ</div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
