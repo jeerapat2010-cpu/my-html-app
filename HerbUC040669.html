@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ระบบ Dashboard สมุนไพร UC จังหวัดสมุทรปราการ | Updated 4 มิ.ย. 69</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#eff6ff; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --border:#dbeafe;
+      --blue:#2563eb; --indigo:#4f46e5; --teal:#0f766e; --green:#16a34a; --amber:#d97706;
+      --red:#dc2626; --rose:#e11d48; --purple:#7c3aed; --cyan:#0891b2; --slate:#334155;
+      --shadow:0 18px 60px rgba(15,23,42,.10);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Sarabun',system-ui,sans-serif;background:
+      radial-gradient(circle at top left,rgba(59,130,246,.20),transparent 34%),
+      radial-gradient(circle at top right,rgba(16,185,129,.15),transparent 28%),
+      linear-gradient(135deg,#f8fafc 0%,#eff6ff 46%,#eef2ff 100%);
+      color:var(--ink);min-height:100vh;}
+    .app{display:grid;grid-template-columns:300px 1fr;min-height:100vh}
+    aside{position:sticky;top:0;height:100vh;overflow:auto;padding:22px;background:rgba(255,255,255,.84);backdrop-filter:blur(14px);border-right:1px solid #dbeafe}
+    main{padding:26px 30px 60px;max-width:1500px;width:100%;margin:0 auto}
+    .brand{padding:18px;border-radius:24px;color:white;background:linear-gradient(135deg,#0f766e,#2563eb 55%,#7c3aed);box-shadow:var(--shadow);position:relative;overflow:hidden}
+    .brand:before{content:"";position:absolute;right:-32px;top:-32px;width:120px;height:120px;border-radius:999px;background:rgba(255,255,255,.18)}
+    .brand h1{font-size:20px;line-height:1.25;margin:0 0 8px;font-weight:800}
+    .brand p{margin:0;color:rgba(255,255,255,.82);font-size:13px}
+    .update-pill{margin-top:12px;padding:9px 12px;border-radius:999px;background:linear-gradient(90deg,#f59e0b,#f97316,#f59e0b);color:white;font-weight:800;text-align:center;box-shadow:0 0 30px rgba(245,158,11,.45);animation:shine 2.5s linear infinite;background-size:220% 100%}
+    @keyframes shine{0%{background-position:0% 50%}100%{background-position:220% 50%}}
+    .nav{display:flex;flex-direction:column;gap:8px;margin-top:18px}
+    .nav button{border:1px solid #e2e8f0;background:#fff;color:#334155;border-radius:15px;padding:12px 13px;text-align:left;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;display:flex;gap:10px;align-items:center;transition:.18s}
+    .nav button:hover{transform:translateX(3px);box-shadow:0 8px 22px rgba(2,6,23,.08)}
+    .nav button.active{background:linear-gradient(135deg,#2563eb,#4f46e5);color:#fff;border-color:transparent;box-shadow:0 12px 28px rgba(37,99,235,.28)}
+    .small-note{font-size:11px;color:#64748b;line-height:1.55;margin-top:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:12px}
+    .topbar{display:flex;gap:18px;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
+    .page-title{background:linear-gradient(135deg,#2563eb,#0f766e);color:white;border-radius:26px;padding:22px 24px;box-shadow:var(--shadow);flex:1}
+    .page-title h2{margin:0 0 5px;font-size:28px;font-weight:800}
+    .page-title p{margin:0;color:rgba(255,255,255,.84)}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .btn{border:0;border-radius:14px;padding:11px 14px;font-family:inherit;font-weight:800;cursor:pointer;background:#0f172a;color:#fff;box-shadow:0 10px 24px rgba(15,23,42,.18)}
+    .btn.secondary{background:#fff;color:#0f172a;border:1px solid #e2e8f0}
+    .grid{display:grid;gap:16px}
+    .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .card{background:rgba(255,255,255,.95);border:1px solid #dbeafe;border-radius:24px;padding:20px;box-shadow:0 12px 32px rgba(15,23,42,.06)}
+    .card h3{margin:0 0 12px;font-size:20px}
+    .kpi{position:relative;overflow:hidden}
+    .kpi .label{font-size:13px;color:#64748b;font-weight:700}
+    .kpi .value{font-size:30px;font-weight:900;margin:4px 0;color:#0f172a}
+    .kpi .sub{font-size:12px;color:#64748b}
+    .kpi:after{content:attr(data-icon);position:absolute;right:16px;bottom:8px;font-size:58px;opacity:.09}
+    .target-kpi{border:1px solid #bfdbfe;background:linear-gradient(135deg,#ffffff 0%,#f8fbff 56%,#eff6ff 100%);min-height:172px}
+    .target-kpi .value{font-size:34px;color:#1d4ed8;margin:6px 0 10px}
+    .target-kpi.purple{border-color:#ddd6fe;background:linear-gradient(135deg,#ffffff 0%,#faf5ff 56%,#f5f3ff 100%)}
+    .target-kpi.purple .value{color:#7c3aed}
+    .target-kpi .kpi-detail{position:relative;z-index:1;display:grid;gap:7px;margin-top:8px;font-size:12.5px;color:#334155;line-height:1.35}
+    .target-kpi .kpi-detail div{display:flex;justify-content:space-between;gap:10px;border-top:1px dashed #dbeafe;padding-top:6px}
+    .target-kpi .kpi-detail b{color:#0f172a}.target-kpi .kpi-detail span{font-weight:900;color:#0f172a;text-align:right}
+    .progress{height:11px;border-radius:999px;background:#e2e8f0;overflow:hidden}
+    .progress i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#22c55e,#0ea5e9);width:0%;transition:width .7s ease}
+    .tag{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;font-size:12px;font-weight:800;background:#e0f2fe;color:#075985}
+    .tag.green{background:#dcfce7;color:#166534}.tag.amber{background:#fef3c7;color:#92400e}.tag.red{background:#fee2e2;color:#991b1b}.tag.purple{background:#ede9fe;color:#5b21b6}
+    table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+    th,td{padding:10px 11px;border-bottom:1px solid #e2e8f0;vertical-align:top}
+    th{background:#f1f5f9;color:#334155;font-weight:800;text-align:left;position:sticky;top:0;z-index:2}
+    tr:hover td{background:#f8fafc}
+    .num{text-align:right;font-variant-numeric:tabular-nums}
+    .barrow{display:grid;grid-template-columns:170px 1fr 86px;gap:10px;align-items:center;margin:10px 0}
+    .bar{height:22px;background:#e2e8f0;border-radius:999px;overflow:hidden}
+    .bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#3b82f6,#22c55e);min-width:2px}
+    .bar.amber span{background:linear-gradient(90deg,#f59e0b,#ef4444)}
+    .section{animation:fade .25s ease}
+    @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .donut{width:132px;height:132px;border-radius:50%;display:grid;place-items:center;margin:0 auto 12px;position:relative;background:conic-gradient(#22c55e calc(var(--p)*1%), #e2e8f0 0)}
+    .donut:after{content:"";position:absolute;width:92px;height:92px;border-radius:50%;background:white}
+    .donut b{position:relative;z-index:1;font-size:24px}
+    .district-card{border-top:8px solid #2563eb}
+    .district-card.pass{border-top-color:#16a34a}.district-card.watch{border-top-color:#d97706}.district-card.critical{border-top-color:#dc2626}
+    .filter-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:18px;padding:12px}
+    select,input{font-family:inherit;border:1px solid #cbd5e1;border-radius:12px;padding:9px 10px;background:#fff;min-height:40px}
+    .scroll-table{max-height:680px;overflow:auto;border:1px solid #e2e8f0;border-radius:18px}
+    .insight{border-left:6px solid #2563eb;background:#eff6ff;border-radius:18px;padding:16px;line-height:1.7}
+    .swot{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .swot .box{border-radius:20px;padding:16px;border:1px solid #e2e8f0}
+    .box.s{background:#ecfdf5}.box.w{background:#fff1f2}.box.o{background:#eff6ff}.box.t{background:#fffbeb}
+    .box h4{margin:0 0 8px;font-size:16px}
+    ul{margin:8px 0 0 20px;padding:0} li{margin:4px 0}
+    .drug-rank{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+    .drug-card{border-radius:22px;padding:16px;color:white;min-height:154px;box-shadow:var(--shadow)}
+    .drug-card:nth-child(1){background:linear-gradient(135deg,#047857,#22c55e)}
+    .drug-card:nth-child(2){background:linear-gradient(135deg,#2563eb,#06b6d4)}
+    .drug-card:nth-child(3){background:linear-gradient(135deg,#7c3aed,#d946ef)}
+    .drug-card:nth-child(4){background:linear-gradient(135deg,#d97706,#f59e0b)}
+    .drug-card:nth-child(5){background:linear-gradient(135deg,#e11d48,#f43f5e)}
+    .drug-card .rank{font-size:30px;font-weight:900}.drug-card .drug{font-size:16px;font-weight:800}.drug-card .money{font-size:20px;font-weight:900;margin-top:8px}
+    .footer{margin-top:30px;padding:18px;text-align:center;color:#64748b;font-size:12px}
+    .method{counter-reset:item}.method li{margin:9px 0}.method li::marker{font-weight:800;color:#2563eb}
+
+    .link-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}
+    .link-card{display:block;text-decoration:none;color:var(--ink);background:linear-gradient(180deg,#fff,#f8fafc);border:1px solid #dbeafe;border-radius:20px;padding:16px;min-height:152px;box-shadow:0 8px 28px rgba(37,99,235,.08);transition:.2s}
+    .link-card:hover{transform:translateY(-3px);box-shadow:0 18px 46px rgba(37,99,235,.16);border-color:#93c5fd}
+    .link-card .tag{display:inline-flex;align-items:center;gap:6px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:800;margin-bottom:10px}
+    .link-card .title{font-weight:900;font-size:16px;margin-bottom:6px;color:#0f172a}.link-card .desc{font-size:13px;line-height:1.55;color:#475569}.link-card .url{font-size:11px;color:#2563eb;margin-top:10px;word-break:break-all}
+    .source-flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:14px}.source-flow .step{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:14px;text-align:center;position:relative}.source-flow .step b{display:block;color:#0f172a}.source-flow .step small{display:block;color:#64748b;margin-top:4px}.source-flow .step:after{content:'→';position:absolute;right:-11px;top:38%;font-weight:900;color:#94a3b8}.source-flow .step:last-child:after{content:''}
+    .formula-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.formula-card{background:#fff;border:1px solid #e2e8f0;border-left:6px solid #2563eb;border-radius:18px;padding:16px;box-shadow:0 8px 24px rgba(15,23,42,.06)}.formula-card h4{margin:0 0 8px 0}.formula-card code{display:block;background:#0f172a;color:#e0f2fe;border-radius:12px;padding:10px;margin:8px 0;font-family:ui-monospace,Consolas,monospace;font-size:12px;white-space:normal}.formula-card p{margin:0;color:#475569;font-size:13px;line-height:1.55}
+    .method-timeline{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:12px}.method-timeline .node{background:linear-gradient(180deg,#ffffff,#f8fafc);border:1px solid #dbeafe;border-radius:18px;padding:14px}.method-timeline .no{width:34px;height:34px;border-radius:12px;background:#2563eb;color:white;display:flex;align-items:center;justify-content:center;font-weight:900;margin-bottom:8px}.method-timeline .node b{display:block}.method-timeline .node small{color:#64748b;line-height:1.45;display:block;margin-top:4px}
+
+    .target-wall{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:12px}
+    .target-card{border:1px solid #dbeafe;border-radius:20px;padding:14px;background:linear-gradient(180deg,#fff,#f8fafc);position:relative;overflow:hidden;min-height:150px}
+    .target-card:before{content:"";position:absolute;inset:auto -30px -48px auto;width:120px;height:120px;border-radius:999px;background:var(--bubble,#dbeafe);opacity:.38}
+    .target-card .share{font-size:28px;font-weight:900;color:#0f172a;line-height:1}
+    .target-card .target-name{font-size:15px;font-weight:900;margin:8px 0 6px;color:#334155}
+    .target-card .money{font-size:12px;color:#64748b;line-height:1.45}
+    .mini-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    .mini-card{border-radius:22px;padding:16px;border:1px solid #e2e8f0;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.05)}
+    .mini-card .n{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:12px;background:#2563eb;color:#fff;font-weight:900;margin-bottom:8px}
+    .mini-card h4{margin:2px 0 8px;font-size:17px;color:#0f172a}
+    .mini-card .big{font-size:32px;font-weight:900;margin:4px 0;color:#2563eb}
+    .mini-card.green .n{background:#16a34a}.mini-card.green .big{color:#16a34a}
+    .mini-card.purple .n{background:#7c3aed}.mini-card.purple .big{color:#7c3aed}
+    .mini-card.amber .n{background:#d97706}.mini-card.amber .big{color:#d97706}
+    .splitbar{height:20px;border-radius:999px;display:flex;overflow:hidden;background:#e2e8f0;border:1px solid #e2e8f0}
+    .splitbar span{display:block;height:100%;min-width:2px}.splitbar .h{background:linear-gradient(90deg,#2563eb,#06b6d4)}.splitbar .p{background:linear-gradient(90deg,#f59e0b,#22c55e)}
+    .split-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:#475569;margin-top:8px}.dot{width:10px;height:10px;border-radius:999px;display:inline-block;margin-right:5px}.dot.h{background:#2563eb}.dot.p{background:#f59e0b}
+    .area-badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:900;background:#eef2ff;color:#3730a3}
+    .analysis-card{border-left:6px solid #2563eb;background:#f8fafc;border-radius:20px;padding:16px;margin-top:12px}
+    .analysis-card h4{margin:0 0 8px;font-size:16px;color:#0f172a}
+    .rx-detail{background:linear-gradient(135deg,#fff7ed,#fffbeb);border:1px solid #fed7aa;border-radius:22px;padding:18px}
+    @media(max-width:1100px){.target-wall,.mini-grid{grid-template-columns:1fr}}
+    @media(max-width:1100px){.app{grid-template-columns:1fr}aside{position:relative;height:auto}.g4,.g3,.g2,.drug-rank,.swot{grid-template-columns:1fr}.topbar{flex-direction:column}.barrow{grid-template-columns:120px 1fr 70px}}
+    @media print{aside,.actions,.filter-row{display:none!important}.app{display:block}main{padding:0}.card{break-inside:avoid;box-shadow:none}.page-title{box-shadow:none}body{background:white}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand">
+      <h1>🌿 ระบบวิเคราะห์สมุนไพร UC<br>จังหวัดสมุทรปราการ</h1>
+      <p>Professional Dashboard v6.1 • Update 4 มิ.ย. 69 All Menus</p>
+      <div class="update-pill">⭐ Update ข้อมูล: <span id="sideDate"></span></div>
+    </div>
+    <div class="nav" id="nav"></div>
+    <div class="small-note">
+      <b>แหล่งข้อมูล:</b> ไฟล์ Excel <span id="sourceFile"></span><br>
+      ข้อมูลถูกอัปเดตในทุกเมนูที่เกี่ยวข้อง ได้แก่ ระดับประเทศ/เขต/จังหวัด อำเภอ หน่วยบริการ รายการยา คุณภาพ ยาทดแทน และบทวิเคราะห์ใหม่ทั้งหมด
+    </div>
+  </aside>
+  <main>
+    <div class="topbar">
+      <div class="page-title">
+        <h2 id="pageTitle"></h2>
+        <p id="pageSub"></p>
+      </div>
+      <div class="actions">
+        <button class="btn secondary" onclick="window.print()">🖨️ พิมพ์/Export PDF</button>
+        <button class="btn secondary" onclick="downloadJSON()">⬇️ Export JSON</button>
+      </div>
+    </div>
+    <div id="content"></div>
+    <div class="footer">จัดทำเพื่อการติดตามมูลค่าการใช้ยาสมุนไพรในระบบหลักประกันสุขภาพแห่งชาติ • อัปเดตจากข้อมูลล่าสุด</div>
+  </main>
+</div>
+
+<script>
+const DATA = {"updateDate":"4 มิ.ย. 69","sourceFile":"สมุนไพร UC 050669.xlsx","generatedAt":"4 มิถุนายน 2569","levels":[{"name":"ระดับประเทศ","target":2000000000.0,"value":1078679238.0,"percent":53.93396190000001},{"name":"เขตสุขภาพที่ 6","target":165000000.0,"value":74067410.5,"percent":44.8893396969697},{"name":"จ.สมุทรปราการ","target":28381346.0,"value":15308976.5,"percent":53.940276475964176}],"region6":[{"name":"สมุทรปราการ","target":28381346.0,"value":15308976.5,"percent":53.940276475964176},{"name":"ฉะเชิงเทรา","target":23712068.0,"value":12172051.5,"percent":51.332728549867525},{"name":"ปราจีนบุรี","target":13240957.0,"value":6375689.0,"percent":48.15127033491613},{"name":"สระแก้ว","target":19318344.0,"value":8799718.0,"percent":45.55109899689124},{"name":"ชลบุรี","target":37437004.0,"value":16012444.0,"percent":42.77170256466036},{"name":"ตราด","target":5509900.0,"value":2178092.0,"percent":39.530517795241295},{"name":"จันทบุรี","target":16859344.0,"value":6568529.0,"percent":38.96076264889073},{"name":"ระยอง","target":20541037.0,"value":6651910.5,"percent":32.38351841730289}],"province":{"target10m":21501020.310000002,"target12m":28381346.0,"value69":15308976.5,"achievement10m":71.20116291820757,"achievement12m":53.940276475964176},"districts":[{"name":"บางบ่อ","value68":3421324.0,"weight":13.52144014237411,"target10m":2901455.23,"value69":2758080.0,"achievement":95.05850621034742,"target12m":3829920.794402504,"percent12m":72.01402190956487},{"name":"บางพลี","value68":4731862.0,"weight":13.61732527153983,"target10m":2947814.11,"value69":1791656.0,"achievement":60.77913779983909,"target12m":3891114.5142577677,"percent12m":46.04480267632934},{"name":"บางเสาธง","value68":747135.0,"weight":5.163546508087002,"target10m":1143855.08,"value69":1099817.0,"achievement":96.15002977475083,"target12m":1509888.66255053,"percent12m":72.84093372435622},{"name":"พระประแดง","value68":2204389.0,"weight":17.21918023070744,"target10m":3691068.33,"value69":2883754.0,"achievement":78.12789529149681,"target12m":4872210.056685081,"percent12m":59.18780115079907},{"name":"พระสมุทรเจดีย์","value68":1595167.0,"weight":5.805237546594239,"target10m":1284169.8,"value69":1001561.0,"achievement":77.99287913483091,"target12m":1695104.087669726,"percent12m":59.085516180711615},{"name":"เมือง","value68":11048897.0,"weight":44.67327030069738,"target10m":9532657.76,"value69":5774108.5,"achievement":60.571864063228475,"target12m":12583107.884434389,"percent12m":45.88777711381393}],"districtTotals":{"value68":23748774.0,"weight":100.0,"target10m":21501020.310000002,"value69":15308976.5,"achievement":71.20116291820757,"target12m":28381346.0,"percent12m":53.940276475964176},"units":[{"district":"เมือง","code":"00933","name":"รพสต.สำโรงเหนือ","value68":254592.0,"weight":1.002846107870751,"target10m":217385.65,"value69":324794.0,"percentAchieved10m":149.40912613137067,"target12m":284663.2442873381,"percentAchieved12m":114.09762465580349},{"district":"เมือง","code":"00934","name":"รพสต.บางเมือง","value68":104770.55,"weight":0.7126103100987379,"target10m":153225.87,"value69":111657.0,"percentAchieved10m":72.87085398829845,"target12m":202278.25704585278,"percentAchieved12m":55.19970442235391},{"district":"เมือง","code":"00935","name":"สถานีอนามัยเฉลิมพระเกียรติ 60 พรรษา นวมินทราชินี บ้านคลองบางปิ้ง","value68":252527.7,"weight":2.521982609536119,"target10m":542278.13,"value69":348213.5,"percentAchieved10m":64.2130819474501,"target12m":715878.2848457992,"percentAchieved12m":48.64143910651033},{"district":"เมือง","code":"00936","name":"รพสต.บางปูใหม่","value68":124731.9,"weight":1.078136029208816,"target10m":231821.42,"value69":186438.0,"percentAchieved10m":80.42311189362916,"target12m":306034.6921117079,"percentAchieved12m":60.920544240764364},{"district":"เมือง","code":"00937","name":"รพสต.แพรกษา","value68":301505.5,"weight":1.459538527684325,"target10m":313830.8,"value69":216564.0,"percentAchieved10m":69.0066112057835,"target12m":414297.83612076635,"percentAchieved12m":52.272539491824034},{"district":"เมือง","code":"00938","name":"รพสต.บางโปรง","value68":67047.0,"weight":0.6249754594551209,"target10m":134382.58,"value69":106838.0,"percentAchieved10m":79.5028641361105,"target12m":177402.63485311705,"percentAchieved12m":60.22345727190467},{"district":"เมือง","code":"00939","name":"รพสต.บางปู","value68":83277.0,"weight":0.8953307338574694,"target10m":192514.52,"value69":126933.0,"percentAchieved10m":65.93424745312717,"target12m":254144.42895048702,"percentAchieved12m":49.945222299061044},{"district":"เมือง","code":"00940","name":"รพสต.บางด้วน","value68":49057.25,"weight":0.2428349246361053,"target10m":52214.5,"value69":28913.0,"percentAchieved10m":55.373507359066934,"target12m":68929.99527111303,"percentAchieved12m":41.94545478536653},{"district":"เมือง","code":"00941","name":"รพสต.บางเมืองใหม่","value68":349113.75,"weight":0.961243719628078,"target10m":206687.17,"value69":85552.0,"percentAchieved10m":41.39202254305383,"target12m":272854.18334138184,"percentAchieved12m":31.354476208620746},{"district":"เมือง","code":"00942","name":"รพสต.เทพารักษ์","value68":404607.0,"weight":2.028791552545509,"target10m":436231.91,"value69":246971.5,"percentAchieved10m":56.61472586909105,"target12m":575883.3591691841,"percentAchieved12m":42.885680940025956},{"district":"เมือง","code":"00943","name":"รพสต.ท้ายบ้านใหม่","value68":527295.75,"weight":1.840742819302646,"target10m":395797.57,"value69":205019.0,"percentAchieved10m":51.79895369241403,"target12m":522504.7180507638,"percentAchieved12m":39.23773181701326},{"district":"เมือง","code":"00944","name":"รพสต.แพรกษาใหม่","value68":295065.5,"weight":1.719066646893315,"target10m":369634.69,"value69":197657.0,"percentAchieved10m":53.47360660331961,"target12m":487966.28416877304,"percentAchieved12m":40.506282178224495},{"district":"เมือง","code":"10685","name":"โรงพยาบาลสมุทรปราการ","value68":7458558.5,"weight":24.96266711681448,"target10m":5367486.86,"value69":2911584.5,"percentAchieved10m":54.24483703347156,"target12m":7085786.89368867,"percentAchieved12m":41.09048922418703},{"district":"เมือง","code":"13812","name":"รพสต.ท้ายบ้าน","value68":73916.2,"weight":0.6230235049008205,"target10m":133962.87,"value69":102080.0,"percentAchieved10m":76.20021876210924,"target12m":176848.56208784663,"percentAchieved12m":57.7217020002082},{"district":"เมือง","code":"15048","name":"ศูนย์สุขภาพชุมชนเมือง โรงพยาบาลสมุทรปราการ","value68":28783.5,"weight":0.1751541335671785,"target10m":37661.74,"value69":22977.0,"percentAchieved10m":61.00886469929429,"target12m":49718.43986853947,"percentAchieved12m":46.21424175970422},{"district":"เมือง","code":"23945","name":"สถานีอนามัยเฉลิมพระเกียรติ 60 พรรษา นวมินทราชินี สาขาวัดบางปิ้ง","value68":109445.25,"weight":0.2996134205946165,"target10m":64423.05,"value69":27286.0,"percentAchieved10m":42.35440576005017,"target12m":85046.8757560183,"percentAchieved12m":32.08348308793592},{"district":"เมือง","code":"24027","name":"รพสต.พุทธรักษา","value68":117408.5,"weight":1.009152403827521,"target10m":216988.52,"value69":128994.0,"percentAchieved10m":59.44738458974697,"target12m":286453.32020467083,"percentAchieved12m":45.03142079408743},{"district":"เมือง","code":"24028","name":"รพสต.ร่มโพธิ์","value68":109259.0,"weight":0.390671468041194,"target10m":84002.4,"value69":39315.0,"percentAchieved10m":46.80223422187938,"target12m":110894.19071409147,"percentAchieved12m":35.45271375067999},{"district":"เมือง","code":"24029","name":"รพสต.บุญศิริ","value68":22214.9,"weight":0.172438660954243,"target10m":37077.86,"value69":39633.0,"percentAchieved10m":106.8912822908334,"target12m":48947.63840886899,"percentAchieved12m":80.97019853938195},{"district":"เมือง","code":"24702","name":"รพสต.เทศบาลตำบลสำโรงเหนือ","value68":48189.25,"weight":0.3795727704771966,"target10m":81615.95,"value69":55791.0,"percentAchieved10m":68.35796189347793,"target12m":107743.76590699967,"percentAchieved12m":51.78118615990894},{"district":"เมือง","code":"28826","name":"โรงพยาบาลส่งเสริมสุขภาพมังกรทอง","value68":254058.75,"weight":1.225155802156419,"target10m":263433.7,"value69":179208.0,"percentAchieved10m":68.02774284383509,"target12m":347767.0428813699,"percentAchieved12m":51.53104748374082},{"district":"พระประแดง","code":"00964","name":"รพสต.บางพึ่ง","value68":95085.5,"weight":0.2556220264897715,"target10m":54963.99,"value69":109316.0,"percentAchieved10m":198.88658010453756,"target12m":72559.68268788506,"percentAchieved12m":150.65666765691628},{"district":"พระประแดง","code":"00965","name":"รพสต.บางจาก","value68":28794.5,"weight":0.4005437877432274,"target10m":86125.15,"value69":189574.0,"percentAchieved10m":220.11456583820177,"target12m":113696.50159007368,"percentAchieved12m":166.7368805097437},{"district":"พระประแดง","code":"00966","name":"รพสต.บางครุ","value68":91257.8,"weight":0.80151686246921,"target10m":172342.61,"value69":183649.0,"percentAchieved10m":106.56041474595285,"target12m":227514.8585917427,"percentAchieved12m":80.7195631690779},{"district":"พระประแดง","code":"00967","name":"รพสต.บางหญ้าแพรก","value68":112270.3,"weight":0.8390678784191786,"target10m":180416.85,"value69":145130.0,"percentAchieved10m":80.4414886968706,"target12m":238173.91579175467,"percentAchieved12m":60.9344644301407},{"district":"พระประแดง","code":"00968","name":"รพสต.บางหัวเสือ","value68":23558.0,"weight":4.62570630008365,"target10m":970622.0,"value69":33514.0,"percentAchieved10m":3.4528374588665827,"target12m":1313031.5331212303,"percentAchieved12m":2.55241394853125},{"district":"พระประแดง","code":"00969","name":"รพสต.บางยอ","value68":182484.75,"weight":0.765861229453142,"target10m":164675.92,"value69":104656.0,"percentAchieved10m":63.552704001896565,"target12m":217393.81599925278,"percentAchieved12m":48.141203795953295},{"district":"พระประแดง","code":"00970","name":"รพสต.บางกะเจ้า","value68":50806.5,"weight":0.4358987036714829,"target10m":93727.19,"value69":67972.0,"percentAchieved10m":72.52111153657759,"target12m":123732.18402495072,"percentAchieved12m":54.934777508084224},{"district":"พระประแดง","code":"00971","name":"รพสต.บางน้ำผึ้ง","value68":32691.5,"weight":0.3111196385102708,"target10m":66897.12,"value69":64973.0,"percentAchieved10m":97.12376257752203,"target12m":88312.97739977059,"percentAchieved12m":73.57129372491158},{"district":"พระประแดง","code":"00972","name":"รพสต.บางกระสอบ","value68":58464.98,"weight":0.3426698099609322,"target10m":73681.06,"value69":41910.0,"percentAchieved10m":56.880289181507436,"target12m":97268.66271627037,"percentAchieved12m":43.08684711976575},{"district":"พระประแดง","code":"00973","name":"รพสต.บางกอบัว","value68":73088.0,"weight":0.4051166749386051,"target10m":87108.42,"value69":57271.0,"percentAchieved10m":65.74680151471006,"target12m":114994.54013714456,"percentAchieved12m":49.80323407676362},{"district":"พระประแดง","code":"00974","name":"รพสต.บางกอ","value68":22902.0,"weight":0.1388665136622561,"target10m":29859.16,"value69":22182.0,"percentAchieved10m":74.28876096983305,"target12m":39418.00440937098,"percentAchieved12m":56.27377725577249},{"district":"พระประแดง","code":"00975","name":"รพสต.ทรงคนอง","value68":169940.0,"weight":0.7255607335783909,"target10m":156010.48,"value69":132766.0,"percentAchieved10m":85.10069323548008,"target12m":205954.30418177892,"percentAchieved12m":64.46381420745564},{"district":"พระประแดง","code":"00976","name":"รพสต.สำโรง","value68":41136.8,"weight":0.5756790910752893,"target10m":123782.85,"value69":87208.0,"percentAchieved10m":70.45240919885106,"target12m":163409.59639542058,"percentAchieved12m":53.36773477426197},{"district":"พระประแดง","code":"00977","name":"รพสต.สำโรงกลาง","value68":44034.0,"weight":0.6464330337905908,"target10m":138996.4,"value69":108398.0,"percentAchieved10m":77.98619244814974,"target12m":183493.4823689343,"percentAchieved12m":59.074577800018865},{"district":"พระประแดง","code":"00978","name":"รพสต.สำโรงใต้","value68":58911.0,"weight":0.4116270351757373,"target10m":88508.28,"value69":108353.0,"percentAchieved10m":122.4213147063755,"target12m":116842.54079450983,"percentAchieved12m":92.73420388089615},{"district":"พระประแดง","code":"10754","name":"โรงพยาบาลบางจาก","value68":1079436.34,"weight":5.095636355020441,"target10m":1095666.62,"value69":1220218.0,"percentAchieved10m":111.36763480117702,"target12m":1446423.698655441,"percentAchieved12m":84.3610348153369},{"district":"พระประแดง","code":"23944","name":"รพสต.อยู่เจริญ","value68":39527.2,"weight":0.3891917428934742,"target10m":83684.23,"value69":71313.0,"percentAchieved10m":85.21677262251204,"target12m":110474.16279764692,"percentAchieved12m":64.55174512670663},{"district":"บางบ่อ","code":"00945","name":"รพสต.บางบ่อ","value68":121492.25,"weight":0.6265149187054669,"target10m":134713.59,"value69":109371.0,"percentAchieved10m":81.1877999836542,"target12m":177839.61861484504,"percentAchieved12m":61.49979450690879},{"district":"บางบ่อ","code":"00946","name":"รพสต.บ้านระกาศ หมู่ 3","value68":132302.0,"weight":0.4448614688564672,"target10m":95654.37,"value69":52679.0,"percentAchieved10m":55.07223559153649,"target12m":126276.3129748654,"percentAchieved12m":41.717245902234616},{"district":"บางบ่อ","code":"00947","name":"รพสต.บ้านระกาศ หมู่ 8","value68":408396.5,"weight":1.353462530618375,"target10m":291022.28,"value69":131855.0,"percentAchieved10m":45.30752765733263,"target12m":384187.59564736043,"percentAchieved12m":34.32047299127991},{"district":"บางบ่อ","code":"00948","name":"รพสต.บางพลีน้อย หมู่ที่ 3","value68":219134.5,"weight":1.185517360418698,"target10m":254910.62,"value69":147274.0,"percentAchieved10m":57.77476042386935,"target12m":336515.458680169,"percentAchieved12m":43.764408499275554},{"district":"บางบ่อ","code":"00949","name":"รพสต.บางพลีน้อย หมู่ที่ 5","value68":84529.58,"weight":0.4225994016312649,"target10m":90867.56,"value69":70793.0,"percentAchieved10m":77.90789144112597,"target12m":119957.10583916232,"percentAchieved12m":59.015261751078576},{"district":"บางบ่อ","code":"00950","name":"รพสต.บางพลีน้อย หมู่ที่ 8","value68":59245.73,"weight":0.2786101499279739,"target10m":59906.91,"value69":40526.0,"percentAchieved10m":67.64828965473265,"target12m":79084.98477226017,"percentAchieved12m":51.243608526576956},{"district":"บางบ่อ","code":"00951","name":"รพสต.บางเพรียง","value68":245369.18,"weight":1.105650354855764,"target10m":237737.57,"value69":167930.0,"percentAchieved10m":70.63671089092061,"target12m":313844.78095940565,"percentAchieved12m":53.50734190533535},{"district":"บางบ่อ","code":"00952","name":"รพสต.คลองด่าน หมู่ที่ 1","value68":306666.63,"weight":1.051874070112914,"target10m":226174.56,"value69":844746.0,"percentAchieved10m":373.49293395331466,"target12m":298580.09422384895,"percentAchieved12m":282.92107087577114},{"district":"บางบ่อ","code":"00953","name":"รพสต.คลองด่าน หมู่ที่ 13","value68":126797.5,"weight":0.7014437428344734,"target10m":150824.83,"value69":110601.0,"percentAchieved10m":73.33076390671218,"target12m":199108.5670604697,"percentAchieved12m":55.5480869722749},{"district":"บางบ่อ","code":"00954","name":"รพสต.คลองสวน","value68":96457.25,"weight":0.6971414548190367,"target10m":149899.75,"value69":98238.0,"percentAchieved10m":65.53579975950595,"target12m":197887.339541391,"percentAchieved12m":49.64339822227591},{"district":"บางบ่อ","code":"00955","name":"รพสต.เปร็ง","value68":127617.5,"weight":0.7838981757691953,"target10m":168554.23,"value69":136371.0,"percentAchieved10m":80.90630534754304,"target12m":222513.69991271364,"percentAchieved12m":61.286563503053884},{"district":"บางบ่อ","code":"00956","name":"รพสต.นิยมยาตรา","value68":155008.07,"weight":0.8277727117085932,"target10m":177988.16,"value69":121873.0,"percentAchieved10m":68.47253210550635,"target12m":234967.72216407198,"percentAchieved12m":51.86797525955467},{"district":"บางบ่อ","code":"10752","name":"โรงพยาบาลบางบ่อ","value68":1155310.4,"weight":2.851373410748515,"target10m":613103.93,"value69":401805.0,"percentAchieved10m":65.53619710119946,"target12m":809377.6297359238,"percentAchieved12m":49.64369970678547},{"district":"บางบ่อ","code":"23032","name":"ศูนย์สุขภาพชุมชนรพ.บางบ่อ","value68":20467.75,"weight":0.2342180775662179,"target10m":50361.7,"value69":52631.0,"percentAchieved10m":104.50600357017336,"target12m":66484.05703274264,"percentAchieved12m":79.1633398275918},{"district":"บางบ่อ","code":"23911","name":"รพสต.คลองด่าน หมู่ 7","value68":162529.5,"weight":0.5171209595286657,"target10m":111191.64,"value69":99740.0,"percentAchieved10m":89.7009883117112,"target12m":146787.55680765267,"percentAchieved12m":67.94853880611774},{"district":"บางบ่อ","code":"","name":"สถานพยาบาลเรือนจำกลางสมุทรปราการ","value68":100000.0,"weight":0.41,"target10m":88543.53,"value69":169860.0,"percentAchieved10m":191.83784518191223,"target12m":116380.69813683788,"percentAchieved12m":145.95203733894286},{"district":"บางพลี","code":"00957","name":"รพสต.บางแก้ว","value68":302124.0,"weight":1.403355480414355,"target10m":301750.29,"value69":160467.0,"percentAchieved10m":53.17873928141047,"target12m":398349.9769384882,"percentAchieved12m":40.28291936484253},{"district":"บางพลี","code":"00958","name":"รพสต.วัดสลุด ตำบลบางแก้ว","value68":32770.75,"weight":0.2336916079393471,"target10m":50248.5,"value69":53109.0,"percentAchieved10m":105.69270724499238,"target12m":66334.61580658883,"percentAchieved12m":80.06227119012699},{"district":"บางพลี","code":"00959","name":"รพสต.บางปลา","value68":24395.4,"weight":0.214159867220113,"target10m":46048.78,"value69":36538.0,"percentAchieved10m":79.34629321341411,"target12m":60790.42648772988,"percentAchieved12m":60.104858792814916},{"district":"บางพลี","code":"00960","name":"รพสต.คลองสี่","value68":43534.0,"weight":0.1989426480793234,"target10m":42776.76,"value69":26502.0,"percentAchieved10m":61.9542012999582,"target12m":56470.937250397335,"percentAchieved12m":46.93033494820122},{"district":"บางพลี","code":"00961","name":"รพสต.บางโฉลง","value68":67576.5,"weight":0.6645270246666174,"target10m":142886.98,"value69":87279.0,"percentAchieved10m":61.08254230021517,"target12m":188629.5586865771,"percentAchieved12m":46.270054708138794},{"district":"บางพลี","code":"00962","name":"รพสต.ราชาเทวะ","value68":92726.5,"weight":0.6355253096395649,"target10m":136651.01,"value69":89915.0,"percentAchieved10m":65.7990014124301,"target12m":180397.266388982,"percentAchieved12m":49.84277300861122},{"district":"บางพลี","code":"00963","name":"รพสต.หนองปรือ","value68":32248.0,"weight":0.2584083968261729,"target10m":55563.12,"value69":41852.0,"percentAchieved10m":75.32334397348457,"target12m":73350.60884646596,"percentAchieved12m":57.05746776772179},{"district":"บางพลี","code":"10753","name":"โรงพยาบาลบางพลี","value68":4085592.75,"weight":9.787015316803165,"target10m":2104409.59,"value69":1239374.0,"percentAchieved10m":58.89414332121534,"target12m":2778096.7688914095,"percentAchieved12m":44.612340861494474},{"district":"บางพลี","code":"23034","name":"ศูนย์แพทย์ชุมชนวัดบางพลีใหญ่กลาง","value68":6799.75,"weight":0.1464796789945732,"target10m":31496.14,"value69":31681.0,"percentAchieved10m":100.58692906495843,"target12m":41579.04220548374,"percentAchieved12m":76.19463633489298},{"district":"บางพลี","code":"24675","name":"โรงพยาบาลส่งเสริมสุขภาพบัวเกราะ ตำบลราชาเทวะ","value68":44095.15,"weight":0.167346501065787,"target10m":35982.94,"value69":21565.0,"percentAchieved10m":59.93117849736569,"target12m":47502.20152388628,"percentAchieved12m":45.397895904163796},{"district":"บางพลี","code":"99826","name":"ศูนย์สุขภาพชุมชน1 รพ.บางพลี","value68":0.0,"weight":0.0,"target10m":0.0,"value69":0.0,"percentAchieved10m":0.0,"target12m":0.0,"percentAchieved12m":0.0},{"district":"พระสมุทรฯ","code":"00979","name":"รพสต.บ้านขุนสมุทรไทย","value68":21079.0,"weight":0.0483904119871504,"target10m":10404.93,"value69":5338.0,"percentAchieved10m":51.30260366960662,"target12m":13735.877878521393,"percentAchieved12m":38.86173164328258},{"district":"พระสมุทรฯ","code":"00980","name":"รพสต.นาเกลือ","value68":179216.89,"weight":0.4921903413911515,"target10m":105831.05,"value69":64133.0,"percentAchieved10m":60.5994176567274,"target12m":139710.86718856287,"percentAchieved12m":45.9040884152855},{"district":"พระสมุทรฯ","code":"00981","name":"รพสต.บ้านคลองทะเล","value68":56166.2,"weight":0.2334092809965999,"target10m":50187.8,"value69":33402.0,"percentAchieved10m":66.55402308927667,"target12m":66254.47579024796,"percentAchieved12m":50.414707235396264},{"district":"พระสมุทรฯ","code":"00982","name":"รพสต.บ้านคลองสวน","value68":100264.92,"weight":0.3066472559191668,"target10m":65935.47,"value69":49550.0,"percentAchieved10m":75.14923303041596,"target12m":87043.46762345909,"percentAchieved12m":56.92558138233659},{"district":"พระสมุทรฯ","code":"00983","name":"รพสต.แหลมฟ้าผ่า","value68":220384.5,"weight":0.8139861784542916,"target10m":175023.77,"value69":89881.0,"percentAchieved10m":51.353596142969614,"target12m":231054.34078596867,"percentAchieved12m":38.90037282755877},{"district":"พระสมุทรฯ","code":"00984","name":"รพสต.บ้านขุนสมุทร","value68":15070.6,"weight":0.06025429664838443,"target10m":12955.91,"value69":8361.0,"percentAchieved10m":64.53425502338315,"target12m":17103.50514556856,"percentAchieved12m":48.884716488457904},{"district":"พระสมุทรฯ","code":"00985","name":"รพสต.ในคลองบางปลากด","value68":196258.87,"weight":1.092074893717241,"target10m":234818.56,"value69":167219.0,"percentAchieved10m":71.21200300351046,"target12m":309991.3135329891,"percentAchieved12m":53.943124436035085},{"district":"พระสมุทรฯ","code":"00986","name":"รพสต.บ้านคู่สร้าง","value68":333751.99,"weight":1.026581304183033,"target10m":220736.1,"value69":115404.0,"percentAchieved10m":52.28143470868607,"target12m":291400.60701230954,"percentAchieved12m":39.60321194359249},{"district":"พระสมุทรฯ","code":"10755","name":"โรงพยาบาลพระสมุทรเจดีย์สวาทยานนท์","value68":262004.25,"weight":1.042293285196675,"target10m":224114.49,"value69":366801.0,"percentAchieved10m":163.6667936999522,"target12m":295860.5370598227,"percentAchieved12m":123.97766989986678},{"district":"พระสมุทรฯ","code":"24410","name":"รพสต.บ้านคลองนาเกลือน้อย","value68":136754.84,"weight":0.4860648046115726,"target10m":104513.93,"value69":48719.0,"percentAchieved10m":46.614838806654774,"target12m":137972.10073278172,"percentAchieved12m":35.310761915814275},{"district":"พระสมุทรฯ","code":"24559","name":"รพสต.คลองกระออม","value68":74215.5,"weight":0.370419399780834,"target10m":79647.79,"value69":46979.0,"percentAchieved10m":58.983431932009665,"target12m":105145.53256078514,"percentAchieved12m":44.67997722379808},{"district":"บางเสาธง","code":"00987","name":"รพสต.เมืองใหม่บางพลี","value68":105548.0,"weight":0.5690189324826047,"target10m":122350.77,"value69":132758.0,"percentAchieved10m":108.50606007628723,"target12m":161519.07467171646,"percentAchieved12m":82.1933881616319},{"district":"บางเสาธง","code":"00988","name":"รพสต.เสาธงกลาง ตำบลบางเสาธง","value68":55667.0,"weight":0.3958023190782203,"target10m":85105.64,"value69":101508.0,"percentAchieved10m":119.27294125277714,"target12m":112350.61028903107,"percentAchieved12m":90.34930895245022},{"district":"บางเสาธง","code":"00989","name":"รพสต.บางเสาธง","value68":0.0,"weight":0.0,"target10m":0.0,"value69":0.0,"percentAchieved10m":0.0,"target12m":0.0,"percentAchieved12m":0.0},{"district":"บางเสาธง","code":"00990","name":"รพสต.ศรีษะจระเข้น้อย","value68":58904.25,"weight":0.4834391480224822,"target10m":103949.36,"value69":103572.0,"percentAchieved10m":99.63697708191758,"target12m":137226.7940330112,"percentAchieved12m":75.47505625984732},{"district":"บางเสาธง","code":"00991","name":"รพสต.ศีรษะจรเข้ใหญ่","value68":21625.75,"weight":0.1009838883543776,"target10m":21713.61,"value69":57915.0,"percentAchieved10m":266.72211576057595,"target12m":28664.818115255996,"percentAchieved12m":202.0420983211349},{"district":"บางเสาธง","code":"00992","name":"รพสต.วัดศรีวารีน้อย ตำบลศีรษะจรเข้ใหญ่","value68":158459.0,"weight":2.092741197100331,"target10m":449982.4,"value69":296622.0,"percentAchieved10m":65.91857814883426,"target12m":594035.8086298984,"percentAchieved12m":49.93335345964037},{"district":"บางเสาธง","code":"24411","name":"รพสต.เจริญราษฎร์","value68":84071.82,"weight":0.671960430710679,"target10m":144485.31,"value69":134591.0,"percentAchieved10m":93.15203047285569,"target12m":190739.5708449734,"percentAchieved12m":70.56270463636041},{"district":"บางเสาธง","code":"24412","name":"รพสต.กัลปพฤกษ์ ตำบลบางเสาธง","value68":28910.0,"weight":0.2674686633107468,"target10m":57511.26,"value69":113558.0,"percentAchieved10m":197.45350736534027,"target12m":75922.41406300377,"percentAchieved12m":149.57111335496333},{"district":"บางเสาธง","code":"28785","name":"โรงพยาบาลบางเสาธง","value68":233949.25,"weight":0.7383357092467187,"target10m":158756.73,"value69":117280.0,"percentAchieved10m":73.87403356065597,"target12m":209580.54951583038,"percentAchieved12m":55.959391399124755}],"unitTotals":{"value68":23735303.69000001,"weight":99.57523849992917,"target10m":21501020.30999999,"value69":15038987.5,"achievement":69.9454597185114,"target12m":28381346.0,"percent12m":52.98898614604114},"drugs":[{"name":"ยาไพล","price":65.0,"total":4389125.0,"count":67525.0},{"name":"แก้ไอมะขามป้อม","price":84.0,"total":2091768.0,"count":24902.0},{"name":"ประสะมะแว้ง","price":50.0,"total":1686150.0,"count":33723.0},{"name":"ฟ้าทะลายโจร","price":92.0,"total":1139972.0,"count":12391.0},{"name":"หอมเทพจิตร","price":70.0,"total":861140.0,"count":12302.0},{"name":"แก้ไอผสมมะขามป้อม สูตรตำรับที่ 1","price":84.0,"total":761376.0,"count":9064.0},{"name":"ขมิ้นชัน","price":67.0,"total":753348.0,"count":11244.0},{"name":"อมมะแว้ง (สูตรยาเดียวกับประสะมะแว้ง)","price":50.0,"total":495150.0,"count":9903.0},{"name":"มะขามแขก","price":31.0,"total":429412.0,"count":13852.0},{"name":"สหัศธารา","price":73.0,"total":410187.0,"count":5619.0},{"name":"ยาประคบ","price":100.0,"total":353100.0,"count":3531.0},{"name":"เถาวัลย์เปรียง","price":84.0,"total":252168.0,"count":3002.0},{"name":"น้ำมันไพล","price":65.0,"total":234065.0,"count":3601.0},{"name":"ศุขไสยาศน์","price":420.0,"total":160860.0,"count":383.0},{"name":"ธาตุอบเชย","price":84.0,"total":109704.0,"count":1306.0},{"name":"มะระขี้นก","price":130.0,"total":92300.0,"count":710.0},{"name":"ปราบชมพูทวีป","price":170.0,"total":84490.0,"count":497.0},{"name":"ยากระเจี๊ยบแดง","price":85.0,"total":84405.0,"count":993.0},{"name":"ผสมเพชรสังฆาต","price":204.0,"total":71196.0,"count":349.0},{"name":"เพชรสังฆาต","price":204.0,"total":62016.0,"count":304.0},{"name":"หอมนวโกฐ","price":70.0,"total":55440.0,"count":792.0},{"name":"สเปรย์กระดูกไก่ดำ","price":120.0,"total":50760.0,"count":423.0},{"name":"ขิง","price":84.0,"total":45948.0,"count":547.0},{"name":"แก้ไอผสมมะขามป้อม สูตรตำรับที่ 2","price":84.0,"total":42252.0,"count":503.0},{"name":"พญายอ","price":33.0,"total":42174.0,"count":1278.0},{"name":"น้ำมันกัญชาทั้ง 5","price":600.0,"total":41400.0,"count":69.0},{"name":"หญ้าดอกขาว","price":206.0,"total":32548.0,"count":158.0},{"name":"หอมทิพโอสถ","price":70.0,"total":27930.0,"count":399.0},{"name":"ธาตุบรรจบ","price":55.0,"total":26950.0,"count":490.0},{"name":"แก้ลมแก้เส้น","price":420.0,"total":26460.0,"count":63.0},{"name":"จันทน์ลีลา","price":97.0,"total":23571.0,"count":243.0},{"name":"แก้ไอผสมมะขามป้อม","price":84.0,"total":22428.0,"count":267.0},{"name":"ขี้ผึ้งไพล","price":65.0,"total":21840.0,"count":336.0},{"name":"เหลืองปิดสมุทร","price":37.0,"total":21682.0,"count":586.0},{"name":"หอมอินทจักร","price":90.0,"total":17820.0,"count":198.0},{"name":"บำรุงโลหิต","price":139.0,"total":16263.0,"count":117.0},{"name":"ธรณีสันฑะฆาต","price":80.0,"total":13920.0,"count":174.0},{"name":"ว่านหางจระเข้","price":67.0,"total":12395.0,"count":185.0},{"name":"ประสะไพล","price":67.0,"total":11390.0,"count":170.0},{"name":"เขียวหอม","price":70.0,"total":11200.0,"count":160.0},{"name":"ตรีผลา","price":100.0,"total":9900.0,"count":99.0},{"name":"ชุมเห็ดเทศ","price":60.0,"total":8640.0,"count":144.0},{"name":"ทำลายพระสุเมรุ","price":270.0,"total":8640.0,"count":32.0},{"name":"อัมฤตโอสถ","price":207.5,"total":6225.0,"count":30.0},{"name":"เบญจกูล","price":108.0,"total":5724.0,"count":53.0},{"name":"น้ำมันกัญชา","price":344.0,"total":5160.0,"count":15.0},{"name":"อำมฤควาที","price":206.0,"total":4944.0,"count":24.0},{"name":"พริก","price":40.0,"total":4280.0,"count":107.0},{"name":"ห้าราก","price":48.0,"total":4128.0,"count":86.0},{"name":"ผสมโคคลาน","price":59.5,"total":3867.5,"count":65.0},{"name":"ประสะจันทน์แดง","price":177.5,"total":2840.0,"count":16.0},{"name":"รางจืด","price":86.0,"total":2838.0,"count":33.0},{"name":"บัวบก","price":28.0,"total":2716.0,"count":97.0},{"name":"สตรีหลังคลอด","price":167.5,"total":2177.5,"count":13.0},{"name":"มังคุด/เปลือกมังคุด","price":60.0,"total":1260.0,"count":21.0},{"name":"อภัยสาลี","price":54.0,"total":1242.0,"count":23.0},{"name":"หญ้าหนวดแมว","price":61.0,"total":732.0,"count":12.0},{"name":"หญ้าปักกิ่ง","price":84.0,"total":420.0,"count":5.0}],"drugsTotal":15162037.0,"quality":{"overall":[{"name":"1.การให้บริการสุขภาพ (CPG. และ ยาทดแทน)","score":100.0,"max":100},{"name":"2.กำลังคนการให้บริการ( การอบรม )","score":100.0,"max":100},{"name":"3.ความถูกต้องในการบันทึกข้อมูลรหัสยา 24 หลัก","score":92.85,"max":100},{"name":"4.คุณภาพ/มาตรฐานการผลิตยาสมุนไพร","score":94.3,"max":100}],"districtDrugCode":[{"name":"เมือง","score":91.91},{"name":"บางบ่อ","score":88.37},{"name":"บางพลี","score":97.83},{"name":"พระประแดง","score":91.41},{"name":"พระสมุทรเจดีย์","score":87.5},{"name":"บางเสาธง","score":94.87}],"districtProduction":[{"name":"เมือง","score":91.67},{"name":"บางบ่อ","score":98.39},{"name":"บางพลี","score":97.17},{"name":"พระประแดง","score":94.53},{"name":"พระสมุทรเจดีย์","score":96.43},{"name":"บางเสาธง","score":91.04}],"average":96.7875,"qualWeightedScore":2.9,"quantWeightedScore":3.5,"totalScore":6.4},"replacementSummary":[{"modernDrug":"Analgesic balm","herbalDrug":"ยาไพล / น้ำมันไพล / ขี้ผึ้งไพล","value":4645030.0},{"modernDrug":"M.tussis (ยาน้ำแก้ไอ)","herbalDrug":"ยาแก้ไอมะขามป้อม (ทุกสูตร)","value":2917824.0},{"modernDrug":"ยาอมแก้ไอ","herbalDrug":"ประสะมะแว้ง / อมมะแว้ง","value":2181300.0},{"modernDrug":"M.Carminative","herbalDrug":"ขมิ้นชัน / ธาตุอบเชย","value":863052.0},{"modernDrug":"Bisacodyl / Senokot","herbalDrug":"ยามะขามแขก","value":429412.0},{"modernDrug":"Daflon, Sidual","herbalDrug":"เพชรสังฆาต / ผสมเพชรสังฆาต","value":133212.0},{"modernDrug":"Diclofenac Spray","herbalDrug":"สเปรย์กระดูกไก่ดำ","value":50760.0},{"modernDrug":"Acyclovir cream / Calamine","herbalDrug":"พญายอ","value":42174.0}],"targets":{"month10":21501020.310000002,"month12":28381346.0}};
+
+
+const HOSPITAL_CODES = ['10685','10754','10752','10753','10755','28785'];
+const REPLACEMENT_DETAILS = [
+  { hospital:'โรงพยาบาลบางเสาธง', modern:'Analgesic balm', herbal:'ครีมไพล', indication:'บรรเทาอาการปวดกล้ามเนื้อ', date:'30 ธันวาคม พ.ศ. 2568' },
+  { hospital:'โรงพยาบาลบางเสาธง', modern:'M.tussis', herbal:'ยาแก้ไอน้ำมะขามป้อม', indication:'บรรเทาอาการไอ แก้ระคายคอ', date:'30 ธันวาคม พ.ศ. 2568' },
+  { hospital:'โรงพยาบาลบางเสาธง', modern:'M.Carminative', herbal:'ยาธาตุอบเชย', indication:'ขับลม แก้ท้องอืด ท้องเฟ้อ', date:'30 ธันวาคม พ.ศ. 2568' },
+  { hospital:'โรงพยาบาลบางเสาธง', modern:'Daflon, Sidual', herbal:'ยาสมุนไพรเพชรสังฆาต', indication:'บรรเทาอาการริดสีดวงทวารหนัก', date:'30 ธันวาคม พ.ศ. 2568' },
+  { hospital:'โรงพยาบาลบางจาก', modern:'Analgesic balm', herbal:'ครีมไพล', indication:'บรรเทาอาการปวดกล้ามเนื้อ', date:'19 เมษายน พ.ศ. 2564' },
+  { hospital:'โรงพยาบาลบางจาก', modern:'Acyclovir cream', herbal:'พญายอครีม', indication:'รักษาโรคเริม และงูสวัด', date:'19 เมษายน พ.ศ. 2564' },
+  { hospital:'โรงพยาบาลบางจาก', modern:'M.tussis', herbal:'ยาแก้ไอน้ำมะขามป้อม', indication:'บรรเทาอาการไอ แก้ระคายคอ', date:'19 เมษายน พ.ศ. 2564' },
+  { hospital:'โรงพยาบาลบางจาก', modern:'Bisacodyl', herbal:'ยามะขามแขก', indication:'ยาระบาย แก้ท้องผูก', date:'19 เมษายน พ.ศ. 2564' },
+  { hospital:'โรงพยาบาลบางบ่อ', modern:'M.Carminative', herbal:'ขมิ้นชัน', indication:'บรรเทาอาการแน่น จุกเสียด ท้องอืด ท้องเฟ้อ', date:'2 เมษายน พ.ศ. 2568' },
+  { hospital:'โรงพยาบาลบางบ่อ', modern:'Calamine Lotion', herbal:'พญายอครีม', indication:'บรรเทาอาการผดผื่นคัน ตุ่มคัน', date:'2 เมษายน พ.ศ. 2568' },
+  { hospital:'โรงพยาบาลบางบ่อ', modern:'M.tussis', herbal:'ยาแก้ไอน้ำมะขามป้อม', indication:'บรรเทาอาการไอ ขับเสมหะ', date:'2 เมษายน พ.ศ. 2568' },
+  { hospital:'โรงพยาบาลบางพลี', modern:'Analgesic balm', herbal:'ครีมไพล (30 กรัม)', indication:'บรรเทาอาการปวดกล้ามเนื้อ', date:'9 เมษายน พ.ศ. 2568' },
+  { hospital:'โรงพยาบาลบางพลี', modern:'M.tussis', herbal:'ยาแก้ไอน้ำมะขามป้อม (120 ซีซี)', indication:'บรรเทาอาการไอ แก้ระคายคอ', date:'9 เมษายน พ.ศ. 2568' },
+  { hospital:'โรงพยาบาลบางพลี', modern:'Senoside', herbal:'ยามะขามแขก', indication:'ยาระบาย แก้ท้องผูก', date:'9 เมษายน พ.ศ. 2568' },
+  { hospital:'โรงพยาบาลพระสมุทรเจดีย์สวาทยานนท์', modern:'Acyclovir cream', herbal:'พญายอครีม', indication:'รักษาโรคเริมและงูสวัด', date:'5 มกราคม พ.ศ. 2569' },
+  { hospital:'โรงพยาบาลพระสมุทรเจดีย์สวาทยานนท์', modern:'M.tussis', herbal:'ยาแก้ไอน้ำมะขามป้อม', indication:'บรรเทาอาการไอ แก้ระคายคอ', date:'5 มกราคม พ.ศ. 2569' },
+  { hospital:'โรงพยาบาลพระสมุทรเจดีย์สวาทยานนท์', modern:'Bisacodyl', herbal:'ยามะขามแขก', indication:'ยาระบาย แก้ท้องผูก', date:'5 มกราคม พ.ศ. 2569' },
+  { hospital:'โรงพยาบาลพระสมุทรเจดีย์สวาทยานนท์', modern:'Daflon', herbal:'ยาสมุนไพรเพชรสังฆาต', indication:'รักษาอาการริดสีดวงทวาร', date:'5 มกราคม พ.ศ. 2569' },
+  { hospital:'โรงพยาบาลสมุทรปราการ', modern:'Neotica balm', herbal:'ครีมไพล', indication:'บรรเทาอาการปวดกล้ามเนื้อ', date:'12 มกราคม พ.ศ. 2569' },
+  { hospital:'โรงพยาบาลสมุทรปราการ', modern:'Acyclovir', herbal:'พญายอครีม', indication:'รักษาโรคเริม และงูสวัด', date:'12 มกราคม พ.ศ. 2569' },
+  { hospital:'โรงพยาบาลสมุทรปราการ', modern:'M.tussis', herbal:'ยาแก้ไอน้ำมะขามป้อม', indication:'บรรเทาอาการไอ', date:'12 มกราคม พ.ศ. 2569' },
+  { hospital:'โรงพยาบาลสมุทรปราการ', modern:'Senokot (ยาระบาย)', herbal:'ยาสมุนไพรมะขามแขก', indication:'ยาระบาย', date:'12 มกราคม พ.ศ. 2569' },
+  { hospital:'โรงพยาบาลสมุทรปราการ', modern:'ยาอมแก้ไอ', herbal:'ยาอมแก้ไอมะแว้ง', indication:'บรรเทาอาการไอ', date:'12 มกราคม พ.ศ. 2569' },
+  { hospital:'โรงพยาบาลสมุทรปราการ', modern:'Diclofenac Spray', herbal:'สเปรย์กระดูกไก่ดำ', indication:'บรรเทาอาการปวดอักเสบ', date:'12 มกราคม พ.ศ. 2569' }
+];
+
+const MENU = [
+  ['dashboard','📊','Executive Dashboard','ภาพรวมผู้บริหาร และ KPI สำคัญ'],
+  ['national','🌏','ประเทศ / เขตสุขภาพ','เปรียบเทียบประเทศ เขตสุขภาพที่ 6 และจังหวัด'],
+  ['district','🗺️','รายอำเภอ','ผลงานและเป้าหมาย 10 เดือนรายอำเภอ'],
+  ['units','🏥','รายหน่วยบริการ','ผลงานระดับ รพ./รพ.สต./หน่วยบริการ'],
+  ['analysis','🧠','วิเคราะห์เชิงลึก','สถิติ ABC และข้อค้นพบเชิงกลยุทธ์'],
+  ['problem','🔎','ปัญหา / OFI','วิเคราะห์ปัญหาและข้อเสนอแนะรายพื้นที่'],
+  ['drugs','💊','Top ยาสมุนไพร','รายการยาสมุนไพรและมูลค่าการใช้'],
+  ['quality','⭐','ผลลัพธ์เชิงคุณภาพ','คะแนนคุณภาพและมาตรฐาน'],
+  ['replacement','🔁','ยาทดแทน','ศักยภาพยาสมุนไพรทดแทนยาแผนปัจจุบัน'],
+  ['support','🗂️','ข้อมูลสนับสนุน','ลิงก์เดิม แหล่งข้อมูล และไฟล์อ้างอิง'],
+  ['method','🧮','วิธีคำนวณ','สูตรคำนวณ ขั้นตอนตรวจสอบ และตารางดิบ']
+];
+let current = 'dashboard';
+let unitFilter = 'All';
+let problemFilter = 'All';
+
+const $ = (id)=>document.getElementById(id);
+const fmtNum = (n,dec=0)=> (n==null||isNaN(n)) ? '-' : Number(n).toLocaleString('th-TH',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+const fmtMoney = (n)=> (n==null||isNaN(n)) ? '-' : Number(n).toLocaleString('th-TH',{maximumFractionDigits:0})+' บาท';
+const pct = (n,dec=2)=> (n==null||isNaN(n)) ? '-' : Number(n).toFixed(dec)+'%';
+const esc = (s)=> String(s??'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const sum = (arr,key)=>arr.reduce((a,b)=>a+(Number(b[key])||0),0);
+const mean = (arr)=> arr.length? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+const median = (arr)=>{const s=[...arr].sort((a,b)=>a-b);return s.length?s[Math.floor(s.length/2)]:0}
+const sd = (arr)=>{const m=mean(arr);return Math.sqrt(mean(arr.map(v=>(v-m)**2)))}
+const status = (v)=> v>=80?'ดีมาก':v>=50?'ผ่านเกณฑ์':v>=35?'ต้องเร่งรัด':'ต้องปรับปรุง';
+const tagClass = (v)=> v>=80?'green':v>=50?'green':v>=35?'amber':'red';
+const maxOf = (arr,key)=>Math.max(...arr.map(x=>Number(x[key])||0),1);
+function setProgress(){document.querySelectorAll('.progress i').forEach(el=>{el.style.width=Math.min(100,Number(el.dataset.p||0))+'%'})}
+function card(label,value,sub,icon){return `<div class="card kpi" data-icon="${icon}"><div class="label">${label}</div><div class="value">${value}</div><div class="sub">${sub||''}</div></div>`}
+function targetKpiCard(label,target,actual,percent,icon,cls=''){return `<div class="card kpi target-kpi ${cls}" data-icon="${icon}">
+  <div class="label">${label}</div>
+  <div class="value">คิดเป็น ${pct(percent)}</div>
+  <div class="kpi-detail">
+    <div><b>${label}กำหนดไว้คือ</b><span>${fmtMoney(target)}</span></div>
+    <div><b>ทำได้</b><span>${fmtMoney(actual)}</span></div>
+    <div><b>คิดเป็น</b><span>${pct(percent)}</span></div>
+  </div>
+</div>`}
+function progress(p){return `<div class="progress"><i data-p="${p}"></i></div>`}
+function bars(rows,key='percent',label='name',unit='%'){
+  const m=maxOf(rows,key);
+  return rows.map((r,i)=>`<div class="barrow">
+    <b>${i+1}. ${esc(r[label])}</b><div class="bar"><span style="width:${Math.max(1,(r[key]/m)*100)}%"></span></div><b class="num">${unit==='%'?pct(r[key]):fmtMoney(r[key])}</b>
+  </div>`).join('')
+}
+function table(headers, rows){
+  return `<div class="scroll-table"><table><thead><tr>${headers.map(h=>`<th class="${h.cls||''}">${h.t}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`
+}
+
+function networkStats(rows){
+  const hospitalRows = rows.filter(u=>HOSPITAL_CODES.includes(String(u.code||'')));
+  const pcuRows = rows.filter(u=>!HOSPITAL_CODES.includes(String(u.code||'')));
+  const hospitalValue = sum(hospitalRows,'value69'), pcuValue = sum(pcuRows,'value69');
+  const hospitalTarget = sum(hospitalRows,'target10m'), pcuTarget = sum(pcuRows,'target10m');
+  const totalValue = hospitalValue + pcuValue, totalTarget = hospitalTarget + pcuTarget;
+  return {
+    hospitalRows, pcuRows, hospitalValue, pcuValue, totalValue, hospitalTarget, pcuTarget, totalTarget,
+    hospitalPct: totalValue?hospitalValue/totalValue*100:0,
+    pcuPct: totalValue?pcuValue/totalValue*100:0,
+    hospitalAch: hospitalTarget?hospitalValue/hospitalTarget*100:0,
+    pcuAch: pcuTarget?pcuValue/pcuTarget*100:0,
+    hospitalCount: hospitalRows.length,
+    pcuCount: pcuRows.length
+  };
+}
+function splitBar(hpct, ppct){
+  return `<div class="splitbar"><span class="h" style="width:${Math.max(0,hpct)}%"></span><span class="p" style="width:${Math.max(0,ppct)}%"></span></div>
+  <div class="split-legend"><span><i class="dot h"></i>รพ.แม่ข่าย/รพ.เครือข่าย ${pct(hpct,1)}</span><span><i class="dot p"></i>รพ.สต./ปฐมภูมิ ${pct(ppct,1)}</span></div>`;
+}
+function targetProportionInfographic(){
+  const colors=['#bfdbfe','#bbf7d0','#fde68a','#fecaca','#ddd6fe','#bae6fd'];
+  const rows=DATA.districts.slice().sort((a,b)=>b.target10m-a.target10m);
+  const totalTarget=sum(DATA.districts,'target10m');
+  return `<div class="card" style="margin-top:16px">
+    <h3>สัดส่วนเป้าหมายรายอำเภอ (Target Proportion Infographic)</h3>
+    <p class="small-note">นำสัดส่วนเป้าหมายรายอำเภอแบบเดิมกลับมาใช้ โดยคำนวณจากเป้าหมาย 10 เดือนชุดล่าสุด ${DATA.updateDate} และแสดงทั้งสัดส่วน/เป้าหมาย/ผลงานจริงรายอำเภอ</p>
+    <div class="target-wall">${rows.map((d,i)=>`<div class="target-card" style="--bubble:${colors[i%colors.length]}">
+      <div class="share">${pct(totalTarget?d.target10m/totalTarget*100:0,1)}</div>
+      <div class="target-name">อ.${esc(d.name)}</div>
+      <div class="money"><b>เป้า:</b> ${fmtMoney(d.target10m)}<br><b>ผลงาน:</b> ${fmtMoney(d.value69)}<br><b>ความก้าวหน้า:</b> ${pct(d.achievement)}</div>
+      ${progress(d.achievement)}
+    </div>`).join('')}</div>
+  </div>`;
+}
+function inspectionSummaryHtml(){
+  const q=DATA.quality, d=DATA.districtTotals;
+  const top=DATA.districts.slice().sort((a,b)=>b.achievement-a.achievement)[0];
+  const low=DATA.districts.slice().sort((a,b)=>a.achievement-b.achievement)[0];
+  const pass=DATA.districts.filter(x=>x.achievement>=50).length;
+  return `<div class="card" style="margin-top:16px;border:2px solid #bfdbfe">
+    <h3>สรุปผลการตรวจราชการ และ 3. Area Performance</h3>
+    <div class="mini-grid">
+      <div class="mini-card"><span class="n">1</span><h4>เชิงปริมาณ</h4><div class="big">${q.quantWeightedScore.toFixed(2)}</div><p>มูลค่า UC ${fmtMoney(d.value69)} คิดเป็น ${pct(d.achievement)} ของเป้า 10 เดือน</p></div>
+      <div class="mini-card purple"><span class="n">2</span><h4>เชิงคุณภาพ</h4><div class="big">${q.qualWeightedScore.toFixed(2)}</div><p>คะแนนคุณภาพเฉลี่ย ${pct(q.average)} จาก CPG/อบรม/รหัสยา/GMP</p></div>
+      <div class="mini-card green"><span class="n">3</span><h4>Area Performance</h4><div class="big">${pass}/${DATA.districts.length}</div><p>ทุกอำเภอผ่านเกณฑ์ ≥50%; นำโดย <b>${esc(top.name)}</b> (${pct(top.achievement)}) และติดตาม <b>${esc(low.name)}</b> (${pct(low.achievement)})</p></div>
+    </div>
+    <div class="analysis-card">
+      <h4>รวมคะแนนทั้งสิ้น ${q.totalScore.toFixed(2)}</h4>
+      <p>คะแนนรวมประกอบด้วยคะแนนเชิงปริมาณ ${q.quantWeightedScore.toFixed(2)} และเชิงคุณภาพ ${q.qualWeightedScore.toFixed(2)} สะท้อนภาพรวมจังหวัดที่ผ่านเกณฑ์แล้ว แต่ยังควรเร่งปิด Gap เป้าหมายทั้งปี โดยใช้พื้นที่ผลงานสูงเป็นพี่เลี้ยงพื้นที่ที่ยังอยู่ช่วง 50–60%</p>
+    </div>
+  </div>`;
+}
+function districtNetworkRows(){
+  const districts=[...new Set(DATA.units.map(u=>u.district))];
+  return districts.map((d,i)=>{
+    const rows=DATA.units.filter(u=>u.district===d);
+    const st=networkStats(rows);
+    const note=st.pcuPct>=50?'ปฐมภูมิเข้มแข็ง ควรรักษาบทบาท รพ.สต.':'ผลงานยังพึ่ง รพ.แม่ข่าย ควรกระจายบริการลง รพ.สต.';
+    return `<tr><td><b>${i+1}. อ.${esc(d)}</b></td><td class="num">${fmtMoney(st.hospitalValue)}</td><td class="num">${pct(st.hospitalPct,1)}</td><td class="num">${fmtMoney(st.pcuValue)}</td><td class="num">${pct(st.pcuPct,1)}</td><td>${splitBar(st.hospitalPct,st.pcuPct)}</td><td>${note}</td></tr>`;
+  }).join('');
+}
+function districtNetworkAnalysisHtml(title='บทวิเคราะห์สัดส่วน รพ.แม่ข่าย VS รพ.สต.'){
+  return `<div class="card" style="margin-top:16px">
+    <h3>${title}</h3>
+    <div class="insight">ตารางนี้เพิ่มข้อมูลโครงสร้างบริการรายอำเภอ โดยแยกมูลค่าผลงานของ <b>รพ.แม่ข่าย/รพ.เครือข่าย</b> เทียบกับ <b>รพ.สต./หน่วยบริการปฐมภูมิ</b> เพื่อใช้ตัดสินใจว่าพื้นที่ใดควรกระจายงานลงปฐมภูมิเพิ่ม และพื้นที่ใดมีเครือข่าย รพ.สต. เข้มแข็งแล้ว</div>
+    ${table([{t:'พื้นที่'},{t:'รพ.แม่ข่าย',cls:'num'},{t:'%',cls:'num'},{t:'รพ.สต./ปฐมภูมิ',cls:'num'},{t:'%',cls:'num'},{t:'Infographic'},{t:'บทวิเคราะห์'}],districtNetworkRows())}
+  </div>`;
+}
+function unitDeepAnalysisHtml(){
+  const districts = unitFilter==='All' ? [...new Set(DATA.units.map(u=>u.district))] : [unitFilter];
+  const html=districts.map(d=>{
+    const rows=DATA.units.filter(u=>u.district===d);
+    const target=sum(rows,'target10m'), value=sum(rows,'value69'), ach=target?value/target*100:0;
+    const pass=rows.filter(u=>u.percentAchieved10m>=50).length;
+    const zero=rows.filter(u=>u.target10m===0||u.value69===0).length;
+    const st=networkStats(rows);
+    const low=rows.filter(u=>u.target10m>0).sort((a,b)=>a.percentAchieved10m-b.percentAchieved10m).slice(0,3);
+    const top=rows.filter(u=>u.target10m>0).sort((a,b)=>b.percentAchieved10m-a.percentAchieved10m).slice(0,3);
+    return `<div class="analysis-card">
+      <h4>อ.${esc(d)} <span class="area-badge">${status(ach)} ${pct(ach)}</span></h4>
+      ${splitBar(st.hospitalPct,st.pcuPct)}
+      <ul>
+        <li><b>ภาพรวม:</b> ผลงาน ${fmtMoney(value)} จากเป้า ${fmtMoney(target)} ผ่านเกณฑ์ ${pass}/${rows.length} หน่วยบริการ และมี Zero/No target ${zero} แห่ง</li>
+        <li><b>Top units:</b> ${top.map(u=>esc(u.name)+' '+pct(u.percentAchieved10m,1)).join(' | ') || '-'}</li>
+        <li><b>หน่วยที่ต้องติดตาม:</b> ${low.map(u=>esc(u.name)+' '+pct(u.percentAchieved10m,1)).join(' | ') || '-'}</li>
+        <li><b>ข้อเสนอ:</b> ${ach>=80?'ใช้เป็นพื้นที่ต้นแบบและถอดบทเรียน':'เร่ง coaching หน่วยต่ำกว่า 50% พร้อมจัดการ stock ยาหลักและตรวจ mapping รหัสยา'}; ${st.hospitalPct>60?'ควรเพิ่มการกระจายเคส/รายการยาไป รพ.สต.':'รักษาสมดุลการทำงานระหว่าง รพ.แม่ข่ายและ รพ.สต.'}</li>
+      </ul>
+    </div>`;
+  }).join('');
+  return `<div class="card" style="margin-top:16px"><h3>บทวิเคราะห์เชิงละเอียดท้ายรายอำเภอ</h3><div class="grid g2">${html}</div></div>`;
+}
+function networkPortfolioHtml(rows=DATA.units, title='สัดส่วนผลงาน รพ.เครือข่าย VS รพ.สต.'){
+  const st=networkStats(rows);
+  return `<div class="card" style="margin-top:16px">
+    <h3>${title}</h3>
+    <div class="grid g2">
+      <div class="mini-card"><span class="n">รพ</span><h4>รพ.แม่ข่าย/รพ.เครือข่าย</h4><div class="big">${pct(st.hospitalPct,1)}</div><p>${fmtMoney(st.hospitalValue)} จาก ${st.hospitalCount} หน่วย • Ach. ${pct(st.hospitalAch,1)}</p></div>
+      <div class="mini-card amber"><span class="n">สต</span><h4>รพ.สต./ปฐมภูมิ</h4><div class="big">${pct(st.pcuPct,1)}</div><p>${fmtMoney(st.pcuValue)} จาก ${st.pcuCount} หน่วย • Ach. ${pct(st.pcuAch,1)}</p></div>
+    </div>
+    <div style="margin-top:14px">${splitBar(st.hospitalPct,st.pcuPct)}</div>
+    <div class="insight" style="margin-top:14px">${st.hospitalPct>60?'ภาพรวมยังพึ่งพา รพ.แม่ข่ายเป็นหลัก จึงควรกำหนด package กระจายบริการและรายการยาหลักสู่ รพ.สต. เพิ่มขึ้น':'ภาพรวมมีการกระจายผลงานสู่ รพ.สต./ปฐมภูมิในระดับดี ควรรักษาระบบสนับสนุนยาและการนิเทศต่อเนื่อง'}</div>
+  </div>`;
+}
+function replacementDetailHtml(){
+  const detailRows=REPLACEMENT_DETAILS.map((r,i)=>`<tr><td class="num">${i+1}</td><td><b>${esc(r.hospital)}</b></td><td>${esc(r.modern)}</td><td>${esc(r.herbal)}</td><td>${esc(r.indication)}</td><td>${esc(r.date)}</td></tr>`).join('');
+  return `<div class="card rx-detail" style="margin-top:16px">
+    <h3>รายชื่อยาทดแทนตามประกาศของโรงพยาบาลต่าง ๆ</h3>
+    <p class="small-note">นำรายการประกาศเดิมกลับมาต่อท้ายตาราง เพื่อให้เห็นว่าแต่ละโรงพยาบาลกำหนดยาแผนปัจจุบันที่สามารถทดแทนด้วยยาสมุนไพรรายการใดบ้าง</p>
+    ${table([{t:'ลำดับ',cls:'num'},{t:'โรงพยาบาล'},{t:'ยาแผนปัจจุบัน'},{t:'ยาสมุนไพรทดแทน'},{t:'ข้อบ่งใช้'},{t:'วันที่ประกาศ'}],detailRows)}
+  </div>`;
+}
+
+function downloadJSON(){
+  const blob = new Blob([JSON.stringify(DATA,null,2)], {type:'application/json;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='HerbUC18569_data_updated.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+function downloadUnitsCSV(){
+  const headers=['district','code','name','value68','weight','target10m','value69','percentAchieved10m'];
+  const csv=[headers.join(',')].concat(DATA.units.map(u=>headers.map(h=>`"${String(u[h]??'').replaceAll('"','""')}"`).join(','))).join('\n');
+  const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='HerbUC18569_units.csv'; a.click(); URL.revokeObjectURL(a.href);
+}
+function renderNav(){
+  $('sideDate').textContent=DATA.updateDate;
+  $('sourceFile').textContent=DATA.sourceFile;
+  $('nav').innerHTML=MENU.map(m=>`<button class="${current===m[0]?'active':''}" onclick="current='${m[0]}';render()"><span>${m[1]}</span><span>${m[2]}</span></button>`).join('');
+}
+function setTitle(){
+  const m=MENU.find(x=>x[0]===current);
+  $('pageTitle').textContent = `${m[1]} ${m[2]}`;
+  $('pageSub').textContent = `${m[3]} • ข้อมูลอัปเดต ${DATA.updateDate}`;
+}
+function renderDashboard(){
+  const d=DATA.districtTotals, q=DATA.quality, dist=DATA.districts;
+  const pass=dist.filter(x=>x.achievement>=50).length;
+  const top=[...dist].sort((a,b)=>b.achievement-a.achievement)[0];
+  const low=[...dist].sort((a,b)=>a.achievement-b.achievement)[0];
+  const topDrugs=DATA.drugs.slice(0,5);
+  return `<section class="section">
+    <div class="grid g4">
+      ${targetKpiCard('เป้าหมาย 10 เดือน',d.target10m,d.value69,d.achievement,'🎯')}
+      ${targetKpiCard('เป้าหมาย 12 เดือน',d.target12m,d.value69,d.percent12m,'📈','purple')}
+      ${card('มูลค่าสมุนไพร UC ปี 69',fmtMoney(d.value69),'ผลงานรวมระดับอำเภอ • อัปเดต '+DATA.updateDate,'💰')}
+      ${card('อำเภอผ่านเกณฑ์ ≥50%',pass+'/'+dist.length+' อำเภอ', pass===dist.length?'สถานะภาพรวม: ผ่านทุกอำเภอ':'ยังมีอำเภอต้องเร่งรัด','✅')}
+    </div>
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card">
+        <h3>ภาพรวมความก้าวหน้า 10 เดือน</h3>
+        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+          <div class="donut" style="--p:${d.achievement}"><b>${pct(d.achievement,1)}</b></div>
+          <div style="flex:1;min-width:260px">
+            <p><b>จังหวัดสมุทรปราการ</b> มีผลงาน ${fmtMoney(d.value69)} จากเป้า ${fmtMoney(d.target10m)} คิดเป็น <b>${pct(d.achievement)}</b></p>
+            ${progress(d.achievement)}
+            <p class="tag green" style="margin-top:12px">ผ่านเกณฑ์เป้าหมาย 50% แล้วทุกอำเภอ</p>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Ranking รายอำเภอ</h3>
+        ${bars([...dist].sort((a,b)=>b.achievement-a.achievement),'achievement','name','%')}
+      </div>
+    </div>
+    ${targetProportionInfographic()}
+    ${inspectionSummaryHtml()}
+    <div class="grid g3" style="margin-top:16px">
+      <div class="card">
+        <h3>🏆 Top Performer</h3>
+        <p style="font-size:34px;font-weight:900;color:#16a34a;margin:6px 0">${esc(top.name)}</p>
+        <p>ทำได้ ${pct(top.achievement)} ของเป้า 10 เดือน มูลค่า ${fmtMoney(top.value69)}</p>
+      </div>
+      <div class="card">
+        <h3>⚠️ ต้องโฟกัสเพิ่ม</h3>
+        <p style="font-size:34px;font-weight:900;color:#d97706;margin:6px 0">${esc(low.name)}</p>
+        <p>แม้ผ่านเกณฑ์แล้ว แต่ยังเป็นลำดับท้ายสุดที่ ${pct(low.achievement)} ควรเร่งปิด Gap เพิ่ม</p>
+      </div>
+      <div class="card">
+        <h3>⭐ คะแนนคุณภาพ</h3>
+        <p style="font-size:34px;font-weight:900;color:#7c3aed;margin:6px 0">${pct(q.average)}</p>
+        <p>คะแนนรวมถ่วงน้ำหนักตามรูปแบบรายงานเดิม: <b>${q.totalScore.toFixed(2)}</b></p>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>สรุปวิเคราะห์ใหม่จากข้อมูลที่เปลี่ยนไป</h3>
+      <div class="insight">
+        ข้อมูลใหม่ทำให้ภาพรวมจังหวัดขยับเป็น <b>${pct(d.achievement)}</b> เทียบเป้า 10 เดือน และ <b>${pct(DATA.levels[2].percent)}</b> เทียบเป้าทั้งปี 
+        จุดแข็งคือทุกอำเภอผ่านเกณฑ์ 50% แล้ว โดย <b>${esc(top.name)}</b> เป็นพื้นที่นำ และพื้นที่ที่ควรกำกับเพิ่มคือ <b>${esc(low.name)}</b> เพราะเป็นลำดับท้ายสุดของจังหวัดที่ ${pct(low.achievement)} 
+        Top 5 ยาหลักมีมูลค่ารวม <b>${fmtMoney(sum(topDrugs,'total'))}</b> เป็นตัวขับเคลื่อนสำคัญของจังหวัด
+      </div>
+    </div>
+  </section>`;
+}
+function renderNational(){
+  const rows=DATA.region6.slice().sort((a,b)=>b.percent-a.percent);
+  return `<section class="section">
+    <div class="grid g3">
+      ${DATA.levels.map(x=>card(x.name,pct(x.percent),`${fmtMoney(x.value)} / เป้า ${fmtMoney(x.target)}`,'🌏')).join('')}
+    </div>
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card"><h3>เปรียบเทียบระดับประเทศ-เขต-จังหวัด</h3>${bars(DATA.levels,'percent','name','%')}</div>
+      <div class="card"><h3>อันดับจังหวัดในเขตสุขภาพที่ 6</h3>${bars(rows,'percent','name','%')}</div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>ข้อค้นพบเชิงนโยบาย</h3>
+      <ul>
+        <li>จังหวัดสมุทรปราการมีผลดำเนินงาน <b>${pct(DATA.levels[2].percent)}</b> สูงกว่าระดับประเทศ (${pct(DATA.levels[0].percent)}) และสูงกว่าเขตสุขภาพที่ 6 (${pct(DATA.levels[1].percent)})</li>
+        <li>อยู่ลำดับ <b>${rows.findIndex(x=>x.name==='สมุทรปราการ')+1}</b> ของเขตสุขภาพที่ 6 จาก ${rows.length} จังหวัด</li>
+        <li>ข้อเสนอเชิงบริหาร: รักษา momentum ด้วยการบริหาร stock ยาไพล/ยาแก้ไอ/ประสะมะแว้ง และถอดบทเรียนจากอำเภอที่เกิน 80%</li>
+      </ul>
+    </div>
+  </section>`;
+}
+function districtRows(){
+  return DATA.districts.slice().sort((a,b)=>b.achievement-a.achievement).map(d=>`<tr>
+    <td><b>${esc(d.name)}</b></td><td class="num">${fmtMoney(d.value68)}</td><td class="num">${fmtMoney(d.target10m)}</td><td class="num"><b>${fmtMoney(d.value69)}</b></td><td>${progress(d.achievement)}<div class="tag ${tagClass(d.achievement)}" style="margin-top:6px">${pct(d.achievement)} • ${status(d.achievement)}</div></td>
+  </tr>`).join('');
+}
+function renderDistrict(){
+  return `<section class="section">
+    <div class="grid g3">
+      ${DATA.districts.map(d=>`<div class="card district-card ${d.achievement>=50?'pass':d.achievement>=35?'watch':'critical'}">
+        <h3>อ.${esc(d.name)}</h3>
+        <div class="donut" style="--p:${Math.min(100,d.achievement)}"><b>${pct(d.achievement,0)}</b></div>
+        <p class="tag ${tagClass(d.achievement)}">${status(d.achievement)}</p>
+        <p><b>ผลงาน:</b> ${fmtMoney(d.value69)}</p>
+        <p><b>เป้า 10 เดือน:</b> ${fmtMoney(d.target10m)}</p>
+        ${progress(d.achievement)}
+      </div>`).join('')}
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>ตารางสรุปรายอำเภอ</h3>
+      ${table([{t:'อำเภอ'},{t:'ผลงานปี 68',cls:'num'},{t:'เป้า 10 เดือน',cls:'num'},{t:'ผลงานปี 69',cls:'num'},{t:'% เป้า 10 เดือน'}],districtRows())}
+    </div>
+    ${districtNetworkAnalysisHtml('บทวิเคราะห์สัดส่วน Area Performance: รพ.แม่ข่าย VS รพ.สต.')}
+  </section>`;
+}
+function filteredUnits(){
+  return unitFilter==='All'?DATA.units:DATA.units.filter(u=>u.district===unitFilter);
+}
+function renderUnits(){
+  const ds=[...new Set(DATA.units.map(u=>u.district))];
+  const rows=filteredUnits();
+  const target=sum(rows,'target10m'), value=sum(rows,'value69'), ach=target?value/target*100:0;
+  const pass=rows.filter(u=>u.percentAchieved10m>=50).length, zero=rows.filter(u=>u.target10m===0||u.value69===0).length;
+  const rowHtml=rows.map(u=>`<tr>
+    <td>${esc(u.district)}</td><td>${esc(u.code)}</td><td><b>${esc(u.name)}</b></td><td class="num">${fmtMoney(u.target10m)}</td><td class="num"><b>${fmtMoney(u.value69)}</b></td><td><span class="tag ${tagClass(u.percentAchieved10m)}">${pct(u.percentAchieved10m)}</span></td>
+  </tr>`).join('');
+  return `<section class="section">
+    <div class="filter-row">
+      <b>เลือกอำเภอ:</b>
+      <select onchange="unitFilter=this.value;render()">
+        <option value="All"${unitFilter==='All'?' selected':''}>ทั้งหมด</option>
+        ${ds.map(d=>`<option value="${esc(d)}"${unitFilter===d?' selected':''}>${esc(d)}</option>`).join('')}
+      </select>
+      <button class="btn secondary" onclick="downloadUnitsCSV()">⬇️ Export CSV รายหน่วย</button>
+    </div>
+    <div class="grid g4">
+      ${card('จำนวนหน่วยบริการ',fmtNum(rows.length),'ในพื้นที่ที่เลือก','🏥')}
+      ${card('ผลงานรวม',fmtMoney(value),'เทียบเป้าหน่วยบริการ','💰')}
+      ${card('ความก้าวหน้า',pct(ach),'เป้า '+fmtMoney(target),'🎯')}
+      ${card('ผ่านเกณฑ์ ≥50%',pass+'/'+rows.length,'Zero/No target: '+zero+' แห่ง','✅')}
+    </div>
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card"><h3>Top 5 หน่วยบริการ</h3>${bars(rows.slice().filter(u=>u.target10m>0).sort((a,b)=>b.percentAchieved10m-a.percentAchieved10m).slice(0,5),'percentAchieved10m','name','%')}</div>
+      <div class="card"><h3>Critical Attention ต่ำสุด 5 อันดับ</h3>${bars(rows.slice().filter(u=>u.target10m>0).sort((a,b)=>a.percentAchieved10m-b.percentAchieved10m).slice(0,5),'percentAchieved10m','name','%')}</div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>ตารางรายหน่วยบริการ</h3>
+      ${table([{t:'อำเภอ'},{t:'รหัส'},{t:'หน่วยบริการ'},{t:'เป้า 10 เดือน',cls:'num'},{t:'ผลงานปี 69',cls:'num'},{t:'%'}],rowHtml)}
+    </div>
+    ${unitDeepAnalysisHtml()}
+  </section>`;
+}
+function renderAnalysis(){
+  const vals=DATA.districts.map(d=>d.value69), achs=DATA.districts.map(d=>d.achievement);
+  const m=mean(vals), med=median(vals), s=sd(vals), cv=s/m*100;
+  let sorted=DATA.districts.slice().sort((a,b)=>b.value69-a.value69), total=sum(sorted,'value69'), cum=0;
+  const cls=sorted.map(d=>{cum+=d.value69; const cp=cum/total*100; return {...d,abc:cp<=80?'A':cp<=95?'B':'C',cumPct:cp}});
+  return `<section class="section">
+    <div class="grid g4">
+      ${card('Mean',fmtMoney(m),'ค่าเฉลี่ยมูลค่ารายอำเภอ','📊')}
+      ${card('Median',fmtMoney(med),'ค่ากลางข้อมูล','📈')}
+      ${card('SD',fmtMoney(s),'การกระจายของข้อมูล','📉')}
+      ${card('CV',pct(cv,1),'ความเหลื่อมล้ำสัมพัทธ์','🎯')}
+    </div>
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card"><h3>ABC Classification ตามมูลค่า</h3>
+        ${cls.map(d=>`<div class="barrow"><b>Class ${d.abc}: ${esc(d.name)}</b><div class="bar"><span style="width:${Math.max(1,d.value69/maxOf(cls,'value69')*100)}%"></span></div><b class="num">${fmtMoney(d.value69)}</b></div>`).join('')}
+      </div>
+      <div class="card"><h3>ความก้าวหน้าเทียบเป้า 10 เดือน</h3>${bars(DATA.districts.slice().sort((a,b)=>b.achievement-a.achievement),'achievement','name','%')}</div>
+    </div>
+    ${networkPortfolioHtml(DATA.units,'สัดส่วนผลงาน รพ.เครือข่าย VS รพ.สต. ในภาพรวมจังหวัด')}
+    <div class="card" style="margin-top:16px">
+      <h3>Strategic Insight</h3>
+      <div class="swot">
+        <div class="box s"><h4>Strengths</h4><ul><li>ทุกอำเภอผ่านเกณฑ์ขั้นต่ำ 50%</li><li>สมุทรปราการสูงกว่าระดับประเทศและเขตสุขภาพ</li><li>ยา Top 5 สร้างมูลค่าหลักให้ระบบ</li></ul></div>
+        <div class="box w"><h4>Weaknesses</h4><ul><li>เมืองและบางพลียังอยู่ช่วง 56–57% ต้องติดตามหน่วยบริการล่าง</li><li>ยังมีหน่วยบริการบางแห่งไม่มีเป้าหมาย/ไม่มีผลงาน</li><li>การกระจายมูลค่ายังพึ่งพาหน่วยใหญ่และรายการยาหลัก</li></ul></div>
+        <div class="box o"><h4>Opportunities</h4><ul><li>ขยาย standing order การใช้ยาสมุนไพรใน common diseases</li><li>ถอดบทเรียนบางบ่อ/บางเสาธงสู่พื้นที่อื่น</li><li>บริหาร stock ตาม Top drugs เพื่อเร่งปิด gap สิ้นปี</li></ul></div>
+        <div class="box t"><h4>Threats</h4><ul><li>รหัสยา/การบันทึกไม่ครบอาจทำให้ผลงานต่ำกว่าจริง</li><li>หากยาหลักขาด stock จะกระทบมูลค่ารวมทันที</li><li>ปลายปีอาจชะลอหากไม่มีการติดตามรายเดือน</li></ul></div>
+      </div>
+    </div>
+  </section>`;
+}
+function renderProblem(){
+  const ds=[...new Set(DATA.units.map(u=>u.district))];
+  const rows=problemFilter==='All'?DATA.units:DATA.units.filter(u=>u.district===problemFilter);
+  const target=sum(rows,'target10m'), value=sum(rows,'value69'), p=target?value/target*100:0;
+  const hospitalCodes=['10685','10754','10752','10753','10755','28785'];
+  const hv=rows.filter(u=>hospitalCodes.includes(u.code)).reduce((a,b)=>a+b.value69,0);
+  const ratio=value?hv/value*100:0;
+  const low=rows.filter(u=>u.target10m>0).sort((a,b)=>a.percentAchieved10m-b.percentAchieved10m).slice(0,3);
+  const place=problemFilter==='All'?'ภาพรวมจังหวัด':'อำเภอ'+problemFilter;
+  return `<section class="section">
+    <div class="filter-row"><b>เลือกพื้นที่วิเคราะห์:</b><select onchange="problemFilter=this.value;render()">
+      <option value="All"${problemFilter==='All'?' selected':''}>ภาพรวมจังหวัด</option>${ds.map(d=>`<option value="${esc(d)}"${problemFilter===d?' selected':''}>${esc(d)}</option>`).join('')}
+    </select></div>
+    <div class="grid g4">
+      ${card('พื้นที่',place,'สถานะ '+status(p),'🗺️')}
+      ${card('ผลงาน',fmtMoney(value),'เป้า '+fmtMoney(target),'💰')}
+      ${card('% ความก้าวหน้า',pct(p),'เทียบเป้า 10 เดือน','🎯')}
+      ${card('สัดส่วน รพ.แม่ข่าย',pct(ratio,1),'เทียบมูลค่ารวมพื้นที่','🏥')}
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>Problem / Action / OFI Model</h3>
+      <div class="swot">
+        <div class="box w"><h4>ปัญหา/ข้อจำกัด</h4><ul>
+          <li>${p>=50?'แม้ผ่านเกณฑ์แล้ว แต่ยังต้องปิด Gap เพื่อเป้าทั้งปี':'ยังต่ำกว่าเกณฑ์ 50% ต้องเร่งรัด'}</li>
+          <li>${ratio>70?'ผลงานกระจุกที่โรงพยาบาลแม่ข่ายสูง ควรกระจายสู่ รพ.สต.':'โครงสร้างบริการกระจายพอสมควร แต่ต้องรักษาความต่อเนื่อง'}</li>
+          <li>หน่วยที่ต้องติดตาม: ${low.map(u=>esc(u.name)+' ('+pct(u.percentAchieved10m,1)+')').join(', ')}</li>
+        </ul></div>
+        <div class="box o"><h4>Action ที่ควรทำทันที</h4><ul>
+          <li>ประชุมติดตามรายเดือนระดับ คปสอ. พร้อมรายงาน Top/Bottom หน่วยบริการ</li>
+          <li>จัด KM จากหน่วยที่เกิน 100% ไปสู่หน่วยต่ำกว่า 50%</li>
+          <li>ตรวจสอบการบันทึกรหัสยา 24 หลัก และ mapping HIS กับ THAIPADI</li>
+        </ul></div>
+        <div class="box s"><h4>OFI / โอกาสพัฒนา</h4><ul>
+          <li>ตั้งแผนเพิ่มมูลค่าจาก Top drugs: ยาไพล แก้ไอมะขามป้อม ประสะมะแว้ง</li>
+          <li>วางระบบ stock minimum 3 เดือนสำหรับรายการที่สร้างมูลค่าสูง</li>
+          <li>ใช้แนวทางยาทดแทนเพิ่มการสั่งใช้ใน OPD/คลินิก NCD/office syndrome</li>
+        </ul></div>
+        <div class="box t"><h4>ตัวชี้วัดติดตาม</h4><ul>
+          <li>% เป้า 10 เดือน รายอำเภอ/รายหน่วยบริการ</li>
+          <li>จำนวนหน่วยบริการที่ต่ำกว่า 50%</li>
+          <li>ความถูกต้องรหัสยา 24 หลัก ≥95%</li>
+        </ul></div>
+      </div>
+    </div>
+  </section>`;
+}
+function renderDrugs(){
+  const top5=DATA.drugs.slice(0,5), total=DATA.drugsTotal;
+  const rowHtml=DATA.drugs.map((d,i)=>`<tr><td class="num">${i+1}</td><td><b>${esc(d.name)}</b></td><td class="num">${fmtMoney(d.price).replace(' บาท','')}</td><td class="num">${fmtNum(d.count,0)}</td><td class="num"><b>${fmtMoney(d.total)}</b></td><td>${progress(d.total/maxOf(DATA.drugs,'total')*100)}</td></tr>`).join('');
+  return `<section class="section">
+    <div class="drug-rank">${top5.map((d,i)=>`<div class="drug-card"><div class="rank">#${i+1}</div><div class="drug">${esc(d.name)}</div><div class="money">${fmtMoney(d.total)}</div><div>ประมาณ ${fmtNum(d.count,0)} คอร์ส/ครั้ง</div></div>`).join('')}</div>
+    <div class="grid g3" style="margin-top:16px">
+      ${card('มูลค่ารวมรายการยา',fmtMoney(total),'จากตารางรายการยา','💊')}
+      ${card('Top 5 รวม',fmtMoney(sum(top5,'total')),pct(sum(top5,'total')/total*100)+' ของทั้งหมด','🏆')}
+      ${card('จำนวนรายการยา',fmtNum(DATA.drugs.length),'รายการในบัญชียาหลักฯ','📋')}
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>ตารางรายการยาสมุนไพร</h3>
+      ${table([{t:'อันดับ',cls:'num'},{t:'รายการยา'},{t:'ราคาต่อคอร์ส',cls:'num'},{t:'จำนวนโดยประมาณ',cls:'num'},{t:'มูลค่า',cls:'num'},{t:'สัดส่วน'}],rowHtml)}
+      <p class="small-note">หมายเหตุ: คอลัมน์จำนวนครั้งใน Excel ว่าง จึงคำนวณจำนวนโดยประมาณจาก “มูลค่า ÷ ราคาต่อคอร์ส” เพื่อใช้วิเคราะห์เชิง dashboard</p>
+    </div>
+  </section>`;
+}
+function renderQuality(){
+  const q=DATA.quality;
+  const rowHtml=q.overall.map(r=>`<tr><td><b>${esc(r.name)}</b></td><td class="num">${pct(r.score)}</td><td>${progress(r.score)}</td></tr>`).join('');
+  const gmpRows=q.districtProduction.map((r,i)=>`<tr><td><b>${i+1}. อ.${esc(r.name)}</b></td><td class="num">${pct(r.score)}</td><td>${progress(r.score)}</td></tr>`).join('');
+  return `<section class="section">
+    <div class="grid g4">
+      ${card('คะแนนเฉลี่ยคุณภาพ',pct(q.average),'รวม 4 มิติ','⭐')}
+      ${card('เชิงปริมาณ',q.quantWeightedScore.toFixed(2),'คะแนนถ่วงน้ำหนัก 70%','📊')}
+      ${card('เชิงคุณภาพ',q.qualWeightedScore.toFixed(2),'คะแนนถ่วงน้ำหนัก 30%','🧾')}
+      ${card('รวมคะแนน',q.totalScore.toFixed(2),'ตามรูปแบบรายงานเดิม','🏅')}
+    </div>
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card"><h3>คะแนนคุณภาพภาพรวม</h3>${table([{t:'มิติคุณภาพ'},{t:'คะแนน',cls:'num'},{t:'แถบคะแนน'}],rowHtml)}</div>
+      <div class="card"><h3>ความถูกต้องรหัสยา 24 หลัก รายอำเภอ</h3>${bars(q.districtDrugCode,'score','name','%')}</div>
+    </div>
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card"><h3>ความถูกต้องข้อมูล GMP / มาตรฐานการผลิต รายอำเภอ</h3>${table([{t:'อำเภอ'},{t:'คะแนน GMP',cls:'num'},{t:'แถบคะแนน'}],gmpRows)}</div>
+      <div class="card"><h3>GMP Performance Infographic</h3>${bars(q.districtProduction.slice().sort((a,b)=>b.score-a.score),'score','name','%')}</div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>ข้อเสนอด้านคุณภาพ</h3>
+      <ul>
+        <li>ควรเร่งยกระดับความถูกต้องรหัสยา 24 หลักจาก ${pct(q.overall[2].score)} ให้เกิน 95%</li>
+        <li>เพิ่มการตรวจทานข้อมูล GMP/มาตรฐานการผลิตรายอำเภอ โดยเฉพาะพื้นที่คะแนนต่ำกว่า 95%</li>
+        <li>พื้นที่คะแนนรหัสยาต่ำสุดควรได้รับ coaching เชิงระบบ HIS/รหัสยาโดยตรง</li>
+        <li>รักษามาตรฐาน CPG/ยาทดแทน และการอบรมที่ได้ 100%</li>
+      </ul>
+    </div>
+  </section>`;
+}
+function renderReplacement(){
+  const rows=DATA.replacementSummary.slice().sort((a,b)=>b.value-a.value);
+  const rowHtml=rows.map((r,i)=>`<tr><td class="num">${i+1}</td><td><b>${esc(r.modernDrug)}</b></td><td>${esc(r.herbalDrug)}</td><td class="num"><b>${fmtMoney(r.value)}</b></td><td>${progress(r.value/maxOf(rows,'value')*100)}</td></tr>`).join('');
+  return `<section class="section">
+    <div class="grid g3">
+      ${card('กลุ่มทดแทนมูลค่าสูงสุด',esc(rows[0].herbalDrug),fmtMoney(rows[0].value),'🔁')}
+      ${card('มูลค่าศักยภาพรวม',fmtMoney(sum(rows,'value')),'คำนวณจากรายการยาในไฟล์ใหม่','💰')}
+      ${card('จำนวนกลุ่มยา',fmtNum(rows.length),'กลุ่มทดแทนหลัก','📦')}
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>สรุปยาสมุนไพรทดแทนยาแผนปัจจุบัน</h3>
+      ${table([{t:'อันดับ',cls:'num'},{t:'ยาแผนปัจจุบัน'},{t:'ยาสมุนไพรที่ใช้ทดแทน'},{t:'มูลค่าปรับใหม่',cls:'num'},{t:'สัดส่วน'}],rowHtml)}
+    </div>
+    ${replacementDetailHtml()}
+    <div class="card" style="margin-top:16px">
+      <h3>Action Plan</h3>
+      <ul>
+        <li>ทำ standing order กลุ่มปวดกล้ามเนื้อ/ระบบหายใจ/ระบบทางเดินอาหาร เพราะเป็นกลุ่มมูลค่าสูง</li>
+        <li>สื่อสารผู้สั่งใช้ด้วยตารางคู่เทียบยาเดิม–ยาสมุนไพร และข้อควรระวัง</li>
+        <li>กำกับ stock รายการยาไพล แก้ไอมะขามป้อม ประสะมะแว้ง ขมิ้นชัน และมะขามแขก</li>
+      </ul>
+    </div>
+  </section>`;
+}
+function renderSupport(){
+  const links = [
+    {tag:'THAIPADI', title:'THAIPADI Monitor ตัวชี้วัดมูลค่ายาสมุนไพร UC', desc:'ลิงก์เดิมสำหรับ Monitor ภาพรวมประเทศ/เขต/จังหวัด/อำเภอ/หน่วยบริการ และรายละเอียดรายการยา', url:'https://www.thaipadi.com/kpi'},
+    {tag:'THAIPADI Legacy', title:'kpi.thaipadi.org', desc:'ลิงก์เดิมที่ใช้ในเอกสารตรวจราชการ/รายงานสรุปหลายชุด สำหรับอ้างอิงข้อมูลจากระบบ THAIPADI', url:'https://kpi.thaipadi.org/'},
+    {tag:'Dashboard DTAM', title:'OneDrive Dashboard มูลค่ายาสมุนไพรสิทธิ UC', desc:'ตัวอย่าง Dashboard ที่ใช้ตรวจสอบภาพรวมประเทศ เขต รายการยา จังหวัด อำเภอ รายหน่วยบริการ และหัวข้อคุณภาพ/GMP', url:'https://1drv.ms/x/c/07fc37472295b208/EWVvJhvwsQpKuXjHgRgFGQEBHPHhrYLnj1QiIx3DaG4SMA?e=goNoq9'},
+    {tag:'HDC', title:'HDC Service กระทรวงสาธารณสุข', desc:'ระบบคลังข้อมูลด้านการแพทย์และสุขภาพ ใช้เป็นฐานข้อมูลกลางในการตรวจสอบข้อมูลสุขภาพ', url:'https://hdc.moph.go.th/'},
+    {tag:'HDC Report', title:'OPD-มูลค่าการใช้ยาสมุนไพร', desc:'รายงานมาตรฐาน HDC หมวดแพทย์แผนไทย ใช้ตรวจสอบมูลค่าการใช้ยาสมุนไพร', url:'https://hdc.moph.go.th/center/public/standard-report-detail/18576644ee6ec12c24b8d307535fa140'},
+    {tag:'HDC Report', title:'OPD-อันดับการใช้ยาสมุนไพร (s_ttm4)', desc:'รายงาน/ชุดข้อมูลอันดับรายการยาสมุนไพร ใช้ประกอบ Top Drugs และมูลค่ารายการยา', url:'https://hdc.moph.go.th/center/public/standard-report-detail/8d38925724b0bbb4b11844b18df088e4'},
+    {tag:'HDC Report', title:'IPD-ปริมาณการจ่ายยาสมุนไพร', desc:'ข้อมูลสนับสนุนกรณีต้องตรวจสอบปริมาณการจ่ายยาสมุนไพรฝั่งผู้ป่วยใน', url:'https://hdc.moph.go.th/center/public/standard-report-detail/ba95e1e924c5d9334cc2de32934d8933'},
+    {tag:'HDC Report', title:'IPD-อันดับการใช้ยาสมุนไพร', desc:'ข้อมูลสนับสนุนกรณีต้องดูอันดับรายการยาสมุนไพรฝั่งผู้ป่วยใน', url:'https://hdc.moph.go.th/center/public/standard-report-detail/7a64f582e844fee993875614dfe6f8f3'},
+    {tag:'OPEN Data', title:'OPEN Data by MOPH', desc:'แหล่งข้อมูลเปิดของ สป.สธ. สำหรับชุดข้อมูลสรุปรายงาน OPD-อันดับการใช้ยาสมุนไพร', url:'https://opendata.moph.go.th/'},
+    {tag:'KPI', title:'Health KPI มูลค่าการใช้ยาสมุนไพรในสิทธิ UC ปี 2569', desc:'หน้าตัวชี้วัดระดับประเทศ ระบุคำนิยาม ค่า A/B และแนวทางการติดตามตัวชี้วัด', url:'https://healthkpi.moph.go.th/kpi2/kpi-list/view/?id=15342'},
+    {tag:'Inspection', title:'กองตรวจราชการ: มูลค่าการใช้ยาสมุนไพรในสิทธิ UC', desc:'หน้ารายละเอียดตัวชี้วัดงานตรวจราชการ ปีงบประมาณ 2569', url:'https://inspection.moph.go.th/detail_indicator.php?code=econ1_3&fy=2569'},
+    {tag:'รหัสยา', title:'ฐานข้อมูลรหัสยาแผนไทย 24 หลัก', desc:'สถาบันการแพทย์แผนไทย / DTAM ใช้ตรวจสอบรหัสยา 24 หลักและ TTMT ที่เกี่ยวข้องกับความถูกต้องข้อมูล', url:'https://www.dtam.moph.go.th/thai-med-code/'},
+    {tag:'HCODE', title:'รหัสหน่วยบริการสุขภาพ', desc:'ตรวจสอบรหัสหน่วยบริการสุขภาพเพื่อเทียบกับรหัสหน่วยใน HDC/Excel/รายงาน', url:'https://hcode.moph.go.th/code/'},
+    {tag:'อัตราจ่าย', title:'ข้อมูลอัตราจ่ายต่อคอร์สยาสมุนไพร', desc:'โฟลเดอร์ข้อมูลอัตราจ่าย/ราคาต่อคอร์ส ใช้ตรวจสอบมูลค่า = จำนวนครั้ง × อัตราจ่ายต่อคอร์ส', url:'https://drive.google.com/drive/folders/1BosklmyYD1M-cbhCLy67AJj-KY3ZdHDM'},
+    {tag:'NHSO', title:'MIS_HOS ชดเชยบริการผู้ป่วยนอกเพิ่มเติม (On Top)', desc:'ลิงก์สนับสนุนการติดตามประเด็นชดเชย/On Top ที่เกี่ยวข้องกับบริการผู้ป่วยนอก', url:'https://mishos.nhso.go.th/mis_hos/#/dashboard'}
+  ];
+  const cards = links.map(l=>`<a class="link-card" href="${l.url}" target="_blank" rel="noopener noreferrer">
+      <span class="tag">🔗 ${esc(l.tag)}</span>
+      <div class="title">${esc(l.title)}</div>
+      <div class="desc">${esc(l.desc)}</div>
+      <div class="url">${esc(l.url)}</div>
+    </a>`).join('');
+  return `<section class="section">
+    <div class="card">
+      <div class="hero-mini" style="background:linear-gradient(135deg,#0f766e,#2563eb)">
+        <h2>🗂️ ข้อมูลสนับสนุน / Source Links</h2>
+        <p>นำลิงก์เดิมกลับมาไว้ครบในเมนูนี้ พร้อมแยกหมวดแหล่งข้อมูลสำหรับตรวจสอบ HDC, THAIPADI, OPEN Data, Health KPI, รหัสยา 24 หลัก, HCODE และอัตราจ่ายต่อคอร์ส</p>
+      </div>
+      <div class="source-flow">
+        <div class="step"><b>HIS หน่วยบริการ</b><small>บันทึก Visit / DIDSTD / ราคา</small></div>
+        <div class="step"><b>HDC / OPEN Data</b><small>ประมวลผลรายงานมาตรฐาน</small></div>
+        <div class="step"><b>THAIPADI / Dashboard</b><small>ติดตาม KPI และตรวจทาน</small></div>
+        <div class="step"><b>Excel จังหวัด</b><small>นำเข้าเป้า/ผลงานล่าสุด</small></div>
+        <div class="step"><b>HTML Dashboard</b><small>สรุป วิเคราะห์ และรายงาน</small></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>ลิงก์ข้อมูลสนับสนุนที่นำกลับมา</h3>
+      <p class="small-note">หมายเหตุ: บางลิงก์อาจต้อง Login, ProviderID, สิทธิหน่วยบริการ หรือเครือข่ายที่หน่วยงานกำหนด จึงอาจเปิดได้ไม่เหมือนกันทุกเครื่องค่ะ</p>
+      <div class="link-grid">${cards}</div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>เครื่องมือส่งออก / ตรวจสอบไฟล์นี้</h3>
+      <div class="toolbar" style="margin:10px 0 0 0">
+        <button class="btn" onclick="current='method';render();window.scrollTo({top:0,behavior:'smooth'})">🧮 ไปเมนูวิธีคำนวณ</button>
+        <button class="btn secondary" onclick="downloadJSON()">⬇️ Export JSON ข้อมูลในระบบ</button>
+        <button class="btn secondary" onclick="downloadUnitsCSV()">⬇️ Export CSV รายหน่วยบริการ</button>
+        <button class="btn secondary" onclick="window.print()">🖨️ Print / Save PDF</button>
+      </div>
+      <ul>
+        <li>ไฟล์ต้นทางที่ใช้อัปเดต: <b>${esc(DATA.sourceFile)}</b></li>
+        <li>วันที่ข้อมูลล่าสุดในระบบ: <b>${esc(DATA.updateDate)}</b></li>
+        <li>ผลรวมอำเภอปี 69: <b>${fmtMoney(DATA.districtTotals.value69)}</b></li>
+        <li>ผลรวมรายการยา: <b>${fmtMoney(DATA.drugsTotal)}</b></li>
+      </ul>
+    </div>
+  </section>`;
+}
+function renderMethod(){
+  const rawDistrict=DATA.districts.map(d=>`<tr><td>${esc(d.name)}</td><td class="num">${fmtMoney(d.value68)}</td><td class="num">${pct(d.weight)}</td><td class="num">${fmtMoney(d.target10m)}</td><td class="num">${fmtMoney(d.value69)}</td><td class="num">${pct(d.achievement)}</td><td class="num">${fmtMoney(Math.max(0,d.target10m-d.value69))}</td></tr>`).join('');
+  const totalTarget10 = DATA.districtTotals.target10m || sum(DATA.districts,'target10m');
+  const totalValue69 = DATA.districtTotals.value69 || sum(DATA.districts,'value69');
+  const totalTarget12 = DATA.province?.target12m || 0;
+  const ach10 = totalTarget10 ? totalValue69/totalTarget10*100 : 0;
+  const ach12 = totalTarget12 ? totalValue69/totalTarget12*100 : 0;
+  const distShareRows = DATA.districts.map(d=>`<tr><td>${esc(d.name)}</td><td class="num">${pct(totalTarget10?d.target10m/totalTarget10*100:0,2)}</td><td class="num">${fmtMoney(d.target10m)}</td><td class="num">${fmtMoney(d.value69)}</td><td class="num">${pct(d.achievement,2)}</td></tr>`).join('');
+  const hospitalCodes = HOSPITAL_CODES.join(', ');
+  return `<section class="section">
+    <div class="card">
+      <div class="hero-mini" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">
+        <h2>🧮 วิธีคำนวณและการอัปเดตข้อมูล</h2>
+        <p>เมนูนี้แยกออกจากข้อมูลสนับสนุน เพื่อให้ตรวจสอบสูตร วิธีคิด และตารางดิบได้เป็นระบบ ใช้ข้อมูลล่าสุดวันที่ ${DATA.updateDate}</p>
+      </div>
+      <div class="method-timeline">
+        <div class="node"><div class="no">1</div><b>อ่าน Excel</b><small>Sheet “DATA สมุนไพร UC จ สป” และตารางประกอบ วันที่ ${DATA.updateDate}</small></div>
+        <div class="node"><div class="no">2</div><b>Update Data Object</b><small>ประเทศ เขต จังหวัด อำเภอ หน่วยบริการ รายการยา คุณภาพ และยาทดแทน</small></div>
+        <div class="node"><div class="no">3</div><b>Recalculate</b><small>คำนวณ Achievement, Gap, Ranking, ABC, Network share และ Top Drugs ใหม่</small></div>
+        <div class="node"><div class="no">4</div><b>Analysis</b><small>สร้างบทวิเคราะห์ผู้บริหาร OFI คุณภาพ และข้อเสนอแนะตามข้อมูลล่าสุด</small></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>สูตรคำนวณหลักที่ใช้ใน Dashboard</h3>
+      <div class="formula-grid">
+        <div class="formula-card"><h4>1) % เป้าหมาย 10 เดือน</h4><code>Achievement10M = ผลงานปี 69 ÷ เป้าหมาย 10 เดือน × 100</code><p>ภาพรวมจังหวัด = ${fmtMoney(totalValue69)} ÷ ${fmtMoney(totalTarget10)} × 100 = <b>${pct(ach10,2)}</b></p></div>
+        <div class="formula-card"><h4>2) % เป้าหมายทั้งปี</h4><code>Achievement12M = ผลงานปี 69 ÷ เป้าหมายทั้งปี × 100</code><p>ภาพรวมจังหวัด = ${fmtMoney(totalValue69)} ÷ ${fmtMoney(totalTarget12)} × 100 = <b>${pct(ach12,2)}</b></p></div>
+        <div class="formula-card"><h4>3) Gap เพื่อปิดเป้า</h4><code>Gap = max(เป้าหมาย 10 เดือน - ผลงานปี 69, 0)</code><p>ใช้ระบุจำนวนเงินที่ต้องเร่งผลักดันรายอำเภอ/รายหน่วยบริการ ถ้าผลงานเกินเป้าจะนับ Gap เป็น 0</p></div>
+        <div class="formula-card"><h4>4) สัดส่วนเป้าหมายรายอำเภอ</h4><code>Target Share = เป้า 10 เดือนของอำเภอ ÷ ผลรวมเป้า 10 เดือนทุกอำเภอ × 100</code><p>ใช้สร้าง Infographic สัดส่วนเป้าหมายรายอำเภอในเมนู Dashboard</p></div>
+        <div class="formula-card"><h4>5) YoY Growth</h4><code>Growth = (ผลงานปี 69 - ผลงานปี 68) ÷ ผลงานปี 68 × 100</code><p>ใช้ดูทิศทางเพิ่ม/ลดเมื่อเทียบกับฐานปี 2568</p></div>
+        <div class="formula-card"><h4>6) ABC Classification</h4><code>เรียงมูลค่าจากมากไปน้อย → คำนวณ cumulative % → แบ่ง A/B/C</code><p>ใช้จัดลำดับความสำคัญของพื้นที่/รายการยา เพื่อกำหนดจุดเน้นเชิงบริหาร</p></div>
+        <div class="formula-card"><h4>7) รพ.แม่ข่าย VS รพ.สต.</h4><code>Hospital Share = ผลงานหน่วยรหัส รพ.แม่ข่าย ÷ ผลงานรวมพื้นที่ × 100</code><p>รหัส รพ.แม่ข่ายที่ใช้แยกกลุ่ม: <b>${hospitalCodes}</b></p></div>
+        <div class="formula-card"><h4>8) จำนวนโดยประมาณของรายการยา</h4><code>Estimated Count = มูลค่ารายการยา ÷ ราคาต่อคอร์ส</code><p>ใช้เฉพาะกรณีตาราง Excel ไม่มีจำนวนครั้ง แต่มีราคาและมูลค่า</p></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>ขั้นตอนควบคุมคุณภาพข้อมูล</h3>
+      <ol class="method">
+        <li>ตรวจผลรวมรายอำเภอให้ตรงกับยอดจังหวัด และระบุกรณีตารางรายหน่วยบริการมีการตัด/รวมบางหน่วยต่างจากสรุปอำเภอ</li>
+        <li>ตรวจรหัสหน่วยบริการกับ HCODE และแยกกลุ่ม รพ.แม่ข่าย/รพ.สต. ด้วยชุดรหัสโรงพยาบาลหลัก</li>
+        <li>ตรวจรหัสยา 24 หลัก/TTMT กับฐานข้อมูล DTAM เพื่อสนับสนุนคะแนนความถูกต้องข้อมูล</li>
+        <li>ตรวจรายการยาและมูลค่ากับ OPEN Data/HDC/THAIPADI เมื่อมีข้อสงสัย</li>
+        <li>ใช้ค่าเป้าหมาย 10 เดือนล่าสุดเป็นฐานการวิเคราะห์รายอำเภอและรายหน่วยบริการ</li>
+      </ol>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>ตารางสัดส่วนเป้าหมายรายอำเภอ</h3>
+      ${table([{t:'อำเภอ'},{t:'สัดส่วนเป้าหมาย',cls:'num'},{t:'เป้า 10 เดือน',cls:'num'},{t:'ผลงานปี 69',cls:'num'},{t:'% เป้า 10 เดือน',cls:'num'}], distShareRows)}
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>Raw District Data ที่ฝังในระบบ</h3>
+      ${table([{t:'อำเภอ'},{t:'ผลงานปี 68',cls:'num'},{t:'น้ำหนัก',cls:'num'},{t:'เป้า 10 เดือน',cls:'num'},{t:'ผลงานปี 69',cls:'num'},{t:'% เป้า 10 เดือน',cls:'num'},{t:'Gap',cls:'num'}],rawDistrict)}
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>Audit Check</h3>
+      <ul>
+        <li>ผลรวมอำเภอปี 69 = <b>${fmtMoney(DATA.districtTotals.value69)}</b></li>
+        <li>ผลรวมรายหน่วยบริการปี 69 = <b>${fmtMoney(DATA.unitTotals.value69)}</b> <span class="small-note">ตารางหน่วยบริการอาจตัด/รวมบางรายการต่างจากตารางสรุปอำเภอตามโครงสร้างต้นทาง</span></li>
+        <li>ผลรวมรายการยา = <b>${fmtMoney(DATA.drugsTotal)}</b></li>
+        <li>จำนวนอำเภอที่ผ่านเกณฑ์ ≥50% = <b>${DATA.districts.filter(d=>d.achievement>=50).length}/${DATA.districts.length} อำเภอ</b></li>
+      </ul>
+    </div>
+  </section>`;
+}
+function render(){
+  renderNav(); setTitle();
+  const map={dashboard:renderDashboard,national:renderNational,district:renderDistrict,units:renderUnits,analysis:renderAnalysis,problem:renderProblem,drugs:renderDrugs,quality:renderQuality,replacement:renderReplacement,support:renderSupport,method:renderMethod};
+  $('content').innerHTML=map[current]();
+  setTimeout(setProgress,30);
+}
+render();
+</script>
+</body>
+</html>
