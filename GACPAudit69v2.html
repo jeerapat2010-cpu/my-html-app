@@ -474,6 +474,12 @@ textarea.fc{resize:vertical;min-height:65px}
     <div class="hw-toolbar">
       <label>ขนาด:</label><input type="range" id="hw-size" min="1" max="20" value="3">
       <label>สี:</label><input type="color" id="hw-color" value="#023E8A">
+      <label style="margin-left:4px">ภาษา:</label>
+      <select id="hw-lang" style="padding:3px 7px;border:1.5px solid var(--BD);border-radius:6px;font-family:Sarabun,sans-serif;font-size:11.5px;background:#fff;color:var(--TX)">
+        <option value="th">🇹🇭 ภาษาไทย</option>
+        <option value="en">🇬🇧 English</option>
+        <option value="auto">🌐 อัตโนมัติ</option>
+      </select>
       <button class="btn btn-g" onclick="clearCanvas()">🗑️ ล้าง</button>
       <button class="btn" style="background:#546E7A;color:#fff" onclick="undoHW()">↩️ ย้อน</button>
       <button class="btn btn-purple" onclick="convertHW()">🔄 แปลงข้อความ</button>
@@ -1620,6 +1626,13 @@ function closeHW(){document.getElementById('hw-overlay').classList.remove('show'
 async function convertHW(){
   if(!hwStrokes.length){alert('กรุณาเขียนข้อความก่อน');return;}
   const img=hwCanvas.toDataURL('image/png');
+  const lang=document.getElementById('hw-lang')?.value||'th';
+  const promptMap={
+    th:'โปรดอ่านข้อความภาษาไทยที่เขียนด้วยมือในรูปภาพนี้ แล้วแปลงเป็นข้อความดิจิทัลภาษาไทยที่ถูกต้อง ตอบเฉพาะข้อความที่อ่านได้เท่านั้น ไม่ต้องอธิบายเพิ่มเติม ถ้าอ่านคำไหนไม่ชัดให้เดาจากบริบท ห้ามใส่เครื่องหมาย [] หรือ () อธิบาย',
+    en:'Please read the handwritten English text in this image and convert it to digital text. Return only the transcribed text, nothing else.',
+    auto:'Please read the handwritten text in this image. It may be Thai, English, or mixed. Convert it to digital text in the same language(s) as written. Return only the transcribed text, no explanations.',
+  };
+  const prompt=promptMap[lang]||promptMap.th;
   document.getElementById('hw-loading').style.display='block';
   document.getElementById('hw-result').style.display='none';
   try{
@@ -1628,15 +1641,20 @@ async function convertHW(){
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:'image/png',data:img.split(',')[1]}},
-          {type:'text',text:'โปรดอ่านข้อความที่เขียนด้วยมือในรูปภาพนี้ แล้วแปลงเป็นข้อความดิจิทัล ตอบเฉพาะข้อความที่อ่านได้เท่านั้น ไม่ต้องอธิบายเพิ่มเติม'}
+          {type:'text',text:prompt}
         ]}]})
     });
     const data=await res.json();
     const txt=data.content?.find(b=>b.type==='text')?.text||'ไม่สามารถแปลงได้';
     const rd=document.getElementById('hw-result');
-    rd.style.display='block';rd.innerHTML='<strong>ข้อความที่แปลงได้:</strong><br>'+txt;rd.dataset.txt=txt;
+    rd.style.display='block';
+    rd.innerHTML=`<div style="font-size:11px;color:var(--TM);margin-bottom:4px">
+      ${lang==='th'?'🇹🇭 ภาษาไทย':lang==='en'?'🇬🇧 English':'🌐 อัตโนมัติ'} — ผลการแปลง:</div>
+      <div style="font-size:13.5px;font-weight:600;color:var(--B1);line-height:1.7">${txt}</div>`;
+    rd.dataset.txt=txt;
   }catch(e){
-    const rd=document.getElementById('hw-result');rd.style.display='block';rd.textContent='เกิดข้อผิดพลาด: '+e.message;
+    const rd=document.getElementById('hw-result');rd.style.display='block';
+    rd.innerHTML=`<span style="color:var(--DR)">❌ เกิดข้อผิดพลาด: ${e.message}</span>`;
   }
   document.getElementById('hw-loading').style.display='none';
 }
