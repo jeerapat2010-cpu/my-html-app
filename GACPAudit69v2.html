@@ -1,0 +1,1863 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>GACP Inspector Pro v2.0</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap');
+:root{
+  --B1:#023E8A;--B2:#0077B6;--B3:#0096C7;--B4:#00B4D8;--B5:#48CAE4;--B6:#90E0EF;
+  --CY:#00E5FF;--CYD:#0097A7;--AC:#29B6F6;
+  --DR:#EF5350;--DRL:#FFEBEE;--WN:#FF9800;--WNL:#FFF3E0;
+  --GD:#FFD60A;--TX:#0D1B2A;--TM:#546E7A;--BD:#B3D9F7;
+  --purple:#7C4DFF;--glow1:rgba(41,182,246,.5);--glow2:rgba(0,229,255,.4);
+}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 8px rgba(255,255,255,.3),0 0 20px rgba(255,255,255,.15)}50%{box-shadow:0 0 20px rgba(255,255,255,.6),0 0 40px rgba(255,255,255,.3)}}
+@keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes slide-in{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun',sans-serif;background:linear-gradient(135deg,#EFF6FF,#E3F2FD,#E0F7FA);color:var(--TX);min-height:100vh}
+#app{display:flex;min-height:100vh}
+/* ===SIDEBAR=== */
+#sb{width:268px;min-height:100vh;
+  background:linear-gradient(160deg,#0288D1 0%,#0097A7 40%,#00838F 70%,#006064 100%);
+  color:#fff;display:flex;flex-direction:column;position:fixed;top:0;left:0;
+  overflow-y:auto;z-index:100;
+  box-shadow:4px 0 30px rgba(0,150,180,.5),2px 0 0 rgba(0,229,255,.4)}
+#sb::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,#E0F7FA,#fff,#B2EBF2,#fff,#E0F7FA);
+  animation:shimmer 2s linear infinite;background-size:200% auto}
+#sb-logo{padding:18px 14px 14px;border-bottom:1px solid rgba(255,255,255,.25);text-align:center}
+#sb-logo .li{font-size:34px;margin-bottom:4px;animation:floatY 3s ease-in-out infinite;display:block}
+#sb-logo h1{font-size:13.5px;font-weight:800;letter-spacing:.8px;
+  background:linear-gradient(90deg,#fff,#E0F7FA,#fff);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  background-size:200% auto;animation:shimmer 2.5s linear infinite}
+#sb-logo p{font-size:10px;color:#E0F7FA;margin-top:2px;opacity:.9}
+#nav{padding:8px 5px;flex:1}
+.nsl{font-size:9px;text-transform:uppercase;letter-spacing:2px;padding:10px 10px 3px;
+  font-weight:800;color:#B2EBF2;opacity:.95}
+.ni{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:8px;cursor:pointer;
+  transition:all .25s;font-size:12px;font-weight:600;color:rgba(255,255,255,.92);
+  user-select:none;border:1px solid transparent;animation:slide-in .3s ease both}
+.ni:hover{background:rgba(255,255,255,.22);color:#fff;border-color:rgba(255,255,255,.35);
+  box-shadow:0 0 14px rgba(255,255,255,.2)}
+.ni.active{background:linear-gradient(135deg,rgba(255,255,255,.3),rgba(255,255,255,.18));
+  color:#fff;border-color:rgba(255,255,255,.65);font-weight:700;
+  box-shadow:0 0 18px rgba(255,255,255,.45),inset 0 0 10px rgba(255,255,255,.08);
+  animation:pulse-glow 2.5s ease-in-out infinite}
+.ni .ic{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.nb{margin-left:auto;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:800}
+.nb.done{background:linear-gradient(135deg,#E0F7FA,#fff);color:#006064;box-shadow:0 0 8px rgba(255,255,255,.5)}
+.nb.part{background:linear-gradient(135deg,#FFE082,#FFD54F);color:#5D4037}
+.nb.empty{background:rgba(255,255,255,.2);color:rgba(255,255,255,.75)}
+#sb-ft{padding:10px 12px;border-top:1px solid rgba(255,255,255,.2);
+  font-size:9.5px;color:#E0F7FA;text-align:center;line-height:1.8;opacity:.9}
+/* ===MAIN=== */
+#main{margin-left:268px;flex:1;display:flex;flex-direction:column}
+#topbar{background:rgba(255,255,255,.92);backdrop-filter:blur(12px);
+  padding:10px 20px;border-bottom:1px solid rgba(41,182,246,.25);
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 2px 20px rgba(0,119,182,.1);position:sticky;top:0;z-index:50;
+  position:relative}
+#topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--B1),var(--CY),var(--B3),var(--CY),var(--B1));
+  background-size:300% auto;animation:shimmer 3s linear infinite}
+#topbar h2{font-size:15px;font-weight:800;
+  background:linear-gradient(135deg,var(--B1),var(--B3),var(--CYD));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tbar-r{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.btn{padding:6px 13px;border-radius:8px;border:none;cursor:pointer;font-family:'Sarabun',sans-serif;
+  font-size:12px;font-weight:700;transition:all .2s;display:inline-flex;align-items:center;gap:5px}
+.btn-p{background:linear-gradient(135deg,var(--B1),var(--B2));color:#fff;box-shadow:0 3px 12px rgba(2,62,138,.35)}
+.btn-p:hover{box-shadow:0 4px 20px rgba(2,62,138,.55),0 0 20px var(--glow1)}
+.btn-g{background:rgba(255,255,255,.85);color:var(--B1);border:1.5px solid var(--BD)}
+.btn-g:hover{background:#fff;border-color:var(--AC);box-shadow:0 0 12px var(--glow1)}
+.btn-gold{background:linear-gradient(135deg,#F57F17,var(--WN));color:#fff;box-shadow:0 3px 12px rgba(255,152,0,.4)}
+.btn-info{background:linear-gradient(135deg,var(--CYD),var(--B3));color:#fff;box-shadow:0 3px 12px rgba(0,150,199,.4)}
+.btn-purple{background:linear-gradient(135deg,#5E35B1,var(--purple));color:#fff;box-shadow:0 3px 12px rgba(124,77,255,.4)}
+#content{padding:20px;flex:1}
+.page{display:none}.page.active{display:block;animation:slide-in .25s ease}
+/* ===CARDS=== */
+.card{background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-radius:14px;padding:18px;
+  box-shadow:0 4px 24px rgba(0,119,182,.1),0 1px 0 rgba(255,255,255,.8) inset;
+  margin-bottom:16px;border:1px solid rgba(41,182,246,.2)}
+.card:hover{box-shadow:0 6px 32px rgba(0,119,182,.15),0 0 0 1px rgba(41,182,246,.3)}
+.ct{font-size:13.5px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:7px;
+  background:linear-gradient(135deg,var(--B1),var(--B3));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  border-bottom:2px solid transparent;
+  border-image:linear-gradient(90deg,var(--B1),var(--CY),transparent) 1;padding-bottom:9px}
+/* ===STATS=== */
+.sg{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.sc{background:rgba(255,255,255,.92);border-radius:12px;padding:15px;text-align:center;
+  border:1px solid rgba(41,182,246,.2);transition:all .25s;position:relative;overflow:hidden}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--B1),var(--CY))}
+.sc:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(0,119,182,.2),0 0 20px var(--glow1)}
+.sc.scd::before{background:linear-gradient(90deg,var(--DR),#FF7043)}
+.sc .sn{font-size:28px;font-weight:900;line-height:1.1;
+  background:linear-gradient(135deg,var(--B1),var(--B3));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sc .sl{font-size:10.5px;color:var(--TM);margin-top:4px;font-weight:600}
+/* ===SECTION GRID=== */
+.spg{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.spc{border-radius:12px;padding:11px 13px;cursor:pointer;
+  border:1.5px solid transparent;transition:all .22s;position:relative;overflow:hidden}
+.spc::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:12px 0 0 12px;background:var(--spc-color,var(--B1))}
+.spc:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.13)}
+.spc-inner{padding-left:8px}
+.spt{font-size:11px;font-weight:800;margin-bottom:2px;color:#1a1a2e}
+.sps{font-size:9.5px;color:var(--TM);margin-bottom:6px;line-height:1.3}
+.pbw{border-radius:10px;height:7px;overflow:hidden;margin-bottom:5px}
+.pbf{height:100%;border-radius:10px;transition:width .7s cubic-bezier(.4,0,.2,1)}
+.spc-stats{display:flex;justify-content:space-between;align-items:center;margin-top:2px}
+.spc-badge{font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:8px}
+.spc-nums{font-size:9.5px;color:var(--TM)}
+/* ===FORMS=== */
+.fg{margin-bottom:12px}
+.fl{display:block;font-size:12px;font-weight:700;color:var(--B1);margin-bottom:3px}
+.fc{width:100%;padding:7px 10px;border:1.5px solid var(--BD);border-radius:8px;
+  font-family:'Sarabun',sans-serif;font-size:12.5px;background:rgba(255,255,255,.9);color:var(--TX)}
+.fc:focus{outline:none;border-color:var(--AC);
+  box-shadow:0 0 0 3px rgba(41,182,246,.2),0 0 12px rgba(41,182,246,.15);background:#fff}
+textarea.fc{resize:vertical;min-height:65px}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+/* ===INSPECTION TABLE=== */
+.ih{background:linear-gradient(135deg,var(--B1),var(--B2),#0077B6);color:#fff;
+  padding:12px 16px;border-radius:12px 12px 0 0;
+  display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden}
+.ih::after{content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);
+  animation:shimmer 3s linear infinite}
+.ih h3{font-size:13.5px;font-weight:800}
+.ic-cnt{font-size:10.5px;background:rgba(0,229,255,.25);padding:2px 8px;border-radius:10px;border:1px solid rgba(0,229,255,.3)}
+.it{width:100%;border-collapse:collapse;background:rgba(255,255,255,.96);
+  border:1px solid rgba(41,182,246,.2);border-top:none;border-radius:0 0 12px 12px;table-layout:fixed}
+.it th{background:linear-gradient(135deg,#EFF6FF,#E3F2FD);padding:8px 11px;
+  font-size:11px;font-weight:800;color:var(--B1);
+  text-align:left;border-bottom:1.5px solid rgba(41,182,246,.3);border-right:1px solid rgba(41,182,246,.15)}
+.it td{padding:8px 11px;font-size:12px;border-bottom:1px solid rgba(41,182,246,.1);
+  border-right:1px solid rgba(41,182,246,.08);vertical-align:top}
+.it tr:last-child td{border-bottom:none}
+.it tr:hover td{background:rgba(227,242,253,.45)}
+.it .ino{font-weight:800;color:var(--B1);width:52px;text-align:center}
+.sub-item td{background:rgba(224,247,250,.4)!important;border-left:3px solid var(--B4)!important}
+.sub-item .ino{color:var(--CYD);font-size:10.5px}
+.sub-item td{font-size:11.5px;padding:6px 11px}
+/* ===BUTTONS=== */
+.rt{display:flex;gap:4px;align-items:center;justify-content:center;white-space:nowrap}
+.tb{padding:4px 9px;border-radius:6px;border:1.5px solid transparent;cursor:pointer;
+  font-family:'Sarabun',sans-serif;font-size:11px;font-weight:700;transition:all .2s}
+.tb.tp{border-color:rgba(41,182,246,.4);color:var(--B1);background:rgba(255,255,255,.8)}
+.tb.tp.sel{background:linear-gradient(135deg,var(--B1),var(--B3));color:#fff;
+  border-color:var(--AC);box-shadow:0 0 10px var(--glow1)}
+.tb.tf{border-color:rgba(239,83,80,.3);color:var(--DR);background:rgba(255,255,255,.8)}
+.tb.tf.sel{background:linear-gradient(135deg,#C62828,var(--DR));color:#fff;box-shadow:0 0 10px rgba(239,83,80,.4)}
+.tb.tn{border-color:#E0E0E0;color:#9E9E9E;background:rgba(255,255,255,.8)}
+.tb.tn.sel{background:linear-gradient(135deg,#546E7A,#78909C);color:#fff}
+/* ===REMARK CELL=== */
+.rc textarea{width:100%;border:1px solid rgba(41,182,246,.3);border-radius:6px;padding:5px 7px;
+  font-family:'Sarabun',sans-serif;font-size:11.5px;resize:none;min-height:44px;
+  background:rgba(239,246,255,.6);color:var(--TX)}
+.rc textarea:focus{outline:none;border-color:var(--AC);background:#fff}
+.hw-btn{background:linear-gradient(135deg,#5E35B1,var(--purple));color:#fff;border:none;
+  border-radius:5px;padding:3px 7px;font-size:10.5px;cursor:pointer;
+  font-family:'Sarabun',sans-serif;margin-top:3px;display:block;width:100%}
+.hw-status{font-size:10px;color:var(--CYD);margin-top:2px;min-height:12px;font-weight:600}
+/* ===SUMMARY BAR=== */
+.ssb{background:linear-gradient(135deg,rgba(227,242,253,.8),rgba(224,247,250,.5));
+  border:1px solid rgba(41,182,246,.2);border-top:none;padding:9px 16px;
+  display:flex;align-items:center;gap:16px;font-size:12px;
+  border-radius:0 0 12px 12px;flex-wrap:wrap}
+.si2{display:flex;align-items:center;gap:5px;font-weight:700}
+.sd-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;box-shadow:0 0 4px currentColor}
+/* ===SUMMARY TABLE=== */
+.sr{display:grid;grid-template-columns:3fr 1fr 1fr 1fr 1fr;gap:0;
+  border-bottom:1px solid rgba(41,182,246,.12);transition:background .15s}
+.sr:hover{background:rgba(227,242,253,.5)}
+.sr.hdr{background:linear-gradient(135deg,var(--B1),var(--B2));color:#fff;font-weight:800;border-radius:8px 8px 0 0}
+.scell{padding:8px 11px;font-size:12px;display:flex;align-items:center;border-right:1px solid rgba(41,182,246,.12)}
+.scell:last-child{border-right:none}
+.pb{padding:2px 8px;border-radius:18px;font-size:11px;font-weight:800}
+.ph{background:linear-gradient(135deg,#E3F2FD,#BBDEFB);color:var(--B1);border:1px solid var(--BD)}
+.pm{background:var(--WNL);color:var(--WN)}.pl{background:var(--DRL);color:var(--DR)}
+/* ===RESULT=== */
+.rd{text-align:center;padding:26px 18px;border-radius:14px;margin-bottom:16px}
+.rd.pass{background:linear-gradient(135deg,#E3F2FD,#E0F7FA,#B3E5FC);border:2px solid var(--B3);box-shadow:0 0 30px rgba(41,182,246,.25)}
+.rd.fail{background:linear-gradient(135deg,var(--DRL),#FFCCBC);border:2px solid var(--DR)}
+.rd .rt2{font-size:22px;font-weight:900;margin-bottom:5px}
+.rd .rs{font-size:13.5px;opacity:.85}
+/* ===ALERTS=== */
+.al{padding:9px 13px;border-radius:8px;margin-bottom:12px;font-size:12px;display:flex;align-items:flex-start;gap:7px}
+.al-i{background:linear-gradient(135deg,rgba(227,242,253,.9),rgba(224,247,250,.7));border-left:4px solid var(--B3);color:var(--B1)}
+.al-w{background:var(--WNL);border-left:4px solid var(--WN);color:#7a3500}
+.al-p{background:#EDE7F6;border-left:4px solid var(--purple);color:#4527A0}
+/* ===REF SECTIONS=== */
+.ref-section{background:rgba(255,255,255,.9);border:1px solid rgba(124,77,255,.3);border-radius:12px;overflow:hidden;margin-bottom:18px}
+.ref-header{background:linear-gradient(135deg,#311B92,var(--purple));color:#fff;
+  padding:11px 16px;display:flex;align-items:center;justify-content:space-between}
+.ref-header h3{font-size:13.5px;font-weight:800}
+.ref-tag{background:rgba(255,255,255,.2);color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700}
+.ref-table{width:100%;border-collapse:collapse;background:#fff;font-size:12px}
+.ref-table th{background:linear-gradient(135deg,#EDE7F6,#E8EAF6);padding:7px 10px;font-weight:800;
+  color:var(--purple);border-bottom:1px solid #D1C4E9;border-right:1px solid #D1C4E9;text-align:left;font-size:11px}
+.ref-table td{padding:6px 10px;border-bottom:1px solid #F3E5F5;border-right:1px solid #EDE7F6;vertical-align:middle}
+.ref-table tr:hover td{background:#F3E5F5}
+.ref-std{font-size:11.5px;color:var(--purple);font-weight:700}
+.ref-inp{width:100%;padding:3px 6px;border:1px solid #D1C4E9;border-radius:5px;font-family:'Sarabun',sans-serif;font-size:11px}
+.ref-sel{width:100%;padding:3px 5px;border:1px solid #D1C4E9;border-radius:5px;font-size:11px;font-family:'Sarabun',sans-serif}
+/* ===TAGS=== */
+.tag{display:inline-block;padding:1px 7px;border-radius:11px;font-size:11px;font-weight:700}
+.tag-p{background:linear-gradient(135deg,#E3F2FD,#BBDEFB);color:var(--B1);border:1px solid var(--BD)}
+.tag-f{background:var(--DRL);color:var(--DR)}.tag-n{background:#F5F5F5;color:#757575}
+/* ===CAPA/SIG=== */
+.sig-canvas{width:100%;height:80px;border:2px dashed rgba(41,182,246,.4);border-radius:8px;background:rgba(239,246,255,.5);cursor:crosshair;touch-action:none;display:block}
+/* ===PRINT=== */
+@media print{
+  body{background:#fff!important}
+  #sb,#topbar,#hw-overlay{display:none!important}
+  #main{margin-left:0!important}
+  #content{padding:0!important}
+  .page{display:none!important}
+  #page-print{display:block!important}
+  .card{box-shadow:none!important;border:1px solid #ccc!important;page-break-inside:avoid;background:#fff!important}
+  @page{size:A4 portrait;margin:13mm}
+}
+#page-print{display:none}
+.pdoc{font-family:'Sarabun',sans-serif;font-size:12px;color:#111;max-width:800px;margin:0 auto}
+.ph1{text-align:center;padding:12px 0 8px;border-bottom:3px double #023E8A;margin-bottom:12px}
+.ph1 h1{font-size:15px;font-weight:900;color:#023E8A}.ph1 h2{font-size:12.5px;font-weight:700;color:#0077B6;margin-top:3px}
+.ph1 p{font-size:11px;color:#555;margin-top:3px}
+.pit{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:11.5px}
+.pit td{padding:3px 7px;border:1px solid #bbb}.pit td.lbl{background:#E3F2FD;font-weight:800;width:25%;color:#023E8A}
+.psh{background:#023E8A;color:#fff;padding:5px 10px;font-size:12px;font-weight:800;margin-bottom:0;margin-top:10px}
+.ptb{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:2px}
+.ptb th{background:#E3F2FD;padding:4px 6px;font-weight:800;border:1px solid #ccc;text-align:center;color:#023E8A}
+.ptb td{padding:4px 6px;border:1px solid #ddd;vertical-align:top}
+.py{color:#0077B6;font-weight:800}.pn{color:#c0392b;font-weight:800}.pna{color:#888}
+.psum{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}
+.psum th{background:#023E8A;color:#fff;padding:5px 8px;text-align:center}
+.psum td{padding:4px 8px;border:1px solid #bbb;text-align:center}
+.psum tr:nth-child(even) td{background:#E3F2FD}
+.psrow{display:flex;justify-content:space-around;margin-top:24px;gap:15px}
+.psbox{text-align:center;flex:1;border-top:1px solid #333;padding-top:4px;font-size:11.5px}
+.pverd{border:2px solid;padding:10px;text-align:center;border-radius:5px;margin:10px 0}
+.pverd.pass{border-color:#0077B6;background:#E3F2FD;color:#023E8A}
+.pverd.fail{border-color:#c0392b;background:#fdedec;color:#7b241c}
+.pcred{font-size:10px;color:#777;text-align:right;margin-top:8px;border-top:1px solid #eee;padding-top:5px}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:rgba(227,242,253,.5)}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--B1),var(--B3));border-radius:3px}
+/* ===HW OVERLAY=== */
+#hw-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(2,22,40,.85);backdrop-filter:blur(6px);z-index:999;align-items:center;justify-content:center}
+#hw-overlay.show{display:flex}
+#hw-box{background:rgba(255,255,255,.97);border-radius:16px;padding:20px;width:92%;max-width:700px;
+  box-shadow:0 24px 80px rgba(0,119,182,.4),0 0 0 1px rgba(41,182,246,.3)}
+#hw-box h3{color:var(--B1);margin-bottom:3px;font-size:14.5px;font-weight:800}
+#hw-box p.sub{color:var(--TM);font-size:11.5px;margin-bottom:10px}
+#hw-canvas{width:100%;height:260px;border:2px dashed rgba(41,182,246,.5);border-radius:10px;
+  background:rgba(239,246,255,.5);cursor:crosshair;touch-action:none;display:block}
+#hw-canvas.drawing{border-color:var(--AC);background:#fff}
+.hw-toolbar{display:flex;gap:7px;margin-top:9px;align-items:center;flex-wrap:wrap}
+.hw-toolbar label{font-size:11.5px;color:var(--TM)}
+.hw-toolbar input[type=range]{width:75px;accent-color:var(--B1)}
+.hw-toolbar input[type=color]{width:32px;height:26px;border:none;cursor:pointer;border-radius:4px}
+#hw-result{margin-top:9px;padding:9px 12px;background:linear-gradient(135deg,rgba(227,242,253,.9),rgba(224,247,250,.9));
+  border:1px solid rgba(41,182,246,.3);border-radius:8px;min-height:40px;font-size:13px;color:var(--B1);display:none}
+#hw-loading{margin-top:9px;text-align:center;color:var(--B1);font-size:13px;display:none;font-weight:600}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div id="app">
+<nav id="sb">
+  <div id="sb-logo">
+    <span class="li">🌿</span>
+    <h1>GACP Inspector Pro v2.0</h1>
+    <p>ระบบตรวจประเมิน GACP กัญชา</p>
+  </div>
+  <div id="nav">
+    <div class="nsl">หน้าหลัก</div>
+    <div class="ni active" onclick="gp('dashboard')"><span class="ic">🏠</span>แดชบอร์ด</div>
+    <div class="nsl">ข้อมูลการตรวจ</div>
+    <div class="ni" onclick="gp('site')"><span class="ic">🏭</span>ข้อมูลสถานที่ผลิต</div>
+    <div class="ni" onclick="gp('insp')"><span class="ic">👤</span>ข้อมูลผู้ตรวจ</div>
+    <div class="nsl">หมวดการตรวจ (14 หมวด)</div>
+    <div class="ni" id="ns1" onclick="gp('s1')"><span class="ic">✅</span>หมวด 1 การประกันคุณภาพ<span class="nb empty" id="b1">-</span></div>
+    <div class="ni" id="ns2" onclick="gp('s2')"><span class="ic">🧼</span>หมวด 2 สุขลักษณะส่วนบุคคล<span class="nb empty" id="b2">-</span></div>
+    <div class="ni" id="ns3" onclick="gp('s3')"><span class="ic">📋</span>หมวด 3 บันทึกเอกสาร<span class="nb empty" id="b3">-</span></div>
+    <div class="ni" id="ns4" onclick="gp('s4')"><span class="ic">🔧</span>หมวด 4 อุปกรณ์<span class="nb empty" id="b4">-</span></div>
+    <div class="ni" id="ns5" onclick="gp('s5')"><span class="ic">🌱</span>หมวด 5 พื้นที่ปลูก<span class="nb empty" id="b5">-</span></div>
+    <div class="ni" id="ns6" onclick="gp('s6')"><span class="ic">💧</span>หมวด 6 น้ำ<span class="nb empty" id="b6">-</span></div>
+    <div class="ni" id="ns7" onclick="gp('s7')"><span class="ic">🌿</span>หมวด 7 ปุ๋ย<span class="nb empty" id="b7">-</span></div>
+    <div class="ni" id="ns8" onclick="gp('s8')"><span class="ic">🌾</span>หมวด 8 เมล็ดพันธุ์<span class="nb empty" id="b8">-</span></div>
+    <div class="ni" id="ns9" onclick="gp('s9')"><span class="ic">🪴</span>หมวด 9 การเพาะปลูก<span class="nb empty" id="b9">-</span></div>
+    <div class="ni" id="ns10" onclick="gp('s10')"><span class="ic">✂️</span>หมวด 10 การเก็บเกี่ยว<span class="nb empty" id="b10">-</span></div>
+    <div class="ni" id="ns11" onclick="gp('s11')"><span class="ic">⚙️</span>หมวด 11 แปรรูปเบื้องต้น<span class="nb empty" id="b11">-</span></div>
+    <div class="ni" id="ns12" onclick="gp('s12')"><span class="ic">🏗️</span>หมวด 12 สถานที่แปรรูป<span class="nb empty" id="b12">-</span></div>
+    <div class="ni" id="ns13" onclick="gp('s13')"><span class="ic">📦</span>หมวด 13 บรรจุ/ฉลาก<span class="nb empty" id="b13">-</span></div>
+    <div class="ni" id="ns14" onclick="gp('s14')"><span class="ic">🚚</span>หมวด 14 จัดเก็บ/ขนย้าย<span class="nb empty" id="b14">-</span></div>
+    <div class="nsl">อ้างอิง (ไม่นับคะแนน)</div>
+    <div class="ni" onclick="gp('ref3')"><span class="ic">🔬</span>บทที่ 3 มาตรฐานวัตถุดิบ</div>
+    <div class="ni" onclick="gp('ref4')"><span class="ic">📊</span>บทที่ 4 แผนควบคุมการผลิต</div>
+    <div class="nsl">รายงาน</div>
+    <div class="ni" onclick="gp('summary')"><span class="ic">📊</span>สรุปผลคะแนน</div>
+    <div class="ni" onclick="gp('export')"><span class="ic">📄</span>ส่งออก / PDF</div>
+    <div class="ni" onclick="openManual()"><span class="ic">📖</span>คู่มือตัวจริง (PDF)</div>
+    <div class="nsl">ฟีเจอร์เพิ่มเติม</div>
+    <div class="ni" onclick="gp('capa')"><span class="ic">📋</span>แผน CAPA</div>
+    <div class="ni" onclick="gp('sig')"><span class="ic">✍️</span>ลายเซ็น</div>
+    <div class="ni" onclick="gp('qr')"><span class="ic">📱</span>QR Code สรุปผล</div>
+    <div class="ni" onclick="gp('compare')"><span class="ic">🔄</span>เปรียบเทียบ 2 รอบ</div>
+    <div class="ni" onclick="gp('prov')"><span class="ic">🏙️</span>Dashboard จังหวัด</div>
+  </div>
+  <div id="sb-ft">
+    <div>GACP V16 (21 พ.ค. 2569)</div>
+    <div>กองกัญชาทางการแพทย์ กรมการแพทย์แผนไทยฯ</div>
+    <div style="margin-top:4px;border-top:1px solid rgba(255,255,255,.15);padding-top:4px">
+      🛠 ภก.จีรภัทร พลายงาม<br>เภสัชกรชำนาญการ<br>กลุ่มงานการแพทย์แผนไทยฯ<br>สสจ.สมุทรปราการ
+    </div>
+    <div style="margin-top:3px;opacity:.75">v2.0 | 10 มิถุนายน 2569</div>
+  </div>
+</nav>
+<div id="main">
+  <div id="topbar">
+    <div style="display:flex;align-items:center;gap:14px;min-width:0">
+      <h2 id="ptitle" style="white-space:nowrap">🏠 แดชบอร์ดภาพรวม</h2>
+      <div style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;
+        background:linear-gradient(135deg,rgba(2,62,138,.08),rgba(0,180,216,.1));
+        border:1px solid rgba(2,62,138,.15);white-space:nowrap;flex-shrink:0">
+        <span style="font-size:14px">👨‍⚕️</span>
+        <div style="line-height:1.3">
+          <div style="font-size:11px;font-weight:800;color:var(--B1)">ภก.จีรภัทร พลายงาม</div>
+          <div style="font-size:9.5px;color:var(--TM)">เภสัชกรชำนาญการ · กลุ่มงานการแพทย์แผนไทยฯ สสจ.สมุทรปราการ</div>
+        </div>
+      </div>
+    </div>
+    <div class="tbar-r">
+      <button class="btn btn-purple" onclick="openHW()">✏️ iPAD Note</button>
+      <button class="btn btn-g" onclick="resetAll()">🔄 รีเซ็ต</button>
+      <button class="btn btn-info" onclick="openManual()">📖 คู่มือ</button>
+      <button class="btn btn-p" onclick="gp('summary')">📊 สรุป</button>
+      <button class="btn btn-gold" onclick="doPDF()">🖨️ PDF</button>
+    </div>
+  </div>
+  <div id="content">
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="sg">
+        <div class="sc scs"><div class="sn" id="stat-total">0</div><div class="sl">ตอบแล้ว</div></div>
+        <div class="sc scs"><div class="sn" id="stat-pass" style="color:var(--B2)">0</div><div class="sl">ผ่าน</div></div>
+        <div class="sc scd"><div class="sn" id="stat-fail" style="color:var(--DR)">0</div><div class="sl">ไม่ผ่าน</div></div>
+        <div class="sc"><div class="sn" id="stat-pct" style="color:var(--CYD)">0%</div><div class="sl">ความคืบหน้า</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:220px 1fr;gap:16px">
+        <div class="card" style="min-width:0">
+          <div class="ct">📊 ภาพรวมผลการตรวจ</div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+            <canvas id="donut" width="160" height="160"></canvas>
+            <div id="legend" style="font-size:12px;display:flex;flex-direction:column;gap:6px;width:100%"></div>
+          </div>
+        </div>
+        <div class="card" style="min-width:0">
+          <div class="ct">📋 ความคืบหน้ารายหมวด</div>
+          <div class="spg" id="sec-grid"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="ct">⚠️ รายการข้อที่ไม่ผ่าน</div>
+        <div id="fail-list"><div style="color:var(--TM);font-size:12px">ยังไม่มีข้อที่ไม่ผ่าน</div></div>
+      </div>
+    </div>
+    <!-- SITE -->
+    <div class="page" id="page-site">
+      <div class="card">
+        <div class="ct">🏭 ข้อมูลสถานที่ผลิต</div>
+        <div class="fr"><div class="fg"><label class="fl">ชื่อสถานที่ผลิต / ฟาร์ม *</label><input class="fc" id="sn" placeholder="ชื่อสถานประกอบการ"></div>
+        <div class="fg"><label class="fl">เลขที่ใบอนุญาต</label><input class="fc" id="sl" placeholder="เลขที่ใบอนุญาต"></div></div>
+        <div class="fg"><label class="fl">ที่อยู่</label><textarea class="fc" id="sa" placeholder="บ้านเลขที่ หมู่ ถนน ตำบล อำเภอ จังหวัด"></textarea></div>
+        <div class="fr3">
+          <div class="fg"><label class="fl">จังหวัด</label><input class="fc" id="sp" placeholder="จังหวัด"></div>
+          <div class="fg"><label class="fl">โทรศัพท์</label><input class="fc" id="st" placeholder="เบอร์โทร"></div>
+          <div class="fg"><label class="fl">อีเมล</label><input class="fc" id="se" placeholder="อีเมล"></div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label class="fl">ชื่อผู้ประกอบการ</label><input class="fc" id="so" placeholder="ชื่อ-สกุล"></div>
+          <div class="fg"><label class="fl">พื้นที่เพาะปลูก</label><input class="fc" id="sar" placeholder="เช่น 2 ไร่"></div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label class="fl">ประเภทระบบปลูก</label>
+            <select class="fc" id="ssy"><option>ปลูกในแปลงกลางแจ้ง (Outdoor)</option><option>ปลูกในโรงเรือน (Greenhouse)</option><option>ปลูกในระบบปิด (Indoor/PFAL)</option><option>ผสมผสาน</option></select></div>
+          <div class="fg"><label class="fl">พันธุ์กัญชา</label><input class="fc" id="sv" placeholder="เช่น หางกระรอก, OG Kush"></div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label class="fl">วันที่ตรวจ</label><input type="date" class="fc" id="sd"></div>
+          <div class="fg"><label class="fl">การตรวจครั้งที่</label>
+            <select class="fc" id="sr2"><option>ครั้งที่ 1 (ตรวจเพื่อรับรองครั้งแรก)</option><option>ครั้งที่ 2 (ตรวจติดตาม)</option><option>ครั้งที่ 3 (ตรวจต่ออายุ)</option><option>การตรวจสอบเฉพาะกิจ</option></select></div>
+        </div>
+        <div class="fg"><label class="fl">หมายเหตุ</label><textarea class="fc" id="snote"></textarea></div>
+      </div>
+      <div class="card"><div class="ct">📍 พิกัด GPS</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-p" id="gps-btn" onclick="getGPS()">📍 รับพิกัด GPS</button>
+          <div id="gps-display" style="font-size:12.5px;color:var(--TM)">ยังไม่ได้รับพิกัด</div>
+        </div>
+      </div>
+    </div>
+    <!-- INSPECTOR -->
+    <div class="page" id="page-insp">
+      <div class="card">
+        <div class="ct">👤 ข้อมูลผู้ตรวจประเมิน</div>
+        <div id="insp-list"></div>
+        <button class="btn btn-g" style="margin-top:8px" onclick="addIns()">+ เพิ่มผู้ตรวจ</button>
+      </div>
+      <div class="card">
+        <div class="ct">🏢 หน่วยงาน</div>
+        <div class="fr">
+          <div class="fg"><label class="fl">ชื่อหน่วยงาน</label><input class="fc" id="io" placeholder="สสจ.สมุทรปราการ"></div>
+          <div class="fg"><label class="fl">กรม / กระทรวง</label><input class="fc" id="id2" placeholder="กรมการแพทย์แผนไทยฯ"></div>
+        </div>
+        <div class="fg"><label class="fl">เลขที่หนังสือมอบอำนาจ</label><input class="fc" id="ia" placeholder="เลขที่หนังสือ (ถ้ามี)"></div>
+      </div>
+    </div>
+    <!-- SECTION PAGES -->
+    <div class="page" id="page-s1"></div><div class="page" id="page-s2"></div>
+    <div class="page" id="page-s3"></div><div class="page" id="page-s4"></div>
+    <div class="page" id="page-s5"></div><div class="page" id="page-s6"></div>
+    <div class="page" id="page-s7"></div><div class="page" id="page-s8"></div>
+    <div class="page" id="page-s9"></div><div class="page" id="page-s10"></div>
+    <div class="page" id="page-s11"></div><div class="page" id="page-s12"></div>
+    <div class="page" id="page-s13"></div><div class="page" id="page-s14"></div>
+    <!-- REF3 -->
+    <div class="page" id="page-ref3">
+      <div class="al al-p"><span>💜</span><div><strong>บทที่ 3 ข้อกำหนดมาตรฐานวัตถุดิบ</strong> — ไม่นับคะแนน GACP ใช้เทียบผลตรวจห้องปฏิบัติการ</div></div>
+      <div id="ref3-content"></div>
+    </div>
+    <!-- REF4 -->
+    <div class="page" id="page-ref4">
+      <div class="al al-p"><span>💜</span><div><strong>บทที่ 4 ตัวอย่างแผนการควบคุมการผลิต</strong> — ไม่นับคะแนน GACP ใช้ตรวจสอบความครบถ้วนของแผนผู้ประกอบการ</div></div>
+      <div id="ref4-content"></div>
+    </div>
+    <!-- SUMMARY/EXPORT/PRINT/CAPA/SIG/QR/COMPARE/PROV -->
+    <div class="page" id="page-summary"><div id="sum-con"></div></div>
+    <div class="page" id="page-export">
+      <div class="card"><div class="ct">📄 ส่งออกรายงาน</div>
+        <div class="al al-i"><span>ℹ️</span><div>รายงาน A4 พร้อมพิมพ์ ครอบคลุมข้อมูลสถานที่ ผู้ตรวจ ผลการตรวจ 14 หมวด และสรุปผล</div></div>
+        <div style="display:flex;gap:9px;flex-wrap:wrap">
+          <button class="btn btn-gold" onclick="doPDF()">🖨️ พิมพ์ / บันทึก PDF</button>
+          <button class="btn btn-g" onclick="doJSON()">💾 บันทึก JSON</button>
+          <button class="btn btn-g" onclick="loadJSON()">📂 โหลด JSON</button>
+          <input type="file" id="jf" accept=".json" style="display:none" onchange="readJSON(event)">
+        </div>
+      </div>
+    </div>
+    <div id="page-print" class="pdoc"></div>
+    <div class="page" id="page-capa"><div class="card"><div class="ct">📋 แผน CAPA</div><div id="sev-summary" style="margin-bottom:12px;padding:8px 14px;background:linear-gradient(135deg,rgba(227,242,253,.8),rgba(224,247,250,.5));border-radius:10px;border:1px solid rgba(41,182,246,.25);font-size:12.5px">ยังไม่มีข้อที่ประเมินความรุนแรง</div><div id="capa-list"></div></div></div>
+    <div class="page" id="page-sig"><div class="card"><div class="ct">✍️ ลายเซ็นผู้ตรวจและผู้รับการตรวจ</div><div class="al al-i"><span>ℹ️</span><div>เซ็นชื่อด้วยนิ้ว หรือ Apple Pencil บน iPad</div></div><div id="sig-container"></div></div></div>
+    <div class="page" id="page-qr"><div class="card"><div class="ct">📱 QR Code สรุปผลการตรวจ</div><button class="btn btn-p" onclick="genQR()" style="margin-bottom:14px">🔄 Generate QR Code</button><div id="qr-display" style="text-align:center;padding:14px"></div></div></div>
+    <div class="page" id="page-compare"><div class="card"><div class="ct">🔄 เปรียบเทียบผลการตรวจ 2 รอบ</div><button class="btn btn-p" onclick="loadCompareJSON()" style="margin-bottom:14px">📂 โหลดผลรอบก่อน (JSON)</button><input type="file" id="cmp-file" accept=".json" style="display:none" onchange="readCompareFile(event)"><div id="cmp-content"></div></div></div>
+    <div class="page" id="page-prov"><div class="card"><div class="ct">🏙️ Dashboard จังหวัด</div><button class="btn btn-p" onclick="loadFarmFiles()" style="margin-bottom:14px">📂 โหลด JSON หลายฟาร์ม</button><input type="file" id="farm-files" accept=".json" multiple style="display:none" onchange="readFarmFiles(event)"><div id="prov-content"></div></div></div>
+  </div>
+</div>
+</div>
+<!-- iPAD OVERLAY -->
+<div id="hw-overlay">
+  <div id="hw-box">
+    <h3>✏️ บันทึกด้วย iPAD Pencil / Stylus</h3>
+    <p class="sub">เขียนลงบนพื้นที่ด้านล่าง แล้วกด "แปลงข้อความ" — Claude AI จะอ่านลายมือให้</p>
+    <canvas id="hw-canvas" width="650" height="260"></canvas>
+    <div class="hw-toolbar">
+      <label>ขนาด:</label><input type="range" id="hw-size" min="1" max="20" value="3">
+      <label>สี:</label><input type="color" id="hw-color" value="#023E8A">
+      <button class="btn btn-g" onclick="clearCanvas()">🗑️ ล้าง</button>
+      <button class="btn" style="background:#546E7A;color:#fff" onclick="undoHW()">↩️ ย้อน</button>
+      <button class="btn btn-purple" onclick="convertHW()">🔄 แปลงข้อความ</button>
+    </div>
+    <div id="hw-loading">⏳ AI กำลังอ่านลายมือ...</div>
+    <div id="hw-result"></div>
+    <div style="display:flex;gap:8px;margin-top:9px">
+      <button class="btn btn-p" onclick="applyHW()">✅ ใช้ข้อความนี้</button>
+      <button class="btn btn-g" onclick="closeHW()">❌ ปิด</button>
+    </div>
+  </div>
+</div>
+<script>
+// ============================================================
+// SECTION DATA — 14 หมวด ครบทุกข้อย่อย
+// ============================================================
+const SECS=[
+{id:'s1',n:1,ic:'✅',t:'การประกันคุณภาพ',te:'Quality Assurance',items:[
+  {no:'1.1',req:'มาตรการควบคุมการผลิตทุกขั้นตอน เพื่อให้ได้ผลผลิตที่มีคุณภาพและปลอดภัย — มีแผนควบคุมการผลิตพืชกัญชา ประกอบด้วย ขั้นตอน ผลกระทบ มาตรการควบคุม CP/CCP ค่าควบคุม การเฝ้าระวัง การป้องกัน และการแก้ไขปัญหา',cond:'พินิจเอกสาร/หลักฐานแผนการควบคุมตามเอกสาร โดยต้องมีการกำหนดแนวทางปฏิบัติให้สอดคล้องกับเกณฑ์มาตรฐานหรือตามที่คู่ค้ากำหนด — สัมภาษณ์ผู้ปฏิบัติงานเพื่อประเมินการนำแผนการควบคุมไปใช้ในกระบวนการผลิต',subs:[
+    {no:'1.1.1',req:'[กลุ่มที่ 1] เอกสารแสดงแผนควบคุมการจัดการเพื่อเตรียมแปลงและส่วนขยายพันธุ์'},
+    {no:'1.1.2',req:'มีมาตรการตรวจสอบพันธุ์กัญชาก่อนการปลูก'},
+    {no:'1.1.3',req:'มีมาตรการควบคุมอัตราการรอดของส่วนขยายพันธุ์'},
+    {no:'1.1.4',req:'มีมาตรการควบคุมการกลายพันธุ์'},
+    {no:'1.1.5',req:'มีมาตรการควบคุมการเตรียมดินปลูกและวัสดุปลูก'},
+    {no:'1.1.6',req:'มีมาตรการควบคุมปริมาณสารพิษตกค้างในผลผลิต'},
+    {no:'1.1.7',req:'มีมาตรการควบคุมการระบาดของศัตรูพืช'},
+    {no:'1.1.8',req:'มีมาตรการควบคุมสารสำคัญในผลผลิตตามข้อกำหนดของคู่ค้า'},
+    {no:'1.1.9',req:'มีมาตรการควบคุมเพื่อให้ได้ปริมาณผลผลิตตามแผนที่กำหนด'},
+    {no:'1.1.10',req:'[กลุ่มที่ 2] เอกสารแสดงแผนควบคุมการจัดการเพื่อส่งเสริมการเจริญเติบโต'},
+    {no:'1.1.11',req:'มีมาตรการควบคุม แก้ไข และป้องกันกรณีต้นขาดความสมบูรณ์และผลผลิตด้อยคุณภาพ'},
+    {no:'1.1.12',req:'มีมาตรการควบคุมปริมาณสารพิษตกค้างและจุลินทรีย์ในน้ำ'},
+    {no:'1.1.13',req:'มีมาตรการควบคุมการตัดแต่งกิ่ง'},
+    {no:'1.1.14',req:'มีมาตรการควบคุม แก้ไข และป้องกัน กรณีต้นไม่ออกดอก'},
+    {no:'1.1.15',req:'มีมาตรการตรวจสอบและกำจัดต้นตัวผู้'},
+    {no:'1.1.16',req:'[กลุ่มที่ 3] เอกสารแสดงแผนควบคุมการจัดการเพื่อควบคุมศัตรูพืช'},
+    {no:'1.1.17',req:'มีมาตรการป้องกันการระบาดของศัตรูพืช'},
+    {no:'1.1.18',req:'มีมาตรการเฝ้าระวังการระบาดของศัตรูพืช'},
+    {no:'1.1.19',req:'มีมาตรการควบคุมและจัดการเพื่อลดการระบาดของศัตรูพืช'},
+    {no:'1.1.20',req:'[กลุ่มที่ 4] เอกสารแสดงแผนควบคุมการเก็บเกี่ยวและการปฏิบัติหลังการเก็บเกี่ยว'},
+    {no:'1.1.21',req:'มีมาตรการกำหนดช่วงเวลาเก็บเกี่ยวที่เหมาะสมตามพันธุ์'},
+    {no:'1.1.22',req:'มีมาตรการควบคุมความสะอาดของเครื่องมือและภาชนะ'},
+    {no:'1.1.23',req:'มีมาตรการป้องกันแสง ความร้อน และการสูญเสียคุณภาพของกัญชา'},
+    {no:'1.1.24',req:'มีมาตรการควบคุมความชื้นของผลผลิตในกระบวนการหลังเก็บเกี่ยว'},
+    {no:'1.1.25',req:'มีมาตรการควบคุมการปนเปื้อนข้ามของผลผลิตต่างพันธุ์'},
+    {no:'1.1.26',req:'มีมาตรการควบคุมคุณภาพของวัตถุดิบระหว่างการเก็บเกี่ยว'},
+  ]},
+]},
+{id:'s2',n:2,ic:'🧼',t:'สุขลักษณะส่วนบุคคล',te:'Personal Hygiene',items:[
+  {no:'2.1',req:'ผู้ปฏิบัติงานมีความรู้ลักษณะทางพฤกษศาสตร์ของพืชกัญชา ปัจจัยการผลิต การปลูก การเก็บเกี่ยว การแปรรูป และการเก็บรักษา',cond:'พินิจเอกสาร/หลักฐานการฝึกอบรม Pre-test, Post-test',subs:[
+    {no:'2.1.1',req:'มีความรู้ปัจจัยการผลิตที่มีผลต่อคุณภาพและความปลอดภัย: ดิน น้ำ สภาพแวดล้อม ศัตรูพืชและโรค ปุ๋ย สารอินทรีย์ สารชีวภัณฑ์ สารเคมีทางการเกษตร'},
+    {no:'2.1.2',req:'มีความรู้ด้านการปลูกพืชกัญชา: การเตรียมแปลง การขยายพันธุ์ การดูแลในแต่ละระยะการเจริญเติบโต'},
+    {no:'2.1.3',req:'มีความรู้ด้านการเก็บเกี่ยวพืชกัญชา: ระยะการเก็บเกี่ยวที่เหมาะสม วิธีการเก็บเกี่ยว การขนย้าย'},
+  ]},
+  {no:'2.2',req:'ผู้ปฏิบัติงานหลังการเก็บเกี่ยวและแปรรูปมีความรู้เพียงพอ เพื่อหลีกเลี่ยงวัตถุดิบเสื่อมคุณภาพ',cond:'พินิจเอกสาร/หลักฐานการฝึกอบรมด้านการแปรรูปและการเก็บรักษา',subs:[
+    {no:'2.2.1',req:'มีความรู้ด้านการแปรรูปพืชกัญชาเบื้องต้น: การตัดแต่ง การทำแห้ง การบ่ม'},
+    {no:'2.2.2',req:'มีความรู้ด้านการเก็บรักษาวัตถุดิบสมุนไพรพืชกัญชา: อุณหภูมิ ความชื้น แสง การบรรจุ'},
+  ]},
+  {no:'2.3',req:'ผู้ปฏิบัติงานแต่งกายเหมาะสมกับสถานที่ปฏิบัติงาน ไม่สวมเครื่องประดับ นาฬิกา ขณะปฏิบัติงาน',cond:'พินิจเอกสาร/หลักฐานมาตรฐานวิธีปฏิบัติ — สังเกต/สัมภาษณ์',subs:[
+    {no:'2.3.1',req:'กรณีปลูกกลางแจ้ง (Outdoor): เสื้อแขนยาว กางเกงขายาว หมวก รองเท้าปลอดภัย ถุงมือและหน้ากากเมื่อทำงานเกี่ยวกับดิน ปุ๋ย สารอินทรีย์'},
+    {no:'2.3.2',req:'กรณีปลูกในอาคาร (Indoor/PFAL): สวม clean suit ถุงมือ หน้ากาก หมวกคลุมผม รองเท้าสะอาดเฉพาะพื้นที่'},
+    {no:'2.3.3',req:'กรณีปลูกในโรงเรือน (Greenhouse): เสื้อแขนยาว กางเกงขายาว หมวก ถุงมือ รองเท้าปลอดภัย'},
+    {no:'2.3.4',req:'กรณีแปรรูปเบื้องต้น: ชุดปฏิบัติงานสะอาดมิดชิด หมวกคลุมผม หน้ากากอนามัย ถุงมือ รองเท้าสะอาดเฉพาะพื้นที่'},
+  ]},
+  {no:'2.4',req:'ผู้ปฏิบัติงานล้างมือทุกครั้งเมื่อเริ่มปฏิบัติงาน ภายหลังเข้าห้องน้ำ หรือสัมผัสสิ่งอันตราย',cond:'พินิจป้ายแสดงวิธีปฏิบัติก่อนเข้าสถานที่ — สัมภาษณ์ผู้ปฏิบัติงาน',subs:[
+    {no:'2.4.1',req:'มีป้ายแสดงขั้นตอนการล้างมือที่ถูกวิธีติดบริเวณอ่างล้างมือ'},
+    {no:'2.4.2',req:'สังเกตจากพฤติกรรมหรือการสุ่มสัมภาษณ์ผู้ปฏิบัติงาน'},
+  ]},
+  {no:'2.5',req:'ไม่อนุญาตให้ผู้ปฏิบัติงานสูบบุหรี่ รับประทานอาหารในพื้นที่ปฏิบัติงาน',cond:'สังเกตสภาพพื้นที่จริง ไม่พบก้นบุหรี่ เศษอาหาร',subs:[
+    {no:'2.5.1',req:'มีป้ายห้ามสูบบุหรี่และห้ามรับประทานอาหารในพื้นที่ปฏิบัติงาน'},
+    {no:'2.5.2',req:'จัดให้มีพื้นที่รับประทานอาหารแยกห่างจากสถานที่ปฏิบัติงาน'},
+    {no:'2.5.3',req:'หากอนุญาตให้สูบบุหรี่ ให้จัดพื้นที่สูบบุหรี่เฉพาะห่างจากสถานที่ปฏิบัติงาน'},
+  ]},
+  {no:'2.6',req:'ผู้ปฏิบัติงานได้รับการดูแลด้านสวัสดิภาพ มีสิ่งอำนวยความสะดวก และได้รับการตรวจสุขภาพประจำปี',cond:'พินิจเอกสารการตรวจสุขภาพประจำปี — ไม่พบโรค: เรื้อน วัณโรคระยะอันตราย เท้าช้าง ยาเสพติด พิษสุรา',subs:[]},
+  {no:'2.7',req:'ผู้ปฏิบัติงานให้เป็นไปตามกฎหมายแรงงาน ไม่พบการจ้างเด็กอายุต่ำกว่า 18 ปี',cond:'พินิจเอกสารการว่าจ้าง — กรณีแรงงานต่างด้าวต้องขึ้นทะเบียนถูกต้อง',subs:[]},
+  {no:'2.8',req:'ผู้ปฏิบัติงานมีเครื่องป้องกันเพียงพอ เพื่อป้องกันการระคายเคืองหรืออาการแพ้ในกระบวนการผลิต',cond:'พินิจเอกสารมาตรฐานวิธีปฏิบัติระบุชุดป้องกัน',subs:[
+    {no:'2.8.1',req:'สวมใส่ถุงมือและชุดป้องกันที่เหมาะสมทุกครั้งระหว่างทำการผสมปุ๋ย'},
+    {no:'2.8.2',req:'สวมใส่ถุงมือและชุดป้องกันที่เหมาะสมต่อการฉีดพ่นปุ๋ยหรือสารชีวภัณฑ์'},
+    {no:'2.8.3',req:'สวมใส่ถุงมือและชุดป้องกันที่เหมาะสมเพื่อป้องกันการสัมผัสสิ่งที่ก่อให้เกิดการระคายเคือง'},
+  ]},
+  {no:'2.9',req:'ผู้ปฏิบัติงานเกี่ยวกับสารอินทรีย์ สารชีวภัณฑ์ ปุ๋ย ได้รับการฝึกอบรม และสวมใส่ชุดป้องกันอย่างเหมาะสม',cond:'พินิจเอกสารบันทึกการฝึกอบรม ผลการประเมินก่อน/หลังอบรม',subs:[]},
+  {no:'2.10',req:'ไม่อนุญาตให้ผู้ปฏิบัติงานที่ป่วยปฏิบัติงาน (รอยโรคผิวหนัง แผลเปิด โรคติดต่อระบบทางเดินหายใจ โรคบิด โรคท้องเสีย ให้พักงานทันที)',cond:'พินิจเอกสารมาตรฐานวิธีปฏิบัติ — บันทึกการลาหรือเจ็บป่วย',subs:[]},
+  {no:'2.11',req:'ผู้ปฏิบัติงานที่มีแผลหรือรอยโรคผิวหนังควรให้พักงาน หรือสวมใส่เครื่องป้องกันให้มิดชิดเพื่อป้องกันการปนเปื้อน',cond:'พินิจเอกสารมาตรฐานวิธีปฏิบัติ — สังเกต/สัมภาษณ์',subs:[]},
+  {no:'2.12',req:'บุคคลภายนอกที่เข้าในพื้นที่ผลิตพืชกัญชาต้องปฏิบัติตามหลักเกณฑ์และกฎระเบียบด้านสุขอนามัยของผู้ผลิต',cond:'พินิจเอกสารมาตรฐานวิธีปฏิบัติ บันทึกการเข้าออกของบุคคลภายนอก',subs:[]},
+]},
+{id:'s3',n:3,ic:'📋',t:'บันทึกเอกสาร',te:'Documentation',items:[
+  {no:'3.1',req:'มีคู่มือการปฏิบัติงาน (SOP) ทุกขั้นตอนที่เกี่ยวข้องกับการผลิต การเก็บเกี่ยว และแปรรูปเบื้องต้น',cond:'พินิจเอกสาร/หลักฐานแสดงการปฏิบัติงานและมาตรฐานวิธีปฏิบัติครบทุกหัวข้อ',subs:[
+    {no:'3.1.1',req:'SOP: การเพาะเมล็ด / การขยายพันธุ์ / การเพาะเลี้ยงต้นแม่พันธุ์'},
+    {no:'3.1.2',req:'SOP: การเพาะปลูก / การจัดการธาตุอาหารพืช'},
+    {no:'3.1.3',req:'SOP: การจัดการน้ำและน้ำเสีย / การจัดการศัตรูพืช'},
+    {no:'3.1.4',req:'SOP: การเก็บเกี่ยว / การจัดการหลังการเก็บเกี่ยว'},
+    {no:'3.1.5',req:'SOP: การทำความสะอาดพื้นที่ / เครื่องมือและอุปกรณ์'},
+    {no:'3.1.6',req:'SOP: การทำแห้ง / การตัดแต่งช่อดอก / การบ่ม (ถ้ามี)'},
+    {no:'3.1.7',req:'SOP: การบรรจุผลิตภัณฑ์ / การจัดเก็บ / การจำหน่าย / การขนส่ง (ถ้ามี)'},
+    {no:'3.1.8',req:'SOP: การกำจัดของเสีย (ช่อดอกไม่ตรงมาตรฐาน เศษต้น ขยะ วัสดุเหลือใช้)'},
+    {no:'3.1.9',req:'SOP: การประกันคุณภาพ / สุขลักษณะส่วนบุคคล / การบันทึกเอกสาร / การใช้งานเครื่องมือ / การฝึกอบรมบุคลากร'},
+  ]},
+  {no:'3.2',req:'มีการบันทึกประวัติการใช้ที่ดินย้อนหลัง การแพร่ระบาดของศัตรูพืช อย่างน้อย 2 ปี',cond:'พินิจเอกสาร/หลักฐานบันทึกประวัติการใช้ที่ดินย้อนหลัง',subs:[
+    {no:'3.2.1',req:'มีบันทึกประวัติการใช้ที่ดินย้อนหลัง โดยระบุชนิดพืชที่เคยปลูก ประวัติการใช้สารเคมีและการปนเปื้อนโลหะหนัก'},
+    {no:'3.2.2',req:'มีแผนที่แสดงที่ตั้งสถานที่ปลูก แปรรูปเบื้องต้น และสิ่งแวดล้อมโดยรอบที่ต้องควบคุมความเสี่ยง'},
+  ]},
+  {no:'3.3',req:'มีการบันทึกกิจกรรมทุกขั้นตอนการผลิต โดยระบุกิจกรรม วันที่ และชื่อผู้ปฏิบัติงาน',cond:'พินิจเอกสาร/หลักฐานแสดงบันทึก — สัมภาษณ์แนวทางปฏิบัติ',subs:[]},
+  {no:'3.4',req:'มีการบันทึกรายการปัจจัยการผลิต แหล่งที่มา และรายละเอียดเฉพาะ',cond:'พินิจเอกสาร/หลักฐานบันทึกรายการปัจจัยการผลิตครบถ้วน',subs:[
+    {no:'3.4.1',req:'ระบุชื่อปัจจัยการผลิต (ชนิด/สูตรชัดเจน)'},
+    {no:'3.4.2',req:'ระบุแหล่งที่มา/ผู้จำหน่าย / รุ่นการผลิต'},
+    {no:'3.4.3',req:'ระบุวันที่รับเข้า / วันที่นำไปใช้ / ปริมาณที่ใช้'},
+  ]},
+  {no:'3.5',req:'มีการบันทึกสภาพแวดล้อมที่ส่งผลกระทบต่อคุณภาพและความปลอดภัย',cond:'พินิจเอกสาร/หลักฐานการบันทึกสภาพแวดล้อม',subs:[
+    {no:'3.5.1',req:'บันทึกสภาพแวดล้อมพื้นที่เพาะปลูก: อุณหภูมิ ความชื้น แสงและช่วงเวลาการให้แสง คุณภาพน้ำ ศัตรูพืช ความเสี่ยงเชื้อราและโรคพืช'},
+    {no:'3.5.2',req:'บันทึกสภาพแวดล้อมพื้นที่หลังการเก็บเกี่ยว: อุณหภูมิ ความชื้น ความสะอาดและความพร้อมใช้'},
+    {no:'3.5.3',req:'บันทึกสภาพแวดล้อมพื้นที่ตากและอบแห้ง และพื้นที่การแปรรูปเบื้องต้น'},
+    {no:'3.5.4',req:'บันทึกสภาพแวดล้อมพื้นที่ห้องบ่ม (ถ้ามี) และพื้นที่จัดเก็บวัตถุดิบ รวมถึงระบบ FEFO/FIFO'},
+  ]},
+  {no:'3.6',req:'มีการบันทึกข้อมูลการใช้สารอินทรีย์ สารชีวภัณฑ์ ในแปลงปลูกทุกครั้ง',cond:'พินิจเอกสาร/หลักฐานแสดงบันทึกการเบิกจ่ายสารอินทรีย์และสารชีวภัณฑ์',subs:[]},
+  {no:'3.7',req:'วัตถุดิบที่อยู่ระหว่างการเก็บรักษา ขนย้าย และบรรจุ ต้องระบุรุ่นผลผลิต รหัสแหล่งผลิต วันที่เก็บเกี่ยว เพื่อตรวจสอบย้อนกลับ',cond:'พินิจเอกสาร/หลักฐานแสดงป้ายระบุรุ่นการผลิต',subs:[]},
+  {no:'3.8',req:'จัดเก็บเอกสารระหว่างผู้ผลิต ผู้แปรรูป ผู้รับซื้อ และผู้จำหน่ายทุกฉบับ',cond:'พินิจเอกสาร/หลักฐาน เช่น สัญญา ใบสั่งซื้อ ใบส่งมอบ เอกสารการขนส่ง',subs:[]},
+  {no:'3.9',req:'เก็บบันทึกผลการตรวจประเมินทั้งภายในและภายนอก รวมถึงข้อร้องเรียนจากคู่ค้าทุกฉบับ',cond:'พินิจเอกสาร/หลักฐานบันทึกผลการตรวจ ข้อร้องเรียน',subs:[]},
+  {no:'3.10',req:'ทบทวนการปฏิบัติงาน บันทึกข้อมูล และข้อร้องเรียน อย่างน้อยปีละ 1 ครั้ง',cond:'พินิจเอกสาร/หลักฐานบันทึกการทบทวนและแผนการแก้ไข',subs:[]},
+  {no:'3.11',req:'เก็บบันทึกข้อมูลและที่แก้ไขไว้เป็นหลักฐานอย่างน้อย 2 ปี',cond:'พินิจเอกสาร/หลักฐานการจัดเก็บบันทึกอย่างน้อย 2 ปี',subs:[]},
+]},
+{id:'s4',n:4,ic:'🔧',t:'อุปกรณ์',te:'Equipment',items:[
+  {no:'4.1',req:'อุปกรณ์ ภาชนะบรรจุ และการจัดเก็บในพื้นที่ที่กำหนดต้องสะอาดไม่ก่อให้เกิดการปนเปื้อน ภาชนะบรรจุที่สัมผัสวัตถุดิบต้องผลิตจากวัสดุเกรดอาหาร',cond:'พินิจเอกสาร/หลักฐานบันทึกการเบิกจ่ายอุปกรณ์ — สังเกตป้ายระบุพื้นที่จัดเก็บ',subs:[
+    {no:'4.1.1',req:'มีบันทึกแบบฟอร์มเป็นปัจจุบัน ระบุวันที่เบิกจ่าย รายการ ความสะอาด ความพร้อมใช้งาน ขั้นตอนทำความสะอาด และผู้รับผิดชอบ'},
+    {no:'4.1.2',req:'มีป้ายระบุพื้นที่จัดเก็บสารเคมี อุปกรณ์ และภาชนะบรรจุอย่างชัดเจน'},
+    {no:'4.1.3',req:'กรณีสารเคมีหรือน้ำมันเชื้อเพลิงที่เป็นของเหลว: จัดเก็บในชั้นล่างสุด แยกวางห่างจากสารเคมีที่เป็นผงหรือของแข็ง'},
+    {no:'4.1.4',req:'อุปกรณ์และภาชนะบรรจุสะอาด ไม่มีคราบสกปรก ฝุ่น สิ่งตกค้าง ไม่พบสนิม แตกหัก ชำรุด'},
+    {no:'4.1.5',req:'มีการแยกใช้อุปกรณ์และภาชนะบรรจุตามประเภท ไม่ใช้ปะปนระหว่างพื้นที่หรือการใช้งาน'},
+  ]},
+  {no:'4.2',req:'เครื่องมือและอุปกรณ์ทุกชนิดต้องมีความต้านทานต่อการกัดกร่อน ทำความสะอาดได้ง่าย ไม่ทำจากวัสดุที่ก่อให้เกิดความเป็นพิษ',cond:'พินิจเอกสาร/หลักฐานเกี่ยวกับการเลือกใช้วัสดุ — สังเกตเครื่องมือไม่เป็นสนิม ไม่ชำรุด',subs:[]},
+  {no:'4.3',req:'เครื่องมือและอุปกรณ์ทุกชนิดควรออกแบบเพื่อป้องกันอันตรายต่อผู้ปฏิบัติงาน ป้องกันการปนเปื้อน ง่ายต่อการทำความสะอาด',cond:'สังเกตการออกแบบอุปกรณ์เพื่อป้องกันการปนเปื้อน',subs:[]},
+  {no:'4.4',req:'ตรวจสอบเครื่องมือและอุปกรณ์ที่ต้องอาศัยความเที่ยงตรง หากมีความคลาดเคลื่อนต้องปรับปรุงซ่อมแซม อย่างน้อยปีละ 1 ครั้ง',cond:'พินิจเอกสาร/หลักฐานแสดงแผนการสอบเทียบและซ่อมบำรุง',subs:[]},
+  {no:'4.5',req:'ภาชนะบรรจุของเสียต้องมีการป้องกันการรั่วซึม ทำความสะอาดได้ง่าย ปิดฝาได้สนิท เส้นทางกำจัดของเสียต้องไม่ปนกับเส้นทางขนย้ายผลผลิต',cond:'พินิจเอกสาร/หลักฐานมาตรฐานวิธีการปฏิบัติการจัดการของเสีย',subs:[]},
+  {no:'4.6',req:'ถังขยะต้องมีป้ายกำกับบ่งชี้ ไม่นำมาใช้ในกระบวนการผลิต มีการกำจัดของเสียทุกวัน',cond:'สังเกต/สัมภาษณ์ผู้ปฏิบัติงาน',subs:[
+    {no:'4.6.1',req:'มีการแบ่งประเภทถังขยะที่ใช้กำจัดของเสียอย่างชัดเจน ติดป้ายกำกับแยกประเภท (เศษพืช / ขยะทั่วไป / ขยะอันตราย)'},
+  ]},
+]},
+{id:'s5',n:5,ic:'🌱',t:'พื้นที่ปลูก',te:'Cultivation Site',items:[
+  {no:'5.1',req:'พื้นที่ปลูกและวัสดุปลูกพืชกัญชา ต้องไม่มีการปนเปื้อนโลหะหนัก สารเคมีตกค้าง จุลินทรีย์ก่อโรค',cond:'พินิจเอกสาร/หลักฐานผลการตรวจวิเคราะห์ดินและวัสดุปลูก',subs:[
+    {no:'5.1.1',req:'โลหะหนักในดิน/วัสดุปลูก: As ≤ 5 mg/kg | Cd ≤ 0.3 mg/kg | Pb ≤ 10 mg/kg | Hg ≤ 0.5 mg/kg'},
+    {no:'5.1.2',req:'ผลตรวจสารกำจัดศัตรูพืชตกค้างในดิน: ผ่านค่ามาตรฐานตามบทที่ 3 ทุกรายการ'},
+    {no:'5.1.3',req:'ผลตรวจจุลินทรีย์ในดิน/วัสดุปลูก: ผ่านเกณฑ์มาตรฐาน GACP'},
+    {no:'5.1.4',req:'ผลการตรวจวิเคราะห์ออกโดยห้องปฏิบัติการที่ได้รับการรับรอง ISO/IEC 17025'},
+  ]},
+  {no:'5.2',req:'เก็บตัวอย่างดินและวัสดุปลูกพืชกัญชา เพื่อวิเคราะห์สารพิษตกค้าง โลหะหนัก ก่อนปลูกพืชอย่างน้อย 1 ครั้ง',cond:'พินิจเอกสาร/หลักฐานแผนการวิเคราะห์ความเสี่ยงและแผนการสุ่มดิน/วัสดุปลูก',subs:[
+    {no:'5.2.1',req:'มีแผนการวิเคราะห์ความเสี่ยง เช่น ภัยทางธรรมชาติ สภาพแวดล้อมโดยรอบ (อาจประเมินตาม Decision Tree)'},
+    {no:'5.2.2',req:'มีแผนการสุ่มดินหรือวัสดุปลูกที่เหมาะสมกับพื้นที่ปลูก ระบุจุดสุ่ม จำนวนตัวอย่าง วิธีการสุ่ม'},
+  ]},
+]},
+{id:'s6',n:6,ic:'💧',t:'น้ำ',te:'Water',items:[
+  {no:'6.1',req:'เก็บตัวอย่างน้ำก่อนปลูกพืชกัญชา เพื่อวิเคราะห์สารพิษตกค้าง โลหะหนัก ก่อนปลูกอย่างน้อย 1 ครั้ง น้ำที่ใช้ล้างผลิตผลต้องมีคุณภาพเทียบเท่าน้ำดื่ม',cond:'พินิจเอกสาร/หลักฐานผลการตรวจวิเคราะห์น้ำ',subs:[
+    {no:'6.1.1',req:'โลหะหนักในน้ำ: As ≤ 5 mg/kg | Cd ≤ 0.3 mg/kg | Pb ≤ 10 mg/kg | Hg ≤ 0.5 mg/kg'},
+    {no:'6.1.2',req:'สารกำจัดศัตรูพืชตกค้างในน้ำ: ผ่านค่ามาตรฐานตามบทที่ 3 ทุกรายการ'},
+    {no:'6.1.3',req:'มีแผนการวิเคราะห์ความเสี่ยงสภาพแวดล้อมของแหล่งน้ำ'},
+    {no:'6.1.4',req:'น้ำที่ใช้ล้างผลิตผล (ยกเว้นช่อดอก) ต้องมีคุณภาพเทียบเท่าน้ำดื่ม มีผลตรวจรับรอง'},
+  ]},
+  {no:'6.2',req:'มีวิธีการให้น้ำที่เหมาะสมกับสภาพแวดล้อมและความต้องการของพืชกัญชา',cond:'พินิจเอกสาร/หลักฐานการให้น้ำแต่ละพื้นที่',subs:[]},
+  {no:'6.3',req:'ไม่อนุญาตให้ใช้น้ำเสียที่ผ่านการบำบัดมาใช้ในกระบวนการผลิตพืชกัญชา',cond:'พินิจเอกสาร/หลักฐานแสดงแผนการจัดการน้ำเสีย',subs:[]},
+]},
+{id:'s7',n:7,ic:'🌿',t:'ปุ๋ย',te:'Fertilizer',items:[
+  {no:'7.1',req:'ใช้ปุ๋ยที่ขึ้นทะเบียนถูกต้องตามกฎหมาย (ขึ้นทะเบียนกับกรมวิชาการเกษตร)',cond:'พินิจเอกสาร/หลักฐานแสดงปุ๋ยขึ้นทะเบียนถูกต้อง',subs:[
+    {no:'7.1.1',req:'พบเลขทะเบียนของปุ๋ย สามารถตรวจสอบได้จาก DOA Application กรมวิชาการเกษตร'},
+    {no:'7.1.2',req:'กรณีนำเข้าหรือผลิต: มีใบอนุญาตนำเข้าหรือใบขึ้นทะเบียนปุ๋ย'},
+    {no:'7.1.3',req:'กรณีผลิตปุ๋ยหมักเอง: บันทึกกระบวนการหมัก วันที่เริ่มหมัก วันที่สิ้นสุด วัตถุดิบ สัดส่วนผสม แหล่งที่มา ผู้รับผิดชอบ'},
+    {no:'7.1.4',req:'กรณีปุ๋ยหมักจัดซื้อจากภายนอก: ส่วนผสมตรวจสอบแหล่งที่มาได้ พร้อมผลตรวจวิเคราะห์สารพิษตกค้าง โลหะหนัก จุลินทรีย์'},
+  ]},
+  {no:'7.2',req:'การใช้ปุ๋ยให้เหมาะสมตามความต้องการของพืชกัญชาและไม่ก่อให้เกิดผลกระทบต่อสิ่งแวดล้อม',cond:'พินิจเอกสาร/หลักฐานบันทึกแบบฟอร์มระบุวันที่ พื้นที่แปลง ชนิดปุ๋ย ปริมาณ วิธีการใช้',subs:[]},
+  {no:'7.3',req:'มีการจัดการที่ดีในการใช้ปุ๋ย เพื่อป้องกันการปนเปื้อนทางจุลินทรีย์ เคมี และกายภาพสู่ผลิตผล',cond:'พินิจเอกสาร/หลักฐานบันทึกการใช้ปุ๋ย',subs:[]},
+  {no:'7.4',req:'ไม่ใช้สิ่งขับถ่ายของคนมาเป็นปุ๋ย',cond:'สังเกตและสัมภาษณ์การปฏิบัติ',subs:[]},
+  {no:'7.5',req:'หากผลิตปุ๋ยอินทรีย์ใช้เองในฟาร์ม ปุ๋ยอินทรีย์ต้องผ่านกระบวนการหมักหรือย่อยสลายโดยสมบูรณ์ และบันทึกแหล่งที่มาของวัตถุดิบ วิธีการผลิต',cond:'พินิจเอกสาร/หลักฐานบันทึกการผลิตปุ๋ยอินทรีย์',subs:[
+    {no:'7.5.1',req:'ปุ๋ยหมักสมบูรณ์: สีน้ำตาลเข้ม/ดำ ลักษณะอ่อนนุ่มยุ่ย ไม่มีกลิ่นเหม็น อุณหภูมิลดลงเท่ากับอุณหภูมิห้อง'},
+  ]},
+  {no:'7.6',req:'พื้นที่เก็บรักษา ผสม และขนย้ายปุ๋ย หรือพื้นที่สำหรับหมักปุ๋ยอินทรีย์ แยกเป็นสัดส่วน ไม่ก่อให้เกิดการปนเปื้อนสู่พื้นที่ปลูกและแหล่งน้ำ',cond:'พินิจเอกสาร/หลักฐานผังพื้นที่ — สังเกตพื้นที่จัดเก็บ',subs:[]},
+]},
+{id:'s8',n:8,ic:'🌾',t:'เมล็ดพันธุ์และส่วนขยายพันธุ์',te:'Seeds and Propagation',items:[
+  {no:'8.1',req:'เมล็ดพันธุ์และส่วนขยายพันธุ์กัญชา มีคุณภาพ ปราศจากศัตรูพืช ตรงตามสายพันธุ์ที่ระบุ มีใบรับรองแหล่งที่มา',cond:'พินิจเอกสาร/หลักฐานแสดงใบรับรองแหล่งที่มา',subs:[
+    {no:'8.1.1',req:'มีใบรับรองที่สามารถระบุแหล่งที่มาของเมล็ดพันธุ์และส่วนขยายพันธุ์ตามกฎหมาย'},
+    {no:'8.1.2',req:'กรณีจัดซื้อเมล็ดพันธุ์: มีหลักฐานใบอนุญาตขายเมล็ดพันธุ์ควบคุม (พ.พ.4)'},
+    {no:'8.1.3',req:'กรณีนำเข้าเมล็ดพันธุ์: มีหลักฐานใบอนุญาตนำเข้าเมล็ดพันธุ์ควบคุมเพื่อการค้า (พ.พ.5) หรือ (พ.ก.2-1)'},
+  ]},
+  {no:'8.2',req:'สามารถตรวจสอบแหล่งที่มาของเมล็ดพันธุ์และส่วนขยายพันธุ์กัญชาได้ มีบันทึกแบบฟอร์มรับจ่าย',cond:'พินิจเอกสาร/หลักฐานแสดงใบรับรอง บันทึกแบบฟอร์มรับจ่าย',subs:[]},
+  {no:'8.3',req:'มีมาตรการควบคุมการปลอมปนของพืชกัญชาต่างชนิดและต่างสายพันธุ์ในกระบวนการผลิต',cond:'พินิจเอกสาร/หลักฐานมาตรฐานวิธีปฏิบัติระบุพันธุ์',subs:[
+    {no:'8.3.1',req:'มีการระบุพันธุ์บริเวณต้นหรือพื้นที่การเพาะปลูก ติดป้ายชื่อพันธุ์ชัดเจน'},
+    {no:'8.3.2',req:'มีการระบุพันธุ์ในผลผลิตที่ผ่านการเก็บเกี่ยว และในผลผลิตที่ผ่านการแปรรูป'},
+    {no:'8.3.3',req:'กรณีที่มีการผลิตพืชกัญชามากกว่า 1 พันธุ์: มีมาตรการแยกในขั้นตอนการเพาะปลูก เก็บเกี่ยว และแปรรูปแต่ละพันธุ์'},
+  ]},
+]},
+{id:'s9',n:9,ic:'🪴',t:'การเพาะปลูก',te:'Cultivation',items:[
+  {no:'9.1',req:'มีมาตรการควบคุมการผลิตในแต่ละขั้นตอนที่ไม่ส่งผลกระทบต่อความปลอดภัย สิ่งแวดล้อม สุขภาพ',cond:'พินิจเอกสาร/หลักฐานแสดงมาตรฐานวิธีปฏิบัติและแผนควบคุมการผลิต',subs:[]},
+  {no:'9.2',req:'การผลิตพืชกัญชาใช้หลักเกษตรเชิงอนุรักษ์ โดยเป็นมิตรต่อสิ่งแวดล้อม ต่อชุมชน',cond:'พินิจเอกสาร/หลักฐานแสดงแผนการใช้ทรัพยากร แผนกำจัดของเสียและบำบัดน้ำเสีย',subs:[
+    {no:'9.2.1',req:'มีแผนการใช้ทรัพยากร ดิน น้ำ ปุ๋ย พลังงานให้เกิดประโยชน์สูงสุด'},
+    {no:'9.2.2',req:'มีแผนการกำจัดของเสียและการบำบัดน้ำเสียที่ไม่ก่อมลพิษ'},
+    {no:'9.2.3',req:'มีบันทึกรับจ่ายและการจัดเก็บสารเคมีกำจัดศัตรูพืช (ห้ามใช้ในกัญชา)'},
+    {no:'9.2.4',req:'มีการใช้ศัตรูธรรมชาติและการจัดการระบบนิเวศในแปลงปลูกเพื่อควบคุมศัตรูพืช'},
+    {no:'9.2.5',req:'มีแผนและมาตรการป้องกันหรือลดมลภาวะทางกลิ่นที่มีผลกระทบต่อชุมชน (ถ้ามี)'},
+  ]},
+  {no:'9.3',req:'ใช้ระบบการจัดการศัตรูพืชแบบผสมผสาน (IPM) และไม่ใช้สารเคมีในการป้องกันกำจัดศัตรูพืช',cond:'พินิจเอกสาร/หลักฐานวิธีการจัดการศัตรูพืช — สังเกตแมลง รอยโรค วัชพืชภายในแปลงปลูก',subs:[
+    {no:'9.3.1',req:'มีการใช้วิธีกายภาพ เช่น ความร้อน แสง กับดักแมลง'},
+    {no:'9.3.2',req:'ห้ามใช้สารเคมีกำจัดศัตรูพืช (วัตถุอันตรายประเภท 1-4)'},
+    {no:'9.3.3',req:'มีการใช้วิธีกล เช่น การใช้มือจับกลุ่มไข่หรือแมลงไปทำลาย'},
+    {no:'9.3.4',req:'มีการใช้ชีววิธี เช่น แมลงกำจัดแมลง สารชีวภัณฑ์ที่ได้รับอนุญาต'},
+  ]},
+  {no:'9.4',req:'การใช้สารอินทรีย์หรือสารส่งเสริมการเจริญเติบโตของพืชที่มีประโยชน์ควรใช้ในระดับที่เหมาะสม',cond:'พินิจเอกสาร/หลักฐานบันทึกอัตราและวิธีการใช้สารอินทรีย์',subs:[]},
+  {no:'9.5',req:'อนุญาตให้ใช้เฉพาะสารอินทรีย์หรือสารชีวภัณฑ์ในการป้องกันและกำจัดศัตรูพืช ตามกฎหมาย (ห้ามใช้สบู่กำมะถัน และสารที่มี Salmonella spp.)',cond:'พินิจเอกสาร/หลักฐานอัตราและวิธีการใช้สารชีวภัณฑ์',subs:[
+    {no:'9.5.1',req:'สารชีวภัณฑ์ที่ได้รับอนุญาต: Bacillus spp. | NPV | Beauveria bassiana | Metarhizium anisopliae | ไส้เดือนฝอยกำจัดแมลง | Trichoderma spp.'},
+    {no:'9.5.2',req:'ห้ามใช้: สารชีวภัณฑ์ที่มีส่วนผสมของ Salmonella spp. | สบู่กำมะถัน'},
+  ]},
+  {no:'9.6',req:'ห้ามใช้หรือมีไว้ในครอบครองซึ่งวัตถุอันตรายทางการเกษตรที่ห้ามผลิต นำเข้า ส่งออก หรือมีไว้ครอบครอง ตาม พ.ร.บ.วัตถุอันตราย พ.ศ.2535',cond:'พินิจเอกสาร/หลักฐานบันทึกรับจ่ายวัตถุอันตราย',subs:[]},
+  {no:'9.7',req:'เลือกใช้เครื่องพ่นสารเคมีและอุปกรณ์ที่ถูกต้อง ตรวจสอบให้อยู่ในสภาพพร้อมใช้งาน มีบันทึกการตรวจและซ่อมบำรุง',cond:'พินิจเอกสาร/หลักฐานแสดงกระบวนการดูแลรักษาเครื่องพ่น',subs:[]},
+  {no:'9.8',req:'ทำความสะอาดเครื่องพ่นสารเคมีและอุปกรณ์ภายหลังการใช้ทุกครั้ง กำจัดน้ำล้างด้วยวิธีที่ไม่ทำให้เกิดการปนเปื้อนสู่สิ่งแวดล้อม',cond:'พินิจเอกสาร/หลักฐานบันทึกการทำความสะอาดเครื่องพ่น',subs:[]},
+  {no:'9.9',req:'การจัดเก็บสารอินทรีย์หรือสารชีวภัณฑ์ชนิดต่างๆ เป็นสัดส่วนในสถานที่เก็บเฉพาะ ไม่มีการจัดเก็บสารที่หมดอายุ',cond:'สังเกตการจัดเก็บสารชีวภัณฑ์ให้คงประสิทธิภาพสูงสุด',subs:[
+    {no:'9.9.1',req:'จัดเก็บสารชีวภัณฑ์ให้คงประสิทธิภาพสูงสุดตามคู่มือ หลีกเลี่ยงความร้อนหรือความชื้น'},
+    {no:'9.9.2',req:'ไม่พบการจัดเก็บสารอินทรีย์หรือสารชีวภัณฑ์ที่หมดอายุ'},
+    {no:'9.9.3',req:'อุปกรณ์หรือเครื่องมือในการเตรียมสารชีวภัณฑ์ควรแยกเก็บเป็นสัดส่วน ระบุพื้นที่จัดเก็บอย่างชัดเจน'},
+  ]},
+]},
+{id:'s10',n:10,ic:'✂️',t:'การเก็บเกี่ยว',te:'Harvesting',items:[
+  {no:'10.1',req:'ส่วนต่างๆ ของพืชกัญชาควรมีระยะเก็บเกี่ยวที่เหมาะสม มีแผนการเก็บเกี่ยว บันทึกวันที่ เวลา แปลง สายพันธุ์ รุ่นการผลิต ปริมาณ',cond:'พินิจเอกสาร/หลักฐานแผนการเก็บเกี่ยว',subs:[
+    {no:'10.1.1',req:'เก็บเกี่ยวช่วง trichomes สีขุ่น (milky) เป็นส่วนใหญ่ (THC สูงสุด) หรือช่วง trichomes สีอำพัน (amber) (CBD สูง THC เริ่มลด) ตามวัตถุประสงค์'},
+    {no:'10.1.2',req:'ช่วงเวลาเก็บเกี่ยวที่แนะนำ: ช่วงเช้าก่อนแสงยามเช้า เพื่อให้น้ำมันหอมระเหยสูงสุด'},
+  ]},
+  {no:'10.2',req:'การเก็บเกี่ยวต้องเก็บเกี่ยวในช่วงที่มีสภาพอากาศที่เหมาะสม หลีกเลี่ยงการเก็บช่วงที่มีน้ำค้าง ฝนตก หรือความชื้นสูง',cond:'พินิจเอกสาร/หลักฐานสภาวะการเก็บเกี่ยว',subs:[]},
+  {no:'10.3',req:'ส่วนของวัตถุดิบที่ไม่มีคุณภาพ ให้ตรวจสอบและกำจัดทิ้ง ระหว่างและหลังการเก็บเกี่ยว',cond:'พินิจเอกสาร/หลักฐานการคัดแยกและกำจัดวัตถุดิบที่ไม่ได้คุณภาพ',subs:[]},
+  {no:'10.4',req:'ในขั้นตอนการเก็บเกี่ยวต้องไม่มีการปลอมปนจากสิ่งเจือปน วัชพืช และพืชที่เป็นพิษ',cond:'พินิจเอกสาร/หลักฐานการคัดแยกสิ่งเจือปน',subs:[]},
+  {no:'10.5',req:'มีการป้องกันการปนเปื้อนจากวัตถุหรือสิ่งที่เป็นอันตราย ไม่วางผลิตผลที่เก็บเกี่ยวแล้วสัมผัสกับพื้นดินโดยตรง',cond:'พินิจเอกสาร/หลักฐานมาตรการป้องกัน',subs:[]},
+  {no:'10.6',req:'วัตถุดิบกัญชาไม่ซ้อนทับกัน และหลีกเลี่ยงการทำให้เกิดความเสียหายหลังการเก็บเกี่ยว',cond:'สังเกตจากสถานที่ปฏิบัติงาน',subs:[]},
+  {no:'10.7',req:'ต้องรักษาความสะอาดของอุปกรณ์ เครื่องมือ มีบันทึกการทำความสะอาด',cond:'พินิจเอกสาร/หลักฐานบันทึกการทำความสะอาด',subs:[]},
+  {no:'10.8',req:'ผู้ปฏิบัติงานต้องรักษาความสะอาดและมีความพร้อมในการปฏิบัติงาน แต่งกายเหมาะสม',cond:'พินิจเอกสาร/หลักฐานแนวทางปฏิบัติด้านสุขลักษณะ',subs:[]},
+  {no:'10.9',req:'ภาชนะบรรจุวัตถุดิบกัญชาต้องสะอาด ปราศจากสิ่งเจือปน ผลิตจากวัสดุเกรดอาหาร',cond:'พินิจเอกสาร/หลักฐานบันทึกความพร้อมและความสะอาดภาชนะบรรจุ',subs:[]},
+  {no:'10.10',req:'ผลผลิตกัญชาที่เก็บเกี่ยวต้องมีมาตรการป้องกันการปนเปื้อนจากสัตว์และสัตว์พาหะ',cond:'พินิจเอกสาร/หลักฐานในคู่มือ',subs:[]},
+  {no:'10.11',req:'ขนส่งผลิตผลที่เก็บเกี่ยวแล้วด้วยความระมัดระวังไปยังจุดรวบรวมทันที มีมาตรการป้องกันความชื้นเพิ่มขึ้นระหว่างการขนย้าย',cond:'พินิจเอกสาร/หลักฐานคู่มือการปฏิบัติงานขนย้าย',subs:[]},
+  {no:'10.12',req:'ในการขนย้ายมีมาตรการป้องกันการปนเปื้อนจากโลหะหนัก สารเคมีตกค้าง จุลินทรีย์ก่อโรค สิ่งปลอมปน',cond:'พินิจเอกสาร/หลักฐานมาตรฐานวิธีปฏิบัติ',subs:[
+    {no:'10.12.1',req:'กรณีที่มีการขนย้ายภายนอกอาคาร: ต้องมีมาตรการป้องกันการปลอมปนและปนเปื้อนจากโลหะหนัก'},
+    {no:'10.12.2',req:'มีบันทึกแบบฟอร์มการทำความสะอาดยานพาหนะขนส่งและภาชนะบรรจุ'},
+  ]},
+]},
+{id:'s11',n:11,ic:'⚙️',t:'กระบวนการแปรรูปเบื้องต้น',te:'Primary Processing',items:[
+  {no:'11.1',req:'วัตถุดิบสมุนไพรกัญชาสดภายหลังการเก็บเกี่ยว ต้องรีบย้ายป้องกันแสงและความชื้น จัดเก็บอุณหภูมิ 2–8°C',cond:'พินิจเอกสาร/หลักฐานมาตรฐานวิธีปฏิบัติ',subs:[
+    {no:'11.1.1',req:'ภาชนะบรรจุในการขนย้ายมีความปลอดภัย ผลิตจากวัสดุเกรดอาหาร'},
+    {no:'11.1.2',req:'วัตถุดิบสมุนไพรกัญชาสดที่รอในกระบวนการแปรรูปควรเก็บที่อุณหภูมิ 2–8°C'},
+  ]},
+  {no:'11.2',req:'กรณีแปรรูปวัตถุดิบสมุนไพรกัญชาสดเป็นกัญชาแห้ง ต้องรีบทำให้แห้งในสถานที่ที่เหมาะสม',cond:'พินิจเอกสาร/หลักฐานมาตรฐานวิธีปฏิบัติกระบวนการทำแห้ง',subs:[]},
+  {no:'11.3',req:'การเก็บรักษาวัตถุดิบสมุนไพรกัญชาที่แปรรูปแล้ว ควรเก็บในสถานที่ที่มีการควบคุม อุณหภูมิ <25°C ความชื้น <75±5% RH',cond:'พินิจเอกสาร/หลักฐานบันทึกอุณหภูมิและความชื้น',subs:[]},
+  {no:'11.4',req:'มีมาตรการลดความชื้นวัตถุดิบสมุนไพรกัญชา ป้องกันการสูญเสียคุณภาพ และป้องกันการปนเปื้อน',cond:'พินิจเอกสาร/หลักฐานมาตรฐานวิธีปฏิบัติควบคุมความชื้น',subs:[]},
+  {no:'11.5',req:'วัตถุดิบสมุนไพรกัญชาที่เก็บเกี่ยวมาจากแปลงต้องมีกระบวนการตรวจสอบการคัดแยก',cond:'พินิจเอกสาร/หลักฐานมาตรฐานวิธีปฏิบัติหลังการเก็บเกี่ยว',subs:[]},
+  {no:'11.6',req:'ในขั้นตอนการแปรรูปสมุนไพรเบื้องต้น วัตถุดิบได้รับการตรวจสอบและกำจัดวัตถุดิบที่ไม่เป็นไปตามมาตรฐาน กำจัดสิ่งปลอมปน สิ่งแปลกปลอม',cond:'พินิจเอกสาร/หลักฐานมาตรฐานวิธีปฏิบัติ',subs:[]},
+  {no:'11.7',req:'วัตถุดิบสมุนไพรกัญชาต้องทำความสะอาดส่วนต่างๆ ให้เหมาะสม (ล้างทุกส่วน ยกเว้นช่อดอก)',cond:'พินิจเอกสาร/หลักฐานมาตรฐานวิธีปฏิบัติการทำความสะอาด',subs:[
+    {no:'11.7.1',req:'มีการตัดแต่งใบและกิ่งส่วนเกินเบื้องต้นก่อนเข้าสู่กระบวนการแปรรูป'},
+    {no:'11.7.2',req:'วัสดุและอุปกรณ์ที่ใช้ในการตัดแต่งช่อดอก ใบ กิ่งก้าน ควรมีวิธีการทำความสะอาดก่อนและหลังใช้งาน ไม่พบคราบยางสะสม'},
+  ]},
+  {no:'11.8',req:'มีมาตรการแปรรูปวัตถุดิบสมุนไพรกัญชาเบื้องต้นที่เหมาะสม เป็นไปตามข้อกำหนดมาตรฐาน (Thai Herbal Pharmacopoeia หรือข้อกำหนดของคู่ค้า)',cond:'พินิจเอกสาร/หลักฐานมาตรฐานวิธีปฏิบัติแปรรูปวัตถุดิบ',subs:[]},
+  {no:'11.9',req:'ทุกขั้นตอนในการแปรรูปเบื้องต้นต้องมีมาตรการป้องกันการปนเปื้อน การเน่าเสีย ต้องไม่พบสัตว์พาหะและสัตว์รบกวน',cond:'พินิจเอกสาร/หลักฐานมาตรการป้องกัน',subs:[]},
+  {no:'11.10',req:'การใช้วิธีการแปรรูปเฉพาะที่อาจมีผลต่อความปลอดภัย (เช่น วิธีการฉายรังสี) ต้องแจ้งและระบุให้ทราบ ต้องกระทำโดยเจ้าหน้าที่ที่มีความรู้',cond:'พินิจเอกสาร/หลักฐานการแจ้งและระบุวิธีการแปรรูปเฉพาะ',subs:[]},
+]},
+{id:'s12',n:12,ic:'🏗️',t:'สถานที่แปรรูปเบื้องต้น',te:'Building and Facility',items:[
+  {no:'12.1',req:'สถานที่ตั้งอาคารแปรรูปเบื้องต้นต้องปราศจากกลิ่นเหม็น ควันไฟ ฝุ่น สิ่งปนเปื้อน และต้องไม่เป็นสถานที่ที่น้ำท่วมถึง',cond:'สังเกตสถานที่ตั้ง ประเมินสิ่งแวดล้อมรอบข้าง',subs:[]},
+  {no:'12.2',req:'อาคารต้องแข็งแรง ทำความสะอาดได้ง่าย ป้องกันแสงแดด ปนเปื้อนจากภายนอก ป้องกันสัตว์พาหะ ควบคุมอุณหภูมิและความชื้น ระบายอากาศได้ดี',cond:'สังเกต/สัมภาษณ์ ระบบการจัดการ one-way flow',subs:[
+    {no:'12.2.1',req:'มีอาคารรองรับการปนเปื้อนข้ามระหว่างกระบวนการในรูปแบบทิศทางเดียว (one-way flow)'},
+    {no:'12.2.2',req:'มีพื้นที่แยกเก็บวัตถุดิบที่รอการตรวจสอบ (quarantine) ออกจากวัตถุดิบที่ผ่านการตรวจสอบ'},
+    {no:'12.2.3',req:'มีระบบการจัดการเวลาและเส้นทางกำจัดของเสียที่เหมาะสม'},
+    {no:'12.2.4',req:'พื้นที่มีการระบายอากาศออกทางเดียว ไม่ให้อากาศที่ระบายออกไหลย้อนกลับ'},
+    {no:'12.2.5',req:'มีพื้นที่แยกชัดเจน: เปลี่ยนเครื่องแต่งกาย / รับวัตถุดิบ / ล้างอุปกรณ์ / บดแร่ง (ถ้ามี) / บรรจุ / กำจัดของเสีย'},
+  ]},
+  {no:'12.3',req:'วัสดุที่นำมาใช้ทำอาคารต้องไม่ทำให้เกิดการปนเปื้อนข้าม ผนังไม่สะสมฝุ่น ไม่ดูดซับความชื้น ไม่มีรอยแตกร้าว',cond:'สังเกตจากพื้นที่ปฏิบัติงาน',subs:[]},
+  {no:'12.4',req:'โครงสร้างภายในและส่วนประกอบต้องทำจากวัสดุทนทาน ง่ายต่อการบำรุงรักษา ทำความสะอาด และฆ่าเชื้อได้ง่าย',cond:'สังเกตจากพื้นที่ปฏิบัติงาน',subs:[]},
+  {no:'12.5',req:'ให้แยกบริเวณที่มีระดับการควบคุมด้านสุขลักษณะที่แตกต่างกัน มีป้ายแสดงการแบ่งโซนพื้นที่ชัดเจน',cond:'สังเกต/สัมภาษณ์ด้านสุขลักษณะแต่ละพื้นที่',subs:[]},
+  {no:'12.6',req:'มีอุปกรณ์สำหรับฆ่าเชื้อ และอุปกรณ์ต่างๆ ที่จำเป็นในการทำความสะอาดและฆ่าเชื้ออย่างเหมาะสม',cond:'สังเกตจากพื้นที่ปฏิบัติงาน',subs:[]},
+  {no:'12.7',req:'อ่างล้างมือ สถานที่เปลี่ยนเสื้อผ้าต้องมีเพียงพอ ออกแบบอย่างถูกสุขลักษณะ',cond:'สังเกตจากพื้นที่ปฏิบัติงาน',subs:[]},
+  {no:'12.8',req:'น้ำที่นำมาใช้ต้องสะอาด มีเพียงพอ อุปกรณ์เก็บและจ่ายน้ำต้องป้องกันการปนเปื้อน ระบบจ่ายน้ำต้องไม่มีการไหลย้อนกลับ',cond:'สังเกตจากสถานที่ปฏิบัติงาน',subs:[]},
+  {no:'12.9',req:'ระบบน้ำทิ้งต้องมีประสิทธิภาพ ไม่กระทบต่อสิ่งแวดล้อม มีระบบระบายน้ำที่ดี ไม่ท่วมขัง รางปล่อยน้ำทิ้งต้องมีฝาครอบ',cond:'สังเกตจากสถานที่ปฏิบัติงาน',subs:[]},
+  {no:'12.10',req:'แสงภายในสถานที่ปฏิบัติงานต้องมีความสว่างเพียงพอ (จุดตรวจสอบ 540 lux | ห้องปฏิบัติงาน 220 lux | ห้องอื่นๆ 110 lux) หลอดไฟต้องมีอุปกรณ์ป้องกัน',cond:'สังเกตจากสถานที่ปฏิบัติงาน ระบบไฟมีฝาครอบป้องกัน',subs:[]},
+]},
+{id:'s13',n:13,ic:'📦',t:'การบรรจุและการติดฉลาก',te:'Packaging and Labelling',items:[
+  {no:'13.1',req:'วัตถุดิบที่ผ่านการแปรรูปเบื้องต้นแล้วควรมีการบรรจุหีบห่อที่เหมาะสมให้เร็วที่สุด บรรจุภัณฑ์ต้องผลิตจากวัสดุเกรดอาหาร',cond:'พินิจเอกสาร/หลักฐานมาตรฐานวิธีปฏิบัติการบรรจุ',subs:[
+    {no:'13.1.1',req:'บรรจุภัณฑ์มีคุณภาพป้องกันการเสื่อมสภาพจากแสง อุณหภูมิ ความชื้น และการปนเปื้อน'},
+    {no:'13.1.2',req:'บรรจุภัณฑ์ต้องสะอาดและแห้ง ผลิตจากวัสดุที่เป็นเกรดอาหาร'},
+    {no:'13.1.3',req:'กรณีที่มีการใช้บรรจุภัณฑ์ซ้ำ: ต้องระบุกระบวนการทำความสะอาดให้อยู่ในสภาพพร้อมใช้งาน'},
+  ]},
+  {no:'13.2',req:'มีมาตรการตรวจสอบคุณภาพวัตถุดิบสมุนไพรกัญชาอย่างต่อเนื่องระหว่างการแปรรูปจนถึงการบรรจุ',cond:'พินิจเอกสาร/หลักฐานมาตรการตรวจสอบคุณภาพ',subs:[]},
+  {no:'13.3',req:'เครื่องมือ อุปกรณ์ และภาชนะบรรจุต้องเหมาะสม ไม่ชำรุด สะอาดและแห้ง ไม่ก่อให้เกิดปฏิกิริยาต่อคุณภาพวัตถุดิบ',cond:'พินิจเอกสาร/หลักฐาน — สังเกต/สัมภาษณ์',subs:[]},
+  {no:'13.4',req:'การนำภาชนะบรรจุที่ใช้แล้วนำกลับมาใช้ใหม่ ต้องสะอาด ไม่ก่อให้เกิดการปนเปื้อนและปลอมปน',cond:'พินิจเอกสาร/หลักฐานมาตรการนำภาชนะกลับมาใช้',subs:[]},
+  {no:'13.5',req:'ภาชนะบรรจุต้องเก็บรักษาในสถานที่สะอาด แห้ง ปราศจากสัตว์พาหะ สัตว์รบกวน',cond:'สังเกตสถานที่เก็บรักษาภาชนะบรรจุ',subs:[]},
+  {no:'13.6',req:'ฉลากที่ติดบนภาชนะบรรจุต้องชัดเจน ครบถ้วน ถูกต้อง',cond:'พินิจเอกสาร/หลักฐานแสดงข้อมูลบนฉลาก',subs:[
+    {no:'13.6.1',req:'ฉลากต้องระบุ: ชื่อวิทยาศาสตร์ | ส่วนของพืช | แหล่งต้นกำเนิด | ชื่อผู้ผลิต'},
+    {no:'13.6.2',req:'ฉลากต้องระบุ: หมายเลขรุ่นการผลิต (Lot No.) | วันที่เก็บเกี่ยว | วันที่ผลิต | ปริมาณ (น้ำหนัก)'},
+    {no:'13.6.3',req:'ฉลากบรรจุภัณฑ์และหมึกพิมพ์ทำจากวัสดุที่ไม่เป็นอันตรายต่อสุขภาพ สามารถยึดติดคงทน'},
+  ]},
+]},
+{id:'s14',n:14,ic:'🚚',t:'การจัดเก็บและการขนย้าย',te:'Storage and Distribution',items:[
+  {no:'14.1',req:'อุปกรณ์ขนย้ายวัตถุดิบสมุนไพรกัญชาที่บรรจุแล้วต้องสะอาด ป้องกันแสง อุณหภูมิ ความชื้น และการปนเปื้อน ไม่ขนย้ายปะปนกับสารเคมี ปุ๋ย ของเสีย',cond:'พินิจเอกสาร/หลักฐานมาตรฐานวิธีปฏิบัติ — สังเกตอุปกรณ์ขนย้าย',subs:[
+    {no:'14.1.1',req:'มีการตรวจสอบยานพาหนะและอุปกรณ์บรรจุสำหรับขนย้ายอย่างน้อยเดือนละครั้ง'},
+    {no:'14.1.2',req:'ตรวจสอบยานพาหนะต้องไม่พบคราบสิ่งสกปรก อยู่ในสภาพสะอาดพร้อมสำหรับการปฏิบัติงาน'},
+    {no:'14.1.3',req:'ไม่ขนย้ายปะปนกับสารเคมี ปุ๋ย สารอินทรีย์ สารชีวภัณฑ์ สารกำจัดศัตรูพืช หรือของเสียอื่นๆ'},
+  ]},
+  {no:'14.2',req:'วัตถุดิบที่บรรจุแล้ว ต้องเก็บรักษาในสภาพแห้ง ระบายอากาศ อุณหภูมิ <25°C ความชื้น <75±5%RH เก็บตัวอย่างอย่างน้อย 300 กรัม/รุ่น อย่างน้อย 6 เดือน',cond:'พินิจเอกสาร/หลักฐานมาตรฐานวิธีปฏิบัติเก็บรักษา',subs:[
+    {no:'14.2.1',req:'แนะนำเก็บรักษาอุณหภูมิต่ำกว่า 25°C และความชื้นสัมพัทธ์ต่ำกว่า 75±5% RH หรือตามคู่ค้ากำหนด'},
+    {no:'14.2.2',req:'มีแผนการสุ่มตรวจวิเคราะห์คุณภาพวัตถุดิบสมุนไพรกัญชาในแต่ละรุ่นการผลิต'},
+    {no:'14.2.3',req:'เก็บตัวอย่างผลผลิตอย่างน้อย 300 กรัมที่ผ่านกระบวนการแปรรูปเบื้องต้นในแต่ละรุ่น อย่างน้อย 6 เดือน'},
+    {no:'14.2.4',req:'วัตถุดิบต้องผ่านการตรวจวิเคราะห์: ลักษณะทางกายภาพ ปริมาณสารสำคัญ สารพิษตกค้าง โลหะหนัก เชื้อจุลชีพ ความชื้น สิ่งแปลกปลอม อะฟลาทอกซิน อย่างน้อยรุ่นละ 1 ครั้ง'},
+  ]},
+  {no:'14.3',req:'ห้องเก็บรักษาวัตถุดิบสมุนไพรกัญชา ต้องสะอาดและมีมาตรการควบคุมแสง อุณหภูมิ ความชื้น และมีการป้องกันการปนเปื้อน',cond:'พินิจเอกสาร/หลักฐานมาตรการควบคุม',subs:[]},
+]}
+];
+// ============================================================
+// REF DATA
+// ============================================================
+const REF3={
+  heavy_metals:[
+    {p:'สารหนู (Arsenic, As)',s:'≤ 5 mg/kg'},
+    {p:'แคดเมียม (Cadmium, Cd)',s:'≤ 0.3 mg/kg'},
+    {p:'ตะกั่ว (Lead, Pb)',s:'≤ 10 mg/kg'},
+    {p:'ปรอท (Mercury, Hg)',s:'≤ 0.5 mg/kg'},
+  ],
+  pesticides:[
+    {n:'Acephate',l:'≤ 0.10'},{n:'Alachlor',l:'≤ 0.05'},{n:'Aldrin and dieldrin *',l:'≤ 0.05'},
+    {n:'Azinphos-ethyl *',l:'≤ 0.10'},{n:'Azinphos-methyl *',l:'≤ 1.00'},{n:'Bromide, inorganic',l:'≤ 125.00'},
+    {n:'Chlordane *',l:'≤ 0.05'},{n:'Chlorfenvinphos',l:'≤ 0.50'},{n:'Chlorpyriphos-ethyl *',l:'≤ 0.20'},
+    {n:'Chlorpyriphos-methyl *',l:'≤ 0.10'},{n:'Cypermethrin and isomers',l:'≤ 1.00'},
+    {n:'DDT *',l:'≤ 1.00'},{n:'Deltamethrin',l:'≤ 0.50'},{n:'Diazinon',l:'≤ 0.50'},
+    {n:'Dichlorvos',l:'≤ 1.00'},{n:'Dimethoate',l:'≤ 0.10'},{n:'Dithiocarbamates',l:'≤ 2.00'},
+    {n:'Endosulfan *',l:'≤ 3.00'},{n:'Endrin *',l:'≤ 0.05'},{n:'Ethion *',l:'≤ 2.00'},
+    {n:'Fenitrothion',l:'≤ 0.50'},{n:'Fenvalerate',l:'≤ 1.50'},{n:'Heptachlor *',l:'≤ 0.05'},
+    {n:'HCH (Lindane) *',l:'≤ 0.60'},{n:'Malathion and malaoxon',l:'≤ 1.00'},
+    {n:'Methamidophos *',l:'≤ 0.05'},{n:'Methidathion',l:'≤ 0.20'},{n:'Parathion-ethyl *',l:'≤ 0.50'},
+    {n:'Permethrin and isomers',l:'≤ 1.00'},{n:'Pirimiphos-methyl',l:'≤ 4.00'},
+    {n:'Pyrethrum',l:'≤ 3.00'},{n:'Piperonyl butoxide',l:'≤ 3.00'},{n:'Procymidone',l:'≤ 0.10'},
+    {n:'Profenophos',l:'≤ 0.10'},{n:'Vinclozolin',l:'≤ 0.40'},
+  ],
+  microbial:[
+    {t:'Total Aerobic Microbial Count (TAMC)',s:'≤ 5 × 10⁴ CFU/g'},
+    {t:'Total Yeast and Mold Count (TYMC)',s:'≤ 5 × 10² CFU/g'},
+    {t:'Bile-tolerant gram-negative bacteria',s:'≤ 10² CFU/g'},
+    {t:'Clostridium spp. (ใน 1 g)',s:'ไม่พบ'},
+    {t:'Salmonella spp. (ใน 25 g)',s:'ไม่พบ'},
+    {t:'Escherichia coli (ใน 1 g)',s:'ไม่พบ'},
+  ],
+  other:[
+    {t:'Aflatoxin B1',s:'≤ 2 μg/kg'},
+    {t:'Total Aflatoxin (B1, B2, G1, G2)',s:'≤ 4 μg/kg'},
+    {t:'สิ่งแปลกปลอม (Foreign matters) — ก้าน ≥3mm',s:'≤ 5%w/w'},
+    {t:'สิ่งแปลกปลอม (Foreign matters) — เมล็ด',s:'≤ 2%w/w'},
+    {t:'ความชื้น (Loss on drying)',s:'≤ 9%w/w'},
+    {t:'Total ash',s:'≤ 15%w/w'},
+  ]
+};
+const REF4=[
+  {st:'1. เตรียมแปลงและส่วนขยายพันธุ์',hz:'พันธุ์ไม่บริสุทธิ์ / ปนเปื้อนโรคและแมลง',ctrl:'ตรวจสอบพันธุ์กัญชาก่อนปลูก',pt:'CP',crit:'ไม่พบต้นตัวผู้ / ต้นเพศกระเทย',mon:'ทุกรุ่นก่อนปลูก',fix:'กำจัดต้นไม่ตรงพันธุ์'},
+  {st:'2. การเตรียมดิน/วัสดุปลูก',hz:'โลหะหนัก / สารเคมีตกค้างในดิน',ctrl:'ตรวจวิเคราะห์ดินก่อนปลูก',pt:'CCP',crit:'ผ่านค่ามาตรฐาน GACP',mon:'ก่อนปลูกอย่างน้อย 1 ครั้ง',fix:'เปลี่ยนแหล่งดิน/วัสดุปลูก'},
+  {st:'3. ระยะเจริญเติบโต',hz:'ศัตรูพืช / โรคพืช / ขาดธาตุอาหาร',ctrl:'IPM / ติดตามสม่ำเสมอ',pt:'CP',crit:'ไม่พบศัตรูพืชเกิน threshold',mon:'ทุกสัปดาห์',fix:'ใช้ชีววิธีหรือวิธีกล'},
+  {st:'4. ระยะออกดอก',hz:'ดอกตัวผู้ / ดอกกระเทยปนเปื้อน',ctrl:'ตรวจและกำจัดต้นตัวผู้',pt:'CCP',crit:'ไม่พบต้นตัวผู้/กระเทยในระบบปลูก',mon:'ทุก 3 วันในช่วงออกดอก',fix:'กำจัดต้นตัวผู้/กระเทยทันที'},
+  {st:'5. การเก็บเกี่ยว',hz:'ปนเปื้อน / ขาดคุณภาพ trichomes',ctrl:'กำหนดช่วงเวลาเก็บเกี่ยวที่เหมาะสม',pt:'CP',crit:'Trichomes สีขุ่น (milky) ≥60%',mon:'ก่อนเก็บเกี่ยว',fix:'เลื่อนเวลาเก็บเกี่ยว'},
+  {st:'6. การแปรรูปเบื้องต้น',hz:'จุลินทรีย์ / ความชื้นสูง / เชื้อรา',ctrl:'ควบคุมอุณหภูมิ ความชื้น ระหว่างทำแห้ง',pt:'CCP',crit:'ความชื้น ≤9%w/w ภายใน 72 ชม.',mon:'ทุก 4 ชม.ระหว่างทำแห้ง',fix:'เพิ่มอุณหภูมิ/การระบายอากาศ'},
+  {st:'7. การบรรจุและจัดเก็บ',hz:'ปนเปื้อนสิ่งแปลกปลอม / เสื่อมคุณภาพ',ctrl:'ตรวจสอบบรรจุภัณฑ์ ควบคุม T/RH',pt:'CP',crit:'T <25°C, RH <75%',mon:'ทุกวัน',fix:'ปรับสภาวะ / เปลี่ยนบรรจุภัณฑ์'},
+  {st:'8. ตรวจสอบวัตถุดิบขั้นสุดท้าย',hz:'ไม่ผ่านมาตรฐาน THP / คู่ค้า',ctrl:'ส่งตัวอย่างตรวจวิเคราะห์ห้องปฏิบัติการ',pt:'CCP',crit:'ผ่านทุกรายการตาม GACP Table 14',mon:'ทุกรุ่นการผลิต',fix:'Reject lot / แก้ไขกระบวนการ'},
+];
+
+// ============================================================
+// STATE
+// ============================================================
+let ST={res:{},rem:{},inspectors:[{name:'',pos:'',lic:'',org:''}],photos:{},capa:{},sev:{}};
+let gpsCoords=null;
+let hwTarget=null;
+let sigCanvases={};
+let hwCanvas,hwCtx,hwDrawing=false,hwStrokes=[],hwCurrent=[];
+let compareData=null;
+let farmDataList=[];
+
+// ============================================================
+// HELPERS
+// ============================================================
+function getAllItems(){
+  const all=[];
+  SECS.forEach(s=>{
+    s.items.forEach(it=>{
+      all.push({no:it.no,sec:s});
+      (it.subs||[]).forEach(sub=>all.push({no:sub.no,sec:s}));
+    });
+  });
+  return all;
+}
+function getSecItems(sec){
+  const all=[];
+  sec.items.forEach(it=>{all.push(it.no);(it.subs||[]).forEach(sub=>all.push(sub.no));});
+  return all;
+}
+function getItemReq(sec,no){
+  for(const it of sec.items){
+    if(it.no===no) return it.req.substring(0,90);
+    const sub=(it.subs||[]).find(s=>s.no===no);
+    if(sub) return sub.req.substring(0,90);
+  }
+  return no;
+}
+
+// ============================================================
+// BUILD ALL SECTIONS
+// ============================================================
+function buildAllSections(){
+  SECS.forEach(sec=>{
+    const el=document.getElementById('page-'+sec.id);
+    if(!el) return;
+    let rows='';
+    sec.items.forEach(it=>{
+      const k=it.no.replace(/\./g,'_');
+      rows+=`<tr id="row-${it.no}">
+        <td class="ino">${it.no}</td>
+        <td style="line-height:1.6;font-size:12px">${it.req}</td>
+        <td style="font-size:11px;color:var(--TM);line-height:1.5">${(it.cond||'').replace(/\n/g,'<br>')}</td>
+        <td style="text-align:center;width:130px">
+          <div class="rt">
+            <button class="tb tp" onclick="SR('${it.no}','pass')" id="p-${k}">✓ มี</button>
+            <button class="tb tf" onclick="SR('${it.no}','fail')" id="f-${k}">✗ ไม่มี</button>
+            <button class="tb tn" onclick="SR('${it.no}','na')" id="n-${k}">N/A</button>
+          </div>
+          <select id="sev-${k}" style="display:none;width:100%;margin-top:4px;padding:3px 5px;border:1.5px solid #FFCDD2;border-radius:5px;font-family:Sarabun,sans-serif;font-size:11px;background:#FFF5F5" onchange="saveSev('${it.no}',this.value)">
+            <option value="">— ระดับ —</option>
+            <option value="critical">🔴 Critical</option>
+            <option value="major">🟠 Major</option>
+            <option value="minor">🟡 Minor</option>
+          </select>
+        </td>
+        <td class="rc" style="width:180px">
+          <textarea placeholder="ข้อสังเกต..." oninput="setRem('${it.no}',this.value)" id="rem-${k}"></textarea>
+          <button class="hw-btn" onclick="openHWItem('${it.no}')">✏️ บันทึกด้วยปากกา</button>
+          <button class="hw-btn" style="background:linear-gradient(135deg,var(--B1),var(--B3));margin-top:2px" onclick="openPhoto('${it.no}')">📷 ถ่ายรูปหลักฐาน</button>
+          <div class="hw-status" id="hws-${k}"></div>
+          <div id="ph-prev-${k}" style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px"></div>
+          <div id="capa-wrap-${k}" style="display:none;margin-top:5px;background:#FFF8E1;border:1px solid #FFD54F;border-radius:6px;padding:6px 8px">
+            <div style="font-size:10.5px;font-weight:800;color:#7a5700;margin-bottom:4px">📋 แผน CAPA</div>
+            <textarea id="capa-fix-${k}" placeholder="มาตรการแก้ไข (Corrective Action)..." oninput="saveCapa('${it.no}')" style="width:100%;border:1px solid #FFD54F;border-radius:5px;padding:4px 6px;font-family:Sarabun,sans-serif;font-size:11px;resize:none;min-height:36px;background:#FFFDE7"></textarea>
+            <textarea id="capa-prev-${k}" placeholder="มาตรการป้องกันซ้ำ (Preventive Action)..." oninput="saveCapa('${it.no}')" style="width:100%;border:1px solid #FFD54F;border-radius:5px;padding:4px 6px;font-family:Sarabun,sans-serif;font-size:11px;resize:none;min-height:36px;background:#FFFDE7;margin-top:3px"></textarea>
+            <div style="display:flex;gap:4px;margin-top:4px">
+              <input id="capa-owner-${k}" placeholder="ผู้รับผิดชอบ" oninput="saveCapa('${it.no}')" style="flex:1;padding:3px 5px;border:1px solid #FFD54F;border-radius:4px;font-family:Sarabun,sans-serif;font-size:10.5px">
+              <input type="date" id="capa-due-${k}" oninput="saveCapa('${it.no}')" style="flex:1;padding:3px 5px;border:1px solid #FFD54F;border-radius:4px;font-size:10.5px">
+              <select id="capa-stat-${k}" onchange="saveCapa('${it.no}')" style="flex:1;padding:3px 5px;border:1px solid #FFD54F;border-radius:4px;font-family:Sarabun,sans-serif;font-size:10.5px">
+                <option value="open">🔓 Open</option><option value="inprog">🔄 InProgress</option><option value="done">✅ Done</option>
+              </select>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+      (it.subs||[]).forEach(sub=>{
+        const sk=sub.no.replace(/\./g,'_');
+        rows+=`<tr class="sub-item" id="row-${sub.no}">
+          <td class="ino" style="color:var(--CYD);font-size:10.5px">${sub.no}</td>
+          <td colspan="2" style="font-size:11.5px;color:#0D47A1;line-height:1.55">${sub.req}</td>
+          <td style="text-align:center;width:130px">
+            <div class="rt">
+              <button class="tb tp" onclick="SR('${sub.no}','pass')" id="p-${sk}">✓</button>
+              <button class="tb tf" onclick="SR('${sub.no}','fail')" id="f-${sk}">✗</button>
+              <button class="tb tn" onclick="SR('${sub.no}','na')" id="n-${sk}">N/A</button>
+            </div>
+          </td>
+          <td class="rc" style="width:180px">
+            <textarea placeholder="หมายเหตุ..." oninput="setRem('${sub.no}',this.value)" id="rem-${sk}" style="min-height:36px"></textarea>
+          </td>
+        </tr>`;
+      });
+    });
+    const total=getSecItems(sec).length;
+    el.innerHTML=`<div class="card" style="padding:0;overflow:hidden">
+      <div class="ih"><h3>${sec.ic} หมวดที่ ${sec.n}: ${sec.t} (${sec.te})</h3>
+        <span class="ic-cnt">${sec.items.length} ข้อหลัก | ${total} ข้อรวมข้อย่อย</span></div>
+      <div style="overflow-x:auto">
+      <table class="it" style="min-width:860px">
+        <thead><tr>
+          <th style="width:54px">ข้อที่</th>
+          <th style="width:35%">ข้อกำหนด</th>
+          <th style="width:20%">เงื่อนไขการตรวจ</th>
+          <th style="width:130px;text-align:center">ผลการตรวจ</th>
+          <th>ข้อสังเกต / บันทึก / หลักฐาน</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      </div>
+      <div class="ssb" id="ssb-${sec.id}">
+        <span style="font-weight:800;color:var(--B1)">สรุปหมวด ${sec.n}:</span>
+        <span class="si2"><div class="sd-dot" style="background:var(--B2)"></div>ผ่าน: <strong id="sp-${sec.id}">0</strong></span>
+        <span class="si2"><div class="sd-dot" style="background:var(--DR)"></div>ไม่ผ่าน: <strong id="sf-${sec.id}">0</strong></span>
+        <span class="si2"><div class="sd-dot" style="background:#78909C"></div>N/A: <strong id="sna-${sec.id}">0</strong></span>
+        <span style="margin-left:auto;font-weight:800;color:var(--B1)" id="spct-${sec.id}">0%</span>
+      </div>
+    </div>`;
+  });
+}
+
+// ============================================================
+// BUILD REF3 (with checklist)
+// ============================================================
+function buildRef3(){
+  const el=document.getElementById('ref3-content');if(!el)return;
+  const sel_html=(id)=>`<select id="${id}" class="ref-sel" onchange="this.closest('tr').style.background=this.value=='pass'?'#E8F5E9':(this.value=='fail'?'#FFEBEE':'')">
+    <option value="">—</option><option value="pass">✅ ผ่าน</option><option value="fail">❌ ไม่ผ่าน</option></select>`;
+  const inp_html=(id,ph)=>`<input id="${id}" type="text" placeholder="${ph}" class="ref-inp" style="width:90px">`;
+  el.innerHTML=`
+  <div class="ref-section">
+    <div class="ref-header"><h3>🏗️ 1. โลหะหนัก (Inorganic Impurities)</h3><span class="ref-tag">ไม่นับคะแนน</span></div>
+    <div style="overflow-x:auto"><table class="ref-table">
+      <thead><tr><th>พารามิเตอร์</th><th>ข้อกำหนดมาตรฐาน</th><th>ค่าที่พบ</th><th style="text-align:center">ผ่าน/ไม่ผ่าน</th><th>หมายเหตุ</th></tr></thead>
+      <tbody>${REF3.heavy_metals.map((r,i)=>`<tr>
+        <td>${r.p}</td><td class="ref-std">${r.s}</td>
+        <td>${inp_html('hm_val_'+i,'mg/kg')}</td>
+        <td style="text-align:center">${sel_html('hm_res_'+i)}</td>
+        <td><input type="text" placeholder="หมายเหตุ..." class="ref-inp"></td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+  </div>
+  <div class="ref-section">
+    <div class="ref-header"><h3>🌿 2. สารกำจัดศัตรูพืชตกค้าง (Pesticide Residues)</h3><span class="ref-tag">ไม่นับคะแนน</span></div>
+    <div class="al al-w" style="margin:8px 8px 0;font-size:11px"><span>⚠️</span><div>* = วัตถุอันตรายชนิดที่ 4 ห้ามใช้ในกระบวนการเพาะปลูกพืชกัญชา</div></div>
+    <div style="overflow-x:auto"><table class="ref-table">
+      <thead><tr><th>สารกำจัดศัตรูพืช</th><th>ค่าสูงสุดที่ยอมรับได้ (mg/kg)</th><th>หมายเหตุ</th><th>ค่าที่พบ</th><th style="text-align:center">ผ่าน/ไม่ผ่าน</th></tr></thead>
+      <tbody>${REF3.pesticides.map((r,i)=>`<tr>
+        <td>${r.n}</td><td class="ref-std">${r.l}</td>
+        <td style="font-size:10.5px;color:#b71c1c">${r.n.includes('*')?'⚠️ วัตถุอันตรายชนิดที่ 4 ห้ามใช้':''}</td>
+        <td>${inp_html('ps_val_'+i,'mg/kg')}</td>
+        <td style="text-align:center">${sel_html('ps_res_'+i)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+  </div>
+  <div class="ref-section">
+    <div class="ref-header"><h3>🦠 3. จุลินทรีย์ (Microbial Contamination)</h3><span class="ref-tag">ไม่นับคะแนน</span></div>
+    <div style="overflow-x:auto"><table class="ref-table">
+      <thead><tr><th>การทดสอบ</th><th>ข้อกำหนดมาตรฐาน</th><th>ค่าที่พบ</th><th style="text-align:center">ผ่าน/ไม่ผ่าน</th><th>หมายเหตุ</th></tr></thead>
+      <tbody>${REF3.microbial.map((r,i)=>`<tr>
+        <td>${r.t}</td><td class="ref-std">${r.s}</td>
+        <td>${inp_html('mc_val_'+i,'CFU/g หรือ พบ/ไม่พบ')}</td>
+        <td style="text-align:center">${sel_html('mc_res_'+i)}</td>
+        <td><input type="text" placeholder="หมายเหตุ..." class="ref-inp"></td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+  </div>
+  <div class="ref-section">
+    <div class="ref-header"><h3>📊 4. การทดสอบอื่นๆ (Other Tests)</h3><span class="ref-tag">ไม่นับคะแนน</span></div>
+    <div style="overflow-x:auto"><table class="ref-table">
+      <thead><tr><th>การทดสอบ</th><th>ข้อกำหนดมาตรฐาน</th><th>ค่าที่พบ</th><th style="text-align:center">ผ่าน/ไม่ผ่าน</th><th>หมายเหตุ</th></tr></thead>
+      <tbody>${REF3.other.map((r,i)=>`<tr>
+        <td>${r.t}</td><td class="ref-std">${r.s}</td>
+        <td>${inp_html('ot_val_'+i,'ค่า...')}</td>
+        <td style="text-align:center">${sel_html('ot_res_'+i)}</td>
+        <td><input type="text" placeholder="หมายเหตุ..." class="ref-inp"></td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+  </div>
+  <div class="al al-p" style="margin-top:12px"><span>📌</span><div>
+    ห้องปฏิบัติการที่ยอมรับ: เอกชน ISO/IEC 17025 หรือห้องปฏิบัติการในสถานที่ผลิตยาที่ได้ PIC/S หรือห้องปฏิบัติการหน่วยงานภาครัฐ
+  </div></div>`;
+}
+
+// ============================================================
+// BUILD REF4 (with checklist)
+// ============================================================
+function buildRef4(){
+  const el=document.getElementById('ref4-content');if(!el)return;
+  const rows=REF4.map((r,i)=>`<tr>
+    <td style="font-weight:700;color:var(--B1);font-size:11.5px">${r.st}</td>
+    <td style="color:var(--DR);font-size:11.5px">${r.hz}</td>
+    <td style="font-size:11.5px">${r.ctrl}</td>
+    <td style="text-align:center"><span style="padding:2px 6px;border-radius:7px;font-size:10.5px;font-weight:800;background:${r.pt==='CCP'?'#FFEBEE':'#E3F2FD'};color:${r.pt==='CCP'?'var(--DR)':'var(--B1)'}">${r.pt}</span></td>
+    <td style="font-size:11px">${r.crit}</td>
+    <td style="font-size:11px">${r.mon}</td>
+    <td style="font-size:11px;color:var(--WN)">${r.fix}</td>
+    <td style="text-align:center;width:75px">
+      <select class="ref-sel" onchange="this.closest('tr').style.background=this.value=='pass'?'#E8F5E9':(this.value=='fail'?'#FFEBEE':'')">
+        <option value="">—</option><option value="pass">✅ มี</option><option value="fail">❌ ไม่มี</option>
+      </select>
+    </td>
+    <td style="width:120px"><input type="text" placeholder="หมายเหตุ..." class="ref-inp"></td>
+  </tr>`).join('');
+  const checks=REF4.map((r,i)=>`<label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;padding:6px 10px;border-radius:7px;background:rgba(255,255,255,.75);border:1px solid rgba(2,62,138,.15)">
+    <input type="checkbox" style="accent-color:var(--B1);width:14px;height:14px">
+    <span><strong>${i+1}.</strong> ${r.st}</span>
+  </label>`).join('');
+  el.innerHTML=`
+  <div class="ref-section">
+    <div class="ref-header"><h3>📊 ตัวอย่างแผนการควบคุมการผลิตพืชกัญชา</h3><span class="ref-tag">ไม่นับคะแนน</span></div>
+    <div style="overflow-x:auto"><table class="ref-table" style="min-width:950px">
+      <thead><tr>
+        <th>ขั้นตอน</th><th>อันตราย/ปัญหา</th><th>มาตรการควบคุม</th>
+        <th style="text-align:center;width:60px">CP/CCP</th>
+        <th>เกณฑ์ควบคุม</th><th>การติดตาม</th><th>การแก้ไข</th>
+        <th style="text-align:center;width:75px">มี/ไม่มี</th>
+        <th style="width:120px">หมายเหตุ</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </div>
+  <div class="ref-section" style="margin-top:14px">
+    <div class="ref-header"><h3>✅ รายการตรวจสอบความครบถ้วนของแผน CP/CCP</h3><span class="ref-tag">ไม่นับคะแนน</span></div>
+    <div style="padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:7px">${checks}</div>
+  </div>
+  <div class="al al-p" style="margin-top:10px"><span>📌</span><div>
+    <strong>CP</strong> = Control Point | <strong>CCP</strong> = Critical Control Point (ต้องควบคุมอย่างเคร่งครัด — หากพบเกินเกณฑ์ต้องหยุดดำเนินการ)
+  </div></div>`;
+}
+
+// ============================================================
+// SECTION GRID
+// ============================================================
+// ============================================================
+// COLOR PALETTE FOR 14 SECTIONS
+// ============================================================
+const SEC_COLORS=[
+  {bg:'#EFF6FF',bar:'linear-gradient(90deg,#1565C0,#29B6F6)',border:'#1565C0',badge:'#1565C0'},// s1 น้ำเงิน
+  {bg:'#F0FDF4',bar:'linear-gradient(90deg,#16A34A,#4ADE80)',border:'#16A34A',badge:'#16A34A'},// s2 เขียว
+  {bg:'#FFF7ED',bar:'linear-gradient(90deg,#C2410C,#FB923C)',border:'#C2410C',badge:'#C2410C'},// s3 ส้มแดง
+  {bg:'#FDF4FF',bar:'linear-gradient(90deg,#7C3AED,#C084FC)',border:'#7C3AED',badge:'#7C3AED'},// s4 ม่วง
+  {bg:'#ECFDF5',bar:'linear-gradient(90deg,#0D9488,#2DD4BF)',border:'#0D9488',badge:'#0D9488'},// s5 เขียวน้ำ
+  {bg:'#EFF6FF',bar:'linear-gradient(90deg,#0284C7,#38BDF8)',border:'#0284C7',badge:'#0284C7'},// s6 ฟ้า
+  {bg:'#FEFCE8',bar:'linear-gradient(90deg,#CA8A04,#FCD34D)',border:'#CA8A04',badge:'#CA8A04'},// s7 เหลือง
+  {bg:'#FFF1F2',bar:'linear-gradient(90deg,#BE185D,#F472B6)',border:'#BE185D',badge:'#BE185D'},// s8 ชมพู
+  {bg:'#F0FDF4',bar:'linear-gradient(90deg,#15803D,#86EFAC)',border:'#15803D',badge:'#15803D'},// s9 เขียวเข้ม
+  {bg:'#FFFBEB',bar:'linear-gradient(90deg,#D97706,#FDE68A)',border:'#D97706',badge:'#D97706'},// s10 ส้มทอง
+  {bg:'#F5F3FF',bar:'linear-gradient(90deg,#6D28D9,#A78BFA)',border:'#6D28D9',badge:'#6D28D9'},// s11 ม่วงเข้ม
+  {bg:'#FFF7ED',bar:'linear-gradient(90deg,#EA580C,#FDBA74)',border:'#EA580C',badge:'#EA580C'},// s12 ส้มสด
+  {bg:'#F0F9FF',bar:'linear-gradient(90deg,#0369A1,#7DD3FC)',border:'#0369A1',badge:'#0369A1'},// s13 ฟ้าเข้ม
+  {bg:'#FDF2F8',bar:'linear-gradient(90deg,#9D174D,#F9A8D4)',border:'#9D174D',badge:'#9D174D'},// s14 ชมพูเข้ม
+];
+
+function buildSecGrid(){
+  const g=document.getElementById('sec-grid');if(!g)return;
+  g.innerHTML=SECS.map((s,idx)=>{
+    const col=SEC_COLORS[idx]||SEC_COLORS[0];
+    const total=getSecItems(s).length;
+    return`<div class="spc" id="sgc-s${s.n}" onclick="gp('${s.id}')"
+      style="background:${col.bg};border-color:${col.border}22;--spc-color:${col.border}">
+      <div class="spc-inner">
+        <div class="spt">${s.ic} หมวด ${s.n} <span style="font-size:9px;font-weight:600;color:${col.border};opacity:.8">${s.te}</span></div>
+        <div class="sps">${s.t}</div>
+        <div class="pbw" style="background:${col.border}22">
+          <div class="pbf" id="pb-s${s.n}" style="width:0%;background:${col.bar}"></div>
+        </div>
+        <div class="spc-stats">
+          <span class="spc-nums" id="sn-s${s.n}">0 / ${total} ข้อ</span>
+          <span class="spc-badge" id="sb-s${s.n}" style="background:${col.border}18;color:${col.border}">0%</span>
+        </div>
+        <div id="spc-detail-s${s.n}" style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+// ============================================================
+// SCORING
+// ============================================================
+function SR(no,res){
+  const k=no.replace(/\./g,'_');
+  if(ST.res[no]===res){
+    ST.res[no]=null;
+    ['p','f','n'].forEach(t=>document.getElementById(t+'-'+k)?.classList.remove('sel'));
+  } else {
+    ST.res[no]=res;
+    document.getElementById('p-'+k)?.classList.toggle('sel',res==='pass');
+    document.getElementById('f-'+k)?.classList.toggle('sel',res==='fail');
+    document.getElementById('n-'+k)?.classList.toggle('sel',res==='na');
+  }
+  const row=document.getElementById('row-'+no);
+  if(row) row.style.background=ST.res[no]==='fail'?'#FFF5F5':ST.res[no]==='pass'?'#F0F8FF':'';
+  // auto show/hide CAPA and severity
+  const capaWrap=document.getElementById('capa-wrap-'+k);
+  if(capaWrap) capaWrap.style.display=ST.res[no]==='fail'?'block':'none';
+  const sevSel=document.getElementById('sev-'+k);
+  if(sevSel) sevSel.style.display=ST.res[no]==='fail'?'block':'none';
+  const num=parseInt(no.split('.')[0]);
+  const sec=SECS.find(s=>s.n===num);
+  if(sec) upSecSum(sec);
+  upDash();save();
+}
+function setRem(no,v){ST.rem[no]=v;save();}
+function saveSev(no,v){ST.sev[no]=v;save();}
+function saveCapa(no){
+  const k=no.replace(/\./g,'_');
+  ST.capa[no]={
+    fix:document.getElementById('capa-fix-'+k)?.value||'',
+    prev:document.getElementById('capa-prev-'+k)?.value||'',
+    owner:document.getElementById('capa-owner-'+k)?.value||'',
+    due:document.getElementById('capa-due-'+k)?.value||'',
+    stat:document.getElementById('capa-stat-'+k)?.value||'open',
+  };save();
+}
+
+function upSecSum(sec){
+  let p=0,f=0,na=0;
+  getSecItems(sec).forEach(no=>{
+    const r=ST.res[no];
+    if(r==='pass')p++;else if(r==='fail')f++;else if(r==='na')na++;
+  });
+  const total=getSecItems(sec).length;
+  const ans=p+f+na;
+  const elig=p+f;
+  const pct=elig>0?Math.round(p/elig*100):0;
+  // summary bar in section page
+  ['sp','sf','sna'].forEach((id,i)=>{
+    const el=document.getElementById(id+'-'+sec.id);
+    if(el) el.textContent=[p,f,na][i];
+  });
+  const spct=document.getElementById('spct-'+sec.id);
+  if(spct) spct.textContent='ผ่าน '+pct+'%';
+  // nav badge
+  const badge=document.getElementById('b'+sec.n);
+  if(badge){
+    if(!ans){badge.textContent='-';badge.className='nb empty';}
+    else if(ans===total&&!f){badge.textContent=p+'/'+total;badge.className='nb done';}
+    else{badge.textContent=ans+'/'+total;badge.className='nb part';}
+  }
+  // dashboard colorful grid
+  const idx=SECS.findIndex(s=>s.id===sec.id);
+  const col=SEC_COLORS[idx]||SEC_COLORS[0];
+  const pb=document.getElementById('pb-s'+sec.n);
+  const sn2=document.getElementById('sn-s'+sec.n);
+  const sb=document.getElementById('sb-s'+sec.n);
+  const det=document.getElementById('spc-detail-s'+sec.n);
+  const card=document.getElementById('sgc-s'+sec.n);
+  if(pb) pb.style.width=Math.round(ans/total*100)+'%';
+  if(sn2) sn2.textContent=ans+' / '+total+' ข้อ';
+  if(sb){
+    if(!ans){sb.textContent='—';sb.style.background=col.border+'22';sb.style.color=col.border;}
+    else if(f===0&&p>0){sb.textContent='✓ '+pct+'%';sb.style.background='#D1FAE5';sb.style.color='#065F46';}
+    else if(f>0&&pct>=80){sb.textContent=pct+'%';sb.style.background='#FEF9C3';sb.style.color='#92400E';}
+    else{sb.textContent=pct+'%';sb.style.background='#FFE4E6';sb.style.color='#9F1239';}
+  }
+  if(det){
+    let chips='';
+    if(p>0) chips+=`<span style="font-size:9px;padding:1px 6px;border-radius:6px;background:#DCFCE7;color:#166534;font-weight:700">✓ ${p} ผ่าน</span>`;
+    if(f>0) chips+=`<span style="font-size:9px;padding:1px 6px;border-radius:6px;background:#FFE4E6;color:#9F1239;font-weight:700">✗ ${f} ไม่ผ่าน</span>`;
+    if(na>0) chips+=`<span style="font-size:9px;padding:1px 6px;border-radius:6px;background:#F3F4F6;color:#4B5563;font-weight:700">N/A ${na}</span>`;
+    if(total-ans>0) chips+=`<span style="font-size:9px;padding:1px 6px;border-radius:6px;background:#DBEAFE;color:#1D4ED8;font-weight:600">⋯ ยัง ${total-ans}</span>`;
+    det.innerHTML=chips;
+  }
+  if(card){
+    if(f>0) card.style.boxShadow='0 0 0 2px #FCA5A5,0 4px 16px rgba(220,38,38,.18)';
+    else if(p>0&&f===0&&ans===total) card.style.boxShadow='0 0 0 2px #6EE7B7,0 4px 16px rgba(5,150,105,.15)';
+    else card.style.boxShadow='none';
+  }
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function upDash(){
+  const all=getAllItems();
+  let p=0,f=0,na=0;
+  all.forEach(({no})=>{
+    const r=ST.res[no];
+    if(r==='pass')p++;else if(r==='fail')f++;else if(r==='na')na++;
+  });
+  const TOTAL=all.length;
+  const ans=p+f+na;
+  const pct=Math.round(ans/TOTAL*100);
+  document.getElementById('stat-total').textContent=ans;
+  document.getElementById('stat-pass').textContent=p;
+  document.getElementById('stat-fail').textContent=f;
+  document.getElementById('stat-pct').textContent=pct+'%';
+  drawDonut(p,f,na,TOTAL-ans);
+  const lg=document.getElementById('legend');
+  if(lg) lg.innerHTML=
+    `<div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:2px;background:var(--B2)"></div>ผ่าน — ${p} ข้อ</div>
+     <div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:2px;background:var(--DR)"></div>ไม่ผ่าน — ${f} ข้อ</div>
+     <div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:2px;background:#78909C"></div>N/A — ${na} ข้อ</div>
+     <div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:2px;background:#E0E0E0"></div>ยังไม่ประเมิน — ${TOTAL-ans} ข้อ</div>`;
+  const fl=document.getElementById('fail-list');
+  if(fl){
+    const fails=all.filter(({no})=>ST.res[no]==='fail');
+    fl.innerHTML=fails.length?fails.map(({no,sec})=>`<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid rgba(41,182,246,.1);align-items:start">
+      <span class="tag tag-f">ข้อ ${no}</span>
+      <span style="font-size:12px">${sec.ic} หมวด ${sec.n} — ${getItemReq(sec,no)}...</span>
+    </div>`).join(''):'<div style="color:var(--TM);font-size:12px;padding:6px 0">✅ ยังไม่มีข้อที่ไม่ผ่าน</div>';
+  }
+}
+function drawDonut(p,f,na,empty){
+  const c=document.getElementById('donut');if(!c)return;
+  const ctx=c.getContext('2d');
+  const W=c.width,H=c.height,cx=W/2,cy=H/2,r=Math.min(W,H)*.42,ir=r*.6;
+  const total=p+f+na+empty||1;
+  const slices=[{v:p,col:'#0077B6'},{v:f,col:'#EF5350'},{v:na,col:'#78909C'},{v:empty,col:'#E0E0E0'}];
+  ctx.clearRect(0,0,W,H);
+  let a=-Math.PI/2;
+  slices.forEach(s=>{
+    if(!s.v)return;
+    const ang=(s.v/total)*2*Math.PI;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,a,a+ang);ctx.closePath();
+    ctx.fillStyle=s.col;ctx.fill();a+=ang;
+  });
+  ctx.beginPath();ctx.arc(cx,cy,ir,0,2*Math.PI);ctx.fillStyle='#fff';ctx.fill();
+  const elig=p+f;const pct=elig>0?Math.round(p/elig*100):0;
+  ctx.fillStyle='var(--B1)';ctx.font='bold 18px Sarabun,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(pct+'%',cx,cy-6);
+  ctx.font='10px Sarabun,sans-serif';ctx.fillStyle='var(--TM)';ctx.fillText('ผ่าน',cx,cy+9);
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function gp(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id)?.classList.add('active');
+  document.querySelectorAll('.ni').forEach(n=>{if(n.getAttribute('onclick')?.includes("'"+id+"'"))n.classList.add('active');});
+  const T={dashboard:'🏠 แดชบอร์ดภาพรวม',site:'🏭 ข้อมูลสถานที่ผลิต',insp:'👤 ข้อมูลผู้ตรวจ',
+    ref3:'🔬 บทที่ 3 มาตรฐานวัตถุดิบ (อ้างอิง)',ref4:'📊 บทที่ 4 แผนควบคุมการผลิต (อ้างอิง)',
+    summary:'📊 สรุปผลคะแนน',export:'📄 ส่งออก / PDF',
+    capa:'📋 แผน CAPA',sig:'✍️ ลายเซ็น',qr:'📱 QR Code',compare:'🔄 เปรียบเทียบ 2 รอบ',prov:'🏙️ Dashboard จังหวัด'};
+  SECS.forEach(s=>T['s'+s.n]=s.ic+' หมวด '+s.n+' '+s.t);
+  document.getElementById('ptitle').textContent=T[id]||id;
+  if(id==='summary')renderSummary();
+  if(id==='dashboard')upDash();
+  if(id==='capa')renderCapaPage();
+  if(id==='sig'){
+    setTimeout(()=>{
+      const sc=document.getElementById('sig-container');if(!sc)return;
+      sc.innerHTML=ST.inspectors.map((ins,i)=>`<div class="card" style="margin-bottom:12px">
+        <div class="ct">✍️ ผู้ตรวจ ${i+1}: ${ins.name||'(ยังไม่ระบุ)'}</div>
+        <canvas class="sig-canvas" width="400" height="80" data-id="ins${i}"></canvas>
+        <button class="btn btn-g" style="margin-top:5px;font-size:11px" onclick="clearSig('ins${i}')">🗑️ ล้างลายเซ็น</button>
+      </div>`).join('')+
+      `<div class="card"><div class="ct">✍️ ผู้รับการตรวจ / ผู้ประกอบการ</div>
+        <canvas class="sig-canvas" width="400" height="80" data-id="owner"></canvas>
+        <button class="btn btn-g" style="margin-top:5px;font-size:11px" onclick="clearSig('owner')">🗑️ ล้างลายเซ็น</button>
+      </div>`;
+      initSigPads();
+    },60);
+  }
+}
+
+// ============================================================
+// INSPECTOR
+// ============================================================
+function renderIns(){
+  const el=document.getElementById('insp-list');if(!el)return;
+  el.innerHTML=ST.inspectors.map((ins,i)=>`<div style="border:1.5px solid rgba(41,182,246,.2);border-radius:9px;padding:12px;margin-bottom:9px;background:rgba(239,246,255,.5)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px">
+      <strong style="color:var(--B1)">ผู้ตรวจประเมินคนที่ ${i+1}</strong>
+      ${i>0?`<button class="btn btn-g" style="padding:2px 8px;font-size:11px" onclick="delIns(${i})">✕ ลบ</button>`:''}
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">ชื่อ-สกุล</label><input class="fc" value="${ins.name||''}" oninput="updIns(${i},'name',this.value)"></div>
+      <div class="fg"><label class="fl">ตำแหน่ง</label><input class="fc" value="${ins.pos||''}" oninput="updIns(${i},'pos',this.value)"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">เลขที่ใบรับรองผู้ตรวจ</label><input class="fc" value="${ins.lic||''}" oninput="updIns(${i},'lic',this.value)"></div>
+      <div class="fg"><label class="fl">หน่วยงาน</label><input class="fc" value="${ins.org||''}" oninput="updIns(${i},'org',this.value)"></div>
+    </div>
+  </div>`).join('');
+}
+function addIns(){ST.inspectors.push({name:'',pos:'',lic:'',org:''});renderIns();}
+function delIns(i){ST.inspectors.splice(i,1);renderIns();}
+function updIns(i,f,v){ST.inspectors[i][f]=v;save();}
+
+// ============================================================
+// SUMMARY
+// ============================================================
+function renderSummary(){
+  const c=document.getElementById('sum-con');if(!c)return;
+  let tp=0,tf=0,tna=0;
+  const allItems=getAllItems();
+  const rows=SECS.map(sec=>{
+    let p=0,f=0,na=0;
+    getSecItems(sec).forEach(no=>{const r=ST.res[no];if(r==='pass'){p++;tp++;}else if(r==='fail'){f++;tf++;}else if(r==='na'){na++;tna++;}});
+    const elig=p+f;const pct=elig>0?Math.round(p/elig*100):'-';
+    const pc=typeof pct==='number'?pct>=80?'ph':pct>=50?'pm':'pl':'';
+    return`<div class="sr"><div class="scell" style="font-weight:700;color:var(--B1)">${sec.ic} หมวด ${sec.n}: ${sec.t}</div>
+      <div class="scell" style="justify-content:center;color:var(--B2);font-weight:800">${p}</div>
+      <div class="scell" style="justify-content:center;color:var(--DR);font-weight:800">${f}</div>
+      <div class="scell" style="justify-content:center;color:#78909C">${na}</div>
+      <div class="scell" style="justify-content:center"><span class="pb ${pc}">${typeof pct==='number'?pct+'%':'-'}</span></div>
+    </div>`;
+  }).join('');
+  const telig=tp+tf;const opct=telig>0?Math.round(tp/telig*100):0;
+  const vpass=tf===0&&tp>0;
+  c.innerHTML=`<div class="rd ${vpass?'pass':'fail'}">
+    <div class="rt2">${vpass?'🏆 ผ่านการประเมิน GACP':tp+tf>0?'⚠️ พบข้อที่ต้องปรับปรุง':'📋 กำลังดำเนินการตรวจ'}</div>
+    <div class="rs">ผ่าน ${tp} จาก ${telig} ข้อ (ไม่นับ N/A ${tna} ข้อ) = <strong>${opct}%</strong></div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="sr hdr"><div class="scell" style="color:#fff">หมวด</div>
+      <div class="scell" style="color:#fff;justify-content:center">✓ ผ่าน</div>
+      <div class="scell" style="color:#fff;justify-content:center">✗ ไม่ผ่าน</div>
+      <div class="scell" style="color:#fff;justify-content:center">N/A</div>
+      <div class="scell" style="color:#fff;justify-content:center">% ผ่าน</div>
+    </div>${rows}
+    <div class="sr" style="background:rgba(227,242,253,.5)">
+      <div class="scell" style="font-weight:900;color:var(--B1)">รวมทั้งหมด</div>
+      <div class="scell" style="justify-content:center;font-weight:900;color:var(--B2)">${tp}</div>
+      <div class="scell" style="justify-content:center;font-weight:900;color:var(--DR)">${tf}</div>
+      <div class="scell" style="justify-content:center;font-weight:900;color:#78909C">${tna}</div>
+      <div class="scell" style="justify-content:center"><span class="pb ${opct>=80?'ph':opct>=50?'pm':'pl'}">${opct}%</span></div>
+    </div>
+  </div>
+  ${tf>0?`<div class="card" style="margin-top:14px"><div class="ct">⚠️ รายการข้อที่ไม่ผ่าน (${tf} ข้อ)</div>
+    ${allItems.filter(({no})=>ST.res[no]==='fail').map(({no,sec})=>`<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid rgba(41,182,246,.1);align-items:start">
+      <span class="tag tag-f">ข้อ ${no}</span>
+      <div style="font-size:12px">${getItemReq(sec,no)}...${ST.rem[no]?`<div style="font-size:11px;color:var(--TM);margin-top:2px">📝 ${ST.rem[no]}</div>`:''}</div>
+    </div>`).join('')}
+  </div>`:''}`;
+}
+
+// ============================================================
+// CAPA PAGE
+// ============================================================
+function renderCapaPage(){
+  const el=document.getElementById('capa-list');if(!el)return;
+  const sev=ST.sev||{};
+  const c=Object.values(sev).filter(v=>v==='critical').length;
+  const m=Object.values(sev).filter(v=>v==='major').length;
+  const mn=Object.values(sev).filter(v=>v==='minor').length;
+  const se=document.getElementById('sev-summary');
+  if(se) se.innerHTML=`🔴 Critical: <strong>${c}</strong> &nbsp; 🟠 Major: <strong>${m}</strong> &nbsp; 🟡 Minor: <strong>${mn}</strong>`;
+  const fails=getAllItems().filter(({no})=>ST.res[no]==='fail');
+  if(!fails.length){el.innerHTML='<div style="color:var(--TM);font-size:12.5px;padding:8px">ยังไม่มีข้อที่ไม่ผ่าน</div>';return;}
+  el.innerHTML=fails.map(({no,sec})=>{
+    const cp=ST.capa[no]||{};
+    const sv=ST.sev[no]||'';
+    const svLabel=sv==='critical'?'🔴 Critical':sv==='major'?'🟠 Major':sv==='minor'?'🟡 Minor':'— ยังไม่ระบุ';
+    const svColor=sv==='critical'?'var(--DR)':sv==='major'?'var(--WN)':sv==='minor'?'#856404':'#888';
+    const stLabel=cp.stat==='done'?'✅ Done':cp.stat==='inprog'?'🔄 In Progress':'🔓 Open';
+    return`<div style="border:1.5px solid rgba(41,182,246,.2);border-radius:9px;padding:13px;margin-bottom:10px;background:#fff">
+      <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <span class="tag tag-f">ข้อ ${no}</span>
+        <span style="font-weight:700;color:var(--B1)">${sec.ic} หมวด ${sec.n}</span>
+        <span style="font-size:11.5px;color:${svColor};font-weight:800">${svLabel}</span>
+        <span style="font-size:11px;color:var(--TM);margin-left:auto">${stLabel}</span>
+      </div>
+      <div style="font-size:11.5px;color:var(--TX);margin-bottom:8px;line-height:1.5">${getItemReq(sec,no)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><div style="font-size:10.5px;color:var(--B2);font-weight:700;margin-bottom:2px">มาตรการแก้ไข</div>
+          <div style="font-size:11.5px;background:rgba(227,242,253,.5);padding:5px 8px;border-radius:5px;min-height:28px">${cp.fix||'<span style="color:var(--TM)">ยังไม่กรอก</span>'}</div></div>
+        <div><div style="font-size:10.5px;color:var(--B2);font-weight:700;margin-bottom:2px">มาตรการป้องกัน</div>
+          <div style="font-size:11.5px;background:rgba(227,242,253,.5);padding:5px 8px;border-radius:5px;min-height:28px">${cp.prev||'<span style="color:var(--TM)">ยังไม่กรอก</span>'}</div></div>
+        <div><span style="font-size:10.5px;color:var(--TM);font-weight:700">ผู้รับผิดชอบ: </span><span style="font-size:11.5px">${cp.owner||'—'}</span></div>
+        <div><span style="font-size:10.5px;color:var(--TM);font-weight:700">กำหนดเสร็จ: </span><span style="font-size:11.5px">${cp.due||'—'}</span></div>
+      </div>
+      <button class="btn btn-g" style="margin-top:8px;font-size:11px" onclick="gp('s${sec.n}');setTimeout(()=>{document.getElementById('row-${no}')?.scrollIntoView({behavior:'smooth',block:'center'})},300)">✏️ แก้ไขในหมวด ${sec.n}</button>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// PHOTO
+// ============================================================
+function openPhoto(no){
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='image/*';inp.capture='environment';inp.multiple=true;
+  inp.onchange=async e=>{
+    const files=Array.from(e.target.files);
+    if(!ST.photos[no]) ST.photos[no]=[];
+    for(const f of files){
+      const b64=await new Promise(r=>{const rd=new FileReader();rd.onload=e2=>r(e2.target.result);rd.readAsDataURL(f);});
+      ST.photos[no].push(b64);
+    }
+    renderPhotoPreviews(no);save();
+  };inp.click();
+}
+function renderPhotoPreviews(no){
+  const k=no.replace(/\./g,'_');
+  const el=document.getElementById('ph-prev-'+k);if(!el)return;
+  const photos=(ST.photos[no]||[]);
+  el.innerHTML=photos.map((b64,i)=>`<div style="position:relative">
+    <img src="${b64}" style="width:48px;height:48px;object-fit:cover;border-radius:5px;border:1.5px solid var(--BD);cursor:pointer" onclick="viewPhoto('${no}',${i})" title="คลิกเพื่อขยาย">
+    <button onclick="delPhoto('${no}',${i})" style="position:absolute;top:-4px;right:-4px;background:var(--DR);color:#fff;border:none;border-radius:50%;width:15px;height:15px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">✕</button>
+  </div>`).join('');
+  if(photos.length){const hs=document.getElementById('hws-'+k);if(hs) hs.textContent='📷 แนบรูป '+photos.length+' รูป';}
+}
+function delPhoto(no,idx){if(ST.photos[no]){ST.photos[no].splice(idx,1);renderPhotoPreviews(no);save();}}
+function viewPhoto(no,idx){
+  const b64=(ST.photos[no]||[])[idx];if(!b64)return;
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer';
+  ov.innerHTML=`<img src="${b64}" style="max-width:92%;max-height:92%;border-radius:10px"><div style="position:absolute;top:16px;right:20px;color:#fff;font-size:22px">✕</div>`;
+  ov.onclick=()=>ov.remove();document.body.appendChild(ov);
+}
+
+// ============================================================
+// GPS
+// ============================================================
+function getGPS(){
+  if(!navigator.geolocation){alert('Browser ไม่รองรับ GPS');return;}
+  const btn=document.getElementById('gps-btn');
+  if(btn){btn.textContent='📡 กำลังรับสัญญาณ...';btn.disabled=true;}
+  navigator.geolocation.getCurrentPosition(pos=>{
+    gpsCoords={lat:pos.coords.latitude.toFixed(6),lng:pos.coords.longitude.toFixed(6),acc:Math.round(pos.coords.accuracy)};
+    if(btn){btn.textContent='✅ รับพิกัดแล้ว';btn.disabled=false;}
+    const el=document.getElementById('gps-display');
+    if(el) el.innerHTML=`<span style="color:var(--B1);font-weight:700">📍 ${gpsCoords.lat}, ${gpsCoords.lng}</span> <span style="color:var(--TM);font-size:11px">(±${gpsCoords.acc}m)</span>
+      <a href="https://maps.google.com/?q=${gpsCoords.lat},${gpsCoords.lng}" target="_blank" style="font-size:11px;color:var(--B3);margin-left:8px">🗺️ Google Maps</a>`;
+    save();
+  },err=>{
+    if(btn){btn.textContent='📍 รับพิกัด GPS';btn.disabled=false;}
+    alert('ไม่สามารถรับ GPS ได้: '+err.message);
+  },{enableHighAccuracy:true,timeout:15000});
+}
+
+// ============================================================
+// SIGNATURE PAD
+// ============================================================
+function initSigPads(){
+  document.querySelectorAll('.sig-canvas').forEach(c=>{
+    const id=c.dataset.id;
+    const ctx=c.getContext('2d');
+    sigCanvases[id]={canvas:c,ctx,drawing:false,hasData:false};
+    ctx.strokeStyle='#023E8A';ctx.lineWidth=2;ctx.lineCap='round';
+    c.addEventListener('pointerdown',e=>{
+      e.preventDefault();sigCanvases[id].drawing=true;sigCanvases[id].hasData=true;
+      const r=c.getBoundingClientRect();
+      ctx.beginPath();ctx.moveTo((e.clientX-r.left)*c.width/r.width,(e.clientY-r.top)*c.height/r.height);
+      c.setPointerCapture(e.pointerId);
+    });
+    c.addEventListener('pointermove',e=>{
+      if(!sigCanvases[id]?.drawing)return;e.preventDefault();
+      const r=c.getBoundingClientRect();
+      ctx.lineTo((e.clientX-r.left)*c.width/r.width,(e.clientY-r.top)*c.height/r.height);ctx.stroke();
+    });
+    ['pointerup','pointercancel'].forEach(ev=>c.addEventListener(ev,()=>{if(sigCanvases[id]) sigCanvases[id].drawing=false;}));
+  });
+}
+function clearSig(id){if(sigCanvases[id]){sigCanvases[id].ctx.clearRect(0,0,sigCanvases[id].canvas.width,sigCanvases[id].canvas.height);sigCanvases[id].hasData=false;}}
+
+// ============================================================
+// QR CODE
+// ============================================================
+function genQR(){
+  const sn=document.getElementById('sn')?.value||'GACP';
+  const sd=document.getElementById('sd')?.value||new Date().toLocaleDateString('th');
+  const all=getAllItems();let tp=0,tf=0;
+  all.forEach(({no})=>{const r=ST.res[no];if(r==='pass')tp++;else if(r==='fail')tf++;});
+  const elig=tp+tf;const pct=elig>0?Math.round(tp/elig*100):0;
+  const txt='GACP Inspector Pro v2.0\nสถานที่: '+sn+'\nวันที่ตรวจ: '+sd+'\nผล: '+pct+'% (ผ่าน '+tp+'/'+elig+')\nไม่ผ่าน: '+tf+' ข้อ';
+  const url='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(txt);
+  const el=document.getElementById('qr-display');
+  if(el) el.innerHTML=`<img src="${url}" style="border-radius:8px;border:2px solid var(--BD)"><div style="font-size:11px;color:var(--TM);margin-top:6px">สแกนเพื่อดูสรุปผลการตรวจ</div>`;
+}
+
+// ============================================================
+// COMPARE
+// ============================================================
+function loadCompareJSON(){document.getElementById('cmp-file').click();}
+function readCompareFile(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{try{compareData=JSON.parse(ev.target.result);renderCompare();}catch(err){alert('❌ โหลดไม่ได้: '+err.message);}};
+  r.readAsText(f);
+}
+function renderCompare(){
+  const el=document.getElementById('cmp-content');if(!el||!compareData)return;
+  const allItems=getAllItems();
+  let improved=0,worsened=0,same=0;
+  const rows=allItems.filter(({no})=>ST.res[no]||compareData.res?.[no]).map(({no,sec})=>{
+    const cur=ST.res[no]||'—';const prev=compareData.res?.[no]||'—';
+    let arrow='',arrowCol='#888';
+    if(prev==='fail'&&cur==='pass'){arrow='⬆️ ดีขึ้น';arrowCol='var(--B2)';improved++;}
+    else if(prev==='pass'&&cur==='fail'){arrow='⬇️ แย่ลง';arrowCol='var(--DR)';worsened++;}
+    else if(prev===cur&&prev!=='—'){arrow='➡️ เท่าเดิม';same++;}
+    const rLabel=r=>r==='pass'?'<span class="tag tag-p">ผ่าน</span>':r==='fail'?'<span class="tag tag-f">ไม่ผ่าน</span>':r==='na'?'<span class="tag tag-n">N/A</span>':'<span style="color:#bbb">—</span>';
+    return`<tr><td style="font-weight:700;color:var(--B1)">${no}</td>
+      <td style="font-size:11.5px">${getItemReq(sec,no).substring(0,60)}...</td>
+      <td style="text-align:center">${rLabel(prev)}</td>
+      <td style="text-align:center">${rLabel(cur)}</td>
+      <td style="text-align:center;font-weight:700;color:${arrowCol}">${arrow}</td></tr>`;
+  }).join('');
+  el.innerHTML=`<div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+    <div class="sc scs" style="flex:1;min-width:120px"><div class="sn" style="color:var(--B2)">${improved}</div><div class="sl">⬆️ ดีขึ้น</div></div>
+    <div class="sc scd" style="flex:1;min-width:120px"><div class="sn" style="color:var(--DR)">${worsened}</div><div class="sl">⬇️ แย่ลง</div></div>
+    <div class="sc" style="flex:1;min-width:120px"><div class="sn" style="color:#78909C">${same}</div><div class="sl">➡️ เท่าเดิม</div></div>
+  </div>
+  <div style="overflow-x:auto"><table class="it" style="min-width:700px">
+    <thead><tr><th>ข้อ</th><th>รายการ</th><th>รอบก่อน</th><th>รอบนี้</th><th>การเปลี่ยนแปลง</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+// ============================================================
+// PROVINCE DASHBOARD
+// ============================================================
+function loadFarmFiles(){document.getElementById('farm-files').click();}
+function readFarmFiles(e){
+  const files=Array.from(e.target.files);
+  farmDataList=[];let loaded=0;
+  files.forEach(f=>{
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{farmDataList.push(JSON.parse(ev.target.result));}catch(err){}
+      if(++loaded===files.length) renderProvDash();
+    };r.readAsText(f);
+  });
+}
+function renderProvDash(){
+  const el=document.getElementById('prov-content');if(!el||!farmDataList.length)return;
+  const allItems=getAllItems();
+  const rows=farmDataList.map(d=>{
+    const res=d.res||{};let p=0,f=0;
+    allItems.forEach(({no})=>{const r=res[no];if(r==='pass')p++;else if(r==='fail')f++;});
+    const elig=p+f;const pct=elig>0?Math.round(p/elig*100):0;
+    const pc=pct>=80?'ph':pct>=60?'pm':'pl';
+    return`<tr><td style="font-weight:700">${d.site?.name||'ไม่ระบุ'}</td>
+      <td>${d.site?.date||'-'}</td>
+      <td style="text-align:center;color:var(--B2);font-weight:800">${p}</td>
+      <td style="text-align:center;color:var(--DR);font-weight:800">${f}</td>
+      <td style="text-align:center"><span class="pb ${pc}">${pct}%</span></td>
+      <td style="text-align:center">${pct>=80?'<span class="tag tag-p">ผ่าน</span>':'<span class="tag tag-f">ยังไม่ผ่าน</span>'}</td></tr>`;
+  }).join('');
+  const total=farmDataList.length;
+  const passed=farmDataList.filter(d=>{
+    const res=d.res||{};let p=0,f=0;
+    getAllItems().forEach(({no})=>{const r=res[no];if(r==='pass')p++;else if(r==='fail')f++;});
+    return f===0&&p>0;
+  }).length;
+  el.innerHTML=`<div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+    <div class="sc" style="flex:1"><div class="sn">${total}</div><div class="sl">ฟาร์มทั้งหมด</div></div>
+    <div class="sc scs" style="flex:1"><div class="sn" style="color:var(--B2)">${passed}</div><div class="sl">ผ่านเกณฑ์</div></div>
+    <div class="sc scd" style="flex:1"><div class="sn" style="color:var(--DR)">${total-passed}</div><div class="sl">ยังไม่ผ่าน</div></div>
+  </div>
+  <table class="it"><thead><tr><th>ชื่อฟาร์ม</th><th>วันที่ตรวจ</th><th>ผ่าน</th><th>ไม่ผ่าน</th><th>% ผ่าน</th><th>ผล</th></tr></thead>
+  <tbody>${rows}</tbody></table>`;
+}
+
+// ============================================================
+// HANDWRITING
+// ============================================================
+function initHW(){
+  hwCanvas=document.getElementById('hw-canvas');
+  if(!hwCanvas)return;
+  hwCtx=hwCanvas.getContext('2d');
+  hwCtx.lineCap='round';hwCtx.lineJoin='round';
+  hwCanvas.addEventListener('pointerdown',e=>{
+    e.preventDefault();hwDrawing=true;hwCurrent=[];
+    const {x,y}=getXY(e);hwCtx.beginPath();hwCtx.moveTo(x,y);
+    hwCurrent.push([x,y]);hwCanvas.classList.add('drawing');
+    hwCanvas.setPointerCapture(e.pointerId);
+  });
+  hwCanvas.addEventListener('pointermove',e=>{
+    if(!hwDrawing)return;e.preventDefault();
+    const {x,y}=getXY(e);
+    hwCtx.lineWidth=+document.getElementById('hw-size').value;
+    hwCtx.strokeStyle=document.getElementById('hw-color').value;
+    hwCtx.lineTo(x,y);hwCtx.stroke();hwCurrent.push([x,y]);
+  });
+  ['pointerup','pointercancel'].forEach(ev=>hwCanvas.addEventListener(ev,()=>{
+    hwDrawing=false;if(hwCurrent.length) hwStrokes.push([...hwCurrent]);
+    hwCanvas.classList.remove('drawing');
+  }));
+}
+function getXY(e){const r=hwCanvas.getBoundingClientRect();const sx=hwCanvas.width/r.width,sy=hwCanvas.height/r.height;return{x:(e.clientX-r.left)*sx,y:(e.clientY-r.top)*sy};}
+function clearCanvas(){hwCtx.clearRect(0,0,hwCanvas.width,hwCanvas.height);hwStrokes=[];document.getElementById('hw-result').style.display='none';}
+function undoHW(){if(!hwStrokes.length)return;hwStrokes.pop();hwCtx.clearRect(0,0,hwCanvas.width,hwCanvas.height);hwStrokes.forEach(stroke=>{if(!stroke.length)return;hwCtx.beginPath();hwCtx.moveTo(stroke[0][0],stroke[0][1]);stroke.forEach(([x,y])=>hwCtx.lineTo(x,y));hwCtx.stroke();});}
+function openHW(){hwTarget=null;document.getElementById('hw-overlay').classList.add('show');}
+function openHWItem(no){hwTarget=no;document.getElementById('hw-overlay').classList.add('show');}
+function closeHW(){document.getElementById('hw-overlay').classList.remove('show');}
+async function convertHW(){
+  if(!hwStrokes.length){alert('กรุณาเขียนข้อความก่อน');return;}
+  const img=hwCanvas.toDataURL('image/png');
+  document.getElementById('hw-loading').style.display='block';
+  document.getElementById('hw-result').style.display='none';
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:'image/png',data:img.split(',')[1]}},
+          {type:'text',text:'โปรดอ่านข้อความที่เขียนด้วยมือในรูปภาพนี้ แล้วแปลงเป็นข้อความดิจิทัล ตอบเฉพาะข้อความที่อ่านได้เท่านั้น ไม่ต้องอธิบายเพิ่มเติม'}
+        ]}]})
+    });
+    const data=await res.json();
+    const txt=data.content?.find(b=>b.type==='text')?.text||'ไม่สามารถแปลงได้';
+    const rd=document.getElementById('hw-result');
+    rd.style.display='block';rd.innerHTML='<strong>ข้อความที่แปลงได้:</strong><br>'+txt;rd.dataset.txt=txt;
+  }catch(e){
+    const rd=document.getElementById('hw-result');rd.style.display='block';rd.textContent='เกิดข้อผิดพลาด: '+e.message;
+  }
+  document.getElementById('hw-loading').style.display='none';
+}
+function applyHW(){
+  const txt=document.getElementById('hw-result').dataset.txt;
+  if(!txt){alert('กรุณาแปลงข้อความก่อน');return;}
+  if(hwTarget){
+    const k=hwTarget.replace(/\./g,'_');
+    const ta=document.getElementById('rem-'+k);
+    if(ta){ta.value=(ta.value?ta.value+'\n':'')+txt;setRem(hwTarget,ta.value);}
+    const hs=document.getElementById('hws-'+k);
+    if(hs) hs.textContent='✅ เพิ่มข้อความจากปากกาแล้ว';
+  } else {
+    alert('ข้อความที่แปลงได้:\n'+txt);
+  }
+  closeHW();clearCanvas();
+}
+
+// ============================================================
+// PDF
+// ============================================================
+function doPDF(){buildPrint();setTimeout(()=>window.print(),400);}
+function buildPrint(){
+  const pp=document.getElementById('page-print');
+  const V=id=>document.getElementById(id)?.value||'-';
+  const sn=V('sn'),sa=V('sa'),sl=V('sl'),sd=V('sd'),sr2=V('sr2'),ssy=V('ssy'),sv=V('sv'),so=V('so');
+  const io=V('io'),id2=V('id2');
+  const allItems=getAllItems();
+  let tp=0,tf=0,tna=0;
+  allItems.forEach(({no})=>{const r=ST.res[no];if(r==='pass')tp++;else if(r==='fail')tf++;else if(r==='na')tna++;});
+  const elig=tp+tf,opct=elig>0?Math.round(tp/elig*100):0,vp=tf===0&&tp>0;
+  const signHTML=ST.inspectors.map(ins=>`<div class="psbox">
+    <div>ลงชื่อ ..................................................</div>
+    <div>(${ins.name||'..............................'})</div>
+    <div>${ins.pos||'ผู้ตรวจประเมิน'}</div>
+  </div>`).join('');
+  let secHTML=SECS.map(sec=>{
+    let sp=0,sf=0,sna=0;
+    const rows=[];
+    sec.items.forEach(it=>{
+      const r=ST.res[it.no];
+      if(r==='pass')sp++;else if(r==='fail')sf++;else if(r==='na')sna++;
+      const rT=r==='pass'?'<span class="py">มี ✓</span>':r==='fail'?'<span class="pn">ไม่มี ✗</span>':r==='na'?'<span class="pna">N/A</span>':'<span style="color:#bbb">-</span>';
+      rows.push(`<tr><td style="text-align:center;font-weight:800">${it.no}</td><td style="font-size:10.5px">${it.req.substring(0,85)}</td><td style="text-align:center">${rT}</td><td style="font-size:10px">${ST.rem[it.no]||''}</td></tr>`);
+      (it.subs||[]).forEach(sub=>{
+        const sr=ST.res[sub.no];
+        if(sr==='pass')sp++;else if(sr==='fail')sf++;else if(sr==='na')sna++;
+        const sT=sr==='pass'?'<span class="py">✓</span>':sr==='fail'?'<span class="pn">✗</span>':sr==='na'?'<span class="pna">N/A</span>':'<span style="color:#bbb">-</span>';
+        rows.push(`<tr style="background:#EFF6FF"><td style="text-align:center;font-size:9.5px;color:#0077B6">${sub.no}</td><td style="font-size:10px;color:#0D47A1">${sub.req.substring(0,85)}</td><td style="text-align:center">${sT}</td><td style="font-size:9.5px">${ST.rem[sub.no]||''}</td></tr>`);
+      });
+    });
+    return`<div class="psh">${sec.ic} หมวดที่ ${sec.n}: ${sec.t} — ผ่าน ${sp} / ไม่ผ่าน ${sf}</div>
+    <table class="ptb"><thead><tr><th style="width:48px">ข้อ</th><th>ข้อกำหนด</th><th style="width:65px">ผล</th><th style="width:130px">ข้อสังเกต</th></tr></thead>
+    <tbody>${rows.join('')}</tbody></table>`;
+  }).join('');
+  const sumRows=SECS.map(sec=>{
+    let sp=0,sf=0,sna=0;
+    getSecItems(sec).forEach(no=>{const r=ST.res[no];if(r==='pass')sp++;else if(r==='fail')sf++;else if(r==='na')sna++;});
+    const e2=sp+sf;
+    return`<tr><td style="text-align:left">${sec.ic} หมวด ${sec.n}: ${sec.t}</td>
+      <td>${getSecItems(sec).length}</td>
+      <td style="color:#0077B6;font-weight:800">${sp}</td>
+      <td style="color:#c0392b;font-weight:800">${sf}</td>
+      <td>${sna}</td>
+      <td><strong>${e2>0?Math.round(sp/e2*100)+' %':'-'}</strong></td></tr>`;
+  }).join('');
+  pp.innerHTML=`<div class="ph1">
+    <h1>🌿 รายงานผลการตรวจประเมินมาตรฐาน GACP กัญชาทางการแพทย์</h1>
+    <h2>คู่มือแนวทางการประเมินและรับรองมาตรฐานการปลูกและการเก็บเกี่ยวที่ดีของพืชกัญชาทางการแพทย์ในประเทศไทย</h2>
+    <p>กองกัญชาทางการแพทย์ กรมการแพทย์แผนไทยและการแพทย์ทางเลือก กระทรวงสาธารณสุข | GACP V16 พ.ค. 2569</p>
+  </div>
+  <table class="pit">
+    <tr><td class="lbl">ชื่อสถานที่ผลิต</td><td>${sn}</td><td class="lbl">เลขที่ใบอนุญาต</td><td>${sl}</td></tr>
+    <tr><td class="lbl">ที่อยู่</td><td colspan="3">${sa}</td></tr>
+    <tr><td class="lbl">ผู้ประกอบการ</td><td>${so}</td><td class="lbl">ระบบปลูก</td><td>${ssy}</td></tr>
+    <tr><td class="lbl">พันธุ์กัญชา</td><td>${sv}</td><td class="lbl">วันที่ตรวจ</td><td>${sd}</td></tr>
+    <tr><td class="lbl">หน่วยงาน</td><td>${io}</td><td class="lbl">การตรวจครั้งที่</td><td>${sr2}</td></tr>
+    <tr><td class="lbl">ผู้ตรวจประเมิน</td><td colspan="3">${ST.inspectors.map(i=>i.name+(i.pos?' ('+i.pos+')':'')).join(' / ')}</td></tr>
+  </table>
+  <div class="pverd ${vp?'pass':'fail'}"><strong style="font-size:14px">${vp?'✅ ผ่านการตรวจประเมิน GACP':'⚠️ ยังไม่ผ่าน / พบข้อที่ต้องปรับปรุง'}</strong>
+    <br>ผ่าน ${tp} ข้อ จาก ${elig} ข้อ (ไม่นับ N/A ${tna} ข้อ) = <strong>${opct}%</strong>${tf>0?' | ไม่ผ่าน: '+tf+' ข้อ':''}</div>
+  ${secHTML}
+  <div style="margin-top:12px"><div class="psh" style="background:#0077B6">📊 ตารางสรุปผลการตรวจประเมินรายหมวด</div>
+    <table class="psum"><thead><tr><th>หมวด</th><th>จำนวนข้อ</th><th>ผ่าน</th><th>ไม่ผ่าน</th><th>N/A</th><th>% ผ่าน</th></tr></thead>
+    <tbody>${sumRows}<tr style="background:#023E8A;color:#fff;font-weight:900">
+      <td style="text-align:left;color:#fff">รวมทั้งหมด</td><td style="color:#fff">${allItems.length}</td>
+      <td style="color:#B3E5FC">${tp}</td><td style="color:#FFCDD2">${tf}</td><td style="color:#E0E0E0">${tna}</td>
+      <td style="color:#fff">${opct}%</td>
+    </tr></tbody></table></div>
+  <div class="psrow">${signHTML}
+    <div class="psbox"><div>ลงชื่อ ..................................................</div><div>(..............................)</div><div>ผู้รับการตรวจ / ผู้ประกอบการ</div></div>
+  </div>
+  <div class="pcred">
+    📚 เครดิตคู่มือ: กองกัญชาทางการแพทย์ กรมการแพทย์แผนไทยและการแพทย์ทางเลือก กระทรวงสาธารณสุข พ.ศ. 2569 |
+    🛠 พัฒนาโปรแกรมโดย: ภก.จีรภัทร พลายงาม เภสัชกรชำนาญการ กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก
+    สำนักงานสาธารณสุขจังหวัดสมุทรปราการ | GACP Inspector Pro v2.0 | 10 มิถุนายน 2569
+  </div>`;
+}
+
+// ============================================================
+// SAVE / LOAD
+// ============================================================
+function save(){
+  try{localStorage.setItem('gacp2',JSON.stringify({
+    res:ST.res,rem:ST.rem,inspectors:ST.inspectors,
+    photos:ST.photos,capa:ST.capa,sev:ST.sev,gps:gpsCoords
+  }));}catch(e){}
+}
+function restoreState(){
+  try{
+    const d=JSON.parse(localStorage.getItem('gacp2')||'{}');
+    if(d.res) ST.res=d.res;
+    if(d.rem) ST.rem=d.rem;
+    if(d.inspectors) ST.inspectors=d.inspectors;
+    if(d.photos) ST.photos=d.photos;
+    if(d.capa) ST.capa=d.capa;
+    if(d.sev) ST.sev=d.sev;
+    if(d.gps){
+      gpsCoords=d.gps;
+      const el=document.getElementById('gps-display');
+      if(el&&gpsCoords) el.innerHTML=`<span style="color:var(--B1);font-weight:700">📍 ${gpsCoords.lat}, ${gpsCoords.lng}</span>
+        <a href="https://maps.google.com/?q=${gpsCoords.lat},${gpsCoords.lng}" target="_blank" style="font-size:11px;color:var(--B3);margin-left:8px">🗺️ Google Maps</a>`;
+    }
+    getAllItems().forEach(({no})=>{
+      const r=ST.res[no];if(!r)return;
+      const k=no.replace(/\./g,'_');
+      document.getElementById('p-'+k)?.classList.toggle('sel',r==='pass');
+      document.getElementById('f-'+k)?.classList.toggle('sel',r==='fail');
+      document.getElementById('n-'+k)?.classList.toggle('sel',r==='na');
+      const row=document.getElementById('row-'+no);
+      if(row) row.style.background=r==='fail'?'#FFF5F5':r==='pass'?'#F0F8FF':'';
+      const ta=document.getElementById('rem-'+k);if(ta&&ST.rem[no]) ta.value=ST.rem[no];
+      // restore CAPA
+      const capaWrap=document.getElementById('capa-wrap-'+k);
+      if(capaWrap) capaWrap.style.display=r==='fail'?'block':'none';
+      const sevSel=document.getElementById('sev-'+k);
+      if(sevSel){
+        sevSel.style.display=r==='fail'?'block':'none';
+        if(ST.sev[no]) sevSel.value=ST.sev[no];
+      }
+      const c=ST.capa[no];
+      if(c){
+        const fix=document.getElementById('capa-fix-'+k);if(fix) fix.value=c.fix||'';
+        const prev=document.getElementById('capa-prev-'+k);if(prev) prev.value=c.prev||'';
+        const owner=document.getElementById('capa-owner-'+k);if(owner) owner.value=c.owner||'';
+        const due=document.getElementById('capa-due-'+k);if(due) due.value=c.due||'';
+        const stat=document.getElementById('capa-stat-'+k);if(stat) stat.value=c.stat||'open';
+      }
+      if((ST.photos[no]||[]).length) renderPhotoPreviews(no);
+    });
+    SECS.forEach(s=>upSecSum(s));
+    renderIns();
+    upDash();
+  }catch(e){}
+}
+function resetAll(){
+  if(!confirm('⚠️ ต้องการรีเซ็ตข้อมูลทั้งหมด?'))return;
+  ST={res:{},rem:{},inspectors:[{name:'',pos:'',lic:'',org:''}],photos:{},capa:{},sev:{}};
+  getAllItems().forEach(({no})=>{
+    const k=no.replace(/\./g,'_');
+    ['p','f','n'].forEach(t=>document.getElementById(t+'-'+k)?.classList.remove('sel'));
+    const row=document.getElementById('row-'+no);if(row) row.style.background='';
+    const ta=document.getElementById('rem-'+k);if(ta) ta.value='';
+    const cw=document.getElementById('capa-wrap-'+k);if(cw) cw.style.display='none';
+    const ss=document.getElementById('sev-'+k);if(ss) ss.style.display='none';
+    const pp=document.getElementById('ph-prev-'+k);if(pp) pp.innerHTML='';
+  });
+  SECS.forEach(s=>upSecSum(s));renderIns();upDash();
+  localStorage.removeItem('gacp2');alert('✅ รีเซ็ตเรียบร้อยแล้ว');
+}
+function doJSON(){
+  const site={name:document.getElementById('sn')?.value,date:document.getElementById('sd')?.value};
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify({v:'2.0',date:new Date().toISOString(),site,res:ST.res,rem:ST.rem,inspectors:ST.inspectors,capa:ST.capa,sev:ST.sev},null,2)],{type:'application/json'}));
+  a.download='GACP_'+(site.name||'inspection')+'_'+new Date().toLocaleDateString('th')+'.json';a.click();
+}
+function loadJSON(){document.getElementById('jf').click();}
+function readJSON(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(d.res) ST.res=d.res;if(d.rem) ST.rem=d.rem;
+      if(d.inspectors) ST.inspectors=d.inspectors;
+      if(d.capa) ST.capa=d.capa;if(d.sev) ST.sev=d.sev;
+      if(d.site){
+        if(document.getElementById('sn')) document.getElementById('sn').value=d.site.name||'';
+        if(document.getElementById('sd')) document.getElementById('sd').value=d.site.date||'';
+      }
+      getAllItems().forEach(({no})=>{
+        const r2=ST.res[no];if(!r2)return;
+        const k=no.replace(/\./g,'_');
+        document.getElementById('p-'+k)?.classList.toggle('sel',r2==='pass');
+        document.getElementById('f-'+k)?.classList.toggle('sel',r2==='fail');
+        document.getElementById('n-'+k)?.classList.toggle('sel',r2==='na');
+        const row=document.getElementById('row-'+no);if(row) row.style.background=r2==='fail'?'#FFF5F5':r2==='pass'?'#F0F8FF':'';
+        const ta=document.getElementById('rem-'+k);if(ta&&ST.rem[no]) ta.value=ST.rem[no];
+        const cw=document.getElementById('capa-wrap-'+k);if(cw) cw.style.display=r2==='fail'?'block':'none';
+        const ss=document.getElementById('sev-'+k);if(ss){ss.style.display=r2==='fail'?'block':'none';if(ST.sev[no]) ss.value=ST.sev[no];}
+      });
+      SECS.forEach(s=>upSecSum(s));renderIns();upDash();alert('✅ โหลดข้อมูลสำเร็จ');
+    }catch(err){alert('❌ โหลดไม่ได้: '+err.message);}
+  };r.readAsText(f);
+}
+function openManual(){window.open('https://drive.google.com/file/d/1NwKX2opAx66dfWcQKBH5Le8Bn7VqId8N/view?usp=sharing','_blank');}
+
+// ============================================================
+// INIT
+// ============================================================
+window.onload=function(){
+  document.getElementById('sd').value=new Date().toISOString().split('T')[0];
+  buildAllSections();
+  buildRef3();
+  buildRef4();
+  buildSecGrid();
+  renderIns();
+  initHW();
+  restoreState();
+  upDash();
+};
+</script>
+</body>
+</html>
