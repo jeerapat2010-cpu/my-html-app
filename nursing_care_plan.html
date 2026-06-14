@@ -408,6 +408,29 @@ body[data-page="export"] .appbar{background:linear-gradient(120deg,#3b82f6,#2152
 .adl-sum .box .s{font-size:26px;font-weight:800;color:var(--teal-d);margin:2px 0}
 .adl-sum .box .g{display:inline-block;font-size:12px;font-weight:700;padding:3px 12px;border-radius:20px;margin-top:2px}
 .adl-sum .none{color:var(--ink2);font-size:14px;padding:12px 0}
+
+/* Calculators / screening output */
+.calc-out{margin-top:12px}
+.calc-out:empty{display:none}
+.calc-box{border-radius:12px;padding:14px 16px;font-size:14px;border-left:4px solid var(--teal);background:#f4fbfa}
+.calc-box.good{border-left-color:var(--green);background:#f0faf4}
+.calc-box.warn{border-left-color:var(--amber);background:#fff9ef}
+.calc-box.bad{border-left-color:var(--red);background:#fdf4f4}
+.calc-box b.big{font-size:22px;color:var(--teal-d)}
+.calc-box .tag{display:inline-block;font-size:12px;font-weight:700;padding:3px 12px;border-radius:20px;margin-left:6px}
+.tag.t-good{background:#e7f7ee;color:var(--green)}.tag.t-warn{background:#fff4e0;color:#b97500}.tag.t-bad{background:#fdecec;color:var(--red)}
+.q9-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dotted #eef3f5;font-size:13.5px}
+.q9-row .qt{flex:1}
+.q9-row .opts{display:flex;gap:4px}
+.q9-row .opts button{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:#fff;font-weight:700;font-size:13px;color:var(--ink2)}
+.q9-row .opts button.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+.q8-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dotted #eef3f5;font-size:13.5px}
+.q8-row .qt{flex:1}
+.q8-row label{display:inline-flex;align-items:center;gap:5px;cursor:pointer;padding:5px 12px;border:1px solid var(--line);border-radius:8px}
+.q8-row label.on{background:#fdecec;border-color:var(--red);color:var(--red);font-weight:600}
+.crisis-note{background:#fff4f4;border:1px solid #f5c6c8;border-radius:10px;padding:12px 14px;font-size:13px;margin-top:10px;color:#b3261e}
+.ddi-row{padding:10px 14px;border-radius:10px;background:#fff;border:1px solid #f0d0d2;margin-bottom:8px;font-size:13.5px}
+.ddi-row b{color:#c0392b}
 </style>
 </head>
 <body>
@@ -478,6 +501,7 @@ body[data-page="export"] .appbar{background:linear-gradient(120deg,#3b82f6,#2152
   <div class="subnav">
     <button class="active" data-sec="s1" onclick="sec('s1')">📝 ข้อมูลทั่วไป</button>
     <button data-sec="sadl" onclick="sec('sadl')">📊 ประเมิน ADL/TAI</button>
+    <button data-sec="sscreen" onclick="sec('sscreen')">🧮 คัดกรอง/คำนวณ</button>
     <button data-sec="smed" onclick="sec('smed')">💊 ประวัติการใช้ยา</button>
     <button data-sec="s2" onclick="sec('s2')">🏠 การเยี่ยม/การพยาบาล</button>
     <button data-sec="s3" onclick="sec('s3')">📈 แผนจัดการสุขภาพ</button>
@@ -712,8 +736,85 @@ body[data-page="export"] .appbar{background:linear-gradient(120deg,#3b82f6,#2152
     </div>
   </div>
 
+  <!-- SSCREEN : calculators & screening -->
+  <div class="section" id="sec-sscreen">
+    <div class="fcard">
+      <h3><span class="num">🧮</span>เครื่องคำนวณทางคลินิก</h3>
+      <div class="grid3">
+        <div class="fld"><label>น้ำหนัก (กก.)</label><input type="number" step="0.1" data-f="p_weight" oninput="autoBMI2();calcWaist()"></div>
+        <div class="fld"><label>ส่วนสูง (ซม.)</label><input type="number" step="0.1" data-f="p_height" oninput="autoBMI2()"></div>
+        <div class="fld"><label>รอบเอว (ซม.)</label><input type="number" step="0.1" data-f="waist" oninput="calcWaist()"></div>
+      </div>
+      <div id="calc-bmi-waist" class="calc-out"></div>
+      <div class="grid3" style="margin-top:16px">
+        <div class="fld"><label>Creatinine (mg/dL)</label><input type="number" step="0.01" data-f="cr" oninput="calcEGFR()"></div>
+        <div class="fld" style="grid-column:span 2"><label> </label><div id="calc-egfr" class="calc-out" style="margin:0"></div></div>
+      </div>
+    </div>
+
+    <div class="fcard">
+      <h3><span class="num">❤️</span>ความเสี่ยงโรคหัวใจและหลอดเลือด (Thai CV Risk)</h3>
+      <div id="cv-factors"></div>
+      <p class="hint" style="margin:10px 0">เครื่องมือนี้ช่วยนับปัจจัยเสี่ยงเบื้องต้น สำหรับคะแนน % ที่แม่นยำ ใช้เครื่องคำนวณทางการของคณะแพทยศาสตร์ รพ.รามาธิบดี แล้วบันทึกผลกลับมา</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <a class="btn btn-sky btn-sm" href="https://www.rama.mahidol.ac.th/cardio_vascular_risk/thai_cv_risk_score/" target="_blank">🔗 เปิดเครื่องคำนวณรามาฯ</a>
+        <div class="fld" style="max-width:140px"><label>ผลความเสี่ยง 10 ปี (%)</label><input type="number" step="0.1" data-f="cv_pct" oninput="calcCV()"></div>
+        <div class="fld" style="max-width:170px"><label>ระดับความเสี่ยง</label>
+          <select data-f="cv_level" oninput="calcCV()"><option value="">- เลือก -</option><option>ต่ำ (<10%)</option><option>ปานกลาง (10-<20%)</option><option>สูง (20-<30%)</option><option>สูงมาก (≥30%)</option></select></div>
+      </div>
+      <div id="cv-out" class="calc-out"></div>
+    </div>
+
+    <div class="fcard">
+      <h3><span class="num">🧠</span>คัดกรองภาวะซึมเศร้า (2Q → 9Q) และการฆ่าตัวตาย (8Q)</h3>
+      <p class="hint" style="margin-bottom:12px">แบบคัดกรองของกรมสุขภาพจิต — ตอบ 2Q ก่อน หากผลบวกให้ประเมิน 9Q ต่อ</p>
+      <div style="background:#fbfdfe;border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px">
+        <b style="font-size:14px">แบบคัดกรอง 2Q</b> <span class="hint">(ใน 2 สัปดาห์ที่ผ่านมา รวมวันนี้)</span>
+        <div style="margin-top:10px">
+          <div class="fld" style="margin-bottom:10px"><label>1. รู้สึกหดหู่ เศร้า หรือท้อแท้สิ้นหวัง</label>
+            <div class="radio-row" data-radio="q2_1"><label class="opt"><input type="radio" name="q2_1" value="ไม่มี" onchange="calc2Q()">ไม่มี</label><label class="opt"><input type="radio" name="q2_1" value="มี" onchange="calc2Q()">มี</label></div></div>
+          <div class="fld"><label>2. รู้สึกเบื่อ ทำอะไรก็ไม่เพลิดเพลิน</label>
+            <div class="radio-row" data-radio="q2_2"><label class="opt"><input type="radio" name="q2_2" value="ไม่มี" onchange="calc2Q()">ไม่มี</label><label class="opt"><input type="radio" name="q2_2" value="มี" onchange="calc2Q()">มี</label></div></div>
+        </div>
+        <div id="q2-out" class="calc-out"></div>
+      </div>
+      <div id="q9-block" style="display:none">
+        <b style="font-size:14px">แบบประเมิน 9Q</b> <span class="hint">(ในช่วง 2 สัปดาห์ที่ผ่านมา มีอาการบ่อยแค่ไหน: 0=ไม่มีเลย, 1=1-7 วัน, 2=>7 วัน, 3=ทุกวัน)</span>
+        <div id="q9-items" style="margin-top:10px"></div>
+        <div id="q9-out" class="calc-out"></div>
+      </div>
+      <div id="q8-block" style="display:none;margin-top:14px">
+        <b style="font-size:14px;color:var(--red)">แบบประเมินการฆ่าตัวตาย 8Q</b> <span class="hint">(ระยะ 1 เดือนที่ผ่านมา — เลือก "มี" หากมีอาการ)</span>
+        <div id="q8-items" style="margin-top:10px"></div>
+        <div id="q8-out" class="calc-out"></div>
+      </div>
+    </div>
+
+    <div class="fcard">
+      <h3><span class="num">🦶</span>ประเมินความเสี่ยงเท้าเบาหวาน (Diabetic Foot Risk)</h3>
+      <div class="check-col" data-radio="foot_risk">
+        <label class="opt"><input type="radio" name="foot_risk" value="0" onchange="calcFoot()">ระดับ 0 : ความรู้สึกปกติ ชีพจรปกติ ไม่มีแผล/เท้าผิดรูป (เสี่ยงต่ำ)</label>
+        <label class="opt"><input type="radio" name="foot_risk" value="1" onchange="calcFoot()">ระดับ 1 : สูญเสียความรู้สึกที่ปกป้อง (Protective sensation) (เสี่ยงปานกลาง)</label>
+        <label class="opt"><input type="radio" name="foot_risk" value="2" onchange="calcFoot()">ระดับ 2 : สูญเสียความรู้สึก + ชีพจรส่วนปลายผิดปกติ หรือเท้าผิดรูป (เสี่ยงสูง)</label>
+        <label class="opt"><input type="radio" name="foot_risk" value="3" onchange="calcFoot()">ระดับ 3 : เคยมีแผลที่เท้า หรือเคยถูกตัดเท้า/นิ้วเท้า (เสี่ยงสูงมาก)</label>
+      </div>
+      <div id="foot-out" class="calc-out"></div>
+    </div>
+
+    <div class="fcard">
+      <h3><span class="num">🚶</span>ประเมินความเสี่ยงหกล้ม (Timed Up and Go : TUG)</h3>
+      <p class="hint" style="margin-bottom:10px">จับเวลาผู้ป่วยลุกจากเก้าอี้ เดินไป 3 เมตร หมุนกลับมานั่ง บันทึกเป็นวินาที</p>
+      <div class="fld" style="max-width:200px"><label>เวลาที่ใช้ (วินาที)</label><input type="number" step="0.1" data-f="tug_sec" oninput="calcTUG()"></div>
+      <div id="tug-out" class="calc-out"></div>
+    </div>
+  </div>
+
   <!-- SMED : medication history -->
   <div class="section" id="sec-smed">
+    <div class="fcard" id="ddi-card" style="display:none;border:1.5px solid #f5c6c8;background:#fffafa">
+      <h3 style="color:var(--red);border-color:#f5c6c8"><span class="num" style="background:var(--red)">⚠</span>การตรวจปฏิกิริยายา–ยา / ยา–สมุนไพร (Interaction Alert)</h3>
+      <div id="ddi-list"></div>
+    </div>
     <div class="fcard">
       <h3><span class="num">💊</span>ประวัติการใช้ยาปัจจุบัน (Medication List)</h3>
       <p class="hint" style="margin-bottom:14px">บันทึกยาที่ผู้ป่วยใช้อยู่ทั้งหมด พร้อมขนาด วิธีใช้ และข้อบ่งใช้ เพื่อการประเมินความสม่ำเสมอและปฏิกิริยาระหว่างยา</p>
@@ -891,6 +992,18 @@ body[data-page="export"] .appbar{background:linear-gradient(120deg,#3b82f6,#2152
     <div class="chart-box"><h3>📉 แนวโน้มน้ำตาลในเลือด (DTX) ภาพรวม</h3><div class="cwrap"><canvas id="chart-dtx"></canvas></div></div>
   </div>
   <div class="chart-box"><h3>⚖️ การกระจายภาวะโภชนาการ (BMI)</h3><div class="cwrap" style="height:200px"><canvas id="chart-bmi"></canvas></div></div>
+
+  <div class="chart-box" style="margin-top:18px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <h3 style="margin:0;flex:1">📋 ตัวชี้วัดแยกตามตำบล/พื้นที่ (HDC)</h3>
+      <button class="btn btn-ghost btn-sm" onclick="exportKPI()">⬇️ ส่งออก KPI (CSV)</button>
+    </div>
+    <table class="exp-table" id="kpi-table">
+      <thead><tr><th>ตำบล/พื้นที่</th><th>จำนวนเคส</th><th>คุม BP ได้</th><th>% คุม BP</th><th>คุม DTX ได้</th><th>% คุม DTX</th><th>คุมได้ทั้งหมด</th></tr></thead>
+      <tbody id="kpi-body"></tbody>
+    </table>
+    <p class="hint" style="margin-top:8px">% คุม BP = ผู้ป่วยที่ความดันล่าสุด ≤140/90 • % คุม DTX = น้ำตาลล่าสุด 80-130 mg • คำนวณจากเคสที่มีข้อมูลในแต่ละตำบล</p>
+  </div>
 </div>
 
 <!-- ============ REPORT ============ -->
@@ -907,6 +1020,18 @@ body[data-page="export"] .appbar{background:linear-gradient(120deg,#3b82f6,#2152
 <div class="page" id="page-export">
   <h2 style="font-size:22px;font-weight:700;margin-bottom:8px">📤 ส่งออกข้อมูลเป็น CSV</h2>
   <p class="hint" style="margin-bottom:16px">เลือกเคสที่ต้องการส่งออก (เลือกได้หลายเคสพร้อมกัน) แล้วกดดาวน์โหลด ไฟล์รองรับการเปิดด้วย Excel (UTF-8 BOM)</p>
+  <div class="fcard" style="margin-bottom:18px;border-left:4px solid var(--teal)">
+    <h3><span class="num">💾</span>สำรองและกู้คืนข้อมูลทั้งระบบ (Backup / Restore)</h3>
+    <p class="hint" style="margin-bottom:14px">⚠️ ข้อมูลทั้งหมดเก็บในเบราว์เซอร์เครื่องนี้ หากเคลียร์แคช เปลี่ยนเครื่อง หรือเครื่องเสีย ข้อมูลจะหาย <b>แนะนำให้สำรองข้อมูลเป็นไฟล์ JSON เก็บไว้เป็นประจำ</b> เพื่อย้ายเครื่องหรือกู้คืนได้</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="exportBackup()">💾 สำรองข้อมูลทั้งหมด (JSON)</button>
+      <input type="file" id="restore-input" accept="application/json,.json" style="display:none" onchange="importBackup(event)">
+      <button class="btn btn-sky" onclick="document.getElementById('restore-input').click()">📂 นำเข้า/กู้คืนข้อมูล (JSON)</button>
+    </div>
+    <p class="hint" style="margin-top:10px">การกู้คืนจะให้เลือกว่าจะ "รวมกับข้อมูลเดิม" หรือ "แทนที่ทั้งหมด"</p>
+  </div>
+
+  <h3 style="font-size:17px;font-weight:700;margin-bottom:8px">📤 ส่งออกข้อมูลรายเคสเป็น CSV</h3>
   <div class="toolbar">
     <button class="btn btn-ghost btn-sm" onclick="toggleAllExport(true)">☑️ เลือกทั้งหมด</button>
     <button class="btn btn-ghost btn-sm" onclick="toggleAllExport(false)">⬜ ยกเลิกทั้งหมด</button>
@@ -962,6 +1087,9 @@ function blankCase(){
     n_bmi:'',n_interp:'',env:'',env_detail:'',caregiver_p:'',med:'',med_side:'',belief:'',belief_detail:'',alcohol:'',smoke:'',
     knowledge:[],appt:'',appt_date:'',appt_room:'ห้องตรวจโรคอายุรกรรม',
     adl_items:[null,null,null,null,null,null,null,null,null,null],adl_total:'',tai_items:[null,null,null,null],tai_total:'',tai_group:'',
+    waist:'',cr:'',egfr:'',cv_pct:'',cv_level:'',
+    q2_1:'',q2_2:'',q9:[null,null,null,null,null,null,null,null,null],q9_total:'',q8_items:[false,false,false,false,false,false,false,false],q8_level:'',
+    foot_risk:'',tug_sec:'',
     meds:[],herbs:[],med_adherence:'',med_organize:'',med_side2:'',med_note:'',
     next_visit_date:'',next_visit_type:'',next_visit_freq:'',next_visit_plan:'',
     problems:'',goals:'',visits:[],plan_disease:'',weeks:[],telecomm:'',photo:'' };
@@ -986,8 +1114,9 @@ function sec(s){
   document.getElementById('sec-'+s).classList.add('show');
   document.querySelectorAll('.subnav button').forEach(b=>b.classList.toggle('active', b.dataset.sec===s));
   if(s==='s5') renderAnalysis();
-  if(s==='smed'){ renderMeds(); renderHerbs(); }
+  if(s==='smed'){ renderMeds(); renderHerbs(); checkInteractions(); }
   if(s==='sadl'){ renderADL(); renderTAI(); }
+  if(s==='sscreen'){ renderScreen(); }
 }
 
 /* ===================== CASE LIST ===================== */
@@ -1068,7 +1197,7 @@ function fillForm(){
     const name=g.dataset.check; const arr=draft[name]||[];
     g.querySelectorAll('input[type=checkbox]').forEach(ck=>{ ck.checked=arr.includes(ck.value); ck.closest('.opt').classList.toggle('sel',ck.checked); });
   });
-  renderVisits(); renderWeeks(); renderPhoto(); renderMeds(); renderHerbs(); renderADL(); renderTAI(); fillTambonList();
+  renderVisits(); renderWeeks(); renderPhoto(); renderMeds(); renderHerbs(); renderADL(); renderTAI(); checkInteractions(); updateADLSummary(); fillTambonList();
 }
 function fillTambonList(){
   const dl=document.getElementById('tambon-list'); if(!dl)return;
@@ -1253,6 +1382,148 @@ function calcTAI(){
   updateADLSummary();
 }
 
+/* ===== SCREENING & CALCULATORS ===== */
+function renderScreen(){ renderCVFactors(); renderQ9(); renderQ8(); calcWaist(); calcEGFR(); calcCV(); calc2Q(); calcFoot(); calcTUG(); }
+
+function calcWaist(){
+  const out=document.getElementById('calc-bmi-waist'); if(!out)return;
+  const bmi=parseFloat(draft.n_bmi), w=parseFloat(draft.waist); let html='';
+  if(!isNaN(bmi)){ let st=bmi<18.5?['warn','น้ำหนักน้อย']:bmi<23?['good','ปกติ']:bmi<25?['warn','ท้วม']:bmi<30?['bad','อ้วนระดับ 1']:['bad','อ้วนระดับ 2'];
+    html+=`<div class="calc-box ${st[0]}">BMI <b class="big">${bmi}</b> kg/m² <span class="tag t-${st[0]==='good'?'good':st[0]==='warn'?'warn':'bad'}">${st[1]}</span></div>`; }
+  if(!isNaN(w)){ const sex=draft.p_sex; const cut=sex==='ชาย'?90:80; const ob=w>=cut;
+    html+=`<div class="calc-box ${ob?'bad':'good'}" style="margin-top:8px">รอบเอว <b class="big">${w}</b> ซม. <span class="tag ${ob?'t-bad':'t-good'}">${ob?'อ้วนลงพุง':'ปกติ'}</span> <span class="hint">(เกณฑ์${sex==='ชาย'?'ชาย ≥90':'หญิง ≥80'} ซม.)</span></div>`; }
+  out.innerHTML=html;
+}
+function calcEGFR(){
+  const out=document.getElementById('calc-egfr'); if(!out)return;
+  const cr=parseFloat(draft.cr); const age=ageNum(draft); const sex=draft.p_sex;
+  if(isNaN(cr)||!age||!sex){ out.innerHTML='<p class="hint">ต้องมีค่า Creatinine, อายุ และเพศ เพื่อคำนวณ eGFR (CKD-EPI 2021)</p>'; draft.egfr=''; return; }
+  const female=sex==='หญิง'; const k=female?0.7:0.9; const a=female?-0.241:-0.302;
+  const egfr=142*Math.pow(Math.min(cr/k,1),a)*Math.pow(Math.max(cr/k,1),-1.200)*Math.pow(0.9938,age)*(female?1.012:1);
+  const e=Math.round(egfr); draft.egfr=e;
+  let stage,cls;
+  if(e>=90){stage='G1 ปกติ';cls='good';}else if(e>=60){stage='G2 ลดลงเล็กน้อย';cls='good';}
+  else if(e>=45){stage='G3a ลดลงปานกลาง';cls='warn';}else if(e>=30){stage='G3b ลดลงปานกลาง-มาก';cls='warn';}
+  else if(e>=15){stage='G4 ลดลงรุนแรง';cls='bad';}else{stage='G5 ไตวายระยะสุดท้าย';cls='bad';}
+  out.innerHTML=`<div class="calc-box ${cls}">eGFR <b class="big">${e}</b> mL/min/1.73m² <span class="tag t-${cls}">${stage}</span><p class="hint" style="margin-top:6px">CKD-EPI 2021 ${e<60?'• ควรประเมินภาวะไตเรื้อรัง และทบทวนขนาดยาที่ขับทางไต':''}</p></div>`;
+}
+const CV_FACTORS=[
+  ['อายุ ≥45 ปี (ช) / ≥55 ปี (ญ)', c=>{const a=ageNum(c); return a&&(c.p_sex==='ชาย'?a>=45:a>=55);}],
+  ['สูบบุหรี่', c=>c.smoke==='สูบ'],
+  ['เบาหวาน', c=>diagHas(c,'DM')||diagHas(c,'เบาหวาน')],
+  ['ความดันโลหิตสูง (คุมไม่ได้)', c=>{const b=parseBP(lastVitals(c).bp); return b&&(b.s>140||b.d>90);}],
+  ['ไขมันในเลือดสูง', c=>diagHas(c,'DYSLIP')||diagHas(c,'ไขมัน')],
+  ['อ้วนลงพุง (รอบเอวเกิน)', c=>{const w=parseFloat(c.waist); return !isNaN(w)&&w>=(c.p_sex==='ชาย'?90:80);}],
+  ['BMI ≥25', c=>parseFloat(c.n_bmi)>=25],
+  ['ประวัติครอบครัวโรคหัวใจ/หลอดเลือด', c=>c.p_famhist&&/stroke|หลอดเลือด|หัวใจ|อัมพา/i.test(c.p_famhist)]
+];
+function renderCVFactors(){
+  const w=document.getElementById('cv-factors'); if(!w)return;
+  const hit=CV_FACTORS.filter(f=>f[1](draft));
+  w.innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:8px">${CV_FACTORS.map(f=>{const on=f[1](draft);return `<span class="chip ${on?'bad':''}" style="${on?'':'opacity:.5'}">${on?'⚠ ':'○ '}${f[0]}</span>`;}).join('')}</div>
+    <p style="margin-top:10px;font-size:14px">พบปัจจัยเสี่ยง <b style="font-size:20px;color:${hit.length>=3?'var(--red)':hit.length>=1?'#b97500':'var(--green)'}">${hit.length}</b>/${CV_FACTORS.length} ข้อ</p>`;
+}
+function calcCV(){
+  const out=document.getElementById('cv-out'); if(!out)return;
+  const pct=parseFloat(draft.cv_pct); if(isNaN(pct)&&!draft.cv_level){ out.innerHTML=''; return; }
+  let cls='good';
+  if(!isNaN(pct)){ cls=pct<10?'good':pct<20?'warn':'bad'; }
+  else if(draft.cv_level){ cls=/ต่ำ/.test(draft.cv_level)?'good':/ปานกลาง/.test(draft.cv_level)?'warn':'bad'; }
+  out.innerHTML=`<div class="calc-box ${cls}">ความเสี่ยง CVD 10 ปี: <b class="big">${isNaN(pct)?'-':pct+'%'}</b> ${draft.cv_level?`<span class="tag t-${cls}">${draft.cv_level}</span>`:''}<p class="hint" style="margin-top:6px">${cls==='bad'?'ความเสี่ยงสูง — ควรปรับพฤติกรรมเข้มข้น พิจารณายาลดไขมัน/ความดัน และติดตามใกล้ชิด':cls==='warn'?'ความเสี่ยงปานกลาง — เน้นปรับพฤติกรรมและติดตามต่อเนื่อง':'ความเสี่ยงต่ำ — คงพฤติกรรมสุขภาพดีต่อไป'}</p></div>`;
+}
+
+const Q9_ITEMS=['เบื่อ ไม่สนใจอยากทำอะไร','ไม่สบายใจ ซึมเศร้า ท้อแท้','หลับยาก หลับๆตื่นๆ หรือหลับมากไป','เหนื่อยง่าย ไม่ค่อยมีแรง','เบื่ออาหาร หรือกินมากเกินไป','รู้สึกไม่ดีกับตัวเอง คิดว่าตัวเองล้มเหลว หรือทำให้ตนเอง/ครอบครัวผิดหวัง','สมาธิไม่ดี เช่น ดูทีวี ฟังวิทยุ หรือทำงานที่ต้องใช้ความตั้งใจ','พูด/ทำอะไรช้าจนคนอื่นสังเกต หรือกระสับกระส่ายมากผิดปกติ','คิดทำร้ายตนเอง หรือคิดว่าถ้าตายไปคงจะดี'];
+function calc2Q(){
+  const out=document.getElementById('q2-out'); if(!out)return;
+  const pos = draft.q2_1==='มี'||draft.q2_2==='มี';
+  document.getElementById('q9-block').style.display = pos?'block':'none';
+  if(draft.q2_1||draft.q2_2){
+    out.innerHTML=`<div class="calc-box ${pos?'warn':'good'}" style="margin-top:10px">ผลคัดกรอง 2Q: <b>${pos?'ผลบวก':'ผลลบ'}</b> — ${pos?'มีความเสี่ยงซึมเศร้า ให้ประเมินต่อด้วย 9Q':'ไม่พบความเสี่ยง'}</div>`;
+  } else out.innerHTML='';
+}
+function renderQ9(){
+  const w=document.getElementById('q9-items'); if(!w)return;
+  if(!draft.q9)draft.q9=[null,null,null,null,null,null,null,null,null];
+  w.innerHTML=Q9_ITEMS.map((q,i)=>`<div class="q9-row"><span class="qt">${i+1}. ${q}</span><div class="opts">${[0,1,2,3].map(n=>`<button class="${draft.q9[i]===n?'on':''}" onclick="setQ9(${i},${n})">${n}</button>`).join('')}</div></div>`).join('');
+  calcQ9();
+}
+function setQ9(i,n){ draft.q9[i]=n; renderQ9(); }
+function calcQ9(){
+  const out=document.getElementById('q9-out'); const done=(draft.q9||[]).filter(x=>x!=null);
+  const total=done.reduce((a,b)=>a+b,0); draft.q9_total=done.length===9?total:'';
+  const showQ8 = (draft.q9&&draft.q9[8]>0);
+  document.getElementById('q8-block').style.display = showQ8?'block':'none';
+  if(done.length<9){ out.innerHTML=`<div class="calc-box">ประเมินแล้ว ${done.length}/9 ข้อ • คะแนนสะสม ${total}</div>`; return; }
+  let lv,cls;
+  if(total<=6){lv='ไม่มีภาวะซึมเศร้า';cls='good';}else if(total<=12){lv='ซึมเศร้าระดับน้อย';cls='warn';}
+  else if(total<=18){lv='ซึมเศร้าระดับปานกลาง';cls='bad';}else{lv='ซึมเศร้าระดับรุนแรง';cls='bad';}
+  out.innerHTML=`<div class="calc-box ${cls}">คะแนน 9Q รวม <b class="big">${total}</b>/27 <span class="tag t-${cls}">${lv}</span>
+    <p class="hint" style="margin-top:6px">${total>=13?'คะแนน ≥13 — ควรส่งต่อพบแพทย์/จิตแพทย์ ':''}${draft.q9[8]>0?'• ข้อ 9 มีความคิดทำร้ายตนเอง — ประเมิน 8Q และดูแลความปลอดภัยทันที':''}</p></div>`;
+}
+const Q8_ITEMS=['คิดอยากตาย หรือคิดว่าตายไปจะดีกว่า','อยากทำร้ายตัวเอง หรือทำให้ตัวเองบาดเจ็บ','คิดเกี่ยวกับการฆ่าตัวตาย','รู้สึกว่าควบคุมความคิดฆ่าตัวตายไม่ได้ หรืออยากฆ่าตัวตาย','มีแผนการที่จะฆ่าตัวตาย','เตรียมการที่จะฆ่าตัวตาย','เคยทำให้ตนเองบาดเจ็บแต่ไม่ตั้งใจให้ตาย (ช่วงที่ผ่านมา)','เคยพยายามฆ่าตัวตายโดยตั้งใจให้ตาย'];
+function renderQ8(){
+  const w=document.getElementById('q8-items'); if(!w)return;
+  if(!draft.q8_items)draft.q8_items=[false,false,false,false,false,false,false,false];
+  w.innerHTML=Q8_ITEMS.map((q,i)=>`<div class="q8-row"><span class="qt">${i+1}. ${q}</span><label class="${draft.q8_items[i]?'on':''}"><input type="checkbox" ${draft.q8_items[i]?'checked':''} onchange="setQ8(${i},this.checked)" style="display:none">${draft.q8_items[i]?'✓ มี':'มี'}</label></div>`).join('');
+  calcQ8();
+}
+function setQ8(i,v){ draft.q8_items[i]=v; renderQ8(); }
+function calcQ8(){
+  const out=document.getElementById('q8-out'); if(!out)return;
+  const any=(draft.q8_items||[]).some(Boolean);
+  const severe=(draft.q8_items||[]).slice(3).some(Boolean); // ข้อ 4-8
+  if(!any){ out.innerHTML='<div class="calc-box good" style="margin-top:8px">ไม่พบความเสี่ยงต่อการฆ่าตัวตายในขณะนี้</div>'; return; }
+  out.innerHTML=`<div class="calc-box bad" style="margin-top:8px">พบสัญญาณเสี่ยงต่อการฆ่าตัวตาย ${severe?'<b>ระดับเสี่ยงสูง</b>':'ระดับเฝ้าระวัง'}
+    <div class="crisis-note">❗ ดูแลความปลอดภัยทันที ประเมินโดยละเอียด และ${severe?'<b>ส่งต่อพบจิตแพทย์โดยด่วน</b>':'พิจารณาส่งต่อ/ติดตามใกล้ชิด'} • สายด่วนสุขภาพจิต <b>1323</b> (24 ชม.) • อยู่เป็นเพื่อนผู้ป่วย ไม่ปล่อยให้อยู่ลำพัง</div></div>`;
+}
+function calcFoot(){
+  const out=document.getElementById('foot-out'); if(!out)return;
+  const r=draft.foot_risk; if(r===''||r==null){ out.innerHTML=''; return; }
+  const map={'0':['good','เสี่ยงต่ำ','ตรวจเท้าประจำปี ดูแลเท้าทั่วไป สอนการดูแลเท้าด้วยตนเอง'],
+    '1':['warn','เสี่ยงปานกลาง','ตรวจเท้าทุก 3-6 เดือน เน้นรองเท้าที่เหมาะสม หลีกเลี่ยงการเกิดแผล'],
+    '2':['bad','เสี่ยงสูง','ตรวจเท้าทุก 1-3 เดือน พิจารณาส่งพบผู้เชี่ยวชาญ ดูแลหลอดเลือด/ความรู้สึก'],
+    '3':['bad','เสี่ยงสูงมาก','ตรวจเท้าทุก 1-3 เดือน ดูแลโดยทีมเฉพาะทาง เฝ้าระวังแผลซ้ำ/การตัดเท้า']};
+  const m=map[r]; out.innerHTML=`<div class="calc-box ${m[0]}">ความเสี่ยงเท้าเบาหวาน ระดับ ${r} <span class="tag t-${m[0]}">${m[1]}</span><p class="hint" style="margin-top:6px">${m[2]}</p></div>`;
+}
+function calcTUG(){
+  const out=document.getElementById('tug-out'); if(!out)return;
+  const s=parseFloat(draft.tug_sec); if(isNaN(s)){ out.innerHTML=''; return; }
+  let lv,cls;
+  if(s<10){lv='ปกติ เคลื่อนไหวคล่อง เสี่ยงหกล้มต่ำ';cls='good';}
+  else if(s<=13.5){lv='เฝ้าระวัง เริ่มมีความเสี่ยงหกล้ม';cls='warn';}
+  else if(s<30){lv='เสี่ยงหกล้มสูง ควรประเมินและป้องกัน';cls='bad';}
+  else{lv='เสี่ยงหกล้มสูงมาก / จำกัดการเคลื่อนไหว';cls='bad';}
+  out.innerHTML=`<div class="calc-box ${cls}">TUG <b class="big">${s}</b> วินาที <span class="tag t-${cls}">${cls==='good'?'ปกติ':cls==='warn'?'เฝ้าระวัง':'เสี่ยงสูง'}</span><p class="hint" style="margin-top:6px">${lv}${cls!=='good'?' • แนะนำออกกำลังกายเสริมการทรงตัว ปรับสภาพแวดล้อมบ้านลดความเสี่ยง':''}</p></div>`;
+}
+
+/* ===== DRUG–DRUG / DRUG–HERB INTERACTIONS ===== */
+const INTERACTIONS=[
+  {a:['warfarin','วาร์ฟาริน'],b:['aspirin','แอสไพริน','nsaid','ibuprofen','diclofenac','ไอบูโพรเฟน'],msg:'เพิ่มความเสี่ยงเลือดออก (Warfarin + ยาต้านเกล็ดเลือด/NSAIDs)'},
+  {a:['warfarin','วาร์ฟาริน'],b:['ฟ้าทะลาย','กระเทียม','garlic','แปะก๊วย','ginkgo','ขิง','ginger','ขมิ้น','turmeric'],msg:'สมุนไพรบางชนิดเสริมฤทธิ์ Warfarin เพิ่มความเสี่ยงเลือดออก'},
+  {a:['aspirin','แอสไพริน'],b:['ฟ้าทะลาย','กระเทียม','garlic','แปะก๊วย','ginkgo','ขิง','ginger'],msg:'สมุนไพร (กระเทียม/แปะก๊วย/ขิง) เสริมฤทธิ์ต้านเกล็ดเลือด เพิ่มเสี่ยงเลือดออกร่วมกับ Aspirin'},
+  {a:['enalapril','lisinopril','ramipril','losartan','valsartan','candesartan','acei','arb'],b:['spironolactone','สไปโรโนแลคโตน','โพแทสเซียม','potassium'],msg:'เสี่ยงภาวะโพแทสเซียมสูง (ACEI/ARB + Spironolactone/K)'},
+  {a:['enalapril','lisinopril','losartan','valsartan','acei','arb'],b:['nsaid','ibuprofen','diclofenac','ไอบูโพรเฟน','naproxen'],msg:'NSAIDs ลดประสิทธิภาพยาลดความดันและเสี่ยงต่อไต (ACEI/ARB + NSAIDs)'},
+  {a:['metformin','เมทฟอร์มิน'],b:['contrast','สารทึบรังสี'],msg:'หยุด Metformin ก่อน/หลังฉีดสารทึบรังสี เสี่ยง lactic acidosis'},
+  {a:['simvastatin','atorvastatin','statin','ซิมวาสแตติน'],b:['gemfibrozil','เจมไฟโบรซิล','คลาริโทรมัยซิน','clarithromycin'],msg:'เพิ่มเสี่ยงกล้ามเนื้ออักเสบ (Statin + Gemfibrozil/Macrolide)'},
+  {a:['glipizide','glibenclamide','sulfonylurea','กลิพิไซด์','อินซูลิน','insulin'],b:['ขมิ้น','turmeric','มะระ','ฟ้าทะลาย'],msg:'สมุนไพรบางชนิดเสริมฤทธิ์ลดน้ำตาล เสี่ยงน้ำตาลต่ำ'},
+  {a:['digoxin','ดิจอกซิน'],b:['furosemide','ฟูโรซีไมด์','hydrochlorothiazide','hctz'],msg:'ยาขับปัสสาวะทำให้โพแทสเซียมต่ำ เพิ่มพิษของ Digoxin'}
+];
+function checkInteractions(){
+  const card=document.getElementById('ddi-card'), list=document.getElementById('ddi-list');
+  if(!card)return;
+  const names=[...(draft.meds||[]).map(m=>m.name||''),...(draft.herbs||[]).map(h=>h.name||'')].map(s=>s.toLowerCase());
+  const allText=names.join(' | ');
+  let found=[];
+  INTERACTIONS.forEach(rule=>{
+    const hasA=rule.a.some(k=>allText.includes(k.toLowerCase()));
+    const hasB=rule.b.some(k=>allText.includes(k.toLowerCase()));
+    if(hasA&&hasB) found.push(rule.msg);
+  });
+  found=[...new Set(found)];
+  if(found.length){ card.style.display='block'; list.innerHTML=found.map(m=>`<div class="ddi-row"><b>⚠ ระวัง:</b> ${m}</div>`).join('')+'<p class="hint" style="margin-top:6px">โปรดทบทวนกับเภสัชกร/แพทย์ การแจ้งเตือนนี้เป็นการคัดกรองเบื้องต้นจากชื่อยาที่บันทึก</p>'; }
+  else { card.style.display='none'; list.innerHTML=''; }
+}
+
 /* ===== MEDICATIONS ===== */
 function renderMeds(){
   const w=document.getElementById('meds-list'); if(!w)return;
@@ -1301,6 +1572,9 @@ function renderVisits(){
       <div class="grid3" style="margin-bottom:12px">
         <div class="fld"><label>BP (mmHg)</label><input type="text" placeholder="138/85" value="${v.bp||''}" onchange="setVisit(${i},'bp',this.value)"></div>
         <div class="fld"><label>DTX (mg)</label><input type="text" placeholder="135" value="${v.dtx||''}" onchange="setVisit(${i},'dtx',this.value)"></div>
+        <div class="fld"><label>น้ำหนัก (กก.)</label><input type="number" step="0.1" placeholder="58" value="${v.weight||''}" onchange="setVisit(${i},'weight',this.value)"></div>
+      </div>
+      <div class="grid3" style="margin-bottom:12px">
         <div class="fld"><label>T / PR / RR</label><input type="text" placeholder="36.9 / 80 / 22" value="${v.vs||''}" onchange="setVisit(${i},'vs',this.value)"></div>
       </div>
       <div class="fld" style="margin-bottom:12px"><label>ประเมินสภาพผู้ป่วย</label><textarea onchange="setVisit(${i},'assess',this.value)">${v.assess||''}</textarea></div>
@@ -1385,12 +1659,34 @@ function saveCase(){
   persist(); toast('บันทึกเคสเรียบร้อย ✓','ok'); go('cases');
 }
 let pendingDel=null;
-function askDelete(idx){ pendingDel=idx; document.getElementById('modal-title').textContent='ลบเคส?'; document.getElementById('modal-msg').textContent='ต้องการลบเคส "'+fullName(cases[idx])+'" ใช่หรือไม่? ข้อมูลจะหายถาวร'; document.getElementById('modal-ok').onclick=confirmDelete; document.getElementById('modal').classList.add('show'); }
+function askDelete(idx){ pendingDel=idx; const rep=document.getElementById('modal-replace'); if(rep)rep.style.display='none'; const ok=document.getElementById('modal-ok'); ok.textContent='ยืนยัน'; ok.className='btn btn-danger'; document.getElementById('modal-title').textContent='ลบเคส?'; document.getElementById('modal-msg').textContent='ต้องการลบเคส "'+fullName(cases[idx])+'" ใช่หรือไม่? ข้อมูลจะหายถาวร'; ok.onclick=confirmDelete; document.getElementById('modal').classList.add('show'); }
 function confirmDelete(){ cases.splice(pendingDel,1); persist(); closeModal(); renderCases(); toast('ลบเคสแล้ว','ok'); }
 function closeModal(){ document.getElementById('modal').classList.remove('show'); }
 
 /* ===================== ANALYSIS ===================== */
-function renderAnalysis(){ document.getElementById('analysis-area').innerHTML = analysisHTML(draft); }
+function renderAnalysis(){
+  document.getElementById('analysis-area').innerHTML =
+    `<div class="fcard"><h3><span class="num">📉</span>กราฟแนวโน้มรายบุคคล (BP / DTX / น้ำหนัก)</h3><div id="case-trend-wrap" style="position:relative;height:300px"><canvas id="case-trend"></canvas></div><p class="hint" id="trend-hint" style="margin-top:8px"></p></div>`
+    + analysisHTML(draft);
+  drawCaseTrend();
+}
+function drawCaseTrend(){
+  const visits=(draft.visits||[]);
+  const labels=visits.map((v,i)=>v.date?fmtD(v.date):'ครั้งที่ '+(v.round||i+1));
+  const sys=visits.map(v=>{const b=parseBP(v.bp);return b?b.s:null;});
+  const dia=visits.map(v=>{const b=parseBP(v.bp);return b?b.d:null;});
+  const dtx=visits.map(v=>parseNum(v.dtx));
+  const wt=visits.map(v=>parseNum(v.weight));
+  const hint=document.getElementById('trend-hint');
+  if(!visits.length||(!sys.some(x=>x!=null)&&!dtx.some(x=>x!=null))){ if(hint)hint.textContent='ยังไม่มีข้อมูลการเยี่ยม (BP/DTX/น้ำหนัก) เพิ่มในแท็บ "การเยี่ยม/การพยาบาล" เพื่อแสดงกราฟแนวโน้ม'; return; }
+  if(hint)hint.textContent='เส้นแสดงค่าตามครั้งการเยี่ยม ช่วยติดตามว่าผู้ป่วยดีขึ้นจริงหรือไม่';
+  const ds=[];
+  if(sys.some(x=>x!=null))ds.push({label:'BP ตัวบน',data:sys,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.08)',tension:.3,spanGaps:true});
+  if(dia.some(x=>x!=null))ds.push({label:'BP ตัวล่าง',data:dia,borderColor:'#60a5fa',borderDash:[5,4],tension:.3,spanGaps:true});
+  if(dtx.some(x=>x!=null))ds.push({label:'DTX',data:dtx,borderColor:'#ec6e9b',backgroundColor:'rgba(236,110,155,.08)',tension:.3,spanGaps:true});
+  if(wt.some(x=>x!=null))ds.push({label:'น้ำหนัก',data:wt,borderColor:'#22a565',borderDash:[3,3],tension:.3,spanGaps:true,yAxisID:'y1'});
+  drawChart('case-trend','line',{labels,datasets:ds},{scales:{y:{title:{display:true,text:'BP / DTX'}},y1:{position:'right',title:{display:true,text:'น้ำหนัก'},grid:{drawOnChartArea:false}}}});
+}
 
 function ageNum(c){ const m=String(c.p_age||'').match(/\d+/); return m?+m[0]:null; }
 function diagHas(c,key){ const d=(c.p_diag||'')+' '+(c.p_chronic||''); return d.toUpperCase().includes(key); }
@@ -1575,6 +1871,40 @@ function renderDashboard(){
   drawChart('chart-bp','line',{labels,datasets:[{label:'BP Systolic เฉลี่ย',data:bpAvg,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.1)',tension:.3,fill:true,spanGaps:true}]},{scales:{y:{suggestedMin:120,suggestedMax:160}}});
   drawChart('chart-dtx','line',{labels,datasets:[{label:'DTX เฉลี่ย',data:dtxAvg,borderColor:'#ec6e9b',backgroundColor:'rgba(236,110,155,.1)',tension:.3,fill:true,spanGaps:true}]},{scales:{y:{suggestedMin:80,suggestedMax:160}}});
   drawChart('chart-bmi','bar',{labels:Object.keys(bmiBucket),datasets:[{label:'จำนวนเคส',data:Object.values(bmiBucket),backgroundColor:['#60a5fa','#22a565','#f59e0b','#e5484d','#cbd5e1']}]},{plugins:{legend:{display:false}}});
+  renderKPI();
+}
+function kpiByTambon(){
+  const map={};
+  cases.forEach(c=>{
+    const t=c.p_tambon||'ไม่ระบุตำบล';
+    if(!map[t])map[t]={total:0,bpHas:0,bpOk:0,dtxHas:0,dtxOk:0,ctrlHas:0,ctrlOk:0};
+    const m=map[t]; m.total++;
+    const v=lastVitals(c); const bp=parseBP(v.bp); const dtx=parseNum(v.dtx);
+    if(bp){m.bpHas++; if(bp.s<=140&&bp.d<=90)m.bpOk++;}
+    if(dtx!==null){m.dtxHas++; if(dtx>=80&&dtx<=130)m.dtxOk++;}
+    if(bp||dtx!==null){m.ctrlHas++; if(isControlled(c))m.ctrlOk++;}
+  });
+  return map;
+}
+function renderKPI(){
+  const map=kpiByTambon(); const body=document.getElementById('kpi-body'); if(!body)return;
+  const rows=Object.entries(map);
+  if(!rows.length){ body.innerHTML='<tr><td colspan="7" style="text-align:center;color:#888;padding:20px">ยังไม่มีข้อมูล</td></tr>'; return; }
+  body.innerHTML=rows.map(([t,m])=>{
+    const bpPct=m.bpHas?Math.round(m.bpOk/m.bpHas*100):null;
+    const dtxPct=m.dtxHas?Math.round(m.dtxOk/m.dtxHas*100):null;
+    const pc=(p)=>p==null?'-':`<b style="color:${p>=80?'var(--green)':p>=50?'#b97500':'var(--red)'}">${p}%</b>`;
+    return `<tr><td><b>${t}</b></td><td>${m.total}</td><td>${m.bpOk}/${m.bpHas}</td><td>${pc(bpPct)}</td><td>${m.dtxOk}/${m.dtxHas}</td><td>${pc(dtxPct)}</td><td>${m.ctrlOk}/${m.ctrlHas}</td></tr>`;
+  }).join('');
+}
+function exportKPI(){
+  const map=kpiByTambon();
+  const headers=['ตำบล/พื้นที่','จำนวนเคส','คุมBP_ได้','คุมBP_ทั้งหมด','%คุมBP','คุมDTX_ได้','คุมDTX_ทั้งหมด','%คุมDTX','คุมได้ทั้งหมด','รวมที่มีข้อมูล'];
+  const rows=Object.entries(map).map(([t,m])=>[t,m.total,m.bpOk,m.bpHas,m.bpHas?Math.round(m.bpOk/m.bpHas*100):'',m.dtxOk,m.dtxHas,m.dtxHas?Math.round(m.dtxOk/m.dtxHas*100):'',m.ctrlOk,m.ctrlHas].map(csvCell).join(','));
+  const csv='\uFEFF'+headers.map(csvCell).join(',')+'\n'+rows.join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='KPI_ตำบล_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  toast('ส่งออก KPI สำเร็จ','ok');
 }
 function drawChart(id,type,data,extra={}){
   if(charts[id])charts[id].destroy();
@@ -1638,6 +1968,9 @@ function renderReport(){
     <div class="rrow"><span class="k">อุปกรณ์:</span> ${rcheck('ไม่มี',(c.h_equip||[]).includes('ไม่มี'))} ${rcheck('T.T tube',(c.h_equip||[]).includes('T.T tube'))} ${rcheck('NG tube',(c.h_equip||[]).includes('NG tube'))} ${rcheck("Foley's cath",(c.h_equip||[]).includes("Foley's cath"))} ${c.h_equip_other?'อื่นๆ: '+c.h_equip_other:''}</div>
     <div class="rrow"><span class="k">ADL:</span><span class="v">${c.adl?c.adl+' ('+(adlMap[c.adl]||'')+')':''}${c.adl_total!==''&&c.adl_total!=null?' • Barthel '+c.adl_total+'/20':''}</span><span class="k">MRS:</span><span class="v">${c.adl_mrs||''}</span></div>
     ${(c.tai_total!==''&&c.tai_total!=null)||c.tai_group?`<div class="rrow"><span class="k">TAI:</span><span class="v">${(c.tai_total!==''&&c.tai_total!=null)?c.tai_total+'/20':''} ${c.tai_group||''}</span></div>`:''}
+    ${(c.egfr||c.waist||c.cv_pct||c.cv_level||c.q9_total!==''&&c.q9_total!=null||c.foot_risk!==''&&c.foot_risk!=null||c.tug_sec)?`<div class="rsec">ผลการคัดกรองเพิ่มเติม</div>
+      <div class="rrow">${c.egfr?`<span class="k">eGFR:</span><span class="v">${c.egfr} mL/min</span>`:''}${c.waist?`<span class="k">รอบเอว:</span><span class="v">${c.waist} ซม.</span>`:''}${(c.cv_pct||c.cv_level)?`<span class="k">CV Risk:</span><span class="v">${c.cv_pct?c.cv_pct+'% ':''}${c.cv_level||''}</span>`:''}</div>
+      <div class="rrow">${(c.q9_total!==''&&c.q9_total!=null)?`<span class="k">9Q (ซึมเศร้า):</span><span class="v">${c.q9_total}/27</span>`:''}${(c.q8_items&&c.q8_items.some(Boolean))?`<span class="k" style="color:#c0392b">8Q:</span><span class="v">พบสัญญาณเสี่ยง</span>`:''}${(c.foot_risk!==''&&c.foot_risk!=null)?`<span class="k">เท้าเบาหวาน:</span><span class="v">ระดับ ${c.foot_risk}</span>`:''}${c.tug_sec?`<span class="k">TUG:</span><span class="v">${c.tug_sec} วินาที</span>`:''}</div>`:''}
     <div class="rrow"><span class="k">BMI:</span><span class="v">${c.n_bmi||''}</span><span class="k">แปลผล:</span> ${rcheck('น้อย',c.n_interp==='น้อย')} ${rcheck('ปกติ',c.n_interp==='ปกติ')} ${rcheck('มาก',c.n_interp==='มาก')}</div>
     <div class="rrow"><span class="k">สภาพแวดล้อมที่บ้าน:</span> ${rcheck('เหมาะสม',c.env==='เหมาะสม')} ${rcheck('ไม่เหมาะสม',c.env==='ไม่เหมาะสม')}<span class="v">${c.env_detail||''}</span></div>
     <div class="rrow"><span class="k">ผู้ดูแล:</span> ${rcheck('มีคนดูแล',c.caregiver_p==='มีคนดูแล')} ${rcheck('ไม่มี',c.caregiver_p==='ไม่มีคนดูแล')}<span class="k">การใช้ยา:</span> ${rcheck('มี',c.med==='มี')} ${rcheck('ไม่มี',c.med==='ไม่มี')}</div>
@@ -1856,17 +2189,61 @@ function csvCell(v){ v=(v==null?'':String(v)).replace(/"/g,'""').replace(/\n/g,'
 function exportCSV(){
   const sel=[...document.querySelectorAll('.exp-ck:checked')].map(ck=>cases[+ck.value]);
   if(!sel.length){ toast('กรุณาเลือกอย่างน้อย 1 เคส','err'); return; }
-  const headers=['HN','ชื่อ','นามสกุล','เพศ','วันเกิด','อายุ','เบอร์โทร','บ้านเลขที่','หมู่','ตำบล','ชุมชน','พิกัด_lat','พิกัด_lng','รายได้','สิทธิ','การวินิจฉัย','โรคประจำตัว','แพ้ยา','น้ำหนัก','ส่วนสูง','หมู่เลือด','ผู้ดูแล','ความสัมพันธ์','ระดับสติ','ADL','MRS','BMI','แปลผลBMI','สภาพแวดล้อม','รายการยา','อาหารเสริม/สมุนไพร','ความสม่ำเสมอยา','สูบบุหรี่','ดื่มสุรา','โรค(แผน)','BP_ล่าสุด','DTX_ล่าสุด','การควบคุม','จำนวนเยี่ยม','จำนวนสัปดาห์','ปัญหา','เป้าหมาย','นัดเยี่ยมถัดไป','นัดตรวจ'];
+  const headers=['HN','ชื่อ','นามสกุล','เพศ','วันเกิด','อายุ','เบอร์โทร','บ้านเลขที่','หมู่','ตำบล','ชุมชน','พิกัด_lat','พิกัด_lng','รายได้','สิทธิ','การวินิจฉัย','โรคประจำตัว','แพ้ยา','น้ำหนัก','ส่วนสูง','รอบเอว','หมู่เลือด','ผู้ดูแล','ความสัมพันธ์','ระดับสติ','ADL','TAI','MRS','BMI','แปลผลBMI','eGFR','CV_Risk%','CV_ระดับ','9Q','8Q_เสี่ยง','เท้าเบาหวาน','TUG','สภาพแวดล้อม','รายการยา','อาหารเสริม/สมุนไพร','ความสม่ำเสมอยา','สูบบุหรี่','ดื่มสุรา','โรค(แผน)','BP_ล่าสุด','DTX_ล่าสุด','การควบคุม','จำนวนเยี่ยม','จำนวนสัปดาห์','ปัญหา','เป้าหมาย','นัดเยี่ยมถัดไป','นัดตรวจ'];
   const rows=sel.map(c=>{ const v=lastVitals(c);
     const medsStr=(c.meds||[]).map(m=>m.name+(m.dose?' '+m.dose:'')+(m.freq?' ('+m.freq+')':'')).filter(x=>x.trim()).join(' | ');
     const herbStr=(c.herbs||[]).map(h=>h.name+(h.dose?' '+h.dose:'')).filter(x=>x.trim()).join(' | ');
-    return [c.p_hn,c.p_fname,c.p_lname,c.p_sex,c.p_dob,c.p_age,c.p_phone,c.p_house,c.p_moo,c.p_tambon,c.p_community,c.p_lat,c.p_lng,c.p_income,c.p_scheme,c.p_diag,c.p_chronic,c.p_allergy,c.p_weight,c.p_height,c.p_blood,c.caregiver_p,c.c_relation,c.h_conscious,c.adl,c.adl_mrs,c.n_bmi,c.n_interp,c.env,medsStr,herbStr,c.med_adherence,c.smoke,c.alcohol,c.plan_disease,v.bp,v.dtx,(v.bp||v.dtx)?(isControlled(c)?'ควบคุมได้':'ยังไม่ได้'):'',(c.visits||[]).length,(c.weeks||[]).length,c.problems,c.goals,c.next_visit_date,c.appt_date].map(csvCell).join(',');
+    const q8risk=(c.q8_items&&c.q8_items.some(Boolean))?'มี':'';
+    return [c.p_hn,c.p_fname,c.p_lname,c.p_sex,c.p_dob,c.p_age,c.p_phone,c.p_house,c.p_moo,c.p_tambon,c.p_community,c.p_lat,c.p_lng,c.p_income,c.p_scheme,c.p_diag,c.p_chronic,c.p_allergy,c.p_weight,c.p_height,c.waist,c.p_blood,c.caregiver_p,c.c_relation,c.h_conscious,c.adl,c.tai_total,c.adl_mrs,c.n_bmi,c.n_interp,c.egfr,c.cv_pct,c.cv_level,c.q9_total,q8risk,c.foot_risk,c.tug_sec,c.env,medsStr,herbStr,c.med_adherence,c.smoke,c.alcohol,c.plan_disease,v.bp,v.dtx,(v.bp||v.dtx)?(isControlled(c)?'ควบคุมได้':'ยังไม่ได้'):'',(c.visits||[]).length,(c.weeks||[]).length,c.problems,c.goals,c.next_visit_date,c.appt_date].map(csvCell).join(',');
   });
   const csv='\uFEFF'+headers.map(csvCell).join(',')+'\n'+rows.join('\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   a.download='nursing_care_plan_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
   toast('ส่งออก '+sel.length+' เคส สำเร็จ','ok');
+}
+
+/* ===================== BACKUP / RESTORE ===================== */
+function exportBackup(){
+  const data={ app:'nursing_care_plan', version:'2.0', exported:new Date().toISOString(), count:cases.length, cases:cases };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='backup_แผนการพยาบาล_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+  toast('สำรองข้อมูล '+cases.length+' เคส สำเร็จ','ok');
+}
+function importBackup(e){
+  const f=e.target.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    let data;
+    try{ data=JSON.parse(ev.target.result); }catch(err){ toast('ไฟล์ไม่ถูกต้อง (อ่าน JSON ไม่ได้)','err'); e.target.value=''; return; }
+    const incoming = Array.isArray(data)? data : (data.cases||null);
+    if(!Array.isArray(incoming)){ toast('ไฟล์นี้ไม่ใช่ข้อมูลสำรองของแอป','err'); e.target.value=''; return; }
+    pendingRestore=incoming;
+    document.getElementById('modal-title').textContent='กู้คืนข้อมูล '+incoming.length+' เคส';
+    document.getElementById('modal-msg').innerHTML='พบ '+incoming.length+' เคสในไฟล์ • ปัจจุบันมี '+cases.length+' เคส<br>ต้องการดำเนินการแบบใด?';
+    const ok=document.getElementById('modal-ok');
+    ok.textContent='➕ รวมกับข้อมูลเดิม'; ok.className='btn btn-primary'; ok.onclick=()=>doRestore('merge');
+    // add replace button
+    let rep=document.getElementById('modal-replace');
+    if(!rep){ rep=document.createElement('button'); rep.id='modal-replace'; rep.className='btn btn-danger'; ok.parentNode.insertBefore(rep,ok); }
+    rep.textContent='♻️ แทนที่ทั้งหมด'; rep.style.display='inline-flex'; rep.onclick=()=>doRestore('replace');
+    document.getElementById('modal').classList.add('show');
+    e.target.value='';
+  };
+  r.readAsText(f);
+}
+let pendingRestore=null;
+function doRestore(mode){
+  if(!pendingRestore)return;
+  // ensure each has id
+  pendingRestore.forEach(c=>{ if(!c.id)c.id=uid(); });
+  if(mode==='replace'){ cases=pendingRestore; }
+  else { const ids=new Set(cases.map(c=>c.id)); pendingRestore.forEach(c=>{ if(ids.has(c.id))c.id=uid(); cases.push(c); }); }
+  persist(); pendingRestore=null;
+  const rep=document.getElementById('modal-replace'); if(rep)rep.style.display='none';
+  document.getElementById('modal-ok').className='btn btn-danger';
+  closeModal(); renderCases(); toast('กู้คืนข้อมูลสำเร็จ • รวม '+cases.length+' เคส','ok');
 }
 
 /* ===================== TOAST ===================== */
@@ -1891,9 +2268,9 @@ function loadSample(){
     goals:'ผู้ป่วยไม่เกิดภาวะแทรกซ้อน ควบคุมน้ำตาล DTX 80-130 mg\nควบคุมความดันโลหิตไม่เกิน 140/90 mmHg',
     plan_disease:'ความดันโลหิตสูง / เบาหวาน',
     visits:[
-      {round:1,date:'2026-03-13',bp:'138/85',dtx:'135',vs:'T=36.9 PR=80 RR=22',assess:'ผู้ป่วยช่วยเหลือตัวเองได้ ขาและแขน 2 ข้างใช้งานได้ปกติ ทานข้าวได้ ไม่สำลัก ไม่เวียนศีรษะ ไม่มีหน้ามืด ใจสั่น',activity:'แนะนำการรับประทานอาหาร ลดหวาน มัน เค็ม - ออกกำลังกาย แกว่งแขน ยืดเหยียดกล้ามเนื้อ ครั้งละ 30 นาที 3-5 ครั้ง/สัปดาห์ - แนะนำญาติสังเกตอาการผิดปกติ - รับประทานยาต่อเนื่อง พบแพทย์ตามนัด'},
-      {round:2,date:'2026-04-03',bp:'132/84',dtx:'132',vs:'T=37.0 PR=82 RR=20',assess:'ผู้ป่วยสามารถควบคุมความดันได้ดี งดอาหารเค็ม มันได้มากขึ้น ออกกำลังกายมากขึ้น ไม่มีอาการผิดปกติ',activity:'ให้กำลังใจและสร้างความเชื่อมั่นให้คนไข้และญาติ ควบคุมพฤติกรรมการกินอาหาร ลดหวาน มัน เค็ม'},
-      {round:3,date:'2026-05-01',bp:'129/82',dtx:'128',vs:'T=37.0 PR=82 RR=20',assess:'ผู้ป่วยช่วยเหลือตนเองได้ดี ควบคุมความดันและน้ำตาลได้ดี อาการทั่วไปปกติ',activity:'ให้กำลังใจ ติดตามอาการและผลเลือดเป็นระยะ แนะนำคงพฤติกรรมเดิม'}
+      {round:1,date:'2026-03-13',bp:'138/85',dtx:'135',weight:'59',vs:'T=36.9 PR=80 RR=22',assess:'ผู้ป่วยช่วยเหลือตัวเองได้ ขาและแขน 2 ข้างใช้งานได้ปกติ ทานข้าวได้ ไม่สำลัก ไม่เวียนศีรษะ ไม่มีหน้ามืด ใจสั่น',activity:'แนะนำการรับประทานอาหาร ลดหวาน มัน เค็ม - ออกกำลังกาย แกว่งแขน ยืดเหยียดกล้ามเนื้อ ครั้งละ 30 นาที 3-5 ครั้ง/สัปดาห์ - แนะนำญาติสังเกตอาการผิดปกติ - รับประทานยาต่อเนื่อง พบแพทย์ตามนัด'},
+      {round:2,date:'2026-04-03',bp:'132/84',dtx:'132',weight:'58',vs:'T=37.0 PR=82 RR=20',assess:'ผู้ป่วยสามารถควบคุมความดันได้ดี งดอาหารเค็ม มันได้มากขึ้น ออกกำลังกายมากขึ้น ไม่มีอาการผิดปกติ',activity:'ให้กำลังใจและสร้างความเชื่อมั่นให้คนไข้และญาติ ควบคุมพฤติกรรมการกินอาหาร ลดหวาน มัน เค็ม'},
+      {round:3,date:'2026-05-01',bp:'129/82',dtx:'128',weight:'57',vs:'T=37.0 PR=82 RR=20',assess:'ผู้ป่วยช่วยเหลือตนเองได้ดี ควบคุมความดันและน้ำตาลได้ดี อาการทั่วไปปกติ',activity:'ให้กำลังใจ ติดตามอาการและผลเลือดเป็นระยะ แนะนำคงพฤติกรรมเดิม'}
     ],
     weeks:[
       {no:1,start:'2026-03-13',problem:'ยังคุมความดันได้ไม่ดี BP=138/85, คุมน้ำตาลไม่ได้ DTX=135mg',goal:'ไม่มีภาวะแทรกซ้อน, ความดัน≤140/90, DTX 80-130mg',todo:'คุมการรับประทานอาหาร ลดหวาน มัน เค็ม / ออกกำลังกายเบา 20-30 นาที 3-5 ครั้ง/สัปดาห์',daily:['y','y','n','y','y','n','y'],confidence:5,success:'สำเร็จบางส่วน',obstacle:'ยังคุมอาหารไม่ค่อยได้ ชอบของทอดของมัน ขนมหวาน',solution:'แนะนำการรับประทานอาหารแลกเปลี่ยน การออกกำลังกาย และให้กำลังใจ'},
