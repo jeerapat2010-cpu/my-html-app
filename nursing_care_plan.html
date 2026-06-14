@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -36,10 +38,43 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .appbar .stat span{font-size:11px;opacity:.85}
 
 /* Nav menu */
-.nav{background:#fff;display:flex;gap:4px;padding:8px 18px;overflow-x:auto;border-bottom:1px solid var(--line);position:sticky;top:74px;z-index:40}
-.nav button{background:transparent;color:var(--ink2);padding:9px 16px;border-radius:11px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:7px;white-space:nowrap;transition:.18s}
-.nav button:hover{background:var(--teal-l);color:var(--teal-d)}
-.nav button.active{background:var(--teal);color:#fff;box-shadow:0 4px 12px rgba(14,138,125,.3)}
+.nav{background:#fff;display:flex;gap:6px;padding:8px 18px;overflow-x:auto;border-bottom:1px solid var(--line);position:sticky;top:74px;z-index:40}
+.nav button{background:transparent;color:var(--ink2);padding:9px 16px;border-radius:11px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:7px;white-space:nowrap;transition:.18s;border:1.5px solid transparent}
+/* per-menu accent colors */
+.nav button[data-page="cases"]{color:#0a6b60;background:#e7f5f3}
+.nav button[data-page="editor"]{color:#1d5fd0;background:#eaf1fe}
+.nav button[data-page="schedule"]{color:#b97500;background:#fdf3e2}
+.nav button[data-page="map"]{color:#6b46c1;background:#f1ebfd}
+.nav button[data-page="dashboard"]{color:#0c8599;background:#e4f6f8}
+.nav button[data-page="report"]{color:#c43d6e;background:#fdeaf1}
+.nav button[data-page="export"]{color:#2152c4;background:#e9eefe}
+.nav button:hover{filter:brightness(.96);transform:translateY(-1px)}
+.nav button[data-page="cases"].active{background:#0e8a7d;color:#fff;box-shadow:0 4px 12px rgba(14,138,125,.35)}
+.nav button[data-page="editor"].active{background:#3b82f6;color:#fff;box-shadow:0 4px 12px rgba(59,130,246,.35)}
+.nav button[data-page="schedule"].active{background:#f59e0b;color:#fff;box-shadow:0 4px 12px rgba(245,158,11,.35)}
+.nav button[data-page="map"].active{background:#7c5cda;color:#fff;box-shadow:0 4px 12px rgba(124,92,218,.35)}
+.nav button[data-page="dashboard"].active{background:#14b8a6;color:#fff;box-shadow:0 4px 12px rgba(20,184,166,.35)}
+.nav button[data-page="report"].active{background:#ec6e9b;color:#fff;box-shadow:0 4px 12px rgba(236,110,155,.35)}
+.nav button[data-page="export"].active{background:#3056c7;color:#fff;box-shadow:0 4px 12px rgba(48,86,199,.35)}
+
+/* page-specific background tint */
+body[data-page="cases"]{background:#eef7f5}
+body[data-page="editor"]{background:#eef4fe}
+body[data-page="schedule"]{background:#fdf6ea}
+body[data-page="map"]{background:#f4effc}
+body[data-page="dashboard"]{background:#e9f7f8}
+body[data-page="report"]{background:#fdeff5}
+body[data-page="export"]{background:#eceffe}
+body{transition:background .35s}
+/* appbar tint per page */
+body[data-page="cases"] .appbar{background:linear-gradient(120deg,#0e8a7d,#0a6b60)}
+body[data-page="editor"] .appbar{background:linear-gradient(120deg,#3b82f6,#1d5fd0)}
+body[data-page="schedule"] .appbar{background:linear-gradient(120deg,#f59e0b,#d98403)}
+body[data-page="map"] .appbar{background:linear-gradient(120deg,#7c5cda,#5b3cb8)}
+body[data-page="dashboard"] .appbar{background:linear-gradient(120deg,#14b8a6,#0c8599)}
+body[data-page="report"] .appbar{background:linear-gradient(120deg,#ec6e9b,#c43d6e)}
+body[data-page="export"] .appbar{background:linear-gradient(120deg,#3b82f6,#2152c4)}
+.appbar{transition:background .35s}
 
 .wrap{max-width:1180px;margin:0 auto;padding:22px}
 .page{display:none;animation:fade .3s}
@@ -222,15 +257,184 @@ input,select,textarea{font-family:inherit;font-size:14px}
   .grid2,.grid3,.chart-grid{grid-template-columns:1fr}
   .appbar h1{font-size:15px}.appbar .stat{display:none}
 }
+
+/* Login gate */
+#lock{position:fixed;inset:0;background:linear-gradient(135deg,var(--teal),var(--teal-d));display:grid;place-items:center;z-index:999}
+.lockbox{background:#fff;border-radius:22px;padding:38px 34px;width:330px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.lockbox .ic{font-size:54px;margin-bottom:6px}
+.lockbox h2{font-size:20px;margin-bottom:4px}
+.lockbox p{color:var(--ink2);font-size:13px;margin-bottom:20px}
+.pin-display{display:flex;gap:10px;justify-content:center;margin-bottom:18px}
+.pin-display .dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--teal);background:#fff;transition:.15s}
+.pin-display .dot.on{background:var(--teal)}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pin-pad button{padding:16px;border-radius:14px;background:var(--teal-l);color:var(--teal-d);font-size:20px;font-weight:700;transition:.12s}
+.pin-pad button:active{transform:scale(.93);background:var(--mint);color:#fff}
+.pin-pad button.fn{background:#f1f5f8;color:var(--ink2);font-size:15px}
+.lock-err{color:var(--red);font-size:13px;height:18px;margin-top:10px;font-weight:600}
+.lock-credit{margin-top:18px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--ink2);line-height:1.6}
+.app-footer{margin-top:34px;padding:20px;text-align:center;font-size:12.5px;color:var(--ink2);border-top:1px solid var(--line);line-height:1.8}
+.app-footer b{color:var(--teal-d)}
+
+/* per-case card accent colors */
+.case-card{border-top:4px solid var(--teal)}
+.case-card.cc0{border-top-color:#0e8a7d}.case-card.cc0 .photo{background:linear-gradient(135deg,#cfeee9,#9fd9cf)}
+.case-card.cc1{border-top-color:#3b82f6}.case-card.cc1 .photo{background:linear-gradient(135deg,#d3e4fd,#a9c8fb)}
+.case-card.cc2{border-top-color:#ec6e9b}.case-card.cc2 .photo{background:linear-gradient(135deg,#fbd9e6,#f6b4cd)}
+.case-card.cc3{border-top-color:#f59e0b}.case-card.cc3 .photo{background:linear-gradient(135deg,#fde7c2,#fbd38d)}
+.case-card.cc4{border-top-color:#7c5cda}.case-card.cc4 .photo{background:linear-gradient(135deg,#e3daf9,#c9b6f2)}
+.case-card.cc5{border-top-color:#14b8a6}.case-card.cc5 .photo{background:linear-gradient(135deg,#cdf0ec,#9ee0d8)}
+.case-card.cc6{border-top-color:#ef6c4d}.case-card.cc6 .photo{background:linear-gradient(135deg,#fcdcd1,#f9b9a4)}
+.case-card.cc7{border-top-color:#2563eb}.case-card.cc7 .photo{background:linear-gradient(135deg,#d6e0fb,#aec1f7)}
+.shake{animation:shk .4s}
+@keyframes shk{0%,100%{transform:none}25%{transform:translateX(-9px)}75%{transform:translateX(9px)}}
+
+/* Med list */
+.med-item{display:grid;grid-template-columns:1.4fr 1fr 1.2fr 1fr auto;gap:8px;align-items:end;background:#fbfdfe;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.med-item .fld label{font-size:11px}
+.med-item input,.med-item select{padding:8px 10px;font-size:13px}
+.med-item .del{background:#fff;color:var(--red);border:1px solid #f5c6c8;width:34px;height:34px;border-radius:8px;font-size:15px}
+.herb-item{grid-template-columns:1.4fr 1fr 1.4fr auto}
+@media(max-width:760px){.med-item,.herb-item{grid-template-columns:1fr 1fr}}
+
+/* Map */
+#target-map,#case-mini-map{height:480px;border-radius:14px;z-index:1}
+#case-mini-map{height:230px}
+.map-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:13px}
+.map-legend .lg{display:flex;align-items:center;gap:6px}
+.map-legend .pin{width:14px;height:14px;border-radius:50%}
+.tambon-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:16px}
+.tambon-stats .ts{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow-sm)}
+.tambon-stats .ts b{font-size:22px;color:var(--teal-d);display:block}
+.tambon-stats .ts span{font-size:12px;color:var(--ink2)}
+.coord-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+
+/* Schedule */
+.sched-item{background:#fff;border:1px solid var(--line);border-left:4px solid var(--teal);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow-sm)}
+.sched-item.soon{border-left-color:var(--amber)}
+.sched-item.overdue{border-left-color:var(--red)}
+.sched-item .date-badge{text-align:center;min-width:64px;background:var(--teal-l);border-radius:10px;padding:8px}
+.sched-item.soon .date-badge{background:#fff4e0}
+.sched-item.overdue .date-badge{background:#fdecec}
+.sched-item .date-badge b{font-size:20px;display:block;color:var(--teal-d);line-height:1}
+.sched-item .date-badge span{font-size:11px;color:var(--ink2)}
+.sched-item .info{flex:1}
+.sched-item .info h4{font-size:15px;font-weight:700}
+.sched-item .info p{font-size:13px;color:var(--ink2)}
+.sched-item .dleft{font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;background:var(--teal-l);color:var(--teal-d)}
+.sched-item.soon .dleft{background:#fff4e0;color:#b97500}
+.sched-item.overdue .dleft{background:#fdecec;color:var(--red)}
+
+/* View toggle */
+.view-toggle{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:11px;padding:4px;gap:4px}
+.view-toggle button{background:transparent;color:var(--ink2);padding:7px 14px;border-radius:8px;font-weight:600;font-size:13.5px;transition:.15s}
+.view-toggle button.active{background:var(--teal);color:#fff}
+
+/* Calendar */
+.cal-head{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.cal-head h3{flex:1;text-align:center;font-size:18px;font-weight:700;color:var(--teal-d);min-width:160px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:var(--shadow-sm)}
+.cal-dow{text-align:center;font-weight:700;font-size:12px;color:var(--ink2);padding:6px 0}
+.cal-dow.we{color:var(--pink)}
+.cal-cell{min-height:78px;border:1px solid var(--line);border-radius:10px;padding:5px 6px;background:#fbfdfe;cursor:pointer;transition:.12s;position:relative;display:flex;flex-direction:column;gap:3px}
+.cal-cell:hover{border-color:var(--mint);background:#fff}
+.cal-cell.empty{background:transparent;border:none;cursor:default}
+.cal-cell.today{border:2px solid var(--amber);background:#fffaf0}
+.cal-cell.has{background:#fff}
+.cal-cell .dn{font-size:13px;font-weight:700;color:var(--ink)}
+.cal-cell.today .dn{color:#b97500}
+.cal-cell .ev{font-size:10.5px;font-weight:600;padding:2px 5px;border-radius:5px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}
+.cal-cell .ev.visit{background:var(--teal)}
+.cal-cell .ev.appt{background:var(--sky)}
+.cal-cell .ev.over{background:var(--red)}
+.cal-cell .more{font-size:10px;color:var(--ink2);font-weight:600}
+.cal-cell.sel{box-shadow:0 0 0 3px rgba(60,200,180,.3);border-color:var(--teal)}
+.cal-legend{display:flex;gap:16px;flex-wrap:wrap;margin:14px 0;font-size:13px;color:var(--ink2)}
+.cal-legend span{display:flex;align-items:center;gap:6px}
+.cal-legend i{width:13px;height:13px;border-radius:4px;display:inline-block}
+#cal-day-detail{margin-top:6px}
+.cal-detail-head{font-weight:700;color:var(--teal-d);margin:10px 0;font-size:15px}
+@media(max-width:760px){
+  .cal-cell{min-height:58px;padding:3px}
+  .cal-cell .ev{font-size:9px;padding:1px 3px}
+  .cal-cell .dn{font-size:11px}
+}
+
+/* Expert analysis */
+.exp-note{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-sm);margin-bottom:16px}
+.exp-note .eh{background:linear-gradient(120deg,#0e8a7d,#0a6b60);color:#fff;padding:14px 20px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:9px}
+.exp-note .eb{padding:18px 20px}
+.exp-block{margin-bottom:16px}
+.exp-block:last-child{margin-bottom:0}
+.exp-block .bt{font-weight:700;color:var(--teal-d);font-size:14px;margin-bottom:7px;display:flex;align-items:center;gap:7px;padding-bottom:5px;border-bottom:1.5px dashed var(--teal-l)}
+.exp-block .bt .tag{font-size:11px;background:var(--teal);color:#fff;padding:2px 8px;border-radius:6px}
+.exp-block ul{list-style:none;margin-left:2px}
+.exp-block li{padding:6px 0 6px 24px;position:relative;font-size:13.5px;border-bottom:1px dotted #eef3f5}
+.exp-block li:last-child{border:none}
+.exp-block li::before{content:'▸';position:absolute;left:4px;color:var(--teal);font-weight:700}
+.exp-block li.red::before{content:'❗';color:var(--red)}
+.exp-block li.amber::before{content:'⚠';color:var(--amber)}
+.exp-block li.green::before{content:'✓';color:var(--green)}
+.risk-badge{display:inline-block;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700;margin-left:6px}
+.risk-low{background:#e7f7ee;color:var(--green)}.risk-mod{background:#fff4e0;color:#b97500}.risk-high{background:#fdecec;color:var(--red)}
+.disclaimer{font-size:11.5px;color:var(--ink2);font-style:italic;background:#fafbfc;border:1px dashed var(--line);border-radius:10px;padding:10px 14px;margin-top:8px}
+
+/* ADL/TAI assessment */
+.assess-q{border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:12px;background:#fbfdfe}
+.assess-q .qh{font-weight:700;font-size:14.5px;margin-bottom:10px;display:flex;align-items:center;gap:9px;color:var(--ink)}
+.assess-q .qh .qn{width:26px;height:26px;border-radius:8px;background:var(--teal);color:#fff;display:grid;place-items:center;font-size:13px;flex-shrink:0}
+.assess-q .qh .eng{font-weight:400;color:var(--ink2);font-size:12px}
+.assess-q .qh .sc{margin-left:auto;font-size:12px;font-weight:700;background:var(--teal-l);color:var(--teal-d);padding:3px 10px;border-radius:20px}
+.assess-opts{display:flex;flex-direction:column;gap:7px}
+.assess-opt{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer;font-size:13.5px;transition:.13s}
+.assess-opt:hover{border-color:var(--mint)}
+.assess-opt.sel{background:var(--teal-l);border-color:var(--teal)}
+.assess-opt input{margin-top:3px;accent-color:var(--teal);flex-shrink:0}
+.assess-opt .pts{font-weight:700;color:var(--teal-d);min-width:34px}
+.assess-result{margin-top:16px;border-radius:14px;padding:18px;background:linear-gradient(135deg,#fff,var(--teal-l));border:1px solid #cdebe6}
+.assess-result .rt{font-size:14px;color:var(--ink2);font-weight:600}
+.assess-result .rv{font-size:34px;font-weight:800;color:var(--teal-d);margin:4px 0}
+.assess-result .rg{display:inline-block;font-size:14px;font-weight:700;padding:5px 16px;border-radius:22px}
+.rg.g-social{background:#e7f7ee;color:var(--green)}
+.rg.g-home{background:#fff4e0;color:#b97500}
+.rg.g-bed{background:#fdecec;color:var(--red)}
+.assess-result .bar{height:10px;border-radius:6px;background:#e3edf0;margin:12px 0 6px;overflow:hidden}
+.assess-result .bar > div{height:100%;border-radius:6px;transition:.4s}
+
+/* ADL summary box in general info */
+.adl-sum{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.adl-sum .box{flex:1;min-width:180px;border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:#fbfdfe}
+.adl-sum .box .l{font-size:12px;color:var(--ink2);font-weight:600}
+.adl-sum .box .s{font-size:26px;font-weight:800;color:var(--teal-d);margin:2px 0}
+.adl-sum .box .g{display:inline-block;font-size:12px;font-weight:700;padding:3px 12px;border-radius:20px;margin-top:2px}
+.adl-sum .none{color:var(--ink2);font-size:14px;padding:12px 0}
 </style>
 </head>
 <body>
+
+<div id="lock">
+  <div class="lockbox">
+    <div class="ic">🔐</div>
+    <h2>แผนการพยาบาลสนับสนุนการจัดการสุขภาพตนเอง</h2>
+    <p style="margin-bottom:6px;font-weight:600;color:var(--teal-d)">ศูนย์สุขภาพชุมชนเขตเมือง<br>กลุ่มงานเวชกรรมสังคม โรงพยาบาลสมุทรปราการ</p>
+    <p>กรุณาใส่รหัสผ่าน 4 หลักเพื่อเข้าใช้งาน</p>
+    <div class="pin-display"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+    <div class="pin-pad">
+      <button onclick="pin(1)">1</button><button onclick="pin(2)">2</button><button onclick="pin(3)">3</button>
+      <button onclick="pin(4)">4</button><button onclick="pin(5)">5</button><button onclick="pin(6)">6</button>
+      <button onclick="pin(7)">7</button><button onclick="pin(8)">8</button><button onclick="pin(9)">9</button>
+      <button class="fn" onclick="pinClear()">ล้าง</button><button onclick="pin(0)">0</button><button class="fn" onclick="pinDel()">⌫</button>
+    </div>
+    <div class="lock-err" id="lock-err"></div>
+    <div class="lock-credit">พัฒนาโดย <b>นฤมล พลายงาม</b> พยาบาลเวชปฏิบัติ<br>เวอร์ชัน 2.0 • © 2569</div>
+  </div>
+</div>
 
 <div class="appbar">
   <div class="logo">🩺</div>
   <div>
     <h1>แผนการพยาบาลสนับสนุนการจัดการสุขภาพตนเอง</h1>
-    <p>Self-management Supportive Nursing Care Plan • สำหรับพยาบาลชุมชน</p>
+    <p>Self-management Supportive Nursing Care Plan • ศูนย์สุขภาพชุมชนเขตเมือง กลุ่มงานเวชกรรมสังคม รพ.สมุทรปราการ</p>
   </div>
   <div class="spacer"></div>
   <div class="stat"><b id="hdr-cases">0</b><span>เคสทั้งหมด</span></div>
@@ -240,6 +444,8 @@ input,select,textarea{font-family:inherit;font-size:14px}
 <nav class="nav no-print">
   <button class="active" data-page="cases" onclick="go('cases')">📁 รายการเคส</button>
   <button data-page="editor" onclick="openNew()">➕ เพิ่มเคสใหม่</button>
+  <button data-page="schedule" onclick="go('schedule')">🗓️ แผนเยี่ยม/นัดหมาย</button>
+  <button data-page="map" onclick="go('map')">🗺️ แผนที่กลุ่มเป้าหมาย</button>
   <button data-page="dashboard" onclick="go('dashboard')">📊 Dashboard ภาพรวม</button>
   <button data-page="report" onclick="go('report')">🖨️ พิมพ์รายงาน / PDF</button>
   <button data-page="export" onclick="go('export')">📤 ส่งออก CSV</button>
@@ -271,6 +477,8 @@ input,select,textarea{font-family:inherit;font-size:14px}
 
   <div class="subnav">
     <button class="active" data-sec="s1" onclick="sec('s1')">📝 ข้อมูลทั่วไป</button>
+    <button data-sec="sadl" onclick="sec('sadl')">📊 ประเมิน ADL/TAI</button>
+    <button data-sec="smed" onclick="sec('smed')">💊 ประวัติการใช้ยา</button>
     <button data-sec="s2" onclick="sec('s2')">🏠 การเยี่ยม/การพยาบาล</button>
     <button data-sec="s3" onclick="sec('s3')">📈 แผนจัดการสุขภาพ</button>
     <button data-sec="s4" onclick="sec('s4')">📷 รูปภาพผู้ป่วย</button>
@@ -282,8 +490,13 @@ input,select,textarea{font-family:inherit;font-size:14px}
     <div class="fcard">
       <h3><span class="num">1</span>ข้อมูลทั่วไปของผู้ป่วย</h3>
       <div class="grid3">
+        <div class="fld"><label>HN (เลขประจำตัวผู้ป่วย)</label><input type="text" data-f="p_hn" placeholder="เช่น 00012345"></div>
         <div class="fld"><label>ชื่อ <span class="req">*</span></label><input type="text" data-f="p_fname"></div>
         <div class="fld"><label>นามสกุล</label><input type="text" data-f="p_lname"></div>
+      </div>
+      <div class="grid3" style="margin-top:14px">
+        <div class="fld"><label>วัน/เดือน/ปีเกิด (ค.ศ.)</label><input type="date" data-f="p_dob" onchange="calcAge(this.value)"></div>
+        <div class="fld"><label>อายุ (คำนวณอัตโนมัติ)</label><input type="text" data-f="p_age" id="age-field" readonly style="background:#eef5f4;font-weight:700"></div>
         <div class="fld"><label>เบอร์โทร</label><input type="tel" data-f="p_phone"></div>
       </div>
       <div class="grid3" style="margin-top:14px">
@@ -296,7 +509,7 @@ input,select,textarea{font-family:inherit;font-size:14px}
         <div class="fld"><label>หมู่ที่</label><input type="text" data-f="p_moo"></div>
       </div>
       <div class="grid3" style="margin-top:14px">
-        <div class="fld"><label>ตำบล</label><input type="text" data-f="p_tambon"></div>
+        <div class="fld"><label>ตำบล</label><input type="text" data-f="p_tambon" list="tambon-list"><datalist id="tambon-list"></datalist></div>
         <div class="fld"><label>ชุมชน</label><input type="text" data-f="p_community"></div>
         <div class="fld"><label>รายได้ (บาท/เดือน)</label><input type="number" data-f="p_income"></div>
       </div>
@@ -304,12 +517,52 @@ input,select,textarea{font-family:inherit;font-size:14px}
         <div class="fld"><label>สถานภาพในครอบครัว</label>
           <select data-f="p_familyrole"><option value="">- เลือก -</option><option>หัวหน้าครอบครัว</option><option>สมาชิกในครอบครัว</option></select></div>
         <div class="fld"><label>การวินิจฉัยโรคครั้งสุดท้าย</label>
-          <select data-f="p_diag"><option value="">- เลือก -</option><option>HT/DM</option><option>HT (ความดันโลหิตสูง)</option><option>DM (เบาหวาน)</option><option>CKD</option><option>Stroke</option><option>COPD</option><option>อื่นๆ</option></select></div>
+          <select data-f="p_diag"><option value="">- เลือก -</option><option>HT/DM</option><option>HT (ความดันโลหิตสูง)</option><option>DM (เบาหวาน)</option><option>CKD</option><option>Stroke</option><option>COPD</option><option>Dyslipidemia</option><option>Heart disease</option><option>อื่นๆ</option></select></div>
         <div class="fld"><label>วันที่จำหน่าย</label><input type="date" data-f="p_discharge"></div>
       </div>
       <div class="grid3" style="margin-top:14px">
         <div class="fld"><label>รวมอยู่โรงพยาบาล (วัน)</label><input type="number" data-f="p_hospdays"></div>
+        <div class="fld"><label>สิทธิการรักษา</label>
+          <select data-f="p_scheme"><option value="">- เลือก -</option><option>UC (บัตรทอง)</option><option>ประกันสังคม</option><option>ข้าราชการ</option><option>ชำระเงินเอง</option><option>อื่นๆ</option></select></div>
       </div>
+    </div>
+
+    <div class="fcard">
+      <h3><span class="num">1.1</span>ประวัติสุขภาพและข้อมูลที่จำเป็น</h3>
+      <div class="grid3">
+        <div class="fld"><label>น้ำหนัก (กก.)</label><input type="number" step="0.1" data-f="p_weight" oninput="autoBMI2()"></div>
+        <div class="fld"><label>ส่วนสูง (ซม.)</label><input type="number" step="0.1" data-f="p_height" oninput="autoBMI2()"></div>
+        <div class="fld"><label>หมู่เลือด</label>
+          <select data-f="p_blood"><option value="">- เลือก -</option><option>A</option><option>B</option><option>AB</option><option>O</option><option>ไม่ทราบ</option></select></div>
+      </div>
+      <div class="grid2" style="margin-top:14px">
+        <div class="fld"><label>ประวัติแพ้ยา / แพ้อาหาร <span class="req">⚠</span></label><input type="text" data-f="p_allergy" placeholder="เช่น Penicillin, NSAIDs / ไม่มีประวัติแพ้"></div>
+        <div class="fld"><label>โรคประจำตัว / ประวัติการเจ็บป่วย</label><input type="text" data-f="p_chronic" placeholder="เช่น HT 10 ปี, DM 5 ปี, ไขมันในเลือดสูง"></div>
+      </div>
+      <div class="grid2" style="margin-top:14px">
+        <div class="fld"><label>ประวัติการผ่าตัด / ภาวะแทรกซ้อนเดิม</label><input type="text" data-f="p_surgery" placeholder="เช่น ผ่าตัดต้อกระจก 2566"></div>
+        <div class="fld"><label>ประวัติครอบครัว (โรคทางพันธุกรรม)</label><input type="text" data-f="p_famhist" placeholder="เช่น บิดาเป็น DM, มารดาเป็น Stroke"></div>
+      </div>
+      <div class="grid3" style="margin-top:14px">
+        <div class="fld"><label>ผู้ติดต่อฉุกเฉิน</label><input type="text" data-f="p_emergency"></div>
+        <div class="fld"><label>เบอร์ติดต่อฉุกเฉิน</label><input type="tel" data-f="p_emergency_phone"></div>
+        <div class="fld"><label>กรุ๊ปไลน์/ช่องทางติดตาม</label><input type="text" data-f="p_line"></div>
+      </div>
+    </div>
+
+    <div class="fcard">
+      <h3><span class="num">📍</span>พิกัดที่อยู่ (GPS) สำหรับการเยี่ยมบ้าน</h3>
+      <div class="grid3">
+        <div class="fld"><label>ละติจูด (Latitude)</label><input type="text" data-f="p_lat" placeholder="13.5990"></div>
+        <div class="fld"><label>ลองจิจูด (Longitude)</label><input type="text" data-f="p_lng" placeholder="100.6010"></div>
+        <div class="fld"><label> </label>
+          <div class="coord-btns">
+            <button class="btn btn-sky btn-sm" type="button" onclick="getCurrentLoc()">📡 ใช้ตำแหน่งปัจจุบัน</button>
+            <button class="btn btn-primary btn-sm" type="button" onclick="navigateMap()">🧭 นำทาง Google Maps</button>
+          </div>
+        </div>
+      </div>
+      <p class="hint">📌 กด"ใช้ตำแหน่งปัจจุบัน" เพื่อดึงพิกัดจากเครื่อง หรือกรอกเอง แล้วกด "นำทาง" เพื่อเปิดเส้นทางใน Google Maps</p>
     </div>
 
     <div class="fcard">
@@ -351,16 +604,10 @@ input,select,textarea{font-family:inherit;font-size:14px}
     </div>
 
     <div class="fcard">
-      <h3><span class="num">4</span>ความสามารถในการดูแลตนเอง (ADL)</h3>
-      <div class="fld"><label>ระดับ ADL</label>
-        <div class="check-col" data-radio="adl">
-          <label class="opt"><input type="radio" name="adl" value="0-4">ADL 0–4 : ระดับความสามารถน้อยมาก</label>
-          <label class="opt"><input type="radio" name="adl" value="5-9">ADL 5–9 : ระดับความสามารถน้อย</label>
-          <label class="opt"><input type="radio" name="adl" value="10-14">ADL 10–14 : ระดับความสามารถปานกลาง</label>
-          <label class="opt"><input type="radio" name="adl" value="15-18">ADL 15–18 : ระดับความสามารถมาก</label>
-          <label class="opt"><input type="radio" name="adl" value="19-20">ADL 19–20 : ระดับความสามารถปกติ</label>
-        </div></div>
-      <div class="fld" style="margin-top:14px;max-width:280px"><label>MRS</label><input type="text" data-f="adl_mrs"></div>
+      <h3><span class="num">4</span>ความสามารถในการดูแลตนเอง (ADL / TAI)</h3>
+      <div id="adl-summary-box"></div>
+      <button class="btn btn-primary" type="button" onclick="sec('sadl')" style="margin-top:6px">📊 ไปประเมิน ADL / TAI</button>
+      <div class="fld" style="margin-top:16px;max-width:280px"><label>MRS</label><input type="text" data-f="adl_mrs"></div>
     </div>
 
     <div class="fcard">
@@ -441,8 +688,70 @@ input,select,textarea{font-family:inherit;font-size:14px}
     </div>
   </div>
 
+  <!-- SADL : ADL & TAI assessment -->
+  <div class="section" id="sec-sadl">
+    <div class="fcard">
+      <h3><span class="num">📊</span>แบบประเมิน ADL (ดัชนีบาร์เธลเอดีแอล • Barthel ADL Index)</h3>
+      <p class="hint" style="margin-bottom:16px">ประเมินความสามารถในการประกอบกิจวัตรประจำวัน 10 ข้อ คะแนนรวม 0–20 ระบบจะแปลผลและสรุประดับ ADL ให้อัตโนมัติ</p>
+      <div id="adl-items"></div>
+      <div id="adl-result" class="assess-result"></div>
+    </div>
+    <div class="fcard">
+      <h3><span class="num">🧓</span>แบบประเมิน TAI (Typology of the Aged with Illustration)</h3>
+      <p class="hint" style="margin-bottom:16px">ประเมินความสามารถ 4 ด้าน (การเคลื่อนที่ / จิตใจ-สติปัญญา / การกินอาหาร / การขับถ่าย) แต่ละด้าน 6 ระดับ (0–5) เพื่อจำแนกกลุ่มภาวะพึ่งพิงสำหรับการดูแลระยะยาว (LTC)</p>
+      <div id="tai-items"></div>
+      <div id="tai-result" class="assess-result"></div>
+      <div class="fld" style="margin-top:16px;max-width:480px"><label>สรุปการจำแนกกลุ่ม TAI (ตามคู่มือกรมอนามัย / แอปสูงวัย.ไทย)</label>
+        <select data-f="tai_group" oninput="updateADLSummary()">
+          <option value="">- เลือกกลุ่ม -</option>
+          <option value="กลุ่มที่ 1 (ติดสังคม) - เคลื่อนไหวได้ ช่วยเหลือตนเองได้ดี">กลุ่มที่ 1 (ติดสังคม) — เคลื่อนไหวได้ ช่วยเหลือตนเองและผู้อื่นได้</option>
+          <option value="กลุ่มที่ 2 (ติดบ้าน) - เคลื่อนไหวได้บ้าง พึ่งพาบางส่วน">กลุ่มที่ 2 (ติดบ้าน) — ดูแล/ช่วยเหลือตนเองได้บ้าง พึ่งพาบางส่วน</option>
+          <option value="กลุ่มที่ 3 (ติดเตียง) - เคลื่อนไหวไม่ได้ พึ่งพาสูง">กลุ่มที่ 3 (ติดเตียง) — พึ่งพาทั้งหมด/เกือบทั้งหมด พิการหรือทุพพลภาพ</option>
+        </select></div>
+      <p class="hint" style="margin-top:8px">หมายเหตุ: การจำแนกกลุ่ม TAI อย่างเป็นทางการพิจารณาทั้ง 4 ด้านร่วมกันตามคู่มือ/แอปสูงวัย.ไทย คะแนนรวมเป็นข้อมูลประกอบเท่านั้น</p>
+    </div>
+  </div>
+
+  <!-- SMED : medication history -->
+  <div class="section" id="sec-smed">
+    <div class="fcard">
+      <h3><span class="num">💊</span>ประวัติการใช้ยาปัจจุบัน (Medication List)</h3>
+      <p class="hint" style="margin-bottom:14px">บันทึกยาที่ผู้ป่วยใช้อยู่ทั้งหมด พร้อมขนาด วิธีใช้ และข้อบ่งใช้ เพื่อการประเมินความสม่ำเสมอและปฏิกิริยาระหว่างยา</p>
+      <div id="meds-list"></div>
+      <button class="btn btn-ghost" onclick="addMed()">➕ เพิ่มรายการยา</button>
+    </div>
+    <div class="fcard">
+      <h3><span class="num">🌿</span>อาหารเสริม / สมุนไพร / ผลิตภัณฑ์สุขภาพ</h3>
+      <p class="hint" style="margin-bottom:14px">บันทึกอาหารเสริมและสมุนไพรที่ใช้ เพื่อเฝ้าระวังปฏิกิริยากับยาแผนปัจจุบัน (Herb–Drug Interaction)</p>
+      <div id="herbs-list"></div>
+      <button class="btn btn-ghost" onclick="addHerb()">➕ เพิ่มอาหารเสริม/สมุนไพร</button>
+    </div>
+    <div class="fcard">
+      <h3><span class="num">📝</span>การประเมินการใช้ยา</h3>
+      <div class="grid3">
+        <div class="fld"><label>ความสม่ำเสมอในการใช้ยา (Adherence)</label>
+          <select data-f="med_adherence"><option value="">- เลือก -</option><option>สม่ำเสมอดี (>80%)</option><option>ปานกลาง (50-80%)</option><option>ไม่สม่ำเสมอ (<50%)</option><option>ลืมรับประทานบ่อย</option></select></div>
+        <div class="fld"><label>วิธีการจัดยา</label>
+          <select data-f="med_organize"><option value="">- เลือก -</option><option>จัดเอง</option><option>ญาติจัดให้</option><option>กล่องแบ่งยา</option><option>อสม.ช่วยดูแล</option></select></div>
+        <div class="fld"><label>ผลข้างเคียงที่พบ</label><input type="text" data-f="med_side2" placeholder="เช่น ไอแห้ง, เวียนศีรษะ, ไม่มี"></div>
+      </div>
+      <div class="fld full" style="margin-top:14px"><label>ปัญหา/หมายเหตุการใช้ยา</label><textarea data-f="med_note" placeholder="เช่น ยาเหลือสะสม, ใช้ยาซ้ำซ้อน, ต้องการความช่วยเหลือเรื่องการจัดยา"></textarea></div>
+    </div>
+  </div>
+
   <!-- S2 : visits -->
   <div class="section" id="sec-s2">
+    <div class="fcard">
+      <h3><span class="num">📅</span>แผนการเยี่ยมและการนัดหมายครั้งถัดไป</h3>
+      <div class="grid3">
+        <div class="fld"><label>วันที่นัดเยี่ยมบ้านครั้งถัดไป</label><input type="date" data-f="next_visit_date"></div>
+        <div class="fld"><label>ประเภทการติดตาม</label>
+          <select data-f="next_visit_type"><option value="">- เลือก -</option><option>เยี่ยมบ้าน</option><option>ติดตามทางไลน์</option><option>โทรศัพท์ติดตาม</option><option>นัดที่ รพ.สต./รพ.</option></select></div>
+        <div class="fld"><label>ความถี่การติดตาม</label>
+          <select data-f="next_visit_freq"><option value="">- เลือก -</option><option>ทุกสัปดาห์</option><option>ทุก 2 สัปดาห์</option><option>ทุกเดือน</option><option>ทุก 3 เดือน</option></select></div>
+      </div>
+      <div class="fld full" style="margin-top:14px"><label>แผน/เป้าหมายการเยี่ยมครั้งถัดไป</label><textarea data-f="next_visit_plan" placeholder="เช่น ติดตามผล DTX/BP, ประเมินการใช้ยา, เสริมความรู้เรื่องอาหาร"></textarea></div>
+    </div>
     <div class="fcard">
       <h3><span class="num">2</span>ปัญหาและเป้าหมายของผู้ป่วย</h3>
       <div class="grid2">
@@ -505,6 +814,67 @@ input,select,textarea{font-family:inherit;font-size:14px}
   </div>
 </div>
 
+<!-- ============ SCHEDULE ============ -->
+<div class="page" id="page-schedule">
+  <h2 style="font-size:22px;font-weight:700;margin-bottom:6px">🗓️ แผนการเยี่ยมและการนัดหมายครั้งถัดไป</h2>
+  <p class="hint" style="margin-bottom:16px">รวมการนัดหมาย/แผนเยี่ยมของทุกเคส ดูแบบรายการหรือปฏิทินรายเดือนเพื่อวางแผนการลงพื้นที่</p>
+  <div class="toolbar">
+    <div class="view-toggle">
+      <button id="vt-list" class="active" onclick="schedView('list')">📋 รายการ</button>
+      <button id="vt-cal" onclick="schedView('cal')">🗓️ ปฏิทิน</button>
+    </div>
+    <select id="sched-filter" class="btn btn-ghost" style="padding:10px 14px" onchange="renderSchedule()">
+      <option value="all">ทั้งหมด</option>
+      <option value="overdue">เลยกำหนด</option>
+      <option value="week">ภายใน 7 วัน</option>
+      <option value="month">ภายใน 30 วัน</option>
+    </select>
+    <div class="spacer" style="flex:1"></div>
+    <span id="sched-count" class="chip"></span>
+  </div>
+  <div id="sched-list"></div>
+  <div id="sched-cal" style="display:none">
+    <div class="cal-head">
+      <button class="btn btn-ghost btn-sm" onclick="calMove(-1)">‹ เดือนก่อน</button>
+      <h3 id="cal-title"></h3>
+      <button class="btn btn-ghost btn-sm" onclick="calMove(1)">เดือนถัดไป ›</button>
+      <button class="btn btn-ghost btn-sm" onclick="calToday()">วันนี้</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-legend">
+      <span><i style="background:var(--teal)"></i> แผนเยี่ยมบ้าน</span>
+      <span><i style="background:var(--sky)"></i> นัดตรวจ รพ.</span>
+      <span><i style="background:var(--red)"></i> เลยกำหนด</span>
+      <span><i style="background:var(--amber)"></i> วันนี้</span>
+    </div>
+    <div id="cal-day-detail"></div>
+  </div>
+</div>
+
+<!-- ============ TARGET MAP ============ -->
+<div class="page" id="page-map">
+  <h2 style="font-size:22px;font-weight:700;margin-bottom:6px">🗺️ แผนที่กลุ่มเป้าหมาย</h2>
+  <p class="hint" style="margin-bottom:16px">แสดงตำแหน่งผู้ป่วยกลุ่มเป้าหมายบนแผนที่ เลือกตามตำบลหรือค้นหา และดูจำนวนเคสในแต่ละพื้นที่ (สีหมุด: 🟢 คุมโรคได้ 🔴 ยังควบคุมไม่ได้ ⚪ ไม่มีข้อมูล)</p>
+  <div class="toolbar">
+    <div class="search"><input type="text" id="map-search" placeholder="ค้นหาชื่อ / ชุมชน / โรค..." oninput="renderTargetMap()"></div>
+    <select id="map-tambon" class="btn btn-ghost" style="padding:10px 14px;min-width:160px" onchange="renderTargetMap()">
+      <option value="">ทุกตำบล</option>
+    </select>
+    <select id="map-disease" class="btn btn-ghost" style="padding:10px 14px;min-width:140px" onchange="renderTargetMap()">
+      <option value="">ทุกโรค</option>
+    </select>
+    <button class="btn btn-ghost" onclick="fitMap()">🔍 ดูทั้งหมด</button>
+  </div>
+  <div class="tambon-stats" id="tambon-stats"></div>
+  <div id="target-map"></div>
+  <div class="map-legend">
+    <div class="lg"><span class="pin" style="background:#22a565"></span> คุมโรคได้</div>
+    <div class="lg"><span class="pin" style="background:#e5484d"></span> ยังควบคุมไม่ได้</div>
+    <div class="lg"><span class="pin" style="background:#94a3b8"></span> ยังไม่มีข้อมูล/พิกัด</div>
+  </div>
+  <p class="hint" id="map-nogeo" style="margin-top:10px"></p>
+</div>
+
 <!-- ============ DASHBOARD ============ -->
 <div class="page" id="page-dashboard">
   <h2 style="font-size:22px;font-weight:700;margin-bottom:18px">📊 Dashboard ภาพรวม</h2>
@@ -549,6 +919,10 @@ input,select,textarea{font-family:inherit;font-size:14px}
   </table>
 </div>
 
+  <footer class="app-footer no-print">
+    <div>🏥 ศูนย์สุขภาพชุมชนเขตเมือง • กลุ่มงานเวชกรรมสังคม โรงพยาบาลสมุทรปราการ</div>
+    <div>พัฒนาโดย <b>นฤมล พลายงาม</b> พยาบาลเวชปฏิบัติ &nbsp;•&nbsp; เวอร์ชัน 2.0 &nbsp;•&nbsp; © 2569</div>
+  </footer>
 </div><!-- /wrap -->
 
 <div class="modal-bg" id="modal">
@@ -579,12 +953,17 @@ function uid(){ return 'c'+Date.now()+Math.floor(Math.random()*999); }
 
 function blankCase(){
   return { id:uid(), created:new Date().toISOString(),
-    p_fname:'',p_lname:'',p_phone:'',p_sex:'',p_house:'',p_moo:'',p_tambon:'',p_community:'',p_income:'',
-    p_familyrole:'',p_diag:'',p_discharge:'',p_hospdays:'',
+    p_hn:'',p_dob:'',p_age:'',p_fname:'',p_lname:'',p_phone:'',p_sex:'',p_house:'',p_moo:'',p_tambon:'',p_community:'',p_income:'',
+    p_familyrole:'',p_diag:'',p_discharge:'',p_hospdays:'',p_scheme:'',
+    p_weight:'',p_height:'',p_blood:'',p_allergy:'',p_chronic:'',p_surgery:'',p_famhist:'',p_emergency:'',p_emergency_phone:'',p_line:'',
+    p_lat:'',p_lng:'',
     c_fname:'',c_lname:'',c_phone:'',c_sex:'',c_age:'',c_relation:'',
     h_conscious:'',h_equip:[],h_equip_other:'',adl:'',adl_mrs:'',
     n_bmi:'',n_interp:'',env:'',env_detail:'',caregiver_p:'',med:'',med_side:'',belief:'',belief_detail:'',alcohol:'',smoke:'',
     knowledge:[],appt:'',appt_date:'',appt_room:'ห้องตรวจโรคอายุรกรรม',
+    adl_items:[null,null,null,null,null,null,null,null,null,null],adl_total:'',tai_items:[null,null,null,null],tai_total:'',tai_group:'',
+    meds:[],herbs:[],med_adherence:'',med_organize:'',med_side2:'',med_note:'',
+    next_visit_date:'',next_visit_type:'',next_visit_freq:'',next_visit_plan:'',
     problems:'',goals:'',visits:[],plan_disease:'',weeks:[],telecomm:'',photo:'' };
 }
 
@@ -593,8 +972,11 @@ function go(page){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('show'));
   document.getElementById('page-'+page).classList.add('show');
   document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active', b.dataset.page===page));
+  document.body.dataset.page=page;
   window.scrollTo({top:0,behavior:'smooth'});
   if(page==='cases') renderCases();
+  if(page==='schedule'){ renderSchedule(); if(document.getElementById('sched-cal').style.display!=='none') renderCalendar(); }
+  if(page==='map') initTargetMap();
   if(page==='dashboard') renderDashboard();
   if(page==='report') fillReportSelect();
   if(page==='export') renderExport();
@@ -604,6 +986,8 @@ function sec(s){
   document.getElementById('sec-'+s).classList.add('show');
   document.querySelectorAll('.subnav button').forEach(b=>b.classList.toggle('active', b.dataset.sec===s));
   if(s==='s5') renderAnalysis();
+  if(s==='smed'){ renderMeds(); renderHerbs(); }
+  if(s==='sadl'){ renderADL(); renderTAI(); }
 }
 
 /* ===================== CASE LIST ===================== */
@@ -643,13 +1027,13 @@ function renderCases(){
     return txt.includes(q) && (!fd||c.p_diag===fd);
   });
   if(!list.length){ grid.innerHTML=`<div class="empty" style="grid-column:1/-1"><div class="ic">🗂️</div><h3>ยังไม่มีเคส</h3><p>กดปุ่ม "เพิ่มเคสใหม่" หรือ "โหลดเคสตัวอย่าง" เพื่อเริ่มต้น</p></div>`; updateHeader(); return; }
-  grid.innerHTML=list.map(c=>{
+  grid.innerHTML=list.map((c,li)=>{
     const idx=cases.indexOf(c); const v=lastVitals(c); const bp=parseBP(v.bp); const dtx=parseNum(v.dtx);
     let bpChip='', dtxChip='';
     if(bp) bpChip=`<span class="chip ${bp.s<=140&&bp.d<=90?'good':'bad'}">BP ${v.bp}</span>`;
     if(dtx!==null) dtxChip=`<span class="chip ${dtx>=80&&dtx<=130?'good':'bad'}">DTX ${dtx}</span>`;
     const photo=c.photo? `<img src="${c.photo}">` : `<span class="ph">👤</span>`;
-    return `<div class="case-card">
+    return `<div class="case-card cc${li%8}">
       <div class="photo" onclick="openEdit(${idx})">${photo}<span class="dz">${c.p_diag||'-'}</span></div>
       <div class="body" onclick="openEdit(${idx})">
         <h3>${fullName(c)||'(ไม่ระบุชื่อ)'}</h3>
@@ -684,7 +1068,12 @@ function fillForm(){
     const name=g.dataset.check; const arr=draft[name]||[];
     g.querySelectorAll('input[type=checkbox]').forEach(ck=>{ ck.checked=arr.includes(ck.value); ck.closest('.opt').classList.toggle('sel',ck.checked); });
   });
-  renderVisits(); renderWeeks(); renderPhoto();
+  renderVisits(); renderWeeks(); renderPhoto(); renderMeds(); renderHerbs(); renderADL(); renderTAI(); fillTambonList();
+}
+function fillTambonList(){
+  const dl=document.getElementById('tambon-list'); if(!dl)return;
+  const ts=[...new Set(cases.map(c=>c.p_tambon).filter(Boolean))];
+  dl.innerHTML=ts.map(t=>`<option value="${t}">`).join('');
 }
 
 /* live binding */
@@ -694,11 +1083,14 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{
   if(!draft) return;
+  // assessment radios (adl_x / tai_x) handled by their own onchange — skip
+  if(e.target.type==='radio' && /^(adl|tai)_\d+$/.test(e.target.name||'')) return;
   const opt=e.target.closest('.opt');
   if(e.target.type==='radio' && e.target.name){
-    draft[e.target.name]=e.target.value;
-    e.target.closest('[data-radio]').querySelectorAll('.opt').forEach(o=>o.classList.remove('sel'));
-    if(opt)opt.classList.add('sel');
+    const grp=e.target.closest('[data-radio]');
+    if(grp){ draft[e.target.name]=e.target.value;
+      grp.querySelectorAll('.opt').forEach(o=>o.classList.remove('sel'));
+      if(opt)opt.classList.add('sel'); }
   }
   if(e.target.type==='checkbox' && opt){
     const g=e.target.closest('[data-check]');
@@ -713,6 +1105,186 @@ function autoBMI(el){
   draft.n_interp=v;
   document.querySelectorAll('[name=n_interp]').forEach(r=>{ r.checked=(r.value===v); r.closest('.opt').classList.toggle('sel',r.checked); });
 }
+function autoBMI2(){
+  const w=parseFloat(draft.p_weight), h=parseFloat(draft.p_height);
+  if(!isNaN(w)&&!isNaN(h)&&h>0){ const bmi=(w/Math.pow(h/100,2)).toFixed(1); draft.n_bmi=bmi;
+    const el=document.querySelector('[data-f=n_bmi]'); if(el){el.value=bmi; autoBMI(el);} }
+}
+function calcAge(dob){
+  if(!dob){return;} const b=new Date(dob); if(isNaN(b))return;
+  const now=new Date(); let age=now.getFullYear()-b.getFullYear();
+  const m=now.getMonth()-b.getMonth(); if(m<0||(m===0&&now.getDate()<b.getDate()))age--;
+  draft.p_age=age+' ปี'; const f=document.getElementById('age-field'); if(f)f.value=age+' ปี';
+}
+
+/* ===== LOGIN GATE ===== */
+const PIN_CODE='8888'; let pinBuf='';
+function pin(n){ if(pinBuf.length>=4)return; pinBuf+=n; updatePinDisplay(); if(pinBuf.length===4)setTimeout(checkPin,150); }
+function pinDel(){ pinBuf=pinBuf.slice(0,-1); updatePinDisplay(); }
+function pinClear(){ pinBuf=''; updatePinDisplay(); }
+function updatePinDisplay(){ document.querySelectorAll('.pin-display .dot').forEach((d,i)=>d.classList.toggle('on',i<pinBuf.length)); }
+function checkPin(){
+  if(pinBuf===PIN_CODE){ sessionStorage.setItem('np_unlocked','1'); document.getElementById('lock').style.display='none'; }
+  else{ document.getElementById('lock-err').textContent='รหัสผ่านไม่ถูกต้อง ลองใหม่อีกครั้ง'; document.querySelector('.lockbox').classList.add('shake'); setTimeout(()=>document.querySelector('.lockbox').classList.remove('shake'),400); pinBuf=''; updatePinDisplay(); }
+}
+
+/* ===== GPS / NAVIGATION ===== */
+function getCurrentLoc(){
+  if(!navigator.geolocation){ toast('อุปกรณ์ไม่รองรับ GPS','err'); return; }
+  toast('กำลังดึงตำแหน่ง...','ok');
+  navigator.geolocation.getCurrentPosition(pos=>{
+    draft.p_lat=pos.coords.latitude.toFixed(6); draft.p_lng=pos.coords.longitude.toFixed(6);
+    document.querySelector('[data-f=p_lat]').value=draft.p_lat;
+    document.querySelector('[data-f=p_lng]').value=draft.p_lng;
+    toast('ได้พิกัดแล้ว ✓','ok');
+  },err=>toast('ดึงตำแหน่งไม่สำเร็จ: '+err.message,'err'),{enableHighAccuracy:true,timeout:10000});
+}
+function navigateMap(){
+  const lat=draft.p_lat, lng=draft.p_lng;
+  if(!lat||!lng){ toast('กรุณากรอกพิกัด หรือกดใช้ตำแหน่งปัจจุบันก่อน','err'); return; }
+  window.open('https://www.google.com/maps/dir/?api=1&destination='+lat+','+lng,'_blank');
+}
+function navTo(lat,lng){ window.open('https://www.google.com/maps/dir/?api=1&destination='+lat+','+lng,'_blank'); }
+
+/* ===== ADL (Barthel Index) & TAI ASSESSMENT ===== */
+const ADL_DEFS=[
+  {t:'การรับประทานอาหาร',e:'Feeding',o:[[0,'ไม่สามารถตักอาหารเข้าปากได้ ต้องมีคนป้อน'],[1,'ตักอาหารเองได้ แต่ต้องมีคนช่วยบางส่วน (เช่น หั่น/ตัก/ปอก)'],[2,'ตักอาหารและช่วยเหลือตนเองได้ตามปกติ']]},
+  {t:'การล้างหน้า หวีผม แปรงฟัน โกนหนวด',e:'Grooming',o:[[0,'ต้องการความช่วยเหลือ'],[1,'ทำได้เอง (เมื่อเตรียมอุปกรณ์ให้)']]},
+  {t:'การลุกนั่ง/ย้ายตัวจากเตียงไปเก้าอี้',e:'Transfer',o:[[0,'นั่งทรงตัวไม่ได้ ต้องใช้คน 2 คนช่วยยก'],[1,'ต้องใช้คนช่วยพยุงมาก 1–2 คน จึงนั่งได้'],[2,'ต้องการความช่วยเหลือบ้างเล็กน้อย/มีคนดูแลความปลอดภัย'],[3,'ทำได้เองทั้งหมด']]},
+  {t:'การใช้ห้องน้ำ',e:'Toilet use',o:[[0,'ช่วยเหลือตัวเองไม่ได้'],[1,'ทำได้บ้าง ต้องมีคนช่วยบางส่วน'],[2,'ทำได้เอง (นั่ง/ลุก/ทำความสะอาด/แต่งกาย)']]},
+  {t:'การเคลื่อนที่ภายในบ้าน/ห้อง',e:'Mobility',o:[[0,'เคลื่อนที่ไม่ได้'],[1,'ใช้รถเข็นช่วยตัวเองได้ (>45 เมตร)'],[2,'เดินได้โดยมีคนช่วยพยุง/ดูแล'],[3,'เดินได้เอง (อาจใช้เครื่องช่วยเดิน)']]},
+  {t:'การสวมใส่เสื้อผ้า',e:'Dressing',o:[[0,'ต้องมีคนช่วยทั้งหมด'],[1,'ช่วยตัวเองได้ประมาณครึ่งหนึ่ง'],[2,'ทำได้เองทั้งหมด (รวมติดกระดุม/รูดซิป)']]},
+  {t:'การขึ้นลงบันได 1 ชั้น',e:'Stairs',o:[[0,'ไม่สามารถทำได้'],[1,'ต้องการคนช่วย/ดูแล'],[2,'ขึ้นลงได้เอง']]},
+  {t:'การอาบน้ำ',e:'Bathing',o:[[0,'ต้องมีคนช่วย'],[1,'อาบน้ำได้เอง']]},
+  {t:'การกลั้นอุจจาระ',e:'Bowels',o:[[0,'กลั้นไม่ได้ หรือต้องสวนอุจจาระ'],[1,'กลั้นไม่ได้บางครั้ง (<1 ครั้ง/สัปดาห์)'],[2,'กลั้นได้ปกติ']]},
+  {t:'การกลั้นปัสสาวะ',e:'Bladder',o:[[0,'กลั้นไม่ได้ หรือใส่สายสวนปัสสาวะ'],[1,'กลั้นไม่ได้บางครั้ง (<1 ครั้ง/วัน)'],[2,'กลั้นได้ปกติ']]}
+];
+const TAI_DEFS=[
+  {t:'การเคลื่อนที่',e:'Motility',o:[[0,'เคลื่อนไหวไม่ได้เลย นอนติดเตียงตลอด'],[1,'พลิกตะแคงตัวได้บ้าง แต่ลุกนั่งเองไม่ได้'],[2,'ลุกนั่งได้ แต่ต้องช่วยพยุงในการย้ายตัว/ยืน'],[3,'ยืน/เดินได้บ้างโดยมีคนช่วยหรือใช้เครื่องช่วย'],[4,'เดินได้เองในบ้าน แต่ออกนอกบ้านต้องมีคนดูแล'],[5,'เดิน/เคลื่อนที่ได้คล่องด้วยตนเอง']]},
+  {t:'จิตใจและสติปัญญา',e:'Mental',o:[[0,'ไม่รู้สึกตัว/ไม่ตอบสนอง สื่อสารไม่ได้'],[1,'รู้สึกตัวเล็กน้อย สับสนมาก สื่อสารได้น้อย'],[2,'รู้สึกตัวแต่สับสน ความจำบกพร่องมาก'],[3,'รู้สึกตัวดี มีความจำ/การตัดสินใจบกพร่องบ้าง'],[4,'รู้สึกตัวดี ความจำเล็กน้อย ช่วยตัดสินใจได้'],[5,'รู้สึกตัวดี ความจำและการตัดสินใจปกติ']]},
+  {t:'การกินอาหาร',e:'Eating',o:[[0,'กินเองไม่ได้ ให้อาหารทางสายยาง'],[1,'ต้องป้อนทั้งหมด'],[2,'ต้องป้อนเป็นส่วนใหญ่/บดละเอียด'],[3,'ตักเองได้บ้าง ต้องช่วยเตรียม'],[4,'กินเองได้ ต้องดูแล/เตือนบางครั้ง'],[5,'กินเองได้ตามปกติ']]},
+  {t:'การขับถ่าย',e:'Toilet',o:[[0,'กลั้น/ขับถ่ายเองไม่ได้ ใส่สายสวน/ผ้าอ้อมตลอด'],[1,'กลั้นไม่ได้เกือบตลอด ต้องดูแลทั้งหมด'],[2,'กลั้นไม่ได้บ่อย ต้องช่วยทำความสะอาด'],[3,'ใช้ห้องน้ำได้บ้าง ต้องช่วยพยุง/ทำความสะอาด'],[4,'ใช้ห้องน้ำเองได้ ต้องดูแลบางครั้ง'],[5,'ขับถ่าย/เข้าห้องน้ำเองได้ปกติ']]}
+];
+
+function renderADL(){
+  const w=document.getElementById('adl-items'); if(!w)return;
+  if(!draft.adl_items)draft.adl_items=[null,null,null,null,null,null,null,null,null,null];
+  w.innerHTML=ADL_DEFS.map((q,i)=>{
+    const sel=draft.adl_items[i];
+    return `<div class="assess-q"><div class="qh"><span class="qn">${i+1}</span>${q.t} <span class="eng">(${q.e})</span><span class="sc">${sel==null?'-':sel} คะแนน</span></div>
+      <div class="assess-opts">${q.o.map(([p,txt])=>`<label class="assess-opt ${sel===p?'sel':''}"><input type="radio" name="adl_${i}" ${sel===p?'checked':''} onchange="setADLItem(${i},${p})"><span class="pts">${p}</span><span>${txt}</span></label>`).join('')}</div></div>`;
+  }).join('');
+  calcADL();
+}
+function setADLItem(i,p){ draft.adl_items[i]=p; renderADL(); }
+function calcADL(){
+  const items=draft.adl_items||[]; const done=items.filter(x=>x!=null);
+  const total=done.reduce((a,b)=>a+b,0);
+  draft.adl_total = done.length? total : '';
+  // map to legacy adl range field + sync radio
+  let range='';
+  if(done.length===10){ range = total<=4?'0-4':total<=9?'5-9':total<=14?'10-14':total<=18?'15-18':'19-20'; draft.adl=range;
+    document.querySelectorAll('[name=adl]').forEach(r=>{ r.checked=(r.value===range); const o=r.closest('.opt'); if(o)o.classList.toggle('sel',r.checked); }); }
+  // potential group
+  let grp,cls,desc;
+  if(done.length<10){ document.getElementById('adl-result').innerHTML=`<div class="rt">ประเมินแล้ว ${done.length}/10 ข้อ • คะแนนสะสม ${total}</div><div class="rv">${total} <span style="font-size:16px">/20</span></div><p class="hint">กรุณาประเมินให้ครบ 10 ข้อเพื่อสรุปผล</p>`; updateADLSummary(); return; }
+  if(total>=12){grp='กลุ่มติดสังคม';cls='g-social';desc='พึ่งพาตนเองได้ ช่วยเหลือผู้อื่น/ชุมชนได้';}
+  else if(total>=5){grp='กลุ่มติดบ้าน';cls='g-home';desc='ดูแล/ช่วยเหลือตนเองได้บ้าง';}
+  else {grp='กลุ่มติดเตียง';cls='g-bed';desc='พึ่งพาตนเองไม่ได้ พิการหรือทุพพลภาพ';}
+  const lvl5 = total<=4?'น้อยมาก':total<=9?'น้อย':total<=14?'ปานกลาง':total<=18?'มาก':'ปกติ';
+  const pct=total/20*100; const barColor=total>=12?'var(--green)':total>=5?'var(--amber)':'var(--red)';
+  document.getElementById('adl-result').innerHTML=`<div class="rt">คะแนนรวม ADL (Barthel Index)</div>
+    <div class="rv">${total} <span style="font-size:16px">/20</span></div>
+    <div class="bar"><div style="width:${pct}%;background:${barColor}"></div></div>
+    <div style="margin-top:8px"><span class="rg ${cls}">${grp}</span> <span style="font-size:13px;color:var(--ink2)">— ${desc}</span></div>
+    <p class="hint" style="margin-top:8px">แปลผล 5 ระดับ: <b>${lvl5}</b> (ADL ${total<=4?'0–4':total<=9?'5–9':total<=14?'10–14':total<=18?'15–18':'19–20'}) — ระบบส่งผลไปแสดงที่ "ข้อมูลทั่วไป" ให้อัตโนมัติแล้ว</p>`;
+  updateADLSummary();
+}
+
+/* สรุปผล ADL/TAI ที่ข้อมูลทั่วไป (ข้อ 4) */
+function adlGroup(total){ return total>=12?{g:'กลุ่มติดสังคม',c:'g-social'}:total>=5?{g:'กลุ่มติดบ้าน',c:'g-home'}:{g:'กลุ่มติดเตียง',c:'g-bed'}; }
+function adlLvl5(total){ return total<=4?'น้อยมาก':total<=9?'น้อย':total<=14?'ปานกลาง':total<=18?'มาก':'ปกติ'; }
+function updateADLSummary(){
+  const box=document.getElementById('adl-summary-box'); if(!box||!draft)return;
+  const adlDone=(draft.adl_items||[]).filter(x=>x!=null).length===10;
+  const taiDone=(draft.tai_items||[]).filter(x=>x!=null).length===4;
+  const at=draft.adl_total, tt=draft.tai_total;
+  let html='<div class="adl-sum">';
+  if(adlDone&&at!==''){ const g=adlGroup(at);
+    html+=`<div class="box"><div class="l">ADL (Barthel Index)</div><div class="s">${at} <span style="font-size:14px;color:var(--ink2)">/20</span></div><span class="rg ${g.c}">${g.g}</span> <span style="font-size:12px;color:var(--ink2)"> • ${adlLvl5(at)}</span></div>`;
+  } else {
+    html+=`<div class="box"><div class="l">ADL (Barthel Index)</div><div class="none">ยังไม่ได้ประเมิน</div></div>`;
+  }
+  if(taiDone&&tt!==''){ 
+    html+=`<div class="box"><div class="l">TAI (4 ด้าน)</div><div class="s">${tt} <span style="font-size:14px;color:var(--ink2)">/20</span></div><span style="font-size:12.5px;color:var(--ink2)">${draft.tai_group||'(ยังไม่เลือกกลุ่ม)'}</span></div>`;
+  } else {
+    html+=`<div class="box"><div class="l">TAI (4 ด้าน)</div><div class="none">ยังไม่ได้ประเมิน</div></div>`;
+  }
+  html+='</div>';
+  box.innerHTML=html;
+}
+function renderTAI(){
+  const w=document.getElementById('tai-items'); if(!w)return;
+  if(!draft.tai_items)draft.tai_items=[null,null,null,null];
+  w.innerHTML=TAI_DEFS.map((q,i)=>{
+    const sel=draft.tai_items[i];
+    return `<div class="assess-q"><div class="qh"><span class="qn">${i+1}</span>${q.t} <span class="eng">(${q.e})</span><span class="sc">${sel==null?'-':sel}/5</span></div>
+      <div class="assess-opts">${q.o.map(([p,txt])=>`<label class="assess-opt ${sel===p?'sel':''}"><input type="radio" name="tai_${i}" ${sel===p?'checked':''} onchange="setTAIItem(${i},${p})"><span class="pts">${p}</span><span>${txt}</span></label>`).join('')}</div></div>`;
+  }).join('');
+  calcTAI();
+}
+function setTAIItem(i,p){ draft.tai_items[i]=p; renderTAI(); }
+function calcTAI(){
+  const items=draft.tai_items||[]; const done=items.filter(x=>x!=null);
+  const total=done.reduce((a,b)=>a+b,0); draft.tai_total=done.length?total:'';
+  const r=document.getElementById('tai-result');
+  if(done.length<4){ r.innerHTML=`<div class="rt">ประเมินแล้ว ${done.length}/4 ด้าน • คะแนนสะสม ${total}</div><div class="rv">${total} <span style="font-size:16px">/20</span></div><p class="hint">กรุณาประเมินให้ครบ 4 ด้าน</p>`; updateADLSummary(); return; }
+  let grp,cls,desc;
+  const motility=items[0];
+  if(total>=16&&motility>=4){grp='แนวโน้มกลุ่มที่ 1 (ติดสังคม)';cls='g-social';desc='ความสามารถโดยรวมดี เคลื่อนไหวได้';}
+  else if(total>=8){grp='แนวโน้มกลุ่มที่ 2 (ติดบ้าน)';cls='g-home';desc='พึ่งพาบางส่วน เคลื่อนไหวได้บ้าง';}
+  else {grp='แนวโน้มกลุ่มที่ 3 (ติดเตียง)';cls='g-bed';desc='พึ่งพาสูง/ทั้งหมด';}
+  const pct=total/20*100; const barColor=total>=16?'var(--green)':total>=8?'var(--amber)':'var(--red)';
+  r.innerHTML=`<div class="rt">คะแนนรวม TAI (4 ด้าน)</div>
+    <div class="rv">${total} <span style="font-size:16px">/20</span></div>
+    <div class="bar"><div style="width:${pct}%;background:${barColor}"></div></div>
+    <div style="margin-top:8px"><span class="rg ${cls}">${grp}</span> <span style="font-size:13px;color:var(--ink2)">— ${desc}</span></div>
+    <p class="hint" style="margin-top:8px">โปรดเลือกกลุ่มที่จำแนกได้จริงด้านล่าง (อ้างอิงคู่มือ/แอปสูงวัย.ไทย) แนวโน้มนี้เป็นเพียงข้อมูลประกอบ</p>`;
+  updateADLSummary();
+}
+
+/* ===== MEDICATIONS ===== */
+function renderMeds(){
+  const w=document.getElementById('meds-list'); if(!w)return;
+  if(!draft.meds||!draft.meds.length){ w.innerHTML='<p class="hint">ยังไม่มีรายการยา กดเพิ่มด้านล่าง</p>'; return; }
+  w.innerHTML=draft.meds.map((m,i)=>`
+    <div class="med-item">
+      <div class="fld"><label>ชื่อยา</label><input type="text" value="${esc(m.name)}" onchange="setMed(${i},'name',this.value)" placeholder="เช่น Amlodipine"></div>
+      <div class="fld"><label>ขนาด/ความแรง</label><input type="text" value="${esc(m.dose)}" onchange="setMed(${i},'dose',this.value)" placeholder="5 mg"></div>
+      <div class="fld"><label>วิธีใช้/ความถี่</label><input type="text" value="${esc(m.freq)}" onchange="setMed(${i},'freq',this.value)" placeholder="1x1 หลังอาหารเช้า"></div>
+      <div class="fld"><label>ข้อบ่งใช้</label><input type="text" value="${esc(m.indic)}" onchange="setMed(${i},'indic',this.value)" placeholder="ลดความดัน"></div>
+      <button class="del" onclick="delMed(${i})">×</button>
+    </div>`).join('');
+}
+function addMed(){ if(!draft.meds)draft.meds=[]; draft.meds.push({name:'',dose:'',freq:'',indic:''}); renderMeds(); }
+function setMed(i,k,v){ draft.meds[i][k]=v; }
+function delMed(i){ draft.meds.splice(i,1); renderMeds(); }
+
+function renderHerbs(){
+  const w=document.getElementById('herbs-list'); if(!w)return;
+  if(!draft.herbs||!draft.herbs.length){ w.innerHTML='<p class="hint">ยังไม่มีรายการ กดเพิ่มด้านล่าง</p>'; return; }
+  w.innerHTML=draft.herbs.map((m,i)=>`
+    <div class="med-item herb-item">
+      <div class="fld"><label>ชื่ออาหารเสริม/สมุนไพร</label><input type="text" value="${esc(m.name)}" onchange="setHerb(${i},'name',this.value)" placeholder="เช่น ฟ้าทะลายโจร, ขมิ้นชัน"></div>
+      <div class="fld"><label>ขนาด/ความถี่</label><input type="text" value="${esc(m.dose)}" onchange="setHerb(${i},'dose',this.value)" placeholder="1 แคปซูล วันละ 3 ครั้ง"></div>
+      <div class="fld"><label>วัตถุประสงค์/หมายเหตุ</label><input type="text" value="${esc(m.note)}" onchange="setHerb(${i},'note',this.value)" placeholder="เสริมภูมิ / ระวังร่วมกับยาละลายลิ่มเลือด"></div>
+      <button class="del" onclick="delHerb(${i})">×</button>
+    </div>`).join('');
+}
+function addHerb(){ if(!draft.herbs)draft.herbs=[]; draft.herbs.push({name:'',dose:'',note:''}); renderHerbs(); }
+function setHerb(i,k,v){ draft.herbs[i][k]=v; }
+function delHerb(i){ draft.herbs.splice(i,1); renderHerbs(); }
+function esc(s){ return (s==null?'':String(s)).replace(/"/g,'&quot;'); }
 
 /* ===================== VISITS ===================== */
 function renderVisits(){
@@ -819,84 +1391,150 @@ function closeModal(){ document.getElementById('modal').classList.remove('show')
 
 /* ===================== ANALYSIS ===================== */
 function renderAnalysis(){ document.getElementById('analysis-area').innerHTML = analysisHTML(draft); }
+
+function ageNum(c){ const m=String(c.p_age||'').match(/\d+/); return m?+m[0]:null; }
+function diagHas(c,key){ const d=(c.p_diag||'')+' '+(c.p_chronic||''); return d.toUpperCase().includes(key); }
+
 function analysisHTML(c){
   const visits=(c.visits||[]).filter(v=>v.bp||v.dtx);
   const bpSeries=visits.map(v=>parseBP(v.bp)).filter(Boolean);
   const dtxSeries=visits.map(v=>parseNum(v.dtx)).filter(x=>x!==null);
   const bmi=parseFloat(c.n_bmi);
-  let cards='', advice=[], warns=[], alerts=[];
+  const age=ageNum(c);
+  const isDM=diagHas(c,'DM')||diagHas(c,'เบาหวาน');
+  const isHT=diagHas(c,'HT')||diagHas(c,'ความดัน');
+  let cards='';
 
-  // BP card
+  // ---- KPI cards ----
+  let bpLast=null,bpFirst=null,bpCtrl=null,dtxLast=null,dtxCtrl=null;
   if(bpSeries.length){
-    const last=bpSeries[bpSeries.length-1]; const first=bpSeries[0];
-    const ctrl=last.s<=140&&last.d<=90;
-    const trend = last.s<first.s? 'down' : last.s>first.s? 'up':'flat';
-    const trTxt = trend==='down'?'↓ ลดลง (ดีขึ้น)':trend==='up'?'↑ เพิ่มขึ้น':'→ คงที่';
-    cards+=`<div class="an-card ${ctrl?'good':'bad'}"><div class="lbl">ความดันโลหิตล่าสุด</div><div class="val">${last.s}/${last.d}</div><div class="tr ${trend==='down'?'down':trend==='up'?'up':'flat'}">${trTxt} จาก ${first.s}/${first.d}</div></div>`;
-    if(ctrl) advice.push('ความดันโลหิตอยู่ในเกณฑ์ควบคุมได้ (≤140/90 mmHg) แนะนำคงพฤติกรรมเดิมและติดตามต่อเนื่อง');
-    else alerts.push('ความดันโลหิตยังสูงกว่าเป้าหมาย (>140/90) ควรเน้นลดอาหารเค็ม ทบทวนการรับประทานยา และพิจารณาส่งพบแพทย์หากยังไม่ดีขึ้น');
-    if(trend==='down') advice.push('แนวโน้มความดันลดลงอย่างต่อเนื่อง สะท้อนว่าผู้ป่วยจัดการตนเองได้ดีขึ้น ควรเสริมแรงให้กำลังใจ');
+    bpLast=bpSeries[bpSeries.length-1]; bpFirst=bpSeries[0]; bpCtrl=bpLast.s<=140&&bpLast.d<=90;
+    const tr=bpLast.s<bpFirst.s?'down':bpLast.s>bpFirst.s?'up':'flat';
+    cards+=`<div class="an-card ${bpCtrl?'good':'bad'}"><div class="lbl">ความดันโลหิตล่าสุด</div><div class="val">${bpLast.s}/${bpLast.d}</div><div class="tr ${tr}">${tr==='down'?'↓ ดีขึ้น':tr==='up'?'↑ เพิ่มขึ้น':'→ คงที่'} (จาก ${bpFirst.s}/${bpFirst.d})</div></div>`;
   }
-  // DTX card
   if(dtxSeries.length){
-    const last=dtxSeries[dtxSeries.length-1]; const first=dtxSeries[0];
-    const ctrl=last>=80&&last<=130;
-    const trend = last<first?'down':last>first?'up':'flat';
-    const trTxt = trend==='down'?'↓ ลดลง (ดีขึ้น)':trend==='up'?'↑ เพิ่มขึ้น':'→ คงที่';
-    cards+=`<div class="an-card ${ctrl?'good':'bad'}"><div class="lbl">น้ำตาลในเลือด (DTX) ล่าสุด</div><div class="val">${last} <span style="font-size:14px">mg</span></div><div class="tr ${trend==='down'?'down':trend==='up'?'up':'flat'}">${trTxt} จาก ${first} mg</div></div>`;
-    if(ctrl) advice.push('ระดับน้ำตาลในเลือดอยู่ในเป้าหมาย (80–130 mg) แนะนำควบคุมอาหารและออกกำลังกายสม่ำเสมอต่อไป');
-    else if(last>130) alerts.push('ระดับน้ำตาลสูงกว่าเป้าหมาย ควรเน้นลดอาหารหวาน/แป้ง เพิ่มการออกกำลังกาย และทบทวนการใช้ยาเบาหวาน');
-    else if(last<80) alerts.push('ระดับน้ำตาลต่ำกว่าเป้าหมาย ระวังภาวะน้ำตาลต่ำ ควรแนะนำการรับประทานอาหารให้เพียงพอและสังเกตอาการ');
+    dtxLast=dtxSeries[dtxSeries.length-1]; const dtxFirst=dtxSeries[0]; dtxCtrl=dtxLast>=80&&dtxLast<=130;
+    const tr=dtxLast<dtxFirst?'down':dtxLast>dtxFirst?'up':'flat';
+    cards+=`<div class="an-card ${dtxCtrl?'good':'bad'}"><div class="lbl">น้ำตาลในเลือด (DTX) ล่าสุด</div><div class="val">${dtxLast} <span style="font-size:14px">mg%</span></div><div class="tr ${tr}">${tr==='down'?'↓ ดีขึ้น':tr==='up'?'↑ เพิ่มขึ้น':'→ คงที่'} (จาก ${dtxFirst})</div></div>`;
   }
-  // BMI card
   if(!isNaN(bmi)){
-    let st = bmi<18.5?{c:'warn',t:'น้ำหนักน้อย'} : bmi<23?{c:'good',t:'ปกติ'} : bmi<25?{c:'warn',t:'ท้วม/เกิน'} : {c:'bad',t:'อ้วน'};
+    let st=bmi<18.5?{c:'warn',t:'น้ำหนักน้อย'}:bmi<23?{c:'good',t:'ปกติ'}:bmi<25?{c:'warn',t:'ท้วม'}:bmi<30?{c:'bad',t:'อ้วนระดับ 1'}:{c:'bad',t:'อ้วนระดับ 2'};
     cards+=`<div class="an-card ${st.c}"><div class="lbl">ภาวะโภชนาการ (BMI)</div><div class="val">${bmi}</div><div class="tr flat">${st.t}</div></div>`;
-    if(bmi>=25) warns.push('BMI อยู่ในเกณฑ์น้ำหนักเกิน/อ้วน เพิ่มความเสี่ยงต่อ HT/DM ควรแนะนำควบคุมอาหารและออกกำลังกายเพื่อลดน้ำหนัก');
-    if(bmi<18.5) warns.push('BMI ต่ำกว่าเกณฑ์ ควรประเมินภาวะโภชนาการและการได้รับสารอาหารเพิ่มเติม');
   }
-  // ADL
-  if(c.adl){
-    const map={'0-4':'น้อยมาก','5-9':'น้อย','10-14':'ปานกลาง','15-18':'มาก','19-20':'ปกติ'};
-    const low = c.adl==='0-4'||c.adl==='5-9';
-    cards+=`<div class="an-card ${low?'warn':'good'}"><div class="lbl">ความสามารถดูแลตนเอง</div><div class="val" style="font-size:20px">ADL ${c.adl}</div><div class="tr flat">${map[c.adl]||''}</div></div>`;
-    if(low) warns.push('ผู้ป่วยช่วยเหลือตนเองได้น้อย ควรประเมินผู้ดูแล และวางแผนช่วยเหลือกิจวัตรประจำวัน');
+  if(c.adl){ const map={'0-4':'น้อยมาก','5-9':'น้อย','10-14':'ปานกลาง','15-18':'มาก','19-20':'ปกติ'}; const low=c.adl==='0-4'||c.adl==='5-9';
+    cards+=`<div class="an-card ${low?'warn':'good'}"><div class="lbl">ความสามารถดูแลตนเอง</div><div class="val" style="font-size:20px">ADL ${c.adl}</div><div class="tr flat">${map[c.adl]||''}</div></div>`; }
+
+  // ---- CV risk factor count ----
+  let rf=[];
+  if(age&&age>=(c.p_sex==='ชาย'?55:65)) rf.push('อายุมาก');
+  if(c.smoke==='สูบ') rf.push('สูบบุหรี่');
+  if(!isNaN(bmi)&&bmi>=25) rf.push('น้ำหนักเกิน/อ้วน');
+  if(isDM) rf.push('เบาหวาน');
+  if(diagHas(c,'DYSLIP')||diagHas(c,'ไขมัน')) rf.push('ไขมันในเลือดสูง');
+  if(c.p_famhist&&/stroke|หลอดเลือด|หัวใจ|DM|เบาหวาน/i.test(c.p_famhist)) rf.push('ประวัติครอบครัว');
+  if(bpCtrl===false) rf.push('ความดันยังคุมไม่ได้');
+  const riskLevel = rf.length>=3?{t:'สูง',cls:'risk-high'}:rf.length===2?{t:'ปานกลาง',cls:'risk-mod'}:{t:'ต่ำ-ปานกลาง',cls:'risk-low'};
+
+  // ===== BLOCK 1: Assessment =====
+  let b_assess='<ul>';
+  b_assess+=`<li>ผู้ป่วย${c.p_sex||''} ${age?('อายุ '+age+' ปี'):''} วินิจฉัย <b>${c.p_diag||'-'}</b>${c.p_chronic?(' ร่วมกับ '+c.p_chronic):''}</li>`;
+  if(bpLast) b_assess+=`<li class="${bpCtrl?'green':'amber'}">ความดันโลหิตล่าสุด ${bpLast.s}/${bpLast.d} mmHg — <b>${bpCtrl?'อยู่ในเกณฑ์ควบคุมได้':'ยังสูงกว่าเป้าหมาย'}</b> (เป้าหมายทั่วไป &lt;140/90${(isDM||diagHas(c,'CKD'))?' ; ผู้ป่วยเบาหวาน/ไตเรื้อรังพิจารณาเข้มงวด &lt;130/80 ตามดุลยพินิจแพทย์':''})</li>`;
+  if(dtxLast) b_assess+=`<li class="${dtxCtrl?'green':'amber'}">ระดับน้ำตาลปลายนิ้วล่าสุด ${dtxLast} mg% — <b>${dtxCtrl?'อยู่ในเป้าหมาย':(dtxLast>130?'สูงกว่าเป้าหมาย':'ต่ำกว่าเป้าหมาย')}</b> (เป้าหมาย 80–130 mg% ; ควรติดตาม HbA1c เป้าหมาย &lt;7% หากเหมาะสมกับผู้ป่วย)</li>`;
+  if(!isNaN(bmi)) b_assess+=`<li class="${bmi>=25?'amber':'green'}">BMI ${bmi} kg/m² (${bmi<18.5?'น้ำหนักน้อย':bmi<23?'ปกติ':bmi<25?'ท้วม':'อ้วน'})${c.p_weight&&c.p_height?` — น้ำหนัก ${c.p_weight} กก. สูง ${c.p_height} ซม.`:''}</li>`;
+  b_assess+='</ul>';
+
+  // ===== BLOCK 2: Risk stratification =====
+  let b_risk=`<ul><li>ระดับความเสี่ยงโรคหัวใจและหลอดเลือดโดยรวม: <span class="risk-badge ${riskLevel.cls}">${riskLevel.t}</span> ${rf.length?('(ปัจจัยเสี่ยง: '+rf.join(', ')+')'):'(ไม่พบปัจจัยเสี่ยงเด่นชัด)'}</li>`;
+  if(bpSeries.length>=2){ const d=bpFirst.s-bpLast.s; b_risk+=`<li class="${d>0?'green':d<0?'red':''}">แนวโน้มความดัน (Systolic) ${d>0?('ลดลง '+d+' mmHg ตลอดการติดตาม — ตอบสนองการรักษาดี'):d<0?('เพิ่มขึ้น '+(-d)+' mmHg — ควรทบทวนสาเหตุ'):'คงที่'}</li>`; }
+  if(dtxSeries.length>=2){ const d=dtxSeries[0]-dtxLast; b_risk+=`<li class="${d>0?'green':d<0?'red':''}">แนวโน้มน้ำตาล ${d>0?('ลดลง '+d+' mg% — ควบคุมได้ดีขึ้น'):d<0?('เพิ่มขึ้น '+(-d)+' mg% — ควรทบทวน'):'คงที่'}</li>`; }
+  b_risk+='</ul>';
+
+  // ===== BLOCK 3: Complication screening =====
+  let scr=[];
+  if(isDM){
+    scr.push('<li>ตรวจคัดกรอง<b>เบาหวานขึ้นจอประสาทตา</b> (Fundus/Fundus camera) อย่างน้อยปีละ 1 ครั้ง</li>');
+    scr.push('<li>ตรวจ<b>เท้าเบาหวาน</b> (ประเมินชีพจร ความรู้สึก แผล) ทุกครั้งที่เยี่ยม และคัดกรองละเอียดปีละ 1 ครั้ง</li>');
+    scr.push('<li>ติดตาม<b>การทำงานของไต</b> — eGFR/Creatinine และ <b>UACR</b> (microalbuminuria) ปีละ 1 ครั้ง</li>');
+    scr.push('<li>ตรวจ<b>ไขมันในเลือด</b> (Lipid profile) และพิจารณา statin ตามความเสี่ยง</li>');
+    scr.push('<li>ติดตาม <b>HbA1c</b> ทุก 3–6 เดือน</li>');
   }
-  // behavior
-  if(c.smoke==='สูบ') warns.push('ผู้ป่วยสูบบุหรี่ ควรแนะนำการเลิกบุหรี่เพื่อลดความเสี่ยงโรคหัวใจและหลอดเลือด');
-  if(c.alcohol==='ดื่ม') warns.push('ผู้ป่วยดื่มสุรา ควรแนะนำลด/งดสุรา เนื่องจากส่งผลต่อความดันและน้ำตาล');
-  if(c.med==='ไม่มี') warns.push('ผู้ป่วยไม่ได้ใช้ยา ควรทบทวนแผนการรักษาและความสม่ำเสมอในการรับประทานยา');
-
-  // knowledge gap
-  const allK=7; const haveK=(c.knowledge||[]).length;
-  if(haveK<allK) advice.push(`ผู้ป่วยมีความรู้ ${haveK}/${allK} ด้าน ควรเสริมความรู้ในด้านที่ยังขาดเพื่อการจัดการตนเองที่ดีขึ้น`);
-
-  // weeks confidence trend
-  const conf=(c.weeks||[]).map(w=>+w.confidence).filter(x=>x>0);
-  if(conf.length>=2){
-    const tr = conf[conf.length-1]>conf[0]?'เพิ่มขึ้น':conf[conf.length-1]<conf[0]?'ลดลง':'คงที่';
-    advice.push(`ระดับความมั่นใจในการจัดการตนเองมีแนวโน้ม${tr} (${conf[0]} → ${conf[conf.length-1]}) ${conf[conf.length-1]>=7?'อยู่ในระดับดี ควรเสริมแรงต่อเนื่อง':'ควรให้กำลังใจและสนับสนุนเพิ่ม'}`);
+  if(isHT){
+    scr.push('<li>ประเมิน<b>อวัยวะเป้าหมาย (Target Organ Damage)</b> — หัวใจ (EKG/LVH), ไต (Cr, eGFR, urine protein), ตา</li>');
+    scr.push('<li>ตรวจ<b>ไขมันในเลือด</b>และน้ำตาล เพื่อประเมินความเสี่ยงรวม</li>');
   }
+  if(!scr.length) scr.push('<li>ติดตามผลตรวจทางห้องปฏิบัติการพื้นฐานตามแนวทางของโรคประจำตัว</li>');
+  let b_scr='<ul>'+scr.join('')+'</ul>';
 
-  // overall plan recommendation
-  let planRec='';
-  const overallCtrl = isControlled(c);
+  // ===== BLOCK 4: Medication & herb review =====
+  let medLines=[];
+  const meds=c.meds||[], herbs=c.herbs||[];
+  if(meds.length) medLines.push(`<li>ผู้ป่วยใช้ยา ${meds.length} รายการ: ${meds.map(m=>m.name+(m.dose?' '+m.dose:'')).filter(x=>x.trim()).join(', ')||'(ยังไม่ระบุชื่อ)'}</li>`);
+  else medLines.push('<li class="amber">ยังไม่มีบันทึกรายการยา — แนะนำบันทึกประวัติการใช้ยาให้ครบถ้วนในแท็บ "ประวัติการใช้ยา"</li>');
+  if(meds.length>=5) medLines.push('<li class="amber">มีการใช้ยาตั้งแต่ 5 รายการขึ้นไป (Polypharmacy) — ควรทบทวนความจำเป็น ปฏิกิริยาระหว่างยา และความเสี่ยงต่อการลืม/ใช้ผิด</li>');
+  if(c.med_adherence&&/ไม่สม่ำเสมอ|ลืม/.test(c.med_adherence)) medLines.push('<li class="red">ความสม่ำเสมอในการใช้ยาต่ำ — เป็นสาเหตุสำคัญที่ทำให้คุมโรคไม่ได้ ควรวางระบบช่วยเตือน/จัดยา (กล่องแบ่งยา, อสม., แอปเตือน) และค้นหาอุปสรรค</li>');
+  if(c.med_side2&&!/ไม่มี|ไม่พบ|-/.test(c.med_side2)) medLines.push(`<li class="amber">พบผลข้างเคียงจากยา: ${c.med_side2} — ควรประเมินและรายงานแพทย์เพื่อพิจารณาปรับยา</li>`);
+  if(herbs.length){
+    medLines.push(`<li>ใช้อาหารเสริม/สมุนไพร ${herbs.length} รายการ: ${herbs.map(h=>h.name).filter(x=>x&&x.trim()).join(', ')}</li>`);
+    medLines.push('<li class="amber"><b>เฝ้าระวังปฏิกิริยาสมุนไพร–ยา (Herb–Drug Interaction)</b> เช่น สมุนไพรบางชนิดเสริม/ลดฤทธิ์ยาลดความดัน ยาเบาหวาน หรือยาต้านการแข็งตัวของเลือด ควรสอบถามชนิด/ขนาดและปรึกษาเภสัชกร</li>');
+  }
+  if(c.p_allergy&&!/ไม่มี|ปฏิเสธ|-/.test(c.p_allergy)) medLines.push(`<li class="red">ประวัติแพ้ยา/อาหาร: <b>${c.p_allergy}</b> — ต้องระบุชัดเจนทุกจุดบริการ หลีกเลี่ยงการสั่งซ้ำ</li>`);
+  let b_med='<ul>'+medLines.join('')+'</ul>';
+
+  // ===== BLOCK 5: Lifestyle / non-pharm =====
+  let life=[];
+  life.push('<li><b>อาหาร:</b> แนะนำหลัก DASH — เพิ่มผัก ผลไม้รสไม่หวานจัด ธัญพืชไม่ขัดสี ลด<b>โซเดียม &lt;2,000 มก./วัน</b> (เกลือ &lt;1 ช้อนชา) ลดอาหารหวาน มัน เค็ม ของทอด</li>');
+  life.push('<li><b>การออกกำลังกาย:</b> แอโรบิกระดับปานกลาง (เดินเร็ว ปั่นจักรยาน) สะสม <b>150 นาที/สัปดาห์</b> (≥30 นาที 5 วัน) ร่วมกับยืดเหยียด/แกว่งแขนตามที่ผู้ป่วยทำได้</li>');
+  if(!isNaN(bmi)&&bmi>=23) life.push(`<li class="amber"><b>ควบคุมน้ำหนัก:</b> ตั้งเป้าลด 5–10% ของน้ำหนักตัวอย่างค่อยเป็นค่อยไป จะช่วยลดทั้งความดันและน้ำตาลอย่างมีนัยสำคัญ</li>`);
+  if(c.smoke==='สูบ') life.push('<li class="red"><b>เลิกบุหรี่:</b> ปัจจัยเสี่ยงสำคัญที่สุดที่ปรับได้ ควรแนะนำเข้าคลินิกเลิกบุหรี่/สายด่วน 1600 และให้กำลังใจต่อเนื่อง</li>');
+  if(c.alcohol==='ดื่ม') life.push('<li class="amber"><b>ลด/งดสุรา:</b> ส่งผลต่อความดัน น้ำตาล และน้ำหนัก แนะนำจำกัดหรืองด</li>');
+  if(isDM) life.push('<li><b>การดูแลเท้า:</b> สอนตรวจเท้าด้วยตนเองทุกวัน สวมรองเท้าที่เหมาะสม หลีกเลี่ยงแผล และเฝ้าระวังอาการชา</li>');
+  if(isDM) life.push('<li><b>เฝ้าระวังน้ำตาลต่ำ:</b> สอนอาการ (ใจสั่น เหงื่อแตก หิว มึน) และวิธีแก้ไขเบื้องต้น โดยเฉพาะหากใช้ยากลุ่มซัลโฟนิลยูเรีย/อินซูลิน</li>');
+  let b_life='<ul>'+life.join('')+'</ul>';
+
+  // ===== BLOCK 6: Nursing plan / follow-up =====
+  const overallCtrl=isControlled(c);
+  let plan=[];
   if(bpSeries.length||dtxSeries.length){
-    if(overallCtrl) planRec='<b>สรุปแนวทางดำเนินการต่อ:</b> ผู้ป่วยควบคุมโรคได้ดีในขณะนี้ → ดำเนินแผนเดิมต่อ เน้นการคงพฤติกรรม ติดตามเยี่ยมบ้านตามนัด และเสริมแรงทางบวก พิจารณาขยายระยะการติดตามได้';
-    else planRec='<b>สรุปแนวทางดำเนินการต่อ:</b> ผู้ป่วยยังควบคุมโรคได้ไม่ดี → ควรเพิ่มความถี่การติดตาม เยี่ยมบ้าน/ติดตามทางไลน์ถี่ขึ้น ทบทวนปัญหา-อุปสรรครายสัปดาห์ และประสานทีมสหวิชาชีพหากจำเป็น';
+    if(overallCtrl){
+      plan.push('<li class="green"><b>คงแผนเดิม:</b> ผู้ป่วยควบคุมโรคได้ดี → เสริมแรงทางบวก คงพฤติกรรมสุขภาพ และติดตามต่อเนื่อง</li>');
+      plan.push('<li>ความถี่การติดตามที่เหมาะสม: <b>ทุก 1–3 เดือน</b> (เยี่ยมบ้าน/ติดตามทางไลน์) พร้อมประเมินผลเลือดตามนัดแพทย์</li>');
+    } else {
+      plan.push('<li class="amber"><b>เพิ่มความเข้มข้นการดูแล:</b> ยังควบคุมไม่ได้ตามเป้า → เพิ่มความถี่การติดตามเป็น<b>ทุก 1–2 สัปดาห์</b> ทบทวนการใช้ยา อาหาร และอุปสรรครายสัปดาห์</li>');
+      plan.push('<li>ประสาน<b>ทีมสหวิชาชีพ</b> (แพทย์/เภสัชกร/นักโภชนาการ) และพิจารณาส่งพบแพทย์เพื่อทบทวน/ปรับแผนการรักษา</li>');
+    }
+  } else {
+    plan.push('<li class="amber">ยังไม่มีข้อมูล BP/DTX เพียงพอ — แนะนำบันทึกค่าในแท็บ "การเยี่ยม/การพยาบาล" เพื่อให้วิเคราะห์แนวโน้มได้</li>');
   }
+  const haveK=(c.knowledge||[]).length;
+  if(haveK<7) plan.push(`<li>เสริมความรู้ที่ยังขาด (ปัจจุบัน ${haveK}/7 ด้าน) เน้นทักษะการจัดการตนเอง (Self-management) ให้ผู้ป่วยและผู้ดูแล</li>`);
+  const conf=(c.weeks||[]).map(w=>+w.confidence).filter(x=>x>0);
+  if(conf.length>=2){ const up=conf[conf.length-1]>=conf[0]; plan.push(`<li class="${up?'green':'amber'}">ระดับความมั่นใจในการจัดการตนเอง ${conf[0]} → ${conf[conf.length-1]}/9 ${up?'มีแนวโน้มดีขึ้น ควรเสริมแรงต่อ':'ควรค้นหาอุปสรรคและให้กำลังใจเพิ่ม'}</li>`); }
+  if(c.caregiver_p==='ไม่มีคนดูแล'||c.adl==='0-4'||c.adl==='5-9') plan.push('<li class="amber">ผู้ป่วยมีข้อจำกัดด้านการช่วยเหลือตนเอง/ผู้ดูแล — วางแผนระบบสนับสนุนในชุมชน (อสม., Care Manager, Caregiver)</li>');
+  plan.push('<li>ตั้งเป้าหมายร่วมกับผู้ป่วย (SMART Goal) และบันทึกพฤติกรรมรายสัปดาห์ต่อเนื่องเพื่อติดตามความก้าวหน้า</li>');
+  let b_plan='<ul>'+plan.join('')+'</ul>';
 
-  let adviceList='';
-  alerts.forEach(a=>adviceList+=`<li class="alert-li">${a}</li>`);
-  warns.forEach(a=>adviceList+=`<li class="warn-li">${a}</li>`);
-  advice.forEach(a=>adviceList+=`<li>${a}</li>`);
-  if(!adviceList) adviceList='<li>ยังไม่มีข้อมูลเพียงพอสำหรับการวิเคราะห์ กรุณาเพิ่มข้อมูลการเยี่ยมบ้าน (BP/DTX) ในส่วน "การเยี่ยม/การพยาบาล"</li>';
+  // ===== BLOCK 7: Red flags / referral =====
+  let red=[];
+  if(bpLast&&(bpLast.s>=180||bpLast.d>=110)) red.push('<li class="red"><b>ความดันสูงวิกฤต (≥180/110):</b> ประเมินอาการ Hypertensive emergency และส่งต่อโดยด่วน</li>');
+  if(dtxLast!==null&&dtxLast>=300) red.push('<li class="red"><b>น้ำตาลสูงมาก (≥300):</b> เฝ้าระวังภาวะ DKA/HHS ส่งต่อทันที</li>');
+  if(dtxLast!==null&&dtxLast<70) red.push('<li class="red"><b>น้ำตาลต่ำ (&lt;70):</b> แก้ไขภาวะน้ำตาลต่ำทันทีและประเมินสาเหตุ</li>');
+  red.push('<li>อาการเตือนที่ต้องส่งต่อ/พบแพทย์: เจ็บแน่นหน้าอก หอบเหนื่อยมาก แขนขาอ่อนแรง/ปากเบี้ยว พูดไม่ชัด ตามัวเฉียบพลัน บวมมาก ปัสสาวะน้อย หรือซึมลง</li>');
+  let b_red='<ul>'+red.join('')+'</ul>';
 
-  return `${cards?`<div class="an-grid">${cards}</div>`:''}
-    <div class="advice"><h4>🔬 วิเคราะห์แนวโน้มสุขภาพ และคำแนะนำการดำเนินแผนการต่อ</h4>
-    <ul>${adviceList}</ul>
-    ${planRec?`<div style="margin-top:14px;padding:14px;background:#fff;border-radius:10px;border-left:4px solid var(--teal);font-size:14px">${planRec}</div>`:''}
-    </div>`;
+  const note=`<div class="exp-note">
+    <div class="eh">🩺 บทวิเคราะห์เชิงลึกโดยแนวทางผู้เชี่ยวชาญ (อายุรกรรม / เวชศาสตร์ชุมชน)</div>
+    <div class="eb">
+      <div class="exp-block"><div class="bt"><span class="tag">A</span>การประเมินภาพรวม (Clinical Assessment)</div>${b_assess}</div>
+      <div class="exp-block"><div class="bt"><span class="tag">B</span>การจำแนกการควบคุมและความเสี่ยง (Control & Risk Stratification)</div>${b_risk}</div>
+      <div class="exp-block"><div class="bt"><span class="tag">C</span>การคัดกรองภาวะแทรกซ้อนที่ควรติดตาม (Complication Screening)</div>${b_scr}</div>
+      <div class="exp-block"><div class="bt"><span class="tag">D</span>การประเมินด้านยาและสมุนไพร (Medication & Herb Review)</div>${b_med}</div>
+      <div class="exp-block"><div class="bt"><span class="tag">E</span>คำแนะนำการปรับพฤติกรรม (Lifestyle Modification)</div>${b_life}</div>
+      <div class="exp-block"><div class="bt"><span class="tag">F</span>แผนการพยาบาลและการติดตามต่อเนื่อง (Nursing Plan & Follow-up)</div>${b_plan}</div>
+      <div class="exp-block"><div class="bt"><span class="tag">G</span>ธงแดงและเกณฑ์การส่งต่อ (Red Flags & Referral)</div>${b_red}</div>
+      <div class="disclaimer">หมายเหตุ: บทวิเคราะห์นี้เป็นเครื่องมือสนับสนุนการตัดสินใจ (Clinical Decision Support) สำหรับบุคลากรสาธารณสุข อ้างอิงแนวทางเวชปฏิบัติทั่วไป ไม่ใช่การวินิจฉัยหรือสั่งการรักษาเฉพาะราย การปรับยาและการรักษาต้องอยู่ภายใต้ดุลยพินิจของแพทย์ผู้ดูแล</div>
+    </div></div>`;
+
+  return `${cards?`<div class="an-grid">${cards}</div>`:''}${note}`;
 }
 
 /* ===================== DASHBOARD ===================== */
@@ -973,14 +1611,23 @@ function renderReport(){
 
   document.getElementById('report-area').innerHTML=`<div class="report-doc" id="report-doc">
     ${c.photo?`<img class="rphoto" src="${c.photo}">`:''}
-    <div class="rtitle"><h2>แผนการพยาบาลสนับสนุนการจัดการสุขภาพตนเอง สำหรับพยาบาลชุมชน</h2>
+    <div class="rtitle"><h2>แผนการพยาบาลสนับสนุนการจัดการสุขภาพตนเอง</h2>
+    <div class="en">ศูนย์สุขภาพชุมชนเขตเมือง กลุ่มงานเวชกรรมสังคม โรงพยาบาลสมุทรปราการ</div>
+    <div class="en">(Self – management supportive nursing care plan)</div></div>
     <div class="en">(Self – management supportive nursing care plan)</div></div>
 
     <div class="rsec">ส่วนที่ 1 : ข้อมูลทั่วไปของผู้ป่วย</div>
-    <div class="rrow"><span class="k">ชื่อ-สกุล:</span><span class="v">${fullName(c)}</span><span class="k">เบอร์โทร:</span><span class="v">${c.p_phone||''}</span></div>
-    <div class="rrow"><span class="k">เพศ:</span> ${rcheck('ชาย',c.p_sex==='ชาย')} ${rcheck('หญิง',c.p_sex==='หญิง')}<span class="k">สถานภาพ:</span><span class="v">${c.p_familyrole||''}</span><span class="k">รายได้:</span><span class="v">${c.p_income||''} บาท/เดือน</span></div>
-    <div class="rrow"><span class="k">ที่อยู่ บ้านเลขที่:</span><span class="v">${c.p_house||''} ม.${c.p_moo||''}</span><span class="k">ตำบล:</span><span class="v">${c.p_tambon||''}</span><span class="k">ชุมชน:</span><span class="v">${c.p_community||''}</span></div>
+    <div class="rrow"><span class="k">HN:</span><span class="v">${c.p_hn||''}</span><span class="k">ชื่อ-สกุล:</span><span class="v">${fullName(c)}</span><span class="k">อายุ:</span><span class="v">${c.p_age||''}</span><span class="k">เบอร์โทร:</span><span class="v">${c.p_phone||''}</span></div>
+    <div class="rrow"><span class="k">วันเกิด:</span><span class="v">${fmtD(c.p_dob)}</span><span class="k">เพศ:</span> ${rcheck('ชาย',c.p_sex==='ชาย')} ${rcheck('หญิง',c.p_sex==='หญิง')}<span class="k">สถานภาพ:</span><span class="v">${c.p_familyrole||''}</span><span class="k">สิทธิ:</span><span class="v">${c.p_scheme||''}</span></div>
+    <div class="rrow"><span class="k">ที่อยู่ บ้านเลขที่:</span><span class="v">${c.p_house||''} ม.${c.p_moo||''}</span><span class="k">ตำบล:</span><span class="v">${c.p_tambon||''}</span><span class="k">ชุมชน:</span><span class="v">${c.p_community||''}</span><span class="k">รายได้:</span><span class="v">${c.p_income||''} บ./ด.</span></div>
     <div class="rrow"><span class="k">การวินิจฉัยโรคครั้งสุดท้าย:</span><span class="v">${c.p_diag||''}</span><span class="k">วันที่จำหน่าย:</span><span class="v">${fmtD(c.p_discharge)}</span><span class="k">รวมอยู่ รพ.:</span><span class="v">${c.p_hospdays||''} วัน</span></div>
+    ${(c.p_lat&&c.p_lng)?`<div class="rrow"><span class="k">พิกัด GPS:</span><span class="v">${c.p_lat}, ${c.p_lng}</span></div>`:''}
+
+    <div class="rsec">ประวัติสุขภาพ</div>
+    <div class="rrow"><span class="k">น้ำหนัก:</span><span class="v">${c.p_weight||''} กก.</span><span class="k">ส่วนสูง:</span><span class="v">${c.p_height||''} ซม.</span><span class="k">หมู่เลือด:</span><span class="v">${c.p_blood||''}</span></div>
+    <div class="rrow"><span class="k">แพ้ยา/อาหาร:</span><span class="v">${c.p_allergy||'-'}</span><span class="k">โรคประจำตัว:</span><span class="v">${c.p_chronic||'-'}</span></div>
+    ${(c.p_surgery||c.p_famhist)?`<div class="rrow"><span class="k">ประวัติผ่าตัด:</span><span class="v">${c.p_surgery||'-'}</span><span class="k">ประวัติครอบครัว:</span><span class="v">${c.p_famhist||'-'}</span></div>`:''}
+    <div class="rrow"><span class="k">ผู้ติดต่อฉุกเฉิน:</span><span class="v">${c.p_emergency||'-'} ${c.p_emergency_phone||''}</span></div>
 
     <div class="rsec">ข้อมูลทั่วไปของญาติ/ผู้ดูแล</div>
     <div class="rrow"><span class="k">ชื่อ-สกุล:</span><span class="v">${(c.c_fname||'')+' '+(c.c_lname||'')}</span><span class="k">เบอร์โทร:</span><span class="v">${c.c_phone||''}</span><span class="k">อายุ:</span><span class="v">${c.c_age||''} ปี</span></div>
@@ -989,7 +1636,8 @@ function renderReport(){
     <div class="rsec">ข้อมูลสภาพผู้ป่วยเมื่ออยู่ที่บ้าน</div>
     <div class="rrow"><span class="k">ระดับความรู้สึกตัว:</span> ${rcheck('รู้สึกตัว',c.h_conscious==='รู้สึกตัว')} ${rcheck('สับสน',c.h_conscious==='สับสน')} ${rcheck('ซึม',c.h_conscious==='ซึม')} ${rcheck('ไม่รู้สึกตัว',c.h_conscious==='ไม่รู้สึกตัว')}</div>
     <div class="rrow"><span class="k">อุปกรณ์:</span> ${rcheck('ไม่มี',(c.h_equip||[]).includes('ไม่มี'))} ${rcheck('T.T tube',(c.h_equip||[]).includes('T.T tube'))} ${rcheck('NG tube',(c.h_equip||[]).includes('NG tube'))} ${rcheck("Foley's cath",(c.h_equip||[]).includes("Foley's cath"))} ${c.h_equip_other?'อื่นๆ: '+c.h_equip_other:''}</div>
-    <div class="rrow"><span class="k">ADL:</span><span class="v">${c.adl?c.adl+' ('+(adlMap[c.adl]||'')+')':''}</span><span class="k">MRS:</span><span class="v">${c.adl_mrs||''}</span></div>
+    <div class="rrow"><span class="k">ADL:</span><span class="v">${c.adl?c.adl+' ('+(adlMap[c.adl]||'')+')':''}${c.adl_total!==''&&c.adl_total!=null?' • Barthel '+c.adl_total+'/20':''}</span><span class="k">MRS:</span><span class="v">${c.adl_mrs||''}</span></div>
+    ${(c.tai_total!==''&&c.tai_total!=null)||c.tai_group?`<div class="rrow"><span class="k">TAI:</span><span class="v">${(c.tai_total!==''&&c.tai_total!=null)?c.tai_total+'/20':''} ${c.tai_group||''}</span></div>`:''}
     <div class="rrow"><span class="k">BMI:</span><span class="v">${c.n_bmi||''}</span><span class="k">แปลผล:</span> ${rcheck('น้อย',c.n_interp==='น้อย')} ${rcheck('ปกติ',c.n_interp==='ปกติ')} ${rcheck('มาก',c.n_interp==='มาก')}</div>
     <div class="rrow"><span class="k">สภาพแวดล้อมที่บ้าน:</span> ${rcheck('เหมาะสม',c.env==='เหมาะสม')} ${rcheck('ไม่เหมาะสม',c.env==='ไม่เหมาะสม')}<span class="v">${c.env_detail||''}</span></div>
     <div class="rrow"><span class="k">ผู้ดูแล:</span> ${rcheck('มีคนดูแล',c.caregiver_p==='มีคนดูแล')} ${rcheck('ไม่มี',c.caregiver_p==='ไม่มีคนดูแล')}<span class="k">การใช้ยา:</span> ${rcheck('มี',c.med==='มี')} ${rcheck('ไม่มี',c.med==='ไม่มี')}</div>
@@ -999,6 +1647,12 @@ function renderReport(){
     <div class="rrow" style="display:block">${knowAll.map(k=>rcheck(k,(c.knowledge||[]).includes(k))).join(' ')}</div>
 
     <div class="rrow" style="margin-top:8px"><span class="k">การมาตรวจตามนัด:</span> ${rcheck('นัด',c.appt==='นัด')} ${rcheck('ไม่นัด',c.appt==='ไม่นัด')}<span class="k">นัดครั้งต่อไป:</span><span class="v">${fmtD(c.appt_date)}</span><span class="k">ห้องตรวจ:</span><span class="v">${c.appt_room||''}</span></div>
+
+    <div class="rsec">ประวัติการใช้ยาและสมุนไพร</div>
+    ${(c.meds&&c.meds.length)?`<table class="rt"><thead><tr><th>ชื่อยา</th><th>ขนาด</th><th>วิธีใช้/ความถี่</th><th>ข้อบ่งใช้</th></tr></thead><tbody>${c.meds.map(m=>`<tr><td>${m.name||''}</td><td>${m.dose||''}</td><td>${m.freq||''}</td><td>${m.indic||''}</td></tr>`).join('')}</tbody></table>`:'<p style="color:#888">ไม่มีบันทึกรายการยา</p>'}
+    ${(c.herbs&&c.herbs.length)?`<table class="rt"><thead><tr><th>อาหารเสริม/สมุนไพร</th><th>ขนาด/ความถี่</th><th>หมายเหตุ</th></tr></thead><tbody>${c.herbs.map(h=>`<tr><td>${h.name||''}</td><td>${h.dose||''}</td><td>${h.note||''}</td></tr>`).join('')}</tbody></table>`:''}
+    <div class="rrow"><span class="k">ความสม่ำเสมอในการใช้ยา:</span><span class="v">${c.med_adherence||'-'}</span><span class="k">ผลข้างเคียง:</span><span class="v">${c.med_side2||'-'}</span></div>
+    ${(c.next_visit_date||c.next_visit_plan)?`<div class="rrow"><span class="k">แผนเยี่ยม/นัดถัดไป:</span><span class="v">${fmtD(c.next_visit_date)} ${c.next_visit_type||''} ${c.next_visit_freq||''} ${c.next_visit_plan||''}</span></div>`:''}
 
     <div class="rsec">ส่วนที่ 2 : การจัดการตนเองและการพยาบาลผู้ป่วย</div>
     <div class="rrow" style="display:block"><b>ปัญหาของผู้ป่วย:</b> ${(c.problems||'-').replace(/\n/g,'<br>')}</div>
@@ -1040,6 +1694,154 @@ function exportPDF(){
   }).catch(e=>toast('สร้าง PDF ไม่สำเร็จ: '+e.message,'err'));
 }
 
+/* ===================== SCHEDULE ===================== */
+function daysBetween(d){ const t=new Date(d); if(isNaN(t))return null; const now=new Date(); now.setHours(0,0,0,0); t.setHours(0,0,0,0); return Math.round((t-now)/86400000); }
+function getSchedItems(){
+  let items=[];
+  cases.forEach((c,i)=>{
+    if(c.next_visit_date){ items.push({i,date:c.next_visit_date,type:c.next_visit_type||'เยี่ยมบ้าน',plan:c.next_visit_plan||'',kind:'แผนเยี่ยม',evkind:'visit'}); }
+    if(c.appt_date){ items.push({i,date:c.appt_date,type:'นัดตรวจ '+(c.appt_room||''),plan:'',kind:'นัดหมาย รพ.',evkind:'appt'}); }
+  });
+  items.forEach(it=>it.dleft=daysBetween(it.date));
+  return items.filter(it=>it.dleft!==null);
+}
+function schedView(v){
+  document.getElementById('vt-list').classList.toggle('active',v==='list');
+  document.getElementById('vt-cal').classList.toggle('active',v==='cal');
+  document.getElementById('sched-list').style.display = v==='list'?'block':'none';
+  document.getElementById('sched-cal').style.display = v==='cal'?'block':'none';
+  document.getElementById('sched-filter').style.display = v==='cal'?'none':'';
+  if(v==='cal') renderCalendar();
+}
+function renderSchedule(){
+  const filter=document.getElementById('sched-filter').value;
+  let items=getSchedItems();
+  if(filter==='overdue') items=items.filter(it=>it.dleft<0);
+  else if(filter==='week') items=items.filter(it=>it.dleft>=0&&it.dleft<=7);
+  else if(filter==='month') items=items.filter(it=>it.dleft>=0&&it.dleft<=30);
+  items.sort((a,b)=>a.dleft-b.dleft);
+  document.getElementById('sched-count').textContent=items.length+' รายการ';
+  const w=document.getElementById('sched-list');
+  if(!items.length){ w.innerHTML='<div class="empty"><div class="ic">📭</div><p>ไม่มีรายการนัดหมาย/แผนเยี่ยมในเงื่อนไขนี้</p></div>'; return; }
+  w.innerHTML=items.map(it=>{
+    const c=cases[it.i]; const cls=it.dleft<0?'overdue':it.dleft<=7?'soon':'';
+    const dt=new Date(it.date);
+    const dleftTxt=it.dleft<0?('เลยมา '+(-it.dleft)+' วัน'):it.dleft===0?'วันนี้':('อีก '+it.dleft+' วัน');
+    const nav=(c.p_lat&&c.p_lng)?`<button class="btn btn-sky btn-sm" onclick="navTo('${c.p_lat}','${c.p_lng}')">🧭 นำทาง</button>`:'';
+    return `<div class="sched-item ${cls}">
+      <div class="date-badge"><b>${dt.getDate()}</b><span>${dt.toLocaleDateString('th-TH',{month:'short'})}<br>${dt.getFullYear()+543}</span></div>
+      <div class="info"><h4>${fullName(c)} <span style="font-weight:400;color:var(--ink2);font-size:12px">• ${it.kind}</span></h4>
+        <p>📋 ${it.type} ${it.plan?(' — '+it.plan):''}</p>
+        <p style="font-size:12px">📍 ${c.p_community||''} ${c.p_tambon||''} ${c.p_phone?('• ☎ '+c.p_phone):''}</p></div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+        <span class="dleft">${dleftTxt}</span>
+        <div style="display:flex;gap:6px">${nav}<button class="btn btn-ghost btn-sm" onclick="openEdit(${it.i})">✏️ เปิดเคส</button></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ===== CALENDAR VIEW ===== */
+let calY=new Date().getFullYear(), calM=new Date().getMonth(), calSel=null;
+const THMON=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const THDOW=['อา','จ','อ','พ','พฤ','ศ','ส'];
+function calMove(d){ calM+=d; if(calM<0){calM=11;calY--;} if(calM>11){calM=0;calY++;} calSel=null; renderCalendar(); }
+function calToday(){ const n=new Date(); calY=n.getFullYear(); calM=n.getMonth(); calSel=null; renderCalendar(); }
+function ymd(y,m,d){ return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'); }
+function renderCalendar(){
+  document.getElementById('cal-title').textContent=THMON[calM]+' '+(calY+543);
+  // group events by date string
+  const items=getSchedItems();
+  const byDate={};
+  items.forEach(it=>{ (byDate[it.date]=byDate[it.date]||[]).push(it); });
+  const first=new Date(calY,calM,1); const startDow=first.getDay();
+  const daysInM=new Date(calY,calM+1,0).getDate();
+  const todayStr=ymd(new Date().getFullYear(),new Date().getMonth(),new Date().getDate());
+  let html=THDOW.map((d,i)=>`<div class="cal-dow ${i===0||i===6?'we':''}">${d}</div>`).join('');
+  for(let i=0;i<startDow;i++) html+='<div class="cal-cell empty"></div>';
+  for(let d=1;d<=daysInM;d++){
+    const ds=ymd(calY,calM,d);
+    const evs=byDate[ds]||[];
+    const isToday=ds===todayStr;
+    let evHtml='';
+    evs.slice(0,2).forEach(ev=>{
+      const over=ev.dleft<0; const cls=over?'over':ev.evkind;
+      evHtml+=`<div class="ev ${cls}">${ev.evkind==='visit'?'🏠':'🏥'} ${fullName(cases[ev.i]).split(' ')[0]}</div>`;
+    });
+    if(evs.length>2) evHtml+=`<div class="more">+${evs.length-2} เพิ่มเติม</div>`;
+    html+=`<div class="cal-cell ${evs.length?'has':''} ${isToday?'today':''} ${calSel===ds?'sel':''}" onclick="calPick('${ds}')"><div class="dn">${d}</div>${evHtml}</div>`;
+  }
+  document.getElementById('cal-grid').innerHTML=html;
+  renderCalDetail(byDate);
+}
+function calPick(ds){ calSel=(calSel===ds?null:ds); renderCalendar(); }
+function renderCalDetail(byDate){
+  const w=document.getElementById('cal-day-detail');
+  if(!calSel){ w.innerHTML=''; return; }
+  const evs=(byDate||{})[calSel]||[];
+  const dt=new Date(calSel);
+  const title=`<div class="cal-detail-head">📌 ${dt.toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>`;
+  if(!evs.length){ w.innerHTML=title+'<p class="hint">ไม่มีนัดหมายในวันนี้</p>'; return; }
+  w.innerHTML=title+evs.map(it=>{
+    const c=cases[it.i]; const cls=it.dleft<0?'overdue':it.dleft<=7?'soon':'';
+    const nav=(c.p_lat&&c.p_lng)?`<button class="btn btn-sky btn-sm" onclick="navTo('${c.p_lat}','${c.p_lng}')">🧭 นำทาง</button>`:'';
+    return `<div class="sched-item ${cls}">
+      <div class="date-badge"><b>${it.evkind==='visit'?'🏠':'🏥'}</b><span>${it.kind}</span></div>
+      <div class="info"><h4>${fullName(c)}</h4><p>📋 ${it.type} ${it.plan?(' — '+it.plan):''}</p>
+        <p style="font-size:12px">📍 ${c.p_community||''} ${c.p_tambon||''} ${c.p_phone?('• ☎ '+c.p_phone):''}</p></div>
+      <div style="display:flex;gap:6px">${nav}<button class="btn btn-ghost btn-sm" onclick="openEdit(${it.i})">✏️ เปิดเคส</button></div>
+    </div>`;
+  }).join('');
+}
+
+/* ===================== TARGET MAP (Leaflet) ===================== */
+let tmap=null, tlayer=null;
+function initTargetMap(){
+  // tambon + disease filters
+  const ts=[...new Set(cases.map(c=>c.p_tambon).filter(Boolean))];
+  const tsel=document.getElementById('map-tambon'); const tcur=tsel.value;
+  tsel.innerHTML='<option value="">ทุกตำบล</option>'+ts.map(t=>`<option ${t===tcur?'selected':''}>${t}</option>`).join('');
+  const ds=[...new Set(cases.map(c=>c.p_diag).filter(Boolean))];
+  const dsel=document.getElementById('map-disease'); const dcur=dsel.value;
+  dsel.innerHTML='<option value="">ทุกโรค</option>'+ds.map(d=>`<option ${d===dcur?'selected':''}>${d}</option>`).join('');
+  if(!tmap){
+    tmap=L.map('target-map').setView([13.5990,100.6010],11); // สมุทรปราการ
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(tmap);
+    tlayer=L.layerGroup().addTo(tmap);
+  }
+  setTimeout(()=>tmap.invalidateSize(),200);
+  renderTargetMap();
+}
+function renderTargetMap(){
+  if(!tmap)return;
+  const q=(document.getElementById('map-search').value||'').toLowerCase();
+  const ft=document.getElementById('map-tambon').value;
+  const fd=document.getElementById('map-disease').value;
+  let list=cases.filter(c=>{
+    const txt=(fullName(c)+' '+(c.p_community||'')+' '+(c.p_diag||'')+' '+(c.p_tambon||'')).toLowerCase();
+    return txt.includes(q)&&(!ft||c.p_tambon===ft)&&(!fd||c.p_diag===fd);
+  });
+  // tambon stats
+  const byT={}; list.forEach(c=>{ const t=c.p_tambon||'ไม่ระบุตำบล'; byT[t]=(byT[t]||0)+1; });
+  document.getElementById('tambon-stats').innerHTML=Object.entries(byT).map(([t,n])=>`<div class="ts"><b>${n}</b><span>📍 ${t}</span></div>`).join('')||'<div class="ts"><b>0</b><span>ไม่มีเคส</span></div>';
+  // markers
+  tlayer.clearLayers();
+  let pts=[], noGeo=0;
+  list.forEach(c=>{
+    const lat=parseFloat(c.p_lat), lng=parseFloat(c.p_lng);
+    if(isNaN(lat)||isNaN(lng)){ noGeo++; return; }
+    const v=lastVitals(c); const hasData=v.bp||v.dtx;
+    const color=!hasData?'#94a3b8':isControlled(c)?'#22a565':'#e5484d';
+    const m=L.circleMarker([lat,lng],{radius:10,fillColor:color,color:'#fff',weight:2,fillOpacity:.9});
+    m.bindPopup(`<b>${fullName(c)}</b><br>${c.p_diag||''} • ${c.p_community||''}<br>${v.bp?('BP '+v.bp+' '):''}${v.dtx?('DTX '+v.dtx):''}<br><a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank">🧭 นำทาง Google Maps</a>`);
+    m.addTo(tlayer); pts.push([lat,lng]);
+  });
+  const ng=document.getElementById('map-nogeo');
+  ng.textContent = noGeo? `⚠️ มี ${noGeo} เคสที่ยังไม่มีพิกัด GPS (ไม่แสดงบนแผนที่) — เพิ่มพิกัดได้ในแท็บข้อมูลผู้ป่วย` : '';
+  if(pts.length){ try{tmap.fitBounds(pts,{padding:[40,40],maxZoom:15});}catch(e){} }
+}
+function fitMap(){ document.getElementById('map-search').value=''; document.getElementById('map-tambon').value=''; document.getElementById('map-disease').value=''; renderTargetMap(); }
+
 /* ===================== EXPORT CSV ===================== */
 function renderExport(){
   const body=document.getElementById('export-body');
@@ -1054,9 +1856,11 @@ function csvCell(v){ v=(v==null?'':String(v)).replace(/"/g,'""').replace(/\n/g,'
 function exportCSV(){
   const sel=[...document.querySelectorAll('.exp-ck:checked')].map(ck=>cases[+ck.value]);
   if(!sel.length){ toast('กรุณาเลือกอย่างน้อย 1 เคส','err'); return; }
-  const headers=['ชื่อ','นามสกุล','เพศ','เบอร์โทร','บ้านเลขที่','หมู่','ตำบล','ชุมชน','รายได้','การวินิจฉัย','ผู้ดูแล','ความสัมพันธ์','ระดับสติ','ADL','MRS','BMI','แปลผลBMI','สภาพแวดล้อม','การใช้ยา','สูบบุหรี่','ดื่มสุรา','โรค(แผน)','BP_ล่าสุด','DTX_ล่าสุด','การควบคุม','จำนวนเยี่ยม','จำนวนสัปดาห์','ปัญหา','เป้าหมาย','นัดครั้งต่อไป'];
+  const headers=['HN','ชื่อ','นามสกุล','เพศ','วันเกิด','อายุ','เบอร์โทร','บ้านเลขที่','หมู่','ตำบล','ชุมชน','พิกัด_lat','พิกัด_lng','รายได้','สิทธิ','การวินิจฉัย','โรคประจำตัว','แพ้ยา','น้ำหนัก','ส่วนสูง','หมู่เลือด','ผู้ดูแล','ความสัมพันธ์','ระดับสติ','ADL','MRS','BMI','แปลผลBMI','สภาพแวดล้อม','รายการยา','อาหารเสริม/สมุนไพร','ความสม่ำเสมอยา','สูบบุหรี่','ดื่มสุรา','โรค(แผน)','BP_ล่าสุด','DTX_ล่าสุด','การควบคุม','จำนวนเยี่ยม','จำนวนสัปดาห์','ปัญหา','เป้าหมาย','นัดเยี่ยมถัดไป','นัดตรวจ'];
   const rows=sel.map(c=>{ const v=lastVitals(c);
-    return [c.p_fname,c.p_lname,c.p_sex,c.p_phone,c.p_house,c.p_moo,c.p_tambon,c.p_community,c.p_income,c.p_diag,c.caregiver_p,c.c_relation,c.h_conscious,c.adl,c.adl_mrs,c.n_bmi,c.n_interp,c.env,c.med,c.smoke,c.alcohol,c.plan_disease,v.bp,v.dtx,(v.bp||v.dtx)?(isControlled(c)?'ควบคุมได้':'ยังไม่ได้'):'',(c.visits||[]).length,(c.weeks||[]).length,c.problems,c.goals,c.appt_date].map(csvCell).join(',');
+    const medsStr=(c.meds||[]).map(m=>m.name+(m.dose?' '+m.dose:'')+(m.freq?' ('+m.freq+')':'')).filter(x=>x.trim()).join(' | ');
+    const herbStr=(c.herbs||[]).map(h=>h.name+(h.dose?' '+h.dose:'')).filter(x=>x.trim()).join(' | ');
+    return [c.p_hn,c.p_fname,c.p_lname,c.p_sex,c.p_dob,c.p_age,c.p_phone,c.p_house,c.p_moo,c.p_tambon,c.p_community,c.p_lat,c.p_lng,c.p_income,c.p_scheme,c.p_diag,c.p_chronic,c.p_allergy,c.p_weight,c.p_height,c.p_blood,c.caregiver_p,c.c_relation,c.h_conscious,c.adl,c.adl_mrs,c.n_bmi,c.n_interp,c.env,medsStr,herbStr,c.med_adherence,c.smoke,c.alcohol,c.plan_disease,v.bp,v.dtx,(v.bp||v.dtx)?(isControlled(c)?'ควบคุมได้':'ยังไม่ได้'):'',(c.visits||[]).length,(c.weeks||[]).length,c.problems,c.goals,c.next_visit_date,c.appt_date].map(csvCell).join(',');
   });
   const csv='\uFEFF'+headers.map(csvCell).join(',')+'\n'+rows.join('\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
@@ -1072,7 +1876,13 @@ function toast(msg,type){ const t=document.getElementById('toast'); t.textConten
 /* ===================== SAMPLE DATA ===================== */
 function loadSample(){
   const s1=blankCase();
-  Object.assign(s1,{p_fname:'นางวิภาวัลย์',p_lname:'ทิพย์ประเสริฐ',p_phone:'0876939234',p_sex:'หญิง',p_house:'2137/158',p_moo:'7',p_tambon:'เทพารักษ์',p_community:'เรวัติ',p_income:'1000',p_familyrole:'หัวหน้าครอบครัว',p_diag:'HT/DM',
+  Object.assign(s1,{p_hn:'00012345',p_dob:'1958-04-12',p_age:'68 ปี',p_fname:'นางวิภาวัลย์',p_lname:'ทิพย์ประเสริฐ',p_phone:'0876939234',p_sex:'หญิง',p_house:'2137/158',p_moo:'7',p_tambon:'เทพารักษ์',p_community:'เรวัติ',p_income:'1000',p_familyrole:'หัวหน้าครอบครัว',p_diag:'HT/DM',p_scheme:'UC (บัตรทอง)',
+    p_weight:'58',p_height:'157',p_blood:'O',p_allergy:'ไม่มีประวัติแพ้',p_chronic:'HT 8 ปี, DM 5 ปี',p_emergency:'นายสมชาย ทิพย์ประเสริฐ',p_emergency_phone:'0836002845',p_lat:'13.598500',p_lng:'100.601200',
+    adl_items:[2,1,3,2,3,2,2,1,2,2],adl_total:20,tai_items:[5,5,5,5],tai_total:20,tai_group:'กลุ่มที่ 1 (ติดสังคม) - เคลื่อนไหวได้ ช่วยเหลือตนเองได้ดี',
+    meds:[{name:'Amlodipine',dose:'5 mg',freq:'1x1 หลังอาหารเช้า',indic:'ลดความดันโลหิต'},{name:'Metformin',dose:'500 mg',freq:'1x2 หลังอาหารเช้า-เย็น',indic:'ลดน้ำตาล'},{name:'Enalapril',dose:'5 mg',freq:'1x1 ก่อนนอน',indic:'ลดความดัน/ป้องกันไต'}],
+    herbs:[{name:'ขมิ้นชัน',dose:'1 แคปซูล วันละ 2 ครั้ง',note:'แก้ท้องอืด - เฝ้าระวังร่วมกับยาลดน้ำตาล'}],
+    med_adherence:'สม่ำเสมอดี (>80%)',med_organize:'จัดเอง',med_side2:'ไม่มี',
+    next_visit_date:'2026-06-20',next_visit_type:'เยี่ยมบ้าน',next_visit_freq:'ทุกเดือน',next_visit_plan:'ติดตาม DTX/BP, ประเมินการใช้ยา, เสริมความรู้เรื่องอาหาร',
     c_fname:'นายสมชาย',c_lname:'ทิพย์ประเสริฐ',c_phone:'0836002845',c_sex:'ชาย',c_age:'34',c_relation:'คู่สมรส',
     h_conscious:'รู้สึกตัว',h_equip:['ไม่มี'],adl:'19-20',n_bmi:'23.5',n_interp:'ปกติ',env:'เหมาะสม',env_detail:'ในบ้านจัดของเป็นระเบียบ มีฝุ่นเล็กน้อย',caregiver_p:'มีคนดูแล',med:'มี',belief:'ไม่มี',alcohol:'ไม่ดื่ม',smoke:'ไม่สูบ',
     knowledge:['ความรู้เรื่องโรค','ความรู้เรื่องยา ขนาด วิธีใช้ ข้อควรระวัง','ความรู้เรื่องการเลือกรับประทานอาหาร','ความรู้เรื่องการออกกำลังกาย'],
@@ -1093,7 +1903,13 @@ function loadSample(){
     telecomm:'ติดตามสอบถามอาการทางไลน์ทุกสัปดาห์ ผู้ป่วยส่งค่าความดันและน้ำตาลให้ทุกครั้ง'
   });
   const s2=blankCase();
-  Object.assign(s2,{p_fname:'นางพร',p_lname:'สอนแสง',p_phone:'0811361344',p_sex:'หญิง',p_house:'2146',p_moo:'7',p_tambon:'เทพารักษ์',p_community:'ร่วมจิตพัฒนา',p_income:'800',p_familyrole:'หัวหน้าครอบครัว',p_diag:'HT/DM',
+  Object.assign(s2,{p_hn:'00023456',p_dob:'1962-09-30',p_age:'63 ปี',p_fname:'นางพร',p_lname:'สอนแสง',p_phone:'0811361344',p_sex:'หญิง',p_house:'2146',p_moo:'7',p_tambon:'เทพารักษ์',p_community:'ร่วมจิตพัฒนา',p_income:'800',p_familyrole:'หัวหน้าครอบครัว',p_diag:'HT/DM',p_scheme:'UC (บัตรทอง)',
+    p_weight:'70',p_height:'160',p_blood:'B',p_allergy:'ไม่มีประวัติแพ้',p_chronic:'HT 10 ปี, DM 6 ปี, ไขมันในเลือดสูง',p_emergency:'นางสาวทิพย์สุดา โคคาวี',p_emergency_phone:'0931189489',p_lat:'13.604200',p_lng:'100.595800',
+    adl_items:[2,1,3,2,3,2,2,1,2,2],adl_total:20,tai_items:[5,5,5,5],tai_total:20,tai_group:'กลุ่มที่ 1 (ติดสังคม) - เคลื่อนไหวได้ ช่วยเหลือตนเองได้ดี',
+    meds:[{name:'Losartan',dose:'50 mg',freq:'1x1 หลังอาหารเช้า',indic:'ลดความดันโลหิต'},{name:'Metformin',dose:'500 mg',freq:'1x2 หลังอาหารเช้า-เย็น',indic:'ลดน้ำตาล'},{name:'Glipizide',dose:'5 mg',freq:'1x1 ก่อนอาหารเช้า',indic:'ลดน้ำตาล'},{name:'Simvastatin',dose:'20 mg',freq:'1x1 ก่อนนอน',indic:'ลดไขมัน'},{name:'Aspirin',dose:'81 mg',freq:'1x1 หลังอาหารเช้า',indic:'ป้องกันหลอดเลือด'}],
+    herbs:[{name:'ฟ้าทะลายโจร',dose:'เป็นครั้งคราวเมื่อเป็นหวัด',note:'ระวังร่วมกับยาลดความดัน/ยาต้านเกล็ดเลือด'},{name:'กระเทียมสกัด',dose:'1 เม็ด/วัน',note:'เฝ้าระวังร่วมกับ Aspirin'}],
+    med_adherence:'ปานกลาง (50-80%)',med_organize:'ญาติจัดให้',med_side2:'ไม่มี',med_note:'มียาหลายรายการ ควรทบทวน polypharmacy',
+    next_visit_date:'2026-06-18',next_visit_type:'เยี่ยมบ้าน',next_visit_freq:'ทุก 2 สัปดาห์',next_visit_plan:'เน้นควบคุมน้ำหนัก (BMI สูง), ทบทวนการใช้ยา 5 รายการ, ติดตาม DTX/BP',
     c_fname:'นางสาวทิพย์สุดา',c_lname:'โคคาวี',c_phone:'0931189489',c_sex:'หญิง',c_age:'32',c_relation:'บุตร',
     h_conscious:'รู้สึกตัว',h_equip:['ไม่มี'],adl:'19-20',n_bmi:'27.4',n_interp:'มาก',env:'เหมาะสม',env_detail:'ในบ้านจัดของเป็นระเบียบ มีฝุ่นเล็กน้อย',caregiver_p:'มีคนดูแล',med:'มี',belief:'ไม่มี',alcohol:'ไม่ดื่ม',smoke:'ไม่สูบ',
     knowledge:['ความรู้เรื่องโรค','ความรู้เรื่องยา ขนาด วิธีใช้ ข้อควรระวัง'],
@@ -1117,6 +1933,9 @@ function loadSample(){
 }
 
 /* ===================== INIT ===================== */
+if(sessionStorage.getItem('np_unlocked')==='1'){ document.getElementById('lock').style.display='none'; }
+document.addEventListener('keydown',e=>{ if(document.getElementById('lock').style.display!=='none'){ if(e.key>='0'&&e.key<='9')pin(+e.key); else if(e.key==='Backspace')pinDel(); else if(e.key==='Enter'&&pinBuf.length===4)checkPin(); } });
+document.body.dataset.page='cases';
 renderCases(); updateHeader();
 </script>
 </body>
