@@ -282,8 +282,17 @@ textarea.fc{resize:vertical;min-height:65px}
     <p>ระบบตรวจประเมิน GACP กัญชา</p>
   </div>
   <div id="nav">
-    <div class="nsl">หน้าหลัก</div>
-    <div class="ni active" onclick="gp('dashboard')"><span class="ic">🏠</span>แดชบอร์ด</div>
+    <div class="nsl">จัดการเคส</div>
+    <div class="ni active" onclick="gp('cases')"><span class="ic">📁</span>รายการเคสทั้งหมด<span class="nb empty" id="case-count-badge">0</span></div>
+    <div class="ni" onclick="newCase()"><span class="ic">➕</span>สร้างเคสใหม่</div>
+    <div id="current-case-info" style="margin:5px 8px;padding:7px 9px;background:rgba(255,255,255,.15);border-radius:8px;border:1px solid rgba(255,255,255,.2);display:none">
+      <div style="font-size:9px;color:#B2EBF2;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">เคสที่กำลังตรวจ</div>
+      <div id="current-case-name" style="font-size:11.5px;font-weight:800;color:#fff;line-height:1.3"></div>
+      <div id="current-case-date" style="font-size:9.5px;color:#E0F7FA;margin-top:1px"></div>
+    </div>
+    <div class="nsl">Dashboard</div>
+    <div class="ni" onclick="gp('dashboard')"><span class="ic">🏠</span>แดชบอร์ดเคสนี้</div>
+    <div class="ni" onclick="gp('allcases')"><span class="ic">🏙️</span>ภาพรวมทุกเคส</div>
     <div class="nsl">ข้อมูลการตรวจ</div>
     <div class="ni" onclick="gp('site')"><span class="ic">🏭</span>ข้อมูลสถานที่ผลิต</div>
     <div class="ni" onclick="gp('insp')"><span class="ic">👤</span>ข้อมูลผู้ตรวจ</div>
@@ -314,7 +323,6 @@ textarea.fc{resize:vertical;min-height:65px}
     <div class="ni" onclick="gp('sig')"><span class="ic">✍️</span>ลายเซ็น</div>
     <div class="ni" onclick="gp('qr')"><span class="ic">📱</span>QR Code สรุปผล</div>
     <div class="ni" onclick="gp('compare')"><span class="ic">🔄</span>เปรียบเทียบ 2 รอบ</div>
-    <div class="ni" onclick="gp('prov')"><span class="ic">🏙️</span>Dashboard จังหวัด</div>
   </div>
   <div id="sb-ft">
     <div>GACP V16 (21 พ.ค. 2569)</div>
@@ -450,10 +458,33 @@ textarea.fc{resize:vertical;min-height:65px}
         <div class="al al-i"><span>ℹ️</span><div>รายงาน A4 พร้อมพิมพ์ ครอบคลุมข้อมูลสถานที่ ผู้ตรวจ ผลการตรวจ 14 หมวด และสรุปผล</div></div>
         <div style="display:flex;gap:9px;flex-wrap:wrap">
           <button class="btn btn-gold" onclick="doPDF()">🖨️ พิมพ์ / บันทึก PDF</button>
-          <button class="btn btn-g" onclick="doJSON()">💾 บันทึก JSON</button>
+          <button class="btn btn-g" onclick="exportCaseJSON()">💾 Export เคสนี้ (JSON)</button>
           <button class="btn btn-g" onclick="loadJSON()">📂 โหลด JSON</button>
           <input type="file" id="jf" accept=".json" style="display:none" onchange="readJSON(event)">
         </div>
+      </div>
+    </div>
+
+    <!-- CASES LIST PAGE -->
+    <div class="page" id="page-cases">
+      <div class="card">
+        <div class="ct">📁 รายการเคสการตรวจทั้งหมด</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <button class="btn btn-p" onclick="newCase()">➕ สร้างเคสใหม่</button>
+          <button class="btn btn-g" onclick="importCaseJSON()">📂 นำเข้า JSON</button>
+          <input type="file" id="import-case-file" accept=".json" style="display:none" onchange="importCaseFromFile(event)">
+        </div>
+        <div id="cases-list"></div>
+      </div>
+    </div>
+
+    <!-- ALL CASES DASHBOARD -->
+    <div class="page" id="page-allcases">
+      <div class="card">
+        <div class="ct">🏙️ Dashboard ภาพรวมทุกเคส</div>
+        <div id="allcases-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px"></div>
+        <div id="allcases-chart" style="margin-bottom:16px"></div>
+        <div id="allcases-table"></div>
       </div>
     </div>
     <div id="page-print" class="pdoc"></div>
@@ -1755,126 +1786,365 @@ function buildPrint(){
 }
 
 // ============================================================
-// SAVE / LOAD
+// CASE MANAGEMENT SYSTEM
+// localStorage structure:
+//   gacp2_cases         = JSON array of case metadata
+//   gacp2_case_{id}     = JSON of full case data
+//   gacp2_lastCase      = last active case id
 // ============================================================
+
+let currentCaseId=null;
+function genCaseId(){return 'case_'+Date.now()+'_'+Math.random().toString(36).substr(2,6);}
+
+function getCasesMeta(){try{return JSON.parse(localStorage.getItem('gacp2_cases')||'[]');}catch(e){return[];}}
+function saveCasesMeta(m){try{localStorage.setItem('gacp2_cases',JSON.stringify(m));}catch(e){}}
+
+// ---- SAVE current case ----
 function save(){
-  try{localStorage.setItem('gacp2',JSON.stringify({
-    res:ST.res,rem:ST.rem,inspectors:ST.inspectors,
-    photos:ST.photos,capa:ST.capa,sev:ST.sev,gps:gpsCoords
-  }));}catch(e){}
+  if(!currentCaseId)return;
+  const V=id=>document.getElementById(id)?.value||'';
+  const d={v:'2.0',id:currentCaseId,updatedAt:new Date().toISOString(),
+    site:{name:V('sn'),license:V('sl'),addr:V('sa'),province:V('sp'),tel:V('st'),email:V('se'),
+          owner:V('so'),area:V('sar'),system:V('ssy'),variety:V('sv'),date:V('sd'),round:V('sr2'),note:V('snote')},
+    inspOrg:{org:V('io'),dept:V('id2'),auth:V('ia')},
+    inspectors:ST.inspectors,res:ST.res,rem:ST.rem,capa:ST.capa,sev:ST.sev,photos:ST.photos,gps:gpsCoords};
+  try{localStorage.setItem('gacp2_case_'+currentCaseId,JSON.stringify(d));}catch(e){}
+  // update meta
+  const meta=getCasesMeta();
+  const all=getAllItems();let p=0,f=0,na=0;
+  all.forEach(({no})=>{const r=ST.res[no];if(r==='pass')p++;else if(r==='fail')f++;else if(r==='na')na++;});
+  const elig=p+f;const pct=elig>0?Math.round(p/elig*100):0;
+  const m={id:currentCaseId,name:d.site.name||'(ไม่ระบุชื่อ)',date:d.site.date||'',
+            province:d.site.province||'',updatedAt:d.updatedAt,pass:p,fail:f,na,pct,
+            verdict:f===0&&p>0?'pass':elig>0?'fail':'pending'};
+  const idx=meta.findIndex(x=>x.id===currentCaseId);
+  if(idx>=0)meta[idx]=m;else meta.unshift(m);
+  saveCasesMeta(meta);updateCaseBadge();
 }
-function restoreState(){
+
+// ---- LOAD case into DOM ----
+function loadCaseData(id){
   try{
-    const d=JSON.parse(localStorage.getItem('gacp2')||'{}');
-    if(d.res) ST.res=d.res;
-    if(d.rem) ST.rem=d.rem;
-    if(d.inspectors) ST.inspectors=d.inspectors;
-    if(d.photos) ST.photos=d.photos;
-    if(d.capa) ST.capa=d.capa;
-    if(d.sev) ST.sev=d.sev;
-    if(d.gps){
-      gpsCoords=d.gps;
-      const el=document.getElementById('gps-display');
-      if(el&&gpsCoords) el.innerHTML=`<span style="color:var(--B1);font-weight:700">📍 ${gpsCoords.lat}, ${gpsCoords.lng}</span>
-        <a href="https://maps.google.com/?q=${gpsCoords.lat},${gpsCoords.lng}" target="_blank" style="font-size:11px;color:var(--B3);margin-left:8px">🗺️ Google Maps</a>`;
-    }
-    getAllItems().forEach(({no})=>{
-      const r=ST.res[no];if(!r)return;
-      const k=no.replace(/\./g,'_');
-      document.getElementById('p-'+k)?.classList.toggle('sel',r==='pass');
-      document.getElementById('f-'+k)?.classList.toggle('sel',r==='fail');
-      document.getElementById('n-'+k)?.classList.toggle('sel',r==='na');
-      const row=document.getElementById('row-'+no);
-      if(row) row.style.background=r==='fail'?'#FFF5F5':r==='pass'?'#F0F8FF':'';
-      const ta=document.getElementById('rem-'+k);if(ta&&ST.rem[no]) ta.value=ST.rem[no];
-      // restore CAPA
-      const capaWrap=document.getElementById('capa-wrap-'+k);
-      if(capaWrap) capaWrap.style.display=r==='fail'?'block':'none';
-      const sevSel=document.getElementById('sev-'+k);
-      if(sevSel){
-        sevSel.style.display=r==='fail'?'block':'none';
-        if(ST.sev[no]) sevSel.value=ST.sev[no];
-      }
-      const c=ST.capa[no];
-      if(c){
-        const fix=document.getElementById('capa-fix-'+k);if(fix) fix.value=c.fix||'';
-        const prev=document.getElementById('capa-prev-'+k);if(prev) prev.value=c.prev||'';
-        const owner=document.getElementById('capa-owner-'+k);if(owner) owner.value=c.owner||'';
-        const due=document.getElementById('capa-due-'+k);if(due) due.value=c.due||'';
-        const stat=document.getElementById('capa-stat-'+k);if(stat) stat.value=c.stat||'open';
-      }
-      if((ST.photos[no]||[]).length) renderPhotoPreviews(no);
-    });
-    SECS.forEach(s=>upSecSum(s));
-    renderIns();
-    upDash();
-  }catch(e){}
+    const raw=localStorage.getItem('gacp2_case_'+id);if(!raw)return false;
+    const d=JSON.parse(raw);
+    currentCaseId=id;
+    const s=d.site||{};
+    const map={sn:'name',sl:'license',sa:'addr',sp:'province',st:'tel',se:'email',
+               so:'owner',sar:'area',ssy:'system',sv:'variety',sd:'date',sr2:'round',snote:'note'};
+    Object.entries(map).forEach(([el,k])=>{const e=document.getElementById(el);if(e&&s[k]!=null)e.value=s[k];});
+    const o=d.inspOrg||{};
+    ['io','id2','ia'].forEach((el,i)=>{const e=document.getElementById(el);if(e)e.value=[o.org,o.dept,o.auth][i]||'';});
+    ST.res=d.res||{};ST.rem=d.rem||{};ST.capa=d.capa||{};ST.sev=d.sev||{};
+    ST.photos=d.photos||{};ST.inspectors=d.inspectors||[{name:'',pos:'',lic:'',org:''}];
+    gpsCoords=d.gps||null;
+    if(gpsCoords){const el=document.getElementById('gps-display');
+      if(el)el.innerHTML='<span style="color:var(--B1);font-weight:700">📍 '+gpsCoords.lat+', '+gpsCoords.lng+'</span>'+
+        '<a href="https://maps.google.com/?q='+gpsCoords.lat+','+gpsCoords.lng+'" target="_blank" style="font-size:11px;color:var(--B3);margin-left:8px">🗺️ Google Maps</a>';}
+    applyStateToUI();return true;
+  }catch(e){console.error(e);return false;}
 }
-function resetAll(){
-  if(!confirm('⚠️ ต้องการรีเซ็ตข้อมูลทั้งหมด?'))return;
-  ST={res:{},rem:{},inspectors:[{name:'',pos:'',lic:'',org:''}],photos:{},capa:{},sev:{}};
+
+// ---- APPLY ST → DOM ----
+function applyStateToUI(){
+  getAllItems().forEach(({no})=>{
+    const r=ST.res[no];if(!r)return;
+    const k=no.replace(/\./g,'_');
+    document.getElementById('p-'+k)?.classList.toggle('sel',r==='pass');
+    document.getElementById('f-'+k)?.classList.toggle('sel',r==='fail');
+    document.getElementById('n-'+k)?.classList.toggle('sel',r==='na');
+    const row=document.getElementById('row-'+no);if(row)row.style.background=r==='fail'?'#FFF5F5':r==='pass'?'#F0F8FF':'';
+    const ta=document.getElementById('rem-'+k);if(ta&&ST.rem[no])ta.value=ST.rem[no];
+    const cw=document.getElementById('capa-wrap-'+k);if(cw)cw.style.display=r==='fail'?'block':'none';
+    const ss=document.getElementById('sev-'+k);if(ss){ss.style.display=r==='fail'?'block':'none';if(ST.sev[no])ss.value=ST.sev[no];}
+    const ca=ST.capa[no];
+    if(ca){
+      const fix=document.getElementById('capa-fix-'+k);if(fix)fix.value=ca.fix||'';
+      const prev=document.getElementById('capa-prev-'+k);if(prev)prev.value=ca.prev||'';
+      const own=document.getElementById('capa-owner-'+k);if(own)own.value=ca.owner||'';
+      const due=document.getElementById('capa-due-'+k);if(due)due.value=ca.due||'';
+      const stat=document.getElementById('capa-stat-'+k);if(stat)stat.value=ca.stat||'open';
+    }
+    if((ST.photos[no]||[]).length)renderPhotoPreviews(no);
+  });
+  SECS.forEach(s=>upSecSum(s));renderIns();upDash();updateCurrentCaseInfo();
+}
+
+// ---- CLEAR STATE ----
+function clearState(){
+  ST={res:{},rem:{},inspectors:[{name:'',pos:'',lic:'',org:''}],photos:{},capa:{},sev:{}};gpsCoords=null;
   getAllItems().forEach(({no})=>{
     const k=no.replace(/\./g,'_');
     ['p','f','n'].forEach(t=>document.getElementById(t+'-'+k)?.classList.remove('sel'));
-    const row=document.getElementById('row-'+no);if(row) row.style.background='';
-    const ta=document.getElementById('rem-'+k);if(ta) ta.value='';
-    const cw=document.getElementById('capa-wrap-'+k);if(cw) cw.style.display='none';
-    const ss=document.getElementById('sev-'+k);if(ss) ss.style.display='none';
-    const pp=document.getElementById('ph-prev-'+k);if(pp) pp.innerHTML='';
+    const row=document.getElementById('row-'+no);if(row)row.style.background='';
+    const ta=document.getElementById('rem-'+k);if(ta)ta.value='';
+    const cw=document.getElementById('capa-wrap-'+k);if(cw)cw.style.display='none';
+    const ss=document.getElementById('sev-'+k);if(ss)ss.style.display='none';
+    const pp=document.getElementById('ph-prev-'+k);if(pp)pp.innerHTML='';
+    const hw=document.getElementById('hws-'+k);if(hw)hw.textContent='';
   });
+  ['sn','sl','sa','sp','st','se','so','sar','sv','snote','io','id2','ia'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const ssy=document.getElementById('ssy');if(ssy)ssy.selectedIndex=0;
+  const sr2=document.getElementById('sr2');if(sr2)sr2.selectedIndex=0;
+  document.getElementById('sd').value=new Date().toISOString().split('T')[0];
+  const gd=document.getElementById('gps-display');if(gd)gd.textContent='ยังไม่ได้รับพิกัด';
   SECS.forEach(s=>upSecSum(s));renderIns();upDash();
-  localStorage.removeItem('gacp2');alert('✅ รีเซ็ตเรียบร้อยแล้ว');
 }
-function doJSON(){
-  const site={name:document.getElementById('sn')?.value,date:document.getElementById('sd')?.value};
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify({v:'2.0',date:new Date().toISOString(),site,res:ST.res,rem:ST.rem,inspectors:ST.inspectors,capa:ST.capa,sev:ST.sev},null,2)],{type:'application/json'}));
-  a.download='GACP_'+(site.name||'inspection')+'_'+new Date().toLocaleDateString('th')+'.json';a.click();
+
+// ---- NEW CASE ----
+function newCase(){
+  const name=prompt('ชื่อสถานที่ผลิต / ฟาร์ม (กด OK เว้นว่างได้):','');
+  if(name===null)return;
+  if(currentCaseId)save();
+  clearState();
+  currentCaseId=genCaseId();
+  const sn=document.getElementById('sn');if(sn)sn.value=name;
+  save();updateCurrentCaseInfo();updateCaseBadge();gp('dashboard');
+  setTimeout(()=>alert('✅ สร้างเคสใหม่แล้ว!\n\nกรอกข้อมูลสถานที่ผลิตในเมนู "ข้อมูลสถานที่" แล้วเริ่มตรวจได้เลยค่ะ'),150);
 }
-function loadJSON(){document.getElementById('jf').click();}
-function readJSON(e){
+
+// ---- SWITCH CASE ----
+function switchCase(id){
+  if(id===currentCaseId){gp('dashboard');return;}
+  if(currentCaseId)save();
+  clearState();
+  if(loadCaseData(id)){updateCurrentCaseInfo();gp('dashboard');}
+  else alert('❌ ไม่สามารถโหลดเคสได้');
+}
+
+// ---- DELETE CASE ----
+function deleteCase(id){
+  const meta=getCasesMeta();const m=meta.find(x=>x.id===id);
+  if(!confirm('⚠️ ลบเคส "'+( m?.name||id)+'" ?\n\nการลบไม่สามารถย้อนกลับได้'))return;
+  localStorage.removeItem('gacp2_case_'+id);
+  saveCasesMeta(meta.filter(x=>x.id!==id));
+  if(currentCaseId===id){currentCaseId=null;clearState();updateCurrentCaseInfo();}
+  updateCaseBadge();renderCasesList();
+}
+
+// ---- RENDER CASES LIST ----
+function renderCasesList(){
+  const el=document.getElementById('cases-list');if(!el)return;
+  const meta=getCasesMeta();
+  if(!meta.length){
+    el.innerHTML='<div style="text-align:center;padding:48px 20px;color:var(--TM)"><div style="font-size:44px;margin-bottom:12px">📁</div><div style="font-size:14px;font-weight:700;margin-bottom:6px">ยังไม่มีเคส</div><div style="font-size:12px">กด "➕ สร้างเคสใหม่" เพื่อเริ่มต้น</div></div>';
+    return;
+  }
+  el.innerHTML=meta.map(m=>{
+    const isCur=m.id===currentCaseId;
+    const elig=m.pass+m.fail;const pct=elig>0?Math.round(m.pass/elig*100):0;
+    const barCol=m.verdict==='pass'?'#16A34A':m.verdict==='fail'?'#DC2626':'#93C5FD';
+    return'<div style="background:'+(isCur?'rgba(2,62,138,.06)':'rgba(255,255,255,.92)')+';\
+border:'+(isCur?'2px solid var(--B1)':'1.5px solid rgba(41,182,246,.18)')+';\
+border-radius:12px;padding:14px 16px;margin-bottom:10px;transition:box-shadow .2s">\
+<div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">\
+<div style="flex:1;min-width:190px">\
+<div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">\
+'+(isCur?'<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--B1);color:#fff;font-weight:700">กำลังตรวจ</span>':'')+'\
+<span style="font-size:13.5px;font-weight:800;color:var(--B1)">'+(m.name||'(ไม่ระบุชื่อ)')+'</span></div>\
+<div style="font-size:11px;color:var(--TM);margin-bottom:7px">📅 '+(m.date||'—')+(m.province?' · 📍 '+m.province:'')+'</div>\
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">\
+<div style="flex:1;max-width:160px;height:6px;background:#E5E7EB;border-radius:3px;overflow:hidden">\
+<div style="width:'+pct+'%;height:100%;background:'+barCol+';border-radius:3px"></div></div>\
+<span style="font-size:11px;font-weight:800;color:'+barCol+'">'+pct+'%</span></div>\
+<div style="display:flex;gap:4px;flex-wrap:wrap">\
+'+(m.pass>0?'<span style="font-size:10px;padding:1px 6px;border-radius:7px;background:#DCFCE7;color:#15803D;font-weight:700">✓ '+m.pass+' ผ่าน</span>':'')+
+(m.fail>0?'<span style="font-size:10px;padding:1px 6px;border-radius:7px;background:#FFE4E6;color:#BE123C;font-weight:700">✗ '+m.fail+' ไม่ผ่าน</span>':'')+
+(m.na>0?'<span style="font-size:10px;padding:1px 6px;border-radius:7px;background:#F3F4F6;color:#6B7280;font-weight:700">N/A '+m.na+'</span>':'')+
+(m.verdict==='pass'?'<span style="font-size:10px;padding:1px 6px;border-radius:7px;background:#D1FAE5;color:#065F46;font-weight:800">🏆 ผ่าน GACP</span>':
+ m.verdict==='fail'?'<span style="font-size:10px;padding:1px 6px;border-radius:7px;background:#FEE2E2;color:#991B1B;font-weight:800">⚠️ ยังไม่ผ่าน</span>':
+ '<span style="font-size:10px;padding:1px 6px;border-radius:7px;background:#DBEAFE;color:#1D4ED8;font-weight:700">🔄 กำลังตรวจ</span>')+
+'</div></div>\
+<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">\
+'+(isCur?
+  '<button class="btn btn-p" style="font-size:11px;padding:5px 10px" onclick="gp(\'dashboard\')">📊 ดูแดชบอร์ด</button>':
+  '<button class="btn btn-p" style="font-size:11px;padding:5px 10px" onclick="switchCase(\''+m.id+'\')">🔄 เปิดเคสนี้</button>')+
+'<button class="btn btn-g" style="font-size:11px;padding:5px 10px" onclick="exportOneCase(\''+m.id+'\')">💾 Export JSON</button>\
+<button class="btn" style="font-size:11px;padding:5px 10px;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA" onclick="deleteCase(\''+m.id+'\')">🗑️ ลบ</button>\
+</div></div></div>';
+  }).join('');
+}
+
+// ---- SIDEBAR INFO ----
+function updateCurrentCaseInfo(){
+  const info=document.getElementById('current-case-info');
+  const nameEl=document.getElementById('current-case-name');
+  const dateEl=document.getElementById('current-case-date');
+  if(!info)return;
+  if(!currentCaseId){info.style.display='none';return;}
+  const meta=getCasesMeta();const m=meta.find(x=>x.id===currentCaseId);
+  if(m){info.style.display='block';if(nameEl)nameEl.textContent=m.name||'(ไม่ระบุชื่อ)';if(dateEl)dateEl.textContent=m.date?'📅 '+m.date:'ยังไม่ระบุวันที่';}
+}
+function updateCaseBadge(){
+  const b=document.getElementById('case-count-badge');
+  if(b){const n=getCasesMeta().length;b.textContent=n;b.className=n>0?'nb part':'nb empty';}
+}
+
+// ---- ALL CASES DASHBOARD ----
+function renderAllCasesDash(){
+  const meta=getCasesMeta();
+  const statsEl=document.getElementById('allcases-stats');
+  const tableEl=document.getElementById('allcases-table');
+  const chartEl=document.getElementById('allcases-chart');
+  const total=meta.length;
+  const passed=meta.filter(m=>m.verdict==='pass').length;
+  const failed=meta.filter(m=>m.verdict==='fail').length;
+  const avgPct=total?Math.round(meta.reduce((s,m)=>s+m.pct,0)/total):0;
+  if(statsEl)statsEl.innerHTML=
+    '<div class="sc" style="border-top:3px solid var(--B1)"><div class="sn">'+total+'</div><div class="sl">เคสทั้งหมด</div></div>'+
+    '<div class="sc" style="border-top:3px solid #16A34A"><div class="sn" style="color:#16A34A">'+passed+'</div><div class="sl">🏆 ผ่าน GACP</div></div>'+
+    '<div class="sc scd" style="border-top:3px solid #DC2626"><div class="sn" style="color:#DC2626">'+failed+'</div><div class="sl">⚠️ ยังไม่ผ่าน</div></div>'+
+    '<div class="sc" style="border-top:3px solid var(--CYD)"><div class="sn" style="color:var(--CYD)">'+avgPct+'%</div><div class="sl">เฉลี่ย % ผ่าน</div></div>';
+  if(chartEl&&meta.length){
+    chartEl.innerHTML='<canvas id="allcases-bar" height="120"></canvas>';
+    setTimeout(()=>{
+      const cv=document.getElementById('allcases-bar');if(!cv)return;
+      cv.width=cv.parentElement.clientWidth||700;
+      const ctx=cv.getContext('2d');
+      const slice=meta.slice(0,12);
+      const bw=Math.min(52,(cv.width-80)/Math.max(slice.length,1)-8);
+      ctx.clearRect(0,0,cv.width,cv.height);
+      slice.forEach((m,i)=>{
+        const x=50+i*(bw+8)+bw/2;const bh=90;const by=108;
+        const h=m.pct/100*bh;
+        const col=m.verdict==='pass'?'#16A34A':m.verdict==='fail'?'#DC2626':'#93C5FD';
+        ctx.fillStyle=col+'33';ctx.fillRect(x-bw/2,by-bh,bw,bh);
+        ctx.fillStyle=col;ctx.fillRect(x-bw/2,by-h,bw,h);
+        ctx.fillStyle='#1F2937';ctx.font='bold 9px Sarabun,sans-serif';ctx.textAlign='center';
+        ctx.fillText(m.pct+'%',x,by-h-5);
+        ctx.fillStyle='#6B7280';ctx.font='8px Sarabun,sans-serif';
+        ctx.fillText((m.name||'ไม่ระบุ').substring(0,7)+(m.name?.length>7?'…':''),x,by+13);
+      });
+    },60);
+  }
+  if(tableEl){
+    if(!meta.length){tableEl.innerHTML='<div style="color:var(--TM);text-align:center;padding:20px">ยังไม่มีเคส</div>';return;}
+    const rows=meta.map(m=>{
+      const elig=m.pass+m.fail;const pct=elig>0?Math.round(m.pass/elig*100):0;
+      const barCol=m.verdict==='pass'?'#16A34A':m.verdict==='fail'?'#DC2626':'#93C5FD';
+      const vLabel=m.verdict==='pass'?'<span class="tag tag-p">🏆 ผ่าน</span>':
+        m.verdict==='fail'?'<span class="tag tag-f">⚠️ ไม่ผ่าน</span>':
+        '<span class="tag tag-n">🔄 กำลังตรวจ</span>';
+      return'<tr '+(m.id===currentCaseId?'style="background:rgba(2,62,138,.06)"':'')+'>\
+<td style="font-weight:700;color:var(--B1)">'+(m.name||'—')+'</td>\
+<td>'+(m.date||'—')+'</td>\
+<td style="text-align:center;color:#16A34A;font-weight:700">'+m.pass+'</td>\
+<td style="text-align:center;color:#DC2626;font-weight:700">'+m.fail+'</td>\
+<td style="text-align:center"><div style="display:inline-flex;align-items:center;gap:6px">\
+<div style="width:55px;height:5px;background:#E5E7EB;border-radius:3px;overflow:hidden">\
+<div style="width:'+pct+'%;height:100%;background:'+barCol+'"></div></div>\
+<span style="font-weight:700;font-size:11.5px">'+pct+'%</span></div></td>\
+<td style="text-align:center">'+vLabel+'</td>\
+<td style="text-align:center"><button class="btn btn-g" style="font-size:10.5px;padding:3px 8px" onclick="switchCase(\''+m.id+'\')">'+(m.id===currentCaseId?'📊 ดู':'🔄 เปิด')+'</button></td>\
+</tr>';
+    }).join('');
+    tableEl.innerHTML='<div style="overflow-x:auto"><table class="it" style="min-width:650px"><thead><tr>\
+<th>ชื่อสถานที่ผลิต</th><th>วันที่ตรวจ</th>\
+<th style="text-align:center">✓ ผ่าน</th><th style="text-align:center">✗ ไม่ผ่าน</th>\
+<th style="text-align:center">% ผ่าน</th><th style="text-align:center">ผล GACP</th><th></th>\
+</tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+}
+
+// ---- EXPORT/IMPORT ----
+function doJSON(){exportCaseJSON();}
+function exportCaseJSON(){
+  if(!currentCaseId){alert('กรุณาเปิดเคสก่อน');return;}
+  save();const raw=localStorage.getItem('gacp2_case_'+currentCaseId);if(!raw)return;
+  const d=JSON.parse(raw);const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));
+  a.download='GACP_'+(d.site?.name||'case')+'_'+new Date().toLocaleDateString('th')+'.json';a.click();
+}
+function exportOneCase(id){
+  const raw=localStorage.getItem('gacp2_case_'+id);if(!raw){alert('ไม่พบข้อมูล');return;}
+  const d=JSON.parse(raw);const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));
+  a.download='GACP_'+(d.site?.name||id)+'.json';a.click();
+}
+function importCaseJSON(){document.getElementById('import-case-file').click();}
+function importCaseFromFile(e){
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
   r.onload=ev=>{
     try{
       const d=JSON.parse(ev.target.result);
-      if(d.res) ST.res=d.res;if(d.rem) ST.rem=d.rem;
-      if(d.inspectors) ST.inspectors=d.inspectors;
-      if(d.capa) ST.capa=d.capa;if(d.sev) ST.sev=d.sev;
-      if(d.site){
-        if(document.getElementById('sn')) document.getElementById('sn').value=d.site.name||'';
-        if(document.getElementById('sd')) document.getElementById('sd').value=d.site.date||'';
-      }
-      getAllItems().forEach(({no})=>{
-        const r2=ST.res[no];if(!r2)return;
-        const k=no.replace(/\./g,'_');
-        document.getElementById('p-'+k)?.classList.toggle('sel',r2==='pass');
-        document.getElementById('f-'+k)?.classList.toggle('sel',r2==='fail');
-        document.getElementById('n-'+k)?.classList.toggle('sel',r2==='na');
-        const row=document.getElementById('row-'+no);if(row) row.style.background=r2==='fail'?'#FFF5F5':r2==='pass'?'#F0F8FF':'';
-        const ta=document.getElementById('rem-'+k);if(ta&&ST.rem[no]) ta.value=ST.rem[no];
-        const cw=document.getElementById('capa-wrap-'+k);if(cw) cw.style.display=r2==='fail'?'block':'none';
-        const ss=document.getElementById('sev-'+k);if(ss){ss.style.display=r2==='fail'?'block':'none';if(ST.sev[no]) ss.value=ST.sev[no];}
-      });
-      SECS.forEach(s=>upSecSum(s));renderIns();upDash();alert('✅ โหลดข้อมูลสำเร็จ');
-    }catch(err){alert('❌ โหลดไม่ได้: '+err.message);}
-  };r.readAsText(f);
+      const newId=(d.id&&d.id.startsWith('case_'))?d.id:genCaseId();
+      d.id=newId;d.updatedAt=d.updatedAt||new Date().toISOString();
+      localStorage.setItem('gacp2_case_'+newId,JSON.stringify(d));
+      const meta=getCasesMeta();
+      const all=getAllItems();let p=0,f=0,na=0;
+      all.forEach(({no})=>{const rv=(d.res||{})[no];if(rv==='pass')p++;else if(rv==='fail')f++;else if(rv==='na')na++;});
+      const elig=p+f;const pct=elig>0?Math.round(p/elig*100):0;
+      const m={id:newId,name:d.site?.name||'นำเข้า',date:d.site?.date||'',province:d.site?.province||'',
+               updatedAt:d.updatedAt,pass:p,fail:f,na,pct,verdict:f===0&&p>0?'pass':elig>0?'fail':'pending'};
+      const idx=meta.findIndex(x=>x.id===newId);
+      if(idx>=0)meta[idx]=m;else meta.unshift(m);
+      saveCasesMeta(meta);updateCaseBadge();renderCasesList();
+      alert('✅ นำเข้าเคสสำเร็จ: '+m.name);
+    }catch(err){alert('❌ นำเข้าไม่ได้: '+err.message);}
+  };r.readAsText(f);e.target.value='';
 }
+function loadJSON(){document.getElementById('jf').click();}
+function readJSON(e){importCaseFromFile(e);}
+
+// ---- RESET CURRENT ----
+function resetAll(){
+  if(!confirm('⚠️ ล้างข้อมูลเคสที่กำลังตรวจ?'))return;
+  if(!currentCaseId){alert('กรุณาสร้างหรือเปิดเคสก่อน');return;}
+  clearState();save();alert('✅ ล้างข้อมูลเคสแล้ว');
+}
+
+// ---- NAVIGATION ----
+function gp(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id)?.classList.add('active');
+  document.querySelectorAll('.ni').forEach(n=>{if(n.getAttribute('onclick')?.includes("'"+id+"'"))n.classList.add('active');});
+  const T={dashboard:'🏠 แดชบอร์ดเคสนี้',site:'🏭 ข้อมูลสถานที่ผลิต',insp:'👤 ข้อมูลผู้ตรวจ',
+    ref3:'🔬 บทที่ 3 มาตรฐานวัตถุดิบ (อ้างอิง)',ref4:'📊 บทที่ 4 แผนควบคุมการผลิต (อ้างอิง)',
+    summary:'📊 สรุปผลคะแนน',export:'📄 ส่งออก / PDF',capa:'📋 แผน CAPA',
+    sig:'✍️ ลายเซ็น',qr:'📱 QR Code',compare:'🔄 เปรียบเทียบ 2 รอบ',
+    cases:'📁 รายการเคสทั้งหมด',allcases:'🏙️ Dashboard ภาพรวมทุกเคส'};
+  SECS.forEach(s=>T['s'+s.n]=s.ic+' หมวด '+s.n+' '+s.t);
+  document.getElementById('ptitle').textContent=T[id]||id;
+  if(id==='summary')renderSummary();
+  if(id==='dashboard')upDash();
+  if(id==='capa')renderCapaPage();
+  if(id==='cases')renderCasesList();
+  if(id==='allcases')renderAllCasesDash();
+  if(id==='sig'){
+    setTimeout(()=>{
+      const sc=document.getElementById('sig-container');if(!sc)return;
+      sc.innerHTML=ST.inspectors.map((ins,i)=>'<div class="card" style="margin-bottom:12px"><div class="ct">✍️ ผู้ตรวจ '+(i+1)+': '+(ins.name||'(ยังไม่ระบุ)')+'</div>'+
+        '<canvas class="sig-canvas" width="400" height="80" data-id="ins'+i+'"></canvas>'+
+        '<button class="btn btn-g" style="margin-top:5px;font-size:11px" onclick="clearSig(\'ins'+i+'\')">🗑️ ล้างลายเซ็น</button></div>').join('')+
+        '<div class="card"><div class="ct">✍️ ผู้รับการตรวจ / ผู้ประกอบการ</div>'+
+        '<canvas class="sig-canvas" width="400" height="80" data-id="owner"></canvas>'+
+        '<button class="btn btn-g" style="margin-top:5px;font-size:11px" onclick="clearSig(\'owner\')">🗑️ ล้างลายเซ็น</button></div>';
+      initSigPads();
+    },60);
+  }
+  if(currentCaseId&&!['cases','allcases','ref3','ref4'].includes(id))save();
+}
+
 function openManual(){window.open('https://drive.google.com/file/d/1NwKX2opAx66dfWcQKBH5Le8Bn7VqId8N/view?usp=sharing','_blank');}
 
 // ============================================================
 // INIT
 // ============================================================
+function restoreState(){
+  const meta=getCasesMeta();
+  if(meta.length){
+    const lastId=localStorage.getItem('gacp2_lastCase')||meta[0].id;
+    if(loadCaseData(lastId)){currentCaseId=lastId;}
+  }
+  updateCurrentCaseInfo();updateCaseBadge();
+}
+
 window.onload=function(){
   document.getElementById('sd').value=new Date().toISOString().split('T')[0];
-  buildAllSections();
-  buildRef3();
-  buildRef4();
-  buildSecGrid();
-  renderIns();
-  initHW();
-  restoreState();
-  upDash();
+  buildAllSections();buildRef3();buildRef4();buildSecGrid();
+  renderIns();initHW();restoreState();upDash();
+  setInterval(()=>{if(currentCaseId)localStorage.setItem('gacp2_lastCase',currentCaseId);},3000);
 };
 </script>
 </body>
