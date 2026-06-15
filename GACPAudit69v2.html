@@ -271,6 +271,45 @@ textarea.fc{resize:vertical;min-height:65px}
   border:1px solid rgba(41,182,246,.3);border-radius:8px;min-height:40px;font-size:13px;color:var(--B1);display:none}
 #hw-loading{margin-top:9px;text-align:center;color:var(--B1);font-size:13px;display:none;font-weight:600}
 .hidden{display:none!important}
+/* ===== NEW FEATURES CSS ===== */
+/* Search bar */
+#search-bar{position:sticky;top:0;z-index:40;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);
+  padding:8px 16px;border-bottom:1px solid rgba(41,182,246,.15);display:flex;align-items:center;gap:8px}
+#search-input{flex:1;padding:7px 12px 7px 34px;border:1.5px solid var(--BD);border-radius:20px;
+  font-family:'Sarabun',sans-serif;font-size:13px;background:#fff;color:var(--TX);outline:none}
+#search-input:focus{border-color:var(--AC);box-shadow:0 0 0 3px rgba(41,182,246,.15)}
+#search-icon{position:absolute;left:28px;color:var(--TM);font-size:14px;pointer-events:none}
+.search-result-item{padding:9px 14px;border-radius:8px;margin-bottom:6px;cursor:pointer;
+  border:1.5px solid rgba(41,182,246,.15);background:#fff;transition:all .2s;display:flex;gap:10px;align-items:flex-start}
+.search-result-item:hover{border-color:var(--AC);background:rgba(227,242,253,.5);transform:translateX(2px)}
+.search-hi{background:linear-gradient(135deg,#FEF9C3,#FEF08A);border-radius:3px;padding:0 2px;font-weight:700;color:#713F12}
+/* Flag button */
+.flag-btn{width:22px;height:22px;border-radius:50%;border:none;cursor:pointer;
+  font-size:12px;display:inline-flex;align-items:center;justify-content:center;
+  transition:all .2s;background:#F3F4F6;flex-shrink:0}
+.flag-btn.flagged{background:#FEF9C3;box-shadow:0 0 8px rgba(234,179,8,.4)}
+.flag-btn:hover{transform:scale(1.2)}
+/* Quick-pass buttons */
+.quick-btns{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
+.quick-btn{padding:4px 10px;border-radius:16px;border:1.5px solid;cursor:pointer;
+  font-family:'Sarabun',sans-serif;font-size:11px;font-weight:700;transition:all .2s}
+.qb-pass{border-color:#16A34A;color:#16A34A;background:#F0FDF4}
+.qb-pass:hover{background:#16A34A;color:#fff}
+.qb-na{border-color:#6B7280;color:#6B7280;background:#F9FAFB}
+.qb-na:hover{background:#6B7280;color:#fff}
+.qb-clear{border-color:var(--B1);color:var(--B1);background:rgba(227,242,253,.5)}
+.qb-clear:hover{background:var(--B1);color:#fff}
+/* Timer */
+#timer-display{font-size:13px;font-weight:700;color:var(--B1);padding:4px 10px;
+  background:rgba(227,242,253,.8);border-radius:8px;border:1px solid rgba(41,182,246,.25);
+  font-variant-numeric:tabular-nums}
+/* Radar chart */
+#radar-wrap{position:relative}
+/* AI CAPA */
+#ai-capa-result{margin-top:12px;background:linear-gradient(135deg,rgba(238,242,255,.9),rgba(224,247,250,.7));
+  border:1px solid rgba(99,102,241,.25);border-radius:10px;padding:14px;font-size:12.5px;
+  line-height:1.8;color:var(--TX);display:none}
+#ai-capa-loading{display:none;text-align:center;padding:16px;color:var(--B1);font-size:13px}
 </style>
 </head>
 <body>
@@ -319,7 +358,11 @@ textarea.fc{resize:vertical;min-height:65px}
     <div class="ni" onclick="gp('export')"><span class="ic">📄</span>ส่งออก / PDF</div>
     <div class="ni" onclick="openManual()"><span class="ic">📖</span>คู่มือตัวจริง (PDF)</div>
     <div class="nsl">ฟีเจอร์เพิ่มเติม</div>
+    <div class="ni" onclick="openSearch()"><span class="ic">🔍</span>ค้นหาข้อกำหนด</div>
+    <div class="ni" onclick="gp('flagged')"><span class="ic">🚩</span>ข้อที่ Flag ไว้<span class="nb empty" id="flag-badge">0</span></div>
     <div class="ni" onclick="gp('capa')"><span class="ic">📋</span>แผน CAPA</div>
+    <div class="ni" onclick="gp('aicapa')"><span class="ic">🤖</span>AI สรุปแผน CAPA</div>
+    <div class="ni" onclick="gp('radar')"><span class="ic">📡</span>Radar Chart รายหมวด</div>
     <div class="ni" onclick="gp('sig')"><span class="ic">✍️</span>ลายเซ็น</div>
     <div class="ni" onclick="gp('qr')"><span class="ic">📱</span>QR Code สรุปผล</div>
     <div class="ni" onclick="gp('compare')"><span class="ic">🔄</span>เปรียบเทียบ 2 รอบ</div>
@@ -336,7 +379,7 @@ textarea.fc{resize:vertical;min-height:65px}
 <div id="main">
   <div id="topbar">
     <div style="display:flex;align-items:center;gap:14px;min-width:0">
-      <h2 id="ptitle" style="white-space:nowrap">🏠 แดชบอร์ดภาพรวม</h2>
+      <h2 id="ptitle" style="white-space:nowrap">🏠 แดชบอร์ดเคสนี้</h2>
       <div style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;
         background:linear-gradient(135deg,rgba(2,62,138,.08),rgba(0,180,216,.1));
         border:1px solid rgba(2,62,138,.15);white-space:nowrap;flex-shrink:0">
@@ -348,12 +391,22 @@ textarea.fc{resize:vertical;min-height:65px}
       </div>
     </div>
     <div class="tbar-r">
+      <div id="timer-display" title="เวลาที่ใช้ตรวจ">⏱ 00:00:00</div>
       <button class="btn btn-purple" onclick="openHW()">✏️ iPAD Note</button>
       <button class="btn btn-g" onclick="resetAll()">🔄 รีเซ็ต</button>
       <button class="btn btn-info" onclick="openManual()">📖 คู่มือ</button>
       <button class="btn btn-p" onclick="gp('summary')">📊 สรุป</button>
       <button class="btn btn-gold" onclick="doPDF()">🖨️ PDF</button>
     </div>
+  </div>
+  <!-- SEARCH BAR -->
+  <div id="search-bar" style="display:none">
+    <div style="position:relative;flex:1;max-width:520px">
+      <span id="search-icon">🔍</span>
+      <input id="search-input" type="text" placeholder="ค้นหาข้อกำหนด เช่น โลหะหนัก, ศัตรูพืช, SOP..." oninput="doSearch(this.value)">
+    </div>
+    <button class="btn btn-g" style="font-size:11px" onclick="clearSearch()">✕ ปิด</button>
+    <span id="search-count" style="font-size:11px;color:var(--TM)"></span>
   </div>
   <div id="content">
     <!-- DASHBOARD -->
@@ -492,6 +545,57 @@ textarea.fc{resize:vertical;min-height:65px}
     <div class="page" id="page-sig"><div class="card"><div class="ct">✍️ ลายเซ็นผู้ตรวจและผู้รับการตรวจ</div><div class="al al-i"><span>ℹ️</span><div>เซ็นชื่อด้วยนิ้ว หรือ Apple Pencil บน iPad</div></div><div id="sig-container"></div></div></div>
     <div class="page" id="page-qr"><div class="card"><div class="ct">📱 QR Code สรุปผลการตรวจ</div><button class="btn btn-p" onclick="genQR()" style="margin-bottom:14px">🔄 Generate QR Code</button><div id="qr-display" style="text-align:center;padding:14px"></div></div></div>
     <div class="page" id="page-compare"><div class="card"><div class="ct">🔄 เปรียบเทียบผลการตรวจ 2 รอบ</div><button class="btn btn-p" onclick="loadCompareJSON()" style="margin-bottom:14px">📂 โหลดผลรอบก่อน (JSON)</button><input type="file" id="cmp-file" accept=".json" style="display:none" onchange="readCompareFile(event)"><div id="cmp-content"></div></div></div>
+
+    <!-- FLAGGED PAGE -->
+    <div class="page" id="page-flagged">
+      <div class="card">
+        <div class="ct">🚩 ข้อที่ Flag ไว้ — ต้องติดตาม</div>
+        <div class="al al-i"><span>ℹ️</span><div>กด 🚩 ที่แถวใดก็ได้ระหว่างตรวจ เพื่อ bookmark ไว้กลับมาดูทีหลัง</div></div>
+        <div id="flagged-list"></div>
+      </div>
+    </div>
+
+    <!-- RADAR CHART PAGE -->
+    <div class="page" id="page-radar">
+      <div class="card">
+        <div class="ct">📡 Radar Chart — ภาพรวมรายหมวด</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+          <div>
+            <canvas id="radar-canvas" width="380" height="380"></canvas>
+          </div>
+          <div>
+            <div style="font-size:12.5px;font-weight:700;color:var(--B1);margin-bottom:10px">เปรียบเทียบ Benchmark</div>
+            <div class="al al-i" style="font-size:11.5px"><span>💡</span><div>เส้นสีน้ำเงิน = เคสนี้ | เส้นประสีเทา = ค่าเฉลี่ยทุกเคส</div></div>
+            <div id="radar-legend" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+            <button class="btn btn-p" style="margin-top:14px;width:100%" onclick="drawRadar()">🔄 วาด Radar ใหม่</button>
+            <button class="btn btn-g" style="margin-top:6px;width:100%" onclick="exportRadar()">💾 บันทึกรูป</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI CAPA PAGE -->
+    <div class="page" id="page-aicapa">
+      <div class="card">
+        <div class="ct">🤖 AI สรุปแผน CAPA อัตโนมัติ</div>
+        <div class="al al-i"><span>ℹ️</span><div>Claude AI จะอ่านข้อที่ไม่ผ่านทั้งหมด แล้วสรุปเป็นแผน CAPA ภาษาทางการ พร้อม timeline แนะนำ</div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <button class="btn btn-p" onclick="genAICapa()">🤖 สร้างแผน CAPA ด้วย AI</button>
+          <button class="btn btn-g" onclick="copyAICapa()">📋 Copy ข้อความ</button>
+          <select id="ai-capa-lang" class="fc" style="width:auto;padding:6px 10px">
+            <option value="th">ภาษาไทย (ทางการ)</option>
+            <option value="brief">ภาษาไทย (สั้นกระชับ)</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+        <div id="ai-capa-loading">
+          <div style="display:inline-block;width:32px;height:32px;border:3px solid var(--BD);border-top-color:var(--B1);border-radius:50%;animation:spin 1s linear infinite"></div>
+          <div style="margin-top:8px;color:var(--B1);font-weight:600">🤖 Claude AI กำลังวิเคราะห์และสรุปแผน CAPA...</div>
+        </div>
+        <div id="ai-capa-result"></div>
+      </div>
+    </div>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
     <div class="page" id="page-prov"><div class="card"><div class="ct">🏙️ Dashboard จังหวัด</div><button class="btn btn-p" onclick="loadFarmFiles()" style="margin-bottom:14px">📂 โหลด JSON หลายฟาร์ม</button><input type="file" id="farm-files" accept=".json" multiple style="display:none" onchange="readFarmFiles(event)"><div id="prov-content"></div></div></div>
   </div>
 </div>
@@ -1301,36 +1405,7 @@ function drawDonut(p,f,na,empty){
 // ============================================================
 // NAVIGATION
 // ============================================================
-function gp(id){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
-  document.getElementById('page-'+id)?.classList.add('active');
-  document.querySelectorAll('.ni').forEach(n=>{if(n.getAttribute('onclick')?.includes("'"+id+"'"))n.classList.add('active');});
-  const T={dashboard:'🏠 แดชบอร์ดภาพรวม',site:'🏭 ข้อมูลสถานที่ผลิต',insp:'👤 ข้อมูลผู้ตรวจ',
-    ref3:'🔬 บทที่ 3 มาตรฐานวัตถุดิบ (อ้างอิง)',ref4:'📊 บทที่ 4 แผนควบคุมการผลิต (อ้างอิง)',
-    summary:'📊 สรุปผลคะแนน',export:'📄 ส่งออก / PDF',
-    capa:'📋 แผน CAPA',sig:'✍️ ลายเซ็น',qr:'📱 QR Code',compare:'🔄 เปรียบเทียบ 2 รอบ',prov:'🏙️ Dashboard จังหวัด'};
-  SECS.forEach(s=>T['s'+s.n]=s.ic+' หมวด '+s.n+' '+s.t);
-  document.getElementById('ptitle').textContent=T[id]||id;
-  if(id==='summary')renderSummary();
-  if(id==='dashboard')upDash();
-  if(id==='capa')renderCapaPage();
-  if(id==='sig'){
-    setTimeout(()=>{
-      const sc=document.getElementById('sig-container');if(!sc)return;
-      sc.innerHTML=ST.inspectors.map((ins,i)=>`<div class="card" style="margin-bottom:12px">
-        <div class="ct">✍️ ผู้ตรวจ ${i+1}: ${ins.name||'(ยังไม่ระบุ)'}</div>
-        <canvas class="sig-canvas" width="400" height="80" data-id="ins${i}"></canvas>
-        <button class="btn btn-g" style="margin-top:5px;font-size:11px" onclick="clearSig('ins${i}')">🗑️ ล้างลายเซ็น</button>
-      </div>`).join('')+
-      `<div class="card"><div class="ct">✍️ ผู้รับการตรวจ / ผู้ประกอบการ</div>
-        <canvas class="sig-canvas" width="400" height="80" data-id="owner"></canvas>
-        <button class="btn btn-g" style="margin-top:5px;font-size:11px" onclick="clearSig('owner')">🗑️ ล้างลายเซ็น</button>
-      </div>`;
-      initSigPads();
-    },60);
-  }
-}
+// gp() defined below as master version
 
 // ============================================================
 // INSPECTOR
@@ -1890,16 +1965,42 @@ function clearState(){
   SECS.forEach(s=>upSecSum(s));renderIns();upDash();
 }
 
-// ---- NEW CASE ----
+// ---- NEW CASE (modal-based, no prompt) ----
 function newCase(){
-  const name=prompt('ชื่อสถานที่ผลิต / ฟาร์ม (กด OK เว้นว่างได้):','');
-  if(name===null)return;
-  if(currentCaseId)save();
-  clearState();
-  currentCaseId=genCaseId();
-  const sn=document.getElementById('sn');if(sn)sn.value=name;
-  save();updateCurrentCaseInfo();updateCaseBadge();gp('dashboard');
-  setTimeout(()=>alert('✅ สร้างเคสใหม่แล้ว!\n\nกรอกข้อมูลสถานที่ผลิตในเมนู "ข้อมูลสถานที่" แล้วเริ่มตรวจได้เลยค่ะ'),150);
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(2,22,40,.7);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML=`<div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:420px;box-shadow:0 24px 80px rgba(0,119,182,.4)">
+    <div style="font-size:16px;font-weight:800;color:var(--B1);margin-bottom:6px">➕ สร้างเคสใหม่</div>
+    <div style="font-size:12px;color:var(--TM);margin-bottom:14px">ตั้งชื่อสถานที่ผลิต / ฟาร์ม (แก้ไขภายหลังได้)</div>
+    <input id="nc-name-input" type="text" placeholder="เช่น ฟาร์มสมุนไพรบางพลี" 
+      style="width:100%;padding:10px 12px;border:1.5px solid var(--BD);border-radius:8px;font-family:'Sarabun',sans-serif;font-size:14px;outline:none;margin-bottom:16px"
+      onkeydown="if(event.key==='Enter')confirmNewCase()">
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-g" onclick="closeNewCaseModal()">ยกเลิก</button>
+      <button class="btn btn-p" onclick="confirmNewCase()">✅ สร้างเคส</button>
+    </div>
+  </div>`;
+  ov.id='nc-modal';
+  ov.onclick=e=>{if(e.target===ov)closeNewCaseModal();};
+  document.body.appendChild(ov);
+  setTimeout(()=>document.getElementById('nc-name-input')?.focus(),50);
+}
+function closeNewCaseModal(){document.getElementById('nc-modal')?.remove();}
+function confirmNewCase(){
+  const name=document.getElementById('nc-name-input')?.value||'';
+  closeNewCaseModal();
+  try{
+    if(currentCaseId)save();
+    clearState();
+    currentCaseId=genCaseId();
+    const sn=document.getElementById('sn');if(sn)sn.value=name;
+    save();
+    updateCurrentCaseInfo();
+    updateCaseBadge();
+    gp('dashboard');
+  }catch(e){
+    alert('เกิดข้อผิดพลาด: '+e.message);
+  }
 }
 
 // ---- SWITCH CASE ----
@@ -2094,6 +2195,434 @@ function resetAll(){
 }
 
 // ---- NAVIGATION ----
+// gp() master function defined below
+
+
+// ============================================================
+// FEATURE 2: AUTO-SAVE SITE FIELDS
+// ============================================================
+function initAutoSave(){
+  const fields=['sn','sl','sa','sp','st','se','so','sar','sv','snote','io','id2','ia','sd','ssy','sr2'];
+  fields.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('input',()=>{if(currentCaseId)save();});
+    if(el&&el.tagName==='SELECT') el.addEventListener('change',()=>{if(currentCaseId)save();});
+  });
+}
+
+// ============================================================
+// FEATURE 3: IMAGE COMPRESS
+// ============================================================
+function compressImage(dataURL,maxW=640,quality=0.72){
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>{
+      const scale=Math.min(1,maxW/Math.max(img.width,img.height));
+      const cv=document.createElement('canvas');
+      cv.width=Math.round(img.width*scale);cv.height=Math.round(img.height*scale);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      res(cv.toDataURL('image/jpeg',quality));
+    };img.src=dataURL;
+  });
+}
+// Override openPhoto to compress
+async function openPhoto(no){
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='image/*';inp.capture='environment';inp.multiple=true;
+  inp.onchange=async e=>{
+    const files=Array.from(e.target.files);
+    if(!ST.photos[no])ST.photos[no]=[];
+    for(const f of files){
+      const raw=await new Promise(r=>{const rd=new FileReader();rd.onload=e2=>r(e2.target.result);rd.readAsDataURL(f);});
+      const compressed=await compressImage(raw);
+      ST.photos[no].push(compressed);
+    }
+    renderPhotoPreviews(no);save();
+    // show size saved
+    const k=no.replace(/\./g,'_');const hs=document.getElementById('hws-'+k);
+    if(hs)hs.textContent='📷 '+ST.photos[no].length+' รูป (compressed)';
+  };inp.click();
+}
+
+// ============================================================
+// FEATURE 4: QUICK-FILL (pass all / na all / clear all)
+// ============================================================
+function quickFill(secId,result){
+  const sec=SECS.find(s=>s.id===secId);if(!sec)return;
+  const items=getSecItems(sec);
+  const label=result==='pass'?'ผ่านทั้งหมด':result==='na'?'N/A ทั้งหมด':'ล้างทั้งหมด';
+  if(!confirm('⚡ '+label+' หมวด '+sec.n+' ทั้งหมด '+items.length+' ข้อ?'))return;
+  items.forEach(no=>{
+    const k=no.replace(/\./g,'_');
+    if(result){
+      ST.res[no]=result;
+      document.getElementById('p-'+k)?.classList.toggle('sel',result==='pass');
+      document.getElementById('f-'+k)?.classList.toggle('sel',result==='fail');
+      document.getElementById('n-'+k)?.classList.toggle('sel',result==='na');
+      const row=document.getElementById('row-'+no);
+      if(row)row.style.background=result==='pass'?'#F0F8FF':'';
+    }else{
+      ST.res[no]=null;
+      ['p','f','n'].forEach(t=>document.getElementById(t+'-'+k)?.classList.remove('sel'));
+      const row=document.getElementById('row-'+no);if(row)row.style.background='';
+    }
+    const cw=document.getElementById('capa-wrap-'+k);if(cw)cw.style.display='none';
+    const ss=document.getElementById('sev-'+k);if(ss)ss.style.display='none';
+  });
+  upSecSum(sec);upDash();save();
+}
+// Inject quick-fill buttons into each section after build
+function injectQuickFillBtns(){
+  SECS.forEach(sec=>{
+    const el=document.getElementById('page-'+sec.id);if(!el)return;
+    const ssb=document.getElementById('ssb-'+sec.id);if(!ssb)return;
+    const div=document.createElement('div');
+    div.className='quick-btns';div.style.margin='0 0 0 auto';
+    div.innerHTML=
+      `<button class="quick-btn qb-pass" onclick="quickFill('${sec.id}','pass')">⚡ ผ่านทั้งหมวด</button>`+
+      `<button class="quick-btn qb-na" onclick="quickFill('${sec.id}','na')">➖ N/A ทั้งหมวด</button>`+
+      `<button class="quick-btn qb-clear" onclick="quickFill('${sec.id}',null)">🗑 ล้างหมวด</button>`;
+    ssb.appendChild(div);
+  });
+}
+
+// ============================================================
+// FEATURE 6: FLAG SYSTEM
+// ============================================================
+let ST_flags={};
+function toggleFlag(no){
+  ST_flags[no]=!ST_flags[no];
+  const btn=document.getElementById('flag-'+no.replace(/\./g,'_'));
+  if(btn){btn.textContent=ST_flags[no]?'🚩':'⚐';btn.className='flag-btn'+(ST_flags[no]?' flagged':'');}
+  updateFlagBadge();saveFlags();
+}
+function updateFlagBadge(){
+  const n=Object.values(ST_flags).filter(Boolean).length;
+  const b=document.getElementById('flag-badge');
+  if(b){b.textContent=n;b.className=n>0?'nb part':'nb empty';}
+}
+function saveFlags(){try{if(currentCaseId)localStorage.setItem('gacp2_flags_'+currentCaseId,JSON.stringify(ST_flags));}catch(e){}}
+function loadFlags(){
+  try{ST_flags=JSON.parse(localStorage.getItem('gacp2_flags_'+(currentCaseId||''))||'{}')||{};}catch(e){ST_flags={};}
+  getAllItems().forEach(({no})=>{
+    const k=no.replace(/\./g,'_');
+    const btn=document.getElementById('flag-'+k);
+    if(btn&&ST_flags[no]){btn.textContent='🚩';btn.className='flag-btn flagged';}
+  });
+  updateFlagBadge();
+}
+function injectFlagBtns(){
+  getAllItems().forEach(({no})=>{
+    const row=document.getElementById('row-'+no);if(!row)return;
+    const k=no.replace(/\./g,'_');
+    const firstCell=row.querySelector('td.ino');if(!firstCell)return;
+    const btn=document.createElement('button');
+    btn.id='flag-'+k;btn.className='flag-btn';btn.title='Flag ข้อนี้';
+    btn.textContent='⚐';btn.onclick=()=>toggleFlag(no);
+    firstCell.appendChild(document.createElement('br'));
+    firstCell.appendChild(btn);
+  });
+}
+function renderFlaggedList(){
+  const el=document.getElementById('flagged-list');if(!el)return;
+  const flagged=getAllItems().filter(({no})=>ST_flags[no]);
+  if(!flagged.length){
+    el.innerHTML='<div style="color:var(--TM);text-align:center;padding:32px"><div style="font-size:32px;margin-bottom:8px">⚐</div><div style="font-size:13px">ยังไม่มีข้อที่ Flag ไว้<br>กด ⚐ ที่แถวไหนก็ได้ระหว่างตรวจ</div></div>';
+    return;
+  }
+  el.innerHTML=flagged.map(({no,sec})=>{
+    const r=ST.res[no];
+    const rLabel=r==='pass'?'<span class="tag tag-p">✓ ผ่าน</span>':r==='fail'?'<span class="tag tag-f">✗ ไม่ผ่าน</span>':r==='na'?'<span class="tag tag-n">N/A</span>':'<span style="color:var(--TM)">ยังไม่ประเมิน</span>';
+    return`<div style="padding:10px 14px;border:1.5px solid #FDE68A;border-radius:10px;margin-bottom:8px;background:#FFFBEB;display:flex;gap:10px;align-items:flex-start">
+      <span style="font-size:18px;flex-shrink:0">🚩</span>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;gap:7px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
+          <span style="font-size:11px;font-weight:800;color:#92400E">ข้อ ${no}</span>
+          <span style="font-size:11.5px;color:var(--B1);font-weight:700">${sec.ic} หมวด ${sec.n}: ${sec.t}</span>
+          ${rLabel}
+        </div>
+        <div style="font-size:12px;color:var(--TX);line-height:1.5">${getItemReq(sec,no)}</div>
+        ${ST.rem[no]?`<div style="font-size:11px;color:var(--TM);margin-top:3px">📝 ${ST.rem[no]}</div>`:''}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+        <button class="btn btn-g" style="font-size:10.5px;padding:3px 8px" onclick="gp('s${sec.n}');setTimeout(()=>document.getElementById('row-${no}')?.scrollIntoView({behavior:'smooth',block:'center'}),300)">→ ไปยังข้อ</button>
+        <button class="btn" style="font-size:10.5px;padding:3px 8px;background:#FEF9C3;color:#92400E;border:1px solid #FDE68A" onclick="toggleFlag('${no}');renderFlaggedList()">✕ ยกเลิก Flag</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// FEATURE 8: RADAR CHART (14 หมวด)
+// ============================================================
+function drawRadar(){
+  const cv=document.getElementById('radar-canvas');if(!cv)return;
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height,cx=W/2,cy=H/2,R=Math.min(W,H)*0.38;
+  const N=14;
+  ctx.clearRect(0,0,W,H);
+  // compute current case scores
+  const scores=SECS.map(sec=>{
+    let p=0,f=0;
+    getSecItems(sec).forEach(no=>{const r=ST.res[no];if(r==='pass')p++;else if(r==='fail')f++;});
+    const elig=p+f;return elig>0?p/elig:null;
+  });
+  // compute avg from all cases
+  const meta=getCasesMeta();
+  const avgScores=SECS.map((sec,si)=>{
+    if(meta.length<2)return null;
+    let sum=0,cnt=0;
+    meta.forEach(m=>{
+      try{
+        const raw=localStorage.getItem('gacp2_case_'+m.id);
+        if(!raw)return;const d=JSON.parse(raw);const res=d.res||{};
+        let p=0,f=0;
+        getSecItems(sec).forEach(no=>{const r=res[no];if(r==='pass')p++;else if(r==='fail')f++;});
+        const elig=p+f;if(elig>0){sum+=p/elig;cnt++;}
+      }catch(e){}
+    });
+    return cnt>0?sum/cnt:null;
+  });
+  // draw grid circles
+  [0.25,0.5,0.75,1.0].forEach((t,i)=>{
+    ctx.beginPath();
+    for(let k=0;k<N;k++){
+      const a=-Math.PI/2+(2*Math.PI*k/N);
+      const x=cx+Math.cos(a)*R*t,y=cy+Math.sin(a)*R*t;
+      k===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle=`rgba(41,182,246,${0.1+i*0.07})`;ctx.lineWidth=1;ctx.stroke();
+    // label %
+    ctx.fillStyle='#9CA3AF';ctx.font='9px Sarabun,sans-serif';ctx.textAlign='center';
+    ctx.fillText(Math.round(t*100)+'%',cx+2,cy-R*t+4);
+  });
+  // draw axes + labels
+  SECS.forEach((sec,i)=>{
+    const a=-Math.PI/2+(2*Math.PI*i/N);
+    const x2=cx+Math.cos(a)*R,y2=cy+Math.sin(a)*R;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(x2,y2);
+    ctx.strokeStyle='rgba(41,182,246,.18)';ctx.lineWidth=1;ctx.stroke();
+    // label
+    const lx=cx+Math.cos(a)*(R+22),ly=cy+Math.sin(a)*(R+22);
+    ctx.fillStyle='#374151';ctx.font='bold 9.5px Sarabun,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(sec.ic+' '+sec.n,lx,ly);
+  });
+  // helper: draw polygon
+  function drawPoly(vals,color,fill,lineW=2.5){
+    ctx.beginPath();
+    vals.forEach((v,i)=>{
+      if(v===null)return;
+      const a=-Math.PI/2+(2*Math.PI*i/N);
+      const r=R*v;
+      const x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.closePath();
+    if(fill){ctx.fillStyle=fill;ctx.fill();}
+    ctx.strokeStyle=color;ctx.lineWidth=lineW;ctx.stroke();
+  }
+  // avg benchmark (dashed)
+  if(avgScores.some(v=>v!==null)){
+    ctx.setLineDash([5,4]);
+    drawPoly(avgScores.map(v=>v??0),'rgba(107,114,128,.5)','rgba(107,114,128,.08)',1.5);
+    ctx.setLineDash([]);
+  }
+  // current case
+  const hasData=scores.some(v=>v!==null);
+  if(hasData){
+    drawPoly(scores.map(v=>v??0),'rgba(2,62,138,.9)','rgba(41,182,246,.18)');
+    // dots
+    scores.forEach((v,i)=>{
+      if(v===null)return;
+      const a=-Math.PI/2+(2*Math.PI*i/N);
+      const r=R*v;const x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r;
+      ctx.beginPath();ctx.arc(x,y,4,0,2*Math.PI);
+      const col=v>=0.8?'#16A34A':v>=0.5?'#F59E0B':'#DC2626';
+      ctx.fillStyle=col;ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.fill();ctx.stroke();
+    });
+  }
+  // legend
+  const lg=document.getElementById('radar-legend');
+  if(lg) lg.innerHTML=SECS.map((sec,i)=>{
+    const v=scores[i];const avg=avgScores[i];
+    const pct=v!==null?Math.round(v*100):'-';
+    const avgPct=avg!==null?Math.round(avg*100):'-';
+    const col=v===null?'#9CA3AF':v>=0.8?'#16A34A':v>=0.5?'#F59E0B':'#DC2626';
+    return`<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;border-bottom:1px solid rgba(41,182,246,.08)">
+      <span>${sec.ic} หมวด ${sec.n}: ${sec.t}</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-weight:800;color:${col};min-width:30px;text-align:right">${pct}%</span>
+        ${avg!==null?`<span style="font-size:10px;color:#9CA3AF">avg ${avgPct}%</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+function exportRadar(){
+  const cv=document.getElementById('radar-canvas');if(!cv)return;
+  const a=document.createElement('a');
+  a.href=cv.toDataURL('image/png');
+  a.download='GACP_Radar_'+(document.getElementById('sn')?.value||'case')+'.png';
+  a.click();
+}
+
+// ============================================================
+// FEATURE 9: PROVINCE BENCHMARK (in radar - avg already computed above)
+// ============================================================
+
+// ============================================================
+// FEATURE 10: AI AUTO CAPA
+// ============================================================
+async function genAICapa(){
+  const fails=getAllItems().filter(({no})=>ST.res[no]==='fail');
+  if(!fails.length){alert('✅ ไม่มีข้อที่ไม่ผ่าน ไม่จำเป็นต้องทำแผน CAPA');return;}
+  const lang=document.getElementById('ai-capa-lang')?.value||'th';
+  const siteName=document.getElementById('sn')?.value||'สถานที่ผลิต';
+  const siteDate=document.getElementById('sd')?.value||new Date().toLocaleDateString('th-TH');
+  // Build fail list
+  const failList=fails.map(({no,sec})=>{
+    const sev=ST.sev[no]||'';
+    const sevLabel=sev==='critical'?'[Critical]':sev==='major'?'[Major]':sev==='minor'?'[Minor]':'';
+    const rem=ST.rem[no]?` หมายเหตุ: ${ST.rem[no]}`:'';
+    return`- ข้อ ${no} ${sevLabel}: ${getItemReq(sec,no)}${rem}`;
+  }).join('\n');
+  const prompts={
+    th:`คุณเป็นผู้เชี่ยวชาญด้านมาตรฐาน GACP กัญชาทางการแพทย์ของประเทศไทย
+สถานที่ผลิต: ${siteName} | วันที่ตรวจ: ${siteDate}
+รายการข้อที่ไม่ผ่านการตรวจ GACP:
+${failList}
+
+กรุณาสรุปแผนการแก้ไขและป้องกัน (CAPA Plan) เป็นภาษาไทยทางการ โดยจัดรูปแบบเป็น:
+1. สรุปภาพรวม (2-3 ประโยค)
+2. แผนดำเนินการ (แยกรายข้อ ระบุมาตรการแก้ไข + มาตรการป้องกัน + ระยะเวลาแนะนำ)
+3. ลำดับความสำคัญ (Critical → Major → Minor)
+4. คำแนะนำเพิ่มเติม`,
+    brief:`สรุปแผน CAPA สั้นกระชับสำหรับ ${siteName}:
+${failList}
+สรุปเป็นภาษาไทยสั้นๆ แต่ครบถ้วน มาตรการแก้ไขและระยะเวลาสำหรับแต่ละข้อ`,
+    en:`You are a Thai Medical Cannabis GACP expert. Site: ${siteName} | Date: ${siteDate}
+Failed items:\n${failList}\n
+Please provide a professional CAPA plan in English with: corrective actions, preventive actions, and recommended timelines.`,
+  };
+  document.getElementById('ai-capa-loading').style.display='block';
+  document.getElementById('ai-capa-result').style.display='none';
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,
+        messages:[{role:'user',content:prompts[lang]||prompts.th}]})
+    });
+    const data=await res.json();
+    const txt=data.content?.find(b=>b.type==='text')?.text||'ไม่สามารถสร้างแผนได้';
+    const el=document.getElementById('ai-capa-result');
+    el.style.display='block';
+    el.dataset.txt=txt;
+    // render with basic markdown-like formatting
+    el.innerHTML=txt
+      .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+      .replace(/^(\d+\.\s)/gm,'<br><strong>$1</strong>')
+      .replace(/^-\s(.+)/gm,'&nbsp;&nbsp;• $1')
+      .replace(/\n/g,'<br>');
+  }catch(e){
+    const el=document.getElementById('ai-capa-result');
+    el.style.display='block';
+    el.innerHTML='<span style="color:var(--DR)">❌ เกิดข้อผิดพลาด: '+e.message+'</span>';
+  }
+  document.getElementById('ai-capa-loading').style.display='none';
+}
+function copyAICapa(){
+  const txt=document.getElementById('ai-capa-result')?.dataset?.txt;
+  if(!txt){alert('กรุณาสร้างแผน CAPA ก่อน');return;}
+  navigator.clipboard.writeText(txt).then(()=>alert('✅ Copy แล้วค่า!')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();
+    document.execCommand('copy');ta.remove();alert('✅ Copy แล้วค่า!');
+  });
+}
+
+// ============================================================
+// FEATURE: INSPECTION TIMER
+// ============================================================
+let timerStart=null,timerInterval=null;
+function startTimer(){
+  if(timerInterval)return;
+  timerStart=timerStart||Date.now();
+  timerInterval=setInterval(()=>{
+    const elapsed=Math.floor((Date.now()-timerStart)/1000);
+    const h=String(Math.floor(elapsed/3600)).padStart(2,'0');
+    const m=String(Math.floor((elapsed%3600)/60)).padStart(2,'0');
+    const s=String(elapsed%60).padStart(2,'0');
+    const el=document.getElementById('timer-display');
+    if(el)el.textContent='⏱ '+h+':'+m+':'+s;
+  },1000);
+}
+function pauseTimer(){clearInterval(timerInterval);timerInterval=null;}
+
+// ============================================================
+// FEATURE: SEARCH
+// ============================================================
+function openSearch(){
+  const bar=document.getElementById('search-bar');
+  if(!bar)return;
+  bar.style.display='flex';
+  setTimeout(()=>document.getElementById('search-input')?.focus(),50);
+}
+function clearSearch(){
+  const bar=document.getElementById('search-bar');
+  if(bar)bar.style.display='none';
+  const inp=document.getElementById('search-input');
+  if(inp)inp.value='';
+  const cnt=document.getElementById('search-count');
+  if(cnt)cnt.textContent='';
+  // clear highlights from any search results page
+  const sr=document.getElementById('page-searchresult');
+  if(sr)sr.innerHTML='';
+}
+function doSearch(q){
+  const sq=(q||'').trim().toLowerCase();
+  const cnt=document.getElementById('search-count');
+  if(!sq){if(cnt)cnt.textContent='';return;}
+  // build results
+  const results=[];
+  getAllItems().forEach(({no,sec})=>{
+    // find req text
+    let req='';
+    for(const it of sec.items){
+      if(it.no===no){req=it.req;break;}
+      const sub=(it.subs||[]).find(s=>s.no===no);
+      if(sub){req=sub.req;break;}
+    }
+    if(req.toLowerCase().includes(sq)||no.toLowerCase().includes(sq)){
+      results.push({no,sec,req});
+    }
+  });
+  if(cnt)cnt.textContent=results.length?'พบ '+results.length+' รายการ':'ไม่พบ';
+  // show or navigate to search results page
+  let sp=document.getElementById('page-searchresult');
+  if(!sp){
+    sp=document.createElement('div');sp.className='page';sp.id='page-searchresult';
+    document.getElementById('content').appendChild(sp);
+  }
+  // highlight func
+  const hi=t=>t.replace(new RegExp('('+sq.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark class="search-hi">$1</mark>');
+  sp.innerHTML=results.length?
+    results.map(({no,sec,req})=>`<div class="search-result-item" onclick="gp('s${sec.n}');setTimeout(()=>{document.getElementById('row-${no}')?.scrollIntoView({behavior:'smooth',block:'center'})},300);clearSearch()">
+      <div style="font-size:22px;flex-shrink:0">${sec.ic}</div>
+      <div>
+        <div style="font-size:11px;color:var(--TM);margin-bottom:2px"><strong>ข้อ ${no}</strong> · หมวด ${sec.n}: ${sec.t}</div>
+        <div style="font-size:12px;line-height:1.6">${hi(req)}</div>
+        ${ST.res[no]==='pass'?'<span class="tag tag-p" style="margin-top:4px">✓ ผ่าน</span>':ST.res[no]==='fail'?'<span class="tag tag-f" style="margin-top:4px">✗ ไม่ผ่าน</span>':ST.res[no]==='na'?'<span class="tag tag-n" style="margin-top:4px">N/A</span>':''}
+      </div>
+    </div>`).join(''):
+    '<div style="color:var(--TM);text-align:center;padding:32px"><div style="font-size:32px;margin-bottom:8px">🔍</div><div>ไม่พบข้อกำหนดที่ตรงกับ "'+q+'"</div></div>';
+  // show results page
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  sp.classList.add('active');
+  document.getElementById('ptitle').textContent='🔍 ผลการค้นหา: "'+q+'"';
+}
+
+// ============================================================
+// OVERRIDE gp to handle new pages + save flags
+// ============================================================
 function gp(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
@@ -2103,7 +2632,8 @@ function gp(id){
     ref3:'🔬 บทที่ 3 มาตรฐานวัตถุดิบ (อ้างอิง)',ref4:'📊 บทที่ 4 แผนควบคุมการผลิต (อ้างอิง)',
     summary:'📊 สรุปผลคะแนน',export:'📄 ส่งออก / PDF',capa:'📋 แผน CAPA',
     sig:'✍️ ลายเซ็น',qr:'📱 QR Code',compare:'🔄 เปรียบเทียบ 2 รอบ',
-    cases:'📁 รายการเคสทั้งหมด',allcases:'🏙️ Dashboard ภาพรวมทุกเคส'};
+    cases:'📁 รายการเคสทั้งหมด',allcases:'🏙️ Dashboard ภาพรวมทุกเคส',
+    flagged:'🚩 ข้อที่ Flag ไว้',radar:'📡 Radar Chart รายหมวด',aicapa:'🤖 AI สรุปแผน CAPA'};
   SECS.forEach(s=>T['s'+s.n]=s.ic+' หมวด '+s.n+' '+s.t);
   document.getElementById('ptitle').textContent=T[id]||id;
   if(id==='summary')renderSummary();
@@ -2111,6 +2641,8 @@ function gp(id){
   if(id==='capa')renderCapaPage();
   if(id==='cases')renderCasesList();
   if(id==='allcases')renderAllCasesDash();
+  if(id==='flagged')renderFlaggedList();
+  if(id==='radar')setTimeout(drawRadar,80);
   if(id==='sig'){
     setTimeout(()=>{
       const sc=document.getElementById('sig-container');if(!sc)return;
@@ -2123,7 +2655,10 @@ function gp(id){
       initSigPads();
     },60);
   }
-  if(currentCaseId&&!['cases','allcases','ref3','ref4'].includes(id))save();
+  if(currentCaseId&&!['cases','allcases','ref3','ref4','searchresult'].includes(id))save();
+  // search bar visibility
+  const bar=document.getElementById('search-bar');
+  if(bar&&id!=='searchresult')bar.style.display='none';
 }
 
 function openManual(){window.open('https://drive.google.com/file/d/1NwKX2opAx66dfWcQKBH5Le8Bn7VqId8N/view?usp=sharing','_blank');}
@@ -2138,12 +2673,18 @@ function restoreState(){
     if(loadCaseData(lastId)){currentCaseId=lastId;}
   }
   updateCurrentCaseInfo();updateCaseBadge();
+  loadFlags();
 }
 
 window.onload=function(){
   document.getElementById('sd').value=new Date().toISOString().split('T')[0];
   buildAllSections();buildRef3();buildRef4();buildSecGrid();
-  renderIns();initHW();restoreState();upDash();
+  renderIns();initHW();
+  injectFlagBtns();
+  injectQuickFillBtns();
+  initAutoSave();
+  restoreState();upDash();
+  startTimer();
   setInterval(()=>{if(currentCaseId)localStorage.setItem('gacp2_lastCase',currentCaseId);},3000);
 };
 </script>
