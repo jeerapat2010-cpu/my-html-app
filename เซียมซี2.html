@@ -1,0 +1,424 @@
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+#app{display:flex;flex-direction:column;align-items:center;padding:1.5rem 1rem 2rem;font-family:var(--font-sans)}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+
+.hdr{text-align:center;margin-bottom:1.25rem}
+.hdr-title{font-size:24px;font-weight:500;color:#BA7517;letter-spacing:.05em;display:block}
+.hdr-sub{font-size:12px;color:var(--color-text-secondary);margin-top:3px}
+
+#perm-box{width:100%;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.25rem 1rem;text-align:center;margin-bottom:1.25rem}
+#perm-box p{font-size:13px;color:var(--color-text-secondary);margin-bottom:.75rem;line-height:1.6}
+#perm-btn{font-size:14px;padding:10px 28px;cursor:pointer;border-radius:var(--border-radius-md);background:#BA7517;color:#fff;border:none;font-weight:500}
+
+.canister-area{position:relative;width:160px;height:220px;margin:0 auto 1rem;cursor:pointer;user-select:none;flex-shrink:0}
+.canister-area.shaking .csub{animation:bigShake .6s ease}
+@keyframes bigShake{
+  0%{transform:rotate(0) translateY(0)}
+  8%{transform:rotate(-22deg) translateY(-10px)}
+  20%{transform:rotate(25deg) translateY(-16px)}
+  32%{transform:rotate(-20deg) translateY(-12px)}
+  44%{transform:rotate(22deg) translateY(-14px)}
+  56%{transform:rotate(-15deg) translateY(-8px)}
+  68%{transform:rotate(12deg) translateY(-5px)}
+  82%{transform:rotate(-6deg) translateY(-2px)}
+  100%{transform:rotate(0) translateY(0)}
+}
+.csub{width:100%;height:100%}
+
+.stick-out{position:absolute;top:-26px;left:50%;transform:translateX(-50%);display:none;flex-direction:column;align-items:center;animation:popOut .45s cubic-bezier(.34,1.56,.64,1) forwards}
+.stick-out.vis{display:flex}
+@keyframes popOut{from{transform:translateX(-50%) translateY(28px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+.stick-num{background:#BA7517;color:#fff;font-size:12px;font-weight:500;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;margin-bottom:2px;flex-shrink:0}
+.stick-line{width:6px;height:54px;background:#FAC775;border-radius:3px}
+
+.sparkle-ring{position:absolute;top:50%;left:50%;pointer-events:none;display:none}
+.sparkle-ring.active{display:block}
+.spark{position:absolute;width:8px;height:8px;border-radius:50%;background:#FAC775;animation:sparkFly .7s ease forwards;opacity:0}
+@keyframes sparkFly{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(0) translate(var(--tx),var(--ty))}}
+
+.hint{font-size:13px;color:var(--color-text-secondary);text-align:center;margin-bottom:1rem}
+.hint i{font-size:16px;vertical-align:-2px}
+
+.tap-btn{font-size:13px;padding:10px 24px;border-radius:var(--border-radius-md);cursor:pointer;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);color:var(--color-text-secondary);margin-bottom:1.5rem}
+.tap-btn:active{transform:scale(.97)}
+
+#result-card{width:100%;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.25rem;display:none;animation:fadeUp .5s ease forwards}
+#result-card.vis{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+.rc-head{display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap}
+.lot-badge{background:#FAEEDA;color:#633806;font-size:12px;font-weight:500;padding:4px 10px;border-radius:var(--border-radius-md)}
+.luck-badge{font-size:12px;padding:4px 10px;border-radius:var(--border-radius-md);font-weight:500}
+.l-great{background:#EAF3DE;color:#27500A}
+.l-good{background:#E1F5EE;color:#085041}
+.l-mid{background:#FAEEDA;color:#633806}
+.l-low{background:#FAECE7;color:#712B13}
+
+.prophecy{font-size:16px;font-weight:500;color:var(--color-text-primary);line-height:1.8;margin-bottom:1rem;font-family:var(--font-serif);border-left:3px solid #FAC775;padding-left:12px;border-radius:0}
+
+.domains{display:flex;flex-direction:column;gap:8px;margin-bottom:1rem}
+.domain-row{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px}
+.domain-label{font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.domain-label i{font-size:14px}
+.domain-text{font-size:13px;color:var(--color-text-primary);line-height:1.6}
+.domain-label.work{color:#185FA5}
+.domain-label.love{color:#993556}
+.domain-label.health{color:#0F6E56}
+.domain-label.family{color:#854F0B}
+.domain-label.money{color:#3B6D11}
+
+.stars{display:flex;gap:2px;margin-top:4px}
+.star-fill{color:#BA7517;font-size:12px}
+.star-empty{color:var(--color-text-secondary);font-size:12px;opacity:.35}
+
+.action-row{display:flex;gap:8px;margin-top:.75rem}
+.action-row button{flex:1;font-size:13px;padding:9px 12px;border-radius:var(--border-radius-md);cursor:pointer;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-primary)}
+.action-row button:hover{background:var(--color-background-secondary)}
+.share-btn{background:#FAEEDA !important;border-color:#FAC775 !important;color:#633806 !important}
+
+.hist-sec{width:100%;margin-top:1.25rem}
+.hist-title{font-size:12px;color:var(--color-text-secondary);margin-bottom:8px;display:flex;align-items:center;gap:5px}
+.hist-title i{font-size:13px}
+.hist-list{display:flex;flex-direction:column;gap:6px}
+.hist-item{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:8px 10px;font-size:12px;display:flex;align-items:flex-start;gap:8px}
+.h-badge{background:#FAEEDA;color:#BA7517;font-size:10px;padding:2px 6px;border-radius:4px;flex-shrink:0;font-weight:500;margin-top:1px}
+.h-txt{color:var(--color-text-primary);line-height:1.5}
+
+.flash-overlay{position:absolute;inset:0;background:#FAEEDA;border-radius:50%;opacity:0;pointer-events:none;animation:flashOut .5s ease forwards}
+@keyframes flashOut{0%{opacity:.6;transform:scale(.8)}100%{opacity:0;transform:scale(2.5)}}
+</style>
+
+<h2 class="sr-only">เซียมซีดิจิทัล — เขย่ามือถือเพื่อรับคำทำนาย 5 ด้าน</h2>
+
+<div id="app">
+  <div class="hdr">
+    <span class="hdr-title">🎋 เซียมซีดิจิทัล</span>
+    <span class="hdr-sub">เขย่ามือถือหรือแตะกระบอก รับคำทำนาย 5 ด้าน</span>
+  </div>
+
+  <div id="perm-box">
+    <p>กดปุ่มด้านล่างเพื่ออนุญาตการตรวจจับการเขย่า<br>สำหรับ iPhone/iPad ต้องขออนุญาตก่อนค่ะ</p>
+    <button id="perm-btn" onclick="requestPerm()">
+      <i class="ti ti-device-mobile" aria-hidden="true"></i> เริ่มใช้งาน
+    </button>
+  </div>
+
+  <div class="canister-area" id="canisterArea" onclick="manualShake()">
+    <div class="stick-out" id="stickOut">
+      <div class="stick-num" id="stickNum">?</div>
+      <div class="stick-line"></div>
+    </div>
+    <svg class="csub" viewBox="0 0 160 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="20" y="40" width="120" height="168" rx="14" fill="#FFF8EC" stroke="#FAC775" stroke-width="2"/>
+      <rect x="26" y="46" width="108" height="156" rx="10" fill="#FAEEDA" opacity=".5"/>
+      <rect x="42" y="12" width="76" height="36" rx="8" fill="#FAC775" stroke="#BA7517" stroke-width="1.5"/>
+      <text x="80" y="32" text-anchor="middle" font-size="13" fill="#412402" font-weight="500" font-family="sans-serif">เซียมซี</text>
+      <rect x="34" y="60" width="92" height="92" rx="8" fill="#FFF3DC"/>
+      <text x="80" y="122" text-anchor="middle" font-size="52" font-family="sans-serif">🀄</text>
+      <text x="80" y="172" text-anchor="middle" font-size="11" fill="#BA7517" font-family="sans-serif" letter-spacing="2">· · · · · ·</text>
+      <text x="80" y="192" text-anchor="middle" font-size="10" fill="#993C1D" font-family="sans-serif">ขอพรด้วยจิตใจบริสุทธิ์</text>
+      <rect x="20" y="40" width="120" height="168" rx="14" fill="none" stroke="#EF9F27" stroke-width=".5" opacity=".6"/>
+    </svg>
+    <div class="sparkle-ring" id="sparkleRing"></div>
+  </div>
+
+  <p class="hint">
+    <i class="ti ti-device-mobile-vibration" aria-hidden="true"></i>
+    เขย่ามือถือ หรือแตะที่กระบอก
+  </p>
+
+  <button class="tap-btn" onclick="manualShake()">
+    <i class="ti ti-refresh" aria-hidden="true"></i> เขย่าอีกครั้ง
+  </button>
+
+  <div id="result-card">
+    <div class="rc-head">
+      <span class="lot-badge" id="lotLabel">ไม้เบอร์ 1</span>
+      <span class="luck-badge" id="luckBadge">ดวงดี</span>
+    </div>
+    <div class="prophecy" id="prophecyText"></div>
+    <div class="domains" id="domainsEl"></div>
+    <div class="action-row">
+      <button onclick="manualShake()"><i class="ti ti-refresh" aria-hidden="true"></i> เขย่าใหม่</button>
+      <button class="share-btn" onclick="copyResult()"><i class="ti ti-copy" aria-hidden="true"></i> คัดลอก</button>
+    </div>
+  </div>
+
+  <div class="hist-sec" id="histSec" style="display:none">
+    <div class="hist-title"><i class="ti ti-clock" aria-hidden="true"></i> ดวงครั้งก่อน</div>
+    <div class="hist-list" id="histList"></div>
+  </div>
+</div>
+
+<script>
+const fortunes = [
+  {
+    num:1, luck:"ดวงดีมาก", luckClass:"l-great",
+    prophecy:"ท้องฟ้าเปิดกว้าง ดวงดาวส่องทาง ทุกก้าวที่ก้าวไปมีโชคดีรอคอยอยู่เบื้องหน้า จงก้าวออกไปอย่างองอาจและมั่นใจ",
+    domains:[
+      {icon:"ti-briefcase",cls:"work",label:"การงาน",stars:5,text:"โอกาสทองกำลังเปิดประตูรอคุณอยู่ ถึงเวลานำเสนอผลงานและแสดงความสามารถ หัวหน้าหรือผู้บังคับบัญชาจะมองเห็นความพยายามของคุณและมีรางวัลตอบแทนในไม่ช้า"},
+      {icon:"ti-heart",cls:"love",label:"ความรัก",stars:5,text:"ความสัมพันธ์อบอุ่นและเต็มไปด้วยความเข้าใจ คนโสดมีโอกาสพบคนพิเศษในสถานที่ที่ไม่คาดคิด คนมีคู่ความสัมพันธ์ก้าวไปอีกขั้น เปิดใจแสดงความรู้สึกที่แท้จริงได้เลย"},
+      {icon:"ti-heartbeat",cls:"health",label:"สุขภาพ",stars:4,text:"ร่างกายแข็งแรงดี พลังงานเต็มเปี่ยม เหมาะออกกำลังกายรูปแบบใหม่ ระวังพักผ่อนให้เพียงพอ อย่าทำงานหนักจนเกินไปแม้ดูเหมือนสุขภาพดี"},
+      {icon:"ti-home",cls:"family",label:"ครอบครัว",stars:5,text:"บรรยากาศในบ้านอบอุ่นและสงบสุข ผู้ใหญ่ในบ้านสุขภาพดี มีข่าวดีเกี่ยวกับสมาชิกในครอบครัว เหมาะกับการรวมญาติหรือทำกิจกรรมร่วมกัน"},
+      {icon:"ti-currency-dollar",cls:"money",label:"การเงิน",stars:4,text:"รายได้หลักมั่นคง มีโอกาสเงินพิเศษเข้ามาจากหลายทิศทาง เหมาะกับการลงทุนระยะยาวหรือออมเพิ่ม หลีกเลี่ยงการพนันหรือความเสี่ยงสูง"}
+    ]
+  },
+  {
+    num:7, luck:"ดวงดี", luckClass:"l-good",
+    prophecy:"แม้พายุจะโหมกระหน่ำ แต่หลังฝนตกท้องฟ้าสดใสเสมอ ความพยายามและความอดทนของคุณกำลังจะให้ผลในเร็วๆ นี้",
+    domains:[
+      {icon:"ti-briefcase",cls:"work",label:"การงาน",stars:4,text:"งานมีความท้าทายแต่คุณรับมือได้ดี ให้ร่วมมือกับทีมมากขึ้น ความคิดสร้างสรรค์ของคุณจะช่วยแก้ปัญหาที่หมักหมมมานาน มีโอกาสได้รับมอบหมายงานสำคัญ"},
+      {icon:"ti-heart",cls:"love",label:"ความรัก",stars:3,text:"ต้องการการสื่อสารที่เปิดเผยมากขึ้น บอกความต้องการตรงๆ แทนการเก็บไว้ในใจ คนโสดอาจเจอคนที่ถูกใจแต่ต้องใช้เวลาทำความรู้จักก่อน อย่ารีบตัดสินใจ"},
+      {icon:"ti-heartbeat",cls:"health",label:"สุขภาพ",stars:4,text:"ดีโดยรวม แต่ควรระวังเรื่องความเครียดสะสม ออกไปเดินเล่นกลางแจ้ง รับแสงแดดยามเช้า ดื่มน้ำให้มาก และลดของหวานหรืออาหารแปรรูปลงบ้าง"},
+      {icon:"ti-home",cls:"family",label:"ครอบครัว",stars:4,text:"ความสัมพันธ์ดี มีการพูดคุยแลกเปลี่ยนกันมากขึ้น หากมีความขัดแย้งเล็กน้อย ให้ใช้ความอ่อนน้อมในการประนีประนอม สมาชิกในบ้านต้องการการดูแลเอาใจใส่"},
+      {icon:"ti-currency-dollar",cls:"money",label:"การเงิน",stars:3,text:"รายรับยังคงสม่ำเสมอ แต่รายจ่ายมีแนวโน้มสูงขึ้น ให้วางแผนงบประมาณล่วงหน้า ระวังการใช้จ่ายฟุ่มเฟือย งดลงทุนในสิ่งที่ไม่แน่นอนในช่วงนี้"}
+    ]
+  },
+  {
+    num:15, luck:"ดวงกลาง", luckClass:"l-mid",
+    prophecy:"เมล็ดพันธุ์ที่หว่านลงดินวันนี้ ต้องการน้ำและแสงแดดก่อนจะงอกงาม ความอดทนคือกุญแจสู่ความสำเร็จที่ยั่งยืน",
+    domains:[
+      {icon:"ti-briefcase",cls:"work",label:"การงาน",stars:3,text:"ช่วงนี้เป็นช่วงของการวางรากฐาน มากกว่าการเก็บเกี่ยวผล ทำงานอย่างสม่ำเสมอ อย่าท้อแท้หากไม่เห็นผลทันที โอกาสดีรออยู่ในอีก 1-2 เดือนข้างหน้า"},
+      {icon:"ti-heart",cls:"love",label:"ความรัก",stars:3,text:"ความสัมพันธ์ต้องการการดูแลเอาใจใส่มากขึ้น ให้เวลากับคนที่รักมากกว่านี้ คนโสดอย่าเร่งรีบ ใช้เวลาทำความรู้จักตัวเองก่อนจะเปิดรับความรัก"},
+      {icon:"ti-heartbeat",cls:"health",label:"สุขภาพ",stars:3,text:"ร่างกายส่งสัญญาณเตือน ให้ฟังเสียงตัวเองมากขึ้น นอนหลับให้ครบ 7-8 ชั่วโมง หลีกเลี่ยงอาหารหนักและเครื่องดื่มที่มีคาเฟอีนมากเกินไป พิจารณาตรวจสุขภาพประจำปี"},
+      {icon:"ti-home",cls:"family",label:"ครอบครัว",stars:3,text:"อาจมีความเห็นไม่ตรงกันในบ้านบ้าง ให้รับฟังทุกฝ่ายอย่างเท่าเทียม ความเข้าใจและการยอมรับความแตกต่างจะช่วยให้ผ่านช่วงนี้ไปได้ด้วยดี"},
+      {icon:"ti-currency-dollar",cls:"money",label:"การเงิน",stars:2,text:"ระวังรายจ่ายที่ไม่คาดคิด ควรมีเงินสำรองฉุกเฉินอย่างน้อย 3 เดือน หลีกเลี่ยงการกู้ยืมหรือค้ำประกันในช่วงนี้ ตรวจสอบรายการเดินบัญชีให้ละเอียด"}
+    ]
+  },
+  {
+    num:23, luck:"ดวงดีมาก", luckClass:"l-great",
+    prophecy:"ราชสีห์ผู้กล้าหาญลุกขึ้นยืนอีกครั้ง พลังงานใหม่ไหลเวียนอย่างเต็มเปี่ยม นี่คือช่วงเวลาทองของชีวิต จงใช้โอกาสนี้ให้เต็มที่",
+    domains:[
+      {icon:"ti-briefcase",cls:"work",label:"การงาน",stars:5,text:"สถานการณ์การงานโดดเด่นมาก มีโอกาสได้รับการเลื่อนตำแหน่งหรือรับผิดชอบงานใหม่ที่ท้าทาย ความเป็นผู้นำของคุณจะเป็นที่ยอมรับ อย่าลังเลที่จะแสดงความเห็นและนำเสนอแนวคิด"},
+      {icon:"ti-heart",cls:"love",label:"ความรัก",stars:5,text:"ดวงความรักรุ่งโรจน์ที่สุดในรอบปี คนมีคู่มีโอกาสก้าวไปอีกขั้น เช่น แต่งงาน มีบุตร หรือซื้อบ้าน คนโสดมีโอกาสพบรักแท้ที่ถูกใจในทุกด้าน"},
+      {icon:"ti-heartbeat",cls:"health",label:"สุขภาพ",stars:5,text:"สุขภาพกายและใจแข็งแรงมาก พลังงานเต็มเปี่ยม เหมาะกับการเริ่มต้นกิจวัตรสุขภาพใหม่ เช่น ออกกำลังกาย โยคะ หรือทำสมาธิ ร่างกายตอบสนองดีต่อการดูแลตัวเอง"},
+      {icon:"ti-home",cls:"family",label:"ครอบครัว",stars:4,text:"บรรยากาศในบ้านอบอุ่นสดใส มีกิจกรรมดีๆ ร่วมกัน อาจมีข่าวดีจากสมาชิกในครอบครัว เหมาะกับการจัดงานรวมญาติหรือเฉลิมฉลองความสำเร็จร่วมกัน"},
+      {icon:"ti-currency-dollar",cls:"money",label:"การเงิน",stars:5,text:"การเงินเป็นใจมาก รายได้เพิ่มขึ้นอย่างเห็นได้ชัด มีโอกาสรับเงินพิเศษหรือโบนัส เหมาะกับการลงทุนในสิ่งที่มีคุณภาพ เลขมงคลการเงินคือ 8 และ 9"}
+    ]
+  },
+  {
+    num:31, luck:"ดวงดี", luckClass:"l-good",
+    prophecy:"น้ำไหลหาทะเลได้เสมอ แม้โขดหินจะขวางทาง ความมุ่งมั่นและสติปัญญาของคุณจะนำพาสู่ปลายทางที่ต้องการ",
+    domains:[
+      {icon:"ti-briefcase",cls:"work",label:"การงาน",stars:4,text:"การทำงานเป็นทีมให้ผลดีเป็นพิเศษ ระดมสมองร่วมกับเพื่อนร่วมงาน ความร่วมมือและการสื่อสารที่ดีจะเป็นกุญแจสำคัญ มีโครงการใหม่น่าสนใจที่ควรยื่นมือเข้าร่วม"},
+      {icon:"ti-heart",cls:"love",label:"ความรัก",stars:4,text:"ความสัมพันธ์ลึกซึ้งขึ้น การพูดคุยจากใจถึงใจจะช่วยแก้ปมที่ค้างคาใจ คนโสดอาจพบใครที่มีคุณสมบัติดีแต่ต่างบุคลิก ให้เปิดใจและให้โอกาสกันและกัน"},
+      {icon:"ti-heartbeat",cls:"health",label:"สุขภาพ",stars:3,text:"ควรเน้นสุขภาพจิตนอกเหนือจากสุขภาพกาย ลองฝึกเทคนิคผ่อนคลายความเครียด เช่น การหายใจลึกๆ หรือเดินในธรรมชาติ ระวังโรคที่มากับอากาศเปลี่ยนแปลง"},
+      {icon:"ti-home",cls:"family",label:"ครอบครัว",stars:5,text:"ครอบครัวเป็นแรงหนุนสำคัญในช่วงนี้ สมาชิกในบ้านต่างดูแลและเป็นห่วงกัน มีโอกาสได้รับความช่วยเหลือจากผู้ใหญ่ในบ้านในเรื่องสำคัญ เหมาะกับการปรึกษาพ่อแม่หรือญาติผู้ใหญ่"},
+      {icon:"ti-currency-dollar",cls:"money",label:"การเงิน",stars:4,text:"การเงินมีเสถียรภาพดี รายได้สม่ำเสมอและมีโอกาสเพิ่มเติม เหมาะกับการออมหรือลงทุนระยะกลาง ระวังค่าใช้จ่ายด้านบันเทิงและการสังสรรค์ที่อาจเกินงบ"}
+    ]
+  },
+  {
+    num:42, luck:"ดวงดี", luckClass:"l-good",
+    prophecy:"ฤดูใบไม้ผลิมาถึงแล้ว ทุกสิ่งเริ่มต้นใหม่อีกครั้ง ปล่อยวางความกังวลในอดีต ก้าวเดินไปข้างหน้าอย่างเบิกบาน",
+    domains:[
+      {icon:"ti-briefcase",cls:"work",label:"การงาน",stars:4,text:"เหมาะมากกับการเริ่มต้นโปรเจกต์ใหม่หรือเปลี่ยนแปลงวิธีการทำงาน ความคิดสร้างสรรค์พุ่งสูง ใช้โอกาสนี้นำเสนอไอเดียและแนวทางใหม่ที่คุณคิดมานาน"},
+      {icon:"ti-heart",cls:"love",label:"ความรัก",stars:4,text:"เริ่มต้นใหม่ในความรัก ลืมอดีตที่ทำให้เจ็บปวด คนมีคู่ให้ทำกิจกรรมใหม่ๆ ร่วมกันเพื่อสร้างความทรงจำดีๆ คนโสดพร้อมเปิดรับความรักอีกครั้ง"},
+      {icon:"ti-heartbeat",cls:"health",label:"สุขภาพ",stars:4,text:"เวลาที่ดีในการเริ่มโปรแกรมสุขภาพใหม่ ไม่ว่าจะเป็นการออกกำลังกาย อาหารการกิน หรือการนอนหลับ ร่างกายพร้อมรับการเปลี่ยนแปลงเชิงบวกอย่างเต็มที่"},
+      {icon:"ti-home",cls:"family",label:"ครอบครัว",stars:3,text:"อาจมีการเปลี่ยนแปลงในครอบครัว เช่น การย้ายบ้านหรือการปรับโครงสร้างครอบครัว ให้ทุกคนมีส่วนร่วมในการตัดสินใจและรับฟังความเห็นกันและกัน"},
+      {icon:"ti-currency-dollar",cls:"money",label:"การเงิน",stars:3,text:"รายได้คงที่แต่รายจ่ายเพิ่มขึ้นจากการเปลี่ยนแปลงในชีวิต วางแผนการเงินล่วงหน้าให้รัดกุม พิจารณาทบทวนการลงทุนที่มีอยู่และปรับพอร์ตให้เหมาะกับสถานการณ์"}
+    ]
+  },
+  {
+    num:55, luck:"ดวงดีมาก", luckClass:"l-great",
+    prophecy:"มังกรทองตื่นจากหลับ พลังแห่งฟ้าดินรวมเป็นหนึ่งในตัวคุณ ความสำเร็จที่รอคอยมานานกำลังจะเป็นจริง",
+    domains:[
+      {icon:"ti-briefcase",cls:"work",label:"การงาน",stars:5,text:"จุดสูงสุดของชีวิตการทำงานในช่วงนี้ ตัดสินใจได้อย่างมั่นใจ มีโอกาสได้รับการยอมรับในวงกว้าง ผลงานที่ผ่านมาจะได้รับการยอมรับ และเปิดประตูสู่โอกาสที่ใหญ่กว่าเดิม"},
+      {icon:"ti-heart",cls:"love",label:"ความรัก",stars:5,text:"ดวงความรักสว่างไสวที่สุด ความสัมพันธ์มีความลึกซึ้งและมั่นคง คนมีคู่พร้อมก้าวสู่ขั้นต่อไปของชีวิต คนโสดมีโอกาสพบคู่แท้ที่รักและเข้าใจกันอย่างแท้จริง"},
+      {icon:"ti-heartbeat",cls:"health",label:"สุขภาพ",stars:4,text:"สุขภาพดีโดยรวม พลังงานเต็มเปี่ยม ระวังอย่าทำงานหนักจนลืมพักผ่อน แม้ดูเหมือนแข็งแรง แต่ร่างกายต้องการการพักฟื้นอย่างสม่ำเสมอเช่นกัน"},
+      {icon:"ti-home",cls:"family",label:"ครอบครัว",stars:5,text:"ครอบครัวอบอุ่นและผูกพัน มีข่าวดีที่ทำให้ทุกคนในบ้านยินดีปรีดา ผู้ใหญ่ในบ้านสุขภาพแข็งแรง ความสัมพันธ์ระหว่างสมาชิกแนบแน่นเป็นพิเศษในช่วงนี้"},
+      {icon:"ti-currency-dollar",cls:"money",label:"การเงิน",stars:5,text:"การเงินดีเยี่ยม โชคลาภไหลเข้ามาจากหลายทิศทาง เหมาะมากกับการลงทุนหรือขยายกิจการ เลขมงคลคือ 5 สีทองและสีแดงเป็นสีนำโชค ระวังการประมาทในความสำเร็จ"}
+    ]
+  },
+  {
+    num:66, luck:"ดวงกลาง", luckClass:"l-mid",
+    prophecy:"ไม้ไผ่โค้งงอในพายุแต่ไม่หัก ความยืดหยุ่นและการปรับตัวคือพลังที่แท้จริง วันนี้ถอยหนึ่งก้าวเพื่อพรุ่งนี้รุกได้สองก้าว",
+    domains:[
+      {icon:"ti-briefcase",cls:"work",label:"การงาน",stars:3,text:"ช่วงนี้ให้ระมัดระวังการสื่อสารกับเพื่อนร่วมงานและผู้บังคับบัญชา เลือกคำพูดอย่างรอบคอบ ยังไม่ใช่เวลาที่ดีที่สุดสำหรับการเปลี่ยนงาน แต่เป็นช่วงดีสำหรับการเรียนรู้ทักษะใหม่"},
+      {icon:"ti-heart",cls:"love",label:"ความรัก",stars:3,text:"ความสัมพันธ์ต้องการความใส่ใจเป็นพิเศษ อย่าเอาแต่ใจตัวเอง ฟังและเข้าใจความรู้สึกของอีกฝ่ายมากขึ้น หากมีความขัดแย้ง ใช้เหตุผลและความอ่อนน้อมในการแก้ปัญหา"},
+      {icon:"ti-heartbeat",cls:"health",label:"สุขภาพ",stars:3,text:"ความเครียดมีผลต่อสุขภาพในช่วงนี้ ให้หาเวลาผ่อนคลาย ลองนวดหรือสปา หรือออกเดินทางระยะสั้น ระวังสุขภาพทางเดินหายใจและระบบย่อยอาหาร"},
+      {icon:"ti-home",cls:"family",label:"ครอบครัว",stars:3,text:"อาจมีเรื่องให้วุ่นวายในบ้านบ้าง ความอดทนและการรับฟังกันจะช่วยได้มาก อย่าตัดสินหรือด่วนสรุป ให้โอกาสทุกคนได้แสดงความคิดเห็นอย่างเท่าเทียม"},
+      {icon:"ti-currency-dollar",cls:"money",label:"การเงิน",stars:2,text:"ระวังการสูญเสียทางการเงินที่ไม่คาดคิด ตรวจสอบสัญญาและเอกสารทางการเงินอย่างละเอียดก่อนลงนาม งดการลงทุนเสี่ยงสูงหรือการค้ำประกันให้ผู้อื่นในช่วงนี้"}
+    ]
+  },
+  {
+    num:77, luck:"ดวงดีมาก", luckClass:"l-great",
+    prophecy:"ดอกบัวบานท่ามกลางโคลนตม แสดงให้เห็นว่าความงามเกิดได้จากความยากลำบาก คุณแข็งแกร่งกว่าที่คิด และความสำเร็จใกล้เข้ามาแล้ว",
+    domains:[
+      {icon:"ti-briefcase",cls:"work",label:"การงาน",stars:5,text:"ความกล้าในการแสดงความสามารถจะให้ผลตอบแทนที่คุ้มค่า ผู้ใหญ่และผู้มีอำนาจในองค์กรเห็นคุณค่าของคุณ มีโอกาสได้รับโปรเจกต์สำคัญหรือตำแหน่งที่สูงขึ้น"},
+      {icon:"ti-heart",cls:"love",label:"ความรัก",stars:5,text:"ความรักลึกซึ้งและมั่นคงเป็นพิเศษ คนมีคู่ความสัมพันธ์แน่นแฟ้นและเข้าใจกันดีขึ้น คนโสดมีโอกาสพบคนที่ชื่นชมในความเข้มแข็งและความจริงใจของคุณ"},
+      {icon:"ti-heartbeat",cls:"health",label:"สุขภาพ",stars:4,text:"พลังงานดีมาก เหมาะกับการออกกำลังกายหนักขึ้นหรือเริ่มกีฬาใหม่ ระบบภูมิคุ้มกันแข็งแรง แต่ยังควรรักษาวินัยการนอนและอาหารที่ดีเพื่อรักษาสุขภาพระยะยาว"},
+      {icon:"ti-home",cls:"family",label:"ครอบครัว",stars:4,text:"ครอบครัวภูมิใจในความสำเร็จของคุณ ผู้ใหญ่ในบ้านให้กำลังใจและสนับสนุน มีโอกาสที่ดีในการแก้ไขความสัมพันธ์ที่ห่างเหินกับสมาชิกครอบครัวบางคน"},
+      {icon:"ti-currency-dollar",cls:"money",label:"การเงิน",stars:4,text:"รายได้เพิ่มขึ้นอย่างน่าพอใจ มีเงินพิเศษเข้ามา เหมาะกับการลงทุนในตัวเองผ่านการศึกษาหรือพัฒนาทักษะ เลข 7 เป็นเลขมงคล สีม่วงและทองเป็นสีนำโชค"}
+    ]
+  },
+  {
+    num:88, luck:"ดวงดีมาก", luckClass:"l-great",
+    prophecy:"พระอาทิตย์ขึ้นใหม่ทุกวัน นำแสงสว่างและโอกาสใหม่มาให้เสมอ วันนี้คือวันมงคลแห่งปี จงออกไปพิชิตโลกด้วยความกล้าและมั่นใจ",
+    domains:[
+      {icon:"ti-briefcase",cls:"work",label:"การงาน",stars:5,text:"วันนี้คือวันที่ดีที่สุดสำหรับการตัดสินใจสำคัญในชีวิตการทำงาน เซ็นสัญญา เสนองาน หรือประกาศโปรเจกต์ใหม่ได้เลย ทุกอย่างราบรื่นและเป็นไปในทิศทางที่ดีที่สุด"},
+      {icon:"ti-heart",cls:"love",label:"ความรัก",stars:5,text:"ช่วงเวลาทองของความรัก คนมีคู่อาจมีข่าวดีที่รอคอยมานาน เช่น หมั้น แต่งงาน หรือมีบุตร คนโสดมีโอกาสพบรักแท้ที่ใช่ในเร็วๆ นี้ เปิดใจและไว้ใจความรู้สึก"},
+      {icon:"ti-heartbeat",cls:"health",label:"สุขภาพ",stars:5,text:"สุขภาพดีเยี่ยมทั้งกายและใจ พลังงานเต็มเปี่ยมตลอดวัน เหมาะกับการเริ่มต้นโปรแกรมสุขภาพใหม่ที่ท้าทายกว่าเดิม หรือลองกีฬาที่เคยอยากลองมานาน"},
+      {icon:"ti-home",cls:"family",label:"ครอบครัว",stars:5,text:"วันมงคลสำหรับครอบครัว มีข่าวดีและความสุขร่วมกัน เหมาะกับการทำสิ่งสำคัญ เช่น ซื้อบ้าน ปรับปรุงที่อยู่ หรือจัดงานเฉลิมฉลองร่วมกับคนที่รัก"},
+      {icon:"ti-currency-dollar",cls:"money",label:"การเงิน",stars:5,text:"โชคลาภเต็มเปี่ยมที่สุด เลข 8 คือเลขมงคลแห่งปี รายได้พิเศษเข้ามาหลายทาง การลงทุนที่ทำไว้จะให้ผลตอบแทนดี เหมาะกับการวางแผนการเงินระยะยาวและการออมทรัพย์"}
+    ]
+  },
+  {
+    num:93, luck:"ดวงดี", luckClass:"l-good",
+    prophecy:"คลื่นทะเลที่งดงามเกิดจากลมและน้ำที่ผ่านมานับล้านครั้ง ประสบการณ์ทุกอย่างในชีวิตทำให้คุณงดงามและแข็งแกร่งยิ่งขึ้น",
+    domains:[
+      {icon:"ti-briefcase",cls:"work",label:"การงาน",stars:4,text:"ประสบการณ์และความเชี่ยวชาญของคุณคือทรัพย์สินที่มีค่าที่สุด ผู้อื่นมองหาคำแนะนำและความเป็นผู้นำจากคุณ เหมาะกับการเป็นพี่เลี้ยงหรือโค้ชให้คนรุ่นใหม่"},
+      {icon:"ti-heart",cls:"love",label:"ความรัก",stars:4,text:"ความรักที่ผ่านการทดสอบเวลามาแล้วยิ่งแข็งแกร่ง ให้เวลากับคนที่รักในกิจกรรมที่มีความหมาย คนโสดอาจพบรักผ่านความสนใจหรืองานอดิเรกร่วมกัน"},
+      {icon:"ti-heartbeat",cls:"health",label:"สุขภาพ",stars:4,text:"สุขภาพดีจากการดูแลตัวเองมาอย่างต่อเนื่อง ให้รักษาสุขนิสัยที่ดีต่อไป ลองเพิ่มการทำสมาธิหรือโยคะเพื่อเสริมสุขภาพจิต ระวังความเครียดจากงานสะสม"},
+      {icon:"ti-home",cls:"family",label:"ครอบครัว",stars:4,text:"ความสัมพันธ์ในครอบครัวแน่นแฟ้นและเชื่อถือไว้วางใจได้ ผู้ใหญ่ในบ้านต้องการการดูแลเอาใจใส่เพิ่มขึ้น เหมาะกับการพาไปพบแพทย์หรือทำกิจกรรมที่ชอบร่วมกัน"},
+      {icon:"ti-currency-dollar",cls:"money",label:"การเงิน",stars:3,text:"การเงินมั่นคงจากการวางแผนที่ดีในอดีต ให้รักษาวินัยทางการเงินต่อไป มีค่าใช้จ่ายด้านสุขภาพหรือการดูแลผู้สูงอายุในครอบครัว ควรวางแผนรับมือล่วงหน้า"}
+    ]
+  }
+];
+
+let history=[], lastShake=0, listening=false;
+
+function renderStars(n){
+  let s='';
+  for(let i=1;i<=5;i++) s+= i<=n ? '<span class="star-fill">★</span>' : '<span class="star-empty">★</span>';
+  return s;
+}
+
+function playShakeSound(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    [0,60,120,180,240,300].forEach(d=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value=200+Math.random()*400;
+      o.type=['sine','triangle','sawtooth'][Math.floor(Math.random()*3)];
+      const t=ctx.currentTime+d/1000;
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(0.15,t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.12);
+      o.start(t); o.stop(t+0.15);
+    });
+    setTimeout(()=>ctx.close(),600);
+  }catch(e){}
+}
+
+function spawnSparkles(){
+  const ring=document.getElementById('sparkleRing');
+  ring.innerHTML='';
+  ring.classList.add('active');
+  const colors=['#BA7517','#FAC775','#EF9F27','#FFF3DC','#993C1D'];
+  for(let i=0;i<16;i++){
+    const sp=document.createElement('div');
+    sp.className='spark';
+    const angle=Math.random()*Math.PI*2;
+    const dist=60+Math.random()*80;
+    sp.style.cssText=`--tx:${Math.cos(angle)*dist}px;--ty:${Math.sin(angle)*dist}px;background:${colors[i%colors.length]};animation-delay:${Math.random()*0.2}s;left:${80+Math.cos(angle)*10}px;top:${110+Math.sin(angle)*10}px`;
+    ring.appendChild(sp);
+  }
+  const flash=document.createElement('div');
+  flash.className='flash-overlay';
+  flash.style.cssText='width:160px;height:160px;top:30px;left:0;position:absolute';
+  document.querySelector('.canister-area').appendChild(flash);
+  setTimeout(()=>{flash.remove();ring.innerHTML='';ring.classList.remove('active')},900);
+}
+
+function triggerFortune(){
+  const now=Date.now();
+  if(now-lastShake<1000)return;
+  lastShake=now;
+  playShakeSound();
+  const area=document.getElementById('canisterArea');
+  area.classList.remove('shaking');
+  void area.offsetWidth;
+  area.classList.add('shaking');
+  setTimeout(()=>{area.classList.remove('shaking')},650);
+  spawnSparkles();
+  setTimeout(()=>{
+    const f=fortunes[Math.floor(Math.random()*fortunes.length)];
+    showResult(f);
+  },550);
+}
+
+function showResult(f){
+  document.getElementById('stickNum').textContent=f.num;
+  document.getElementById('stickOut').classList.add('vis');
+  document.getElementById('lotLabel').textContent='ไม้เบอร์ '+f.num;
+  const lb=document.getElementById('luckBadge');
+  lb.className='luck-badge '+f.luckClass;
+  lb.textContent=f.luck;
+  document.getElementById('prophecyText').textContent=f.prophecy;
+  const dom=document.getElementById('domainsEl');
+  dom.innerHTML=f.domains.map(d=>`
+    <div class="domain-row">
+      <div class="domain-label ${d.cls}"><i class="ti ${d.icon}" aria-hidden="true"></i>${d.label} <div class="stars">${renderStars(d.stars)}</div></div>
+      <div class="domain-text">${d.text}</div>
+    </div>
+  `).join('');
+  const card=document.getElementById('result-card');
+  card.classList.remove('vis');
+  void card.offsetWidth;
+  card.classList.add('vis');
+  addHistory(f);
+}
+
+function addHistory(f){
+  history.unshift(f);
+  if(history.length>3)history.pop();
+  if(history.length<2)return;
+  const sec=document.getElementById('histSec');
+  const list=document.getElementById('histList');
+  sec.style.display='block';
+  list.innerHTML=history.slice(1).map(h=>`
+    <div class="hist-item">
+      <span class="h-badge">#${h.num}</span>
+      <span class="h-txt">${h.prophecy.substring(0,40)}…</span>
+    </div>
+  `).join('');
+}
+
+function copyResult(){
+  const f=history[0];
+  if(!f)return;
+  let txt=`🎋 เซียมซีดิจิทัล — ไม้เบอร์ ${f.num} (${f.luck})\n\n${f.prophecy}\n\n`;
+  f.domains.forEach(d=>{ txt+=`【${d.label}】 ${'★'.repeat(d.stars)}\n${d.text}\n\n`; });
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(txt).then(()=>{
+      const btn=document.querySelector('.share-btn');
+      const orig=btn.innerHTML;
+      btn.innerHTML='<i class="ti ti-check" aria-hidden="true"></i> คัดลอกแล้ว';
+      setTimeout(()=>{btn.innerHTML=orig},1600);
+    });
+  }
+}
+
+function manualShake(){ triggerFortune(); }
+
+function requestPerm(){
+  const box=document.getElementById('perm-box');
+  if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){
+    DeviceMotionEvent.requestPermission().then(res=>{
+      if(res==='granted'){ box.style.display='none'; startListening(); }
+      else{ box.querySelector('p').textContent='ไม่ได้รับอนุญาต — แตะที่กระบอกได้เลยค่ะ'; }
+    }).catch(()=>{ box.style.display='none'; });
+  } else { box.style.display='none'; startListening(); }
+}
+
+function startListening(){
+  if(listening)return; listening=true;
+  let prev=0;
+  window.addEventListener('devicemotion',e=>{
+    const a=e.accelerationIncludingGravity;
+    if(!a)return;
+    const tot=Math.abs(a.x)+Math.abs(a.y)+Math.abs(a.z);
+    if(Math.abs(tot-prev)>22){ triggerFortune(); }
+    prev=tot;
+  },true);
+}
+
+window.addEventListener('load',()=>{
+  if(typeof DeviceMotionEvent==='undefined'||typeof DeviceMotionEvent.requestPermission!=='function'){
+    document.getElementById('perm-box').style.display='none';
+    startListening();
+  }
+});
+</script>
