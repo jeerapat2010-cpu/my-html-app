@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IMC แผนไทย · ระบบดูแลผู้ป่วยรายเคส</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --teal:#0d7d6f; --teal-d:#0a5f54; --teal-l:#e6f3f1; --teal-ll:#f3faf8;
+  --gold:#d99a2b; --gold-l:#fbf3e2;
+  --red:#cf4a45; --red-l:#fbeceb;
+  --amber:#e8a33d; --amber-l:#fdf3e3;
+  --green:#2f9e58; --green-l:#e9f6ee;
+  --ink:#15302c; --muted:#5e726e; --line:#dde7e4;
+  --bg:#f4f7f6; --card:#ffffff;
+  --shadow:0 1px 2px rgba(16,52,46,.06),0 8px 24px rgba(16,52,46,.07);
+  --radius:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun','IBM Plex Sans Thai',sans-serif;background:var(--bg);color:var(--ink);line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-weight:700;line-height:1.25}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
+a{color:var(--teal)}
+
+/* Header */
+.topbar{background:linear-gradient(120deg,var(--teal),var(--teal-d));color:#fff;padding:14px 20px;position:sticky;top:0;z-index:50;box-shadow:0 4px 18px rgba(10,95,84,.25)}
+.topbar-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.logo{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.16);display:grid;place-items:center;font-size:22px;flex-shrink:0}
+.brand h1{font-size:18px;letter-spacing:-.2px}
+.brand p{font-size:12px;opacity:.85;font-weight:400}
+.nav{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.nav button{color:#fff;padding:8px 15px;border-radius:10px;font-size:14px;font-weight:600;opacity:.78;transition:.15s;display:flex;align-items:center;gap:6px}
+.nav button:hover{opacity:1;background:rgba(255,255,255,.12)}
+.nav button.active{opacity:1;background:rgba(255,255,255,.2)}
+
+.wrap{max-width:1180px;margin:0 auto;padding:22px 20px 80px}
+.view{display:none;animation:fade .25s}
+.view.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* Cards & grid */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.pad{padding:20px}
+.grid{display:grid;gap:16px}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:880px){.g4{grid-template-columns:repeat(2,1fr)}.g3,.g2{grid-template-columns:1fr}}
+@media(max-width:560px){.g4{grid-template-columns:1fr}}
+
+/* Stat tiles */
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.stat .lbl{font-size:13px;color:var(--muted);font-weight:600}
+.stat .num{font-size:34px;font-weight:800;letter-spacing:-1px;margin-top:2px}
+.stat .sub{font-size:12px;color:var(--muted)}
+.stat .ic{position:absolute;right:14px;top:14px;font-size:22px;opacity:.5}
+.stat.t::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--teal)}
+.stat.g::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--green)}
+.stat.a::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--amber)}
+.stat.r::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--red)}
+
+.sec-title{display:flex;align-items:center;gap:10px;margin:26px 0 14px}
+.sec-title h2{font-size:18px}
+.sec-title .line{flex:1;height:1px;background:var(--line)}
+.kpibar{height:12px;border-radius:8px;background:var(--line);overflow:hidden;margin-top:8px}
+.kpibar > i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,var(--teal),var(--green))}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:11px;font-size:14px;font-weight:700;transition:.15s;border:1px solid transparent}
+.btn-primary{background:var(--teal);color:#fff}
+.btn-primary:hover{background:var(--teal-d)}
+.btn-ghost{background:#fff;color:var(--teal);border-color:var(--line)}
+.btn-ghost:hover{border-color:var(--teal);background:var(--teal-ll)}
+.btn-danger{background:#fff;color:var(--red);border-color:var(--red-l)}
+.btn-danger:hover{background:var(--red-l)}
+.btn-sm{padding:7px 13px;font-size:13px;border-radius:9px}
+
+/* Case list */
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.search{flex:1;min-width:200px;position:relative}
+.search input{width:100%;padding:11px 14px 11px 40px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.search::before{content:"🔍";position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:14px;opacity:.6}
+.caselist{display:grid;gap:12px}
+.caserow{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:16px;box-shadow:var(--shadow);transition:.15s;cursor:pointer}
+.caserow:hover{border-color:var(--teal);transform:translateY(-1px)}
+.avatar{width:46px;height:46px;border-radius:12px;background:var(--teal-l);color:var(--teal-d);display:grid;place-items:center;font-weight:800;font-size:17px;flex-shrink:0}
+.caserow .info{flex:1;min-width:0}
+.caserow .info b{font-size:16px}
+.caserow .info .meta{font-size:13px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;margin-top:2px}
+.caserow .right{text-align:right;flex-shrink:0}
+
+/* Badges / chips */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-teal{background:var(--teal-l);color:var(--teal-d)}
+.b-green{background:var(--green-l);color:var(--green)}
+.b-amber{background:var(--amber-l);color:#9a6a14}
+.b-red{background:var(--red-l);color:var(--red)}
+.b-gray{background:#eef2f1;color:var(--muted)}
+.b-gold{background:var(--gold-l);color:#8a6212}
+
+/* Stepper */
+.stepper{display:flex;gap:0;margin:4px 0 22px;overflow-x:auto;padding-bottom:6px}
+.step{flex:1;min-width:120px;text-align:center;position:relative;padding-top:30px}
+.step::before{content:"";position:absolute;top:13px;left:0;right:0;height:3px;background:var(--line)}
+.step:first-child::before{left:50%}
+.step:last-child::before{right:50%}
+.step .dot{position:absolute;top:4px;left:50%;transform:translateX(-50%);width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--line);z-index:2;font-size:11px;display:grid;place-items:center;color:var(--muted);font-weight:800}
+.step.done::before{background:var(--teal)}
+.step.done .dot{background:var(--teal);border-color:var(--teal);color:#fff}
+.step.cur .dot{border-color:var(--teal);color:var(--teal);box-shadow:0 0 0 4px var(--teal-l)}
+.step span{font-size:12px;font-weight:600;color:var(--muted)}
+.step.done span,.step.cur span{color:var(--ink)}
+
+/* Form */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:11px;background:#fff;transition:.15s}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-l)}
+.field textarea{resize:vertical;min-height:64px}
+.frow{display:grid;gap:14px}
+.frow.c2{grid-template-columns:1fr 1fr}
+.frow.c3{grid-template-columns:1fr 1fr 1fr}
+.frow.c4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:680px){.frow.c2,.frow.c3,.frow.c4{grid-template-columns:1fr}}
+
+/* Accordion sections */
+.acc{border:1px solid var(--line);border-radius:14px;margin-bottom:14px;overflow:hidden;background:#fff;box-shadow:var(--shadow)}
+.acc-head{padding:15px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none}
+.acc-head:hover{background:var(--teal-ll)}
+.acc-head .n{width:30px;height:30px;border-radius:9px;background:var(--teal-l);color:var(--teal-d);display:grid;place-items:center;font-weight:800;font-size:14px;flex-shrink:0}
+.acc-head h3{font-size:15px;flex:1}
+.acc-head .chev{transition:.2s;color:var(--muted)}
+.acc.open .chev{transform:rotate(90deg)}
+.acc-body{display:none;padding:4px 18px 20px;border-top:1px solid var(--line)}
+.acc.open .acc-body{display:block}
+
+/* Score widget */
+.scorebox{display:flex;align-items:center;gap:16px;background:var(--teal-ll);border:1px solid var(--teal-l);border-radius:14px;padding:14px 18px;margin-bottom:8px}
+.scorebox .big{font-size:40px;font-weight:800;color:var(--teal-d);letter-spacing:-1px;line-height:1}
+.scorebox .of{font-size:15px;color:var(--muted);font-weight:600}
+
+/* Barthel item */
+.bi{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.bi .q{font-weight:600;font-size:14px;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;align-items:flex-start;gap:9px;padding:7px 10px;border-radius:9px;cursor:pointer;font-size:13.5px;transition:.12s;border:1px solid transparent}
+.opt:hover{background:var(--teal-ll)}
+.opt.sel{background:var(--teal-l);border-color:var(--teal)}
+.opt input{margin-top:3px;accent-color:var(--teal)}
+.opt .sc{font-weight:800;color:var(--teal-d);min-width:18px}
+
+/* Checks grid */
+.chk{display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border:1px solid var(--line);border-radius:11px;cursor:pointer;transition:.12s;font-size:14px;background:#fff}
+.chk:hover{border-color:var(--teal);background:var(--teal-ll)}
+.chk.on{border-color:var(--teal);background:var(--teal-l)}
+.chk input{margin-top:3px;accent-color:var(--teal);width:16px;height:16px;flex-shrink:0}
+.chk.red.on{border-color:var(--red);background:var(--red-l)}
+
+/* Motor table */
+.mtable{width:100%;border-collapse:collapse;font-size:13px}
+.mtable th,.mtable td{border:1px solid var(--line);padding:8px;text-align:center}
+.mtable th{background:var(--teal-ll);font-weight:700;font-size:12px}
+.mtable td:first-child,.mtable th:first-child{text-align:left;font-weight:700;background:var(--teal-ll)}
+.mtable select{width:100%;padding:5px;border:1px solid var(--line);border-radius:7px;text-align:center}
+
+/* Daily records */
+.rec{border:1px solid var(--line);border-left:4px solid var(--teal);border-radius:11px;padding:12px 14px;margin-bottom:10px}
+.rec .rh{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin-bottom:6px}
+.rec .rb{font-size:14px;white-space:pre-wrap}
+
+/* Result panel */
+.gate{border-radius:14px;padding:16px 18px;margin-top:12px;font-weight:600;display:flex;align-items:center;gap:12px}
+.gate.pass{background:var(--green-l);color:var(--green);border:1px solid #bce4cb}
+.gate.fail{background:var(--amber-l);color:#9a6a14;border:1px solid #f0d59a}
+.gate .ic{font-size:26px}
+
+.alertbox{background:var(--red-l);border:1px solid #f0c4c2;border-radius:12px;padding:13px 16px;color:var(--red);font-weight:600;display:flex;gap:10px;align-items:flex-start;margin-top:10px}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(16,52,46,.5);backdrop-filter:blur(3px);z-index:100;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:18px;max-width:520px;width:100%;padding:26px;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:pop .25s}
+@keyframes pop{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}
+
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty .e{font-size:54px;margin-bottom:12px;opacity:.5}
+
+.detail-head{display:flex;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:6px}
+.detail-head .av{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,var(--teal),var(--teal-d));color:#fff;display:grid;place-items:center;font-weight:800;font-size:24px}
+.hint{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4}
+.tagline{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+
+.foot{text-align:center;font-size:12px;color:var(--muted);padding:30px 0 0}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:13px 22px;border-radius:12px;font-weight:600;font-size:14px;opacity:0;transition:.3s;z-index:200;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.subnav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.subnav button{padding:8px 14px;border-radius:10px;font-size:13px;font-weight:600;color:var(--muted);background:#fff;border:1px solid var(--line)}
+.subnav button.active{color:#fff;background:var(--teal);border-color:var(--teal)}
+@media print{.topbar,.nav,.subnav,.no-print{display:none!important}.wrap{padding:0}.card,.acc{box-shadow:none;page-break-inside:avoid}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="logo">🌿</div>
+    <div class="brand">
+      <h1>IMC แผนไทย · ระบบดูแลผู้ป่วยรายเคส</h1>
+      <p>Intermediate Care · Stroke / TBI / SCI · แนวทางเวชปฏิบัติแพทย์แผนไทย</p>
+    </div>
+    <div class="nav">
+      <button class="active" data-nav="dash">📊 ภาพรวม</button>
+      <button data-nav="list">🗂️ รายการเคส</button>
+      <button data-nav="new" onclick="newCase()">➕ เคสใหม่</button>
+      <button data-nav="guide">📖 แนวทาง</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- DASHBOARD -->
+  <div class="view active" id="view-dash">
+    <div class="grid g4" id="stats"></div>
+
+    <div class="sec-title"><h2>ตัวชี้วัดหลัก (KPI)</h2><div class="line"></div></div>
+    <div class="grid g2">
+      <div class="card pad">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <b>Barthel Index ดีขึ้น ≥ 1 ระดับ</b>
+          <span class="badge b-teal" id="kpi1pct">0%</span>
+        </div>
+        <div class="hint">เป้าหมาย ร้อยละ 70 ของผู้ป่วยที่จำหน่าย/ติดตามแล้ว</div>
+        <div class="kpibar"><i id="kpi1bar" style="width:0%"></i></div>
+        <div class="hint" id="kpi1detail" style="margin-top:8px"></div>
+      </div>
+      <div class="card pad">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <b>ติดตามครบ 6 เดือน</b>
+          <span class="badge b-gold" id="kpi2pct">0%</span>
+        </div>
+        <div class="hint">ส่งต่อ COC และติดตามผล 1, 3, 6 เดือน ทุกราย</div>
+        <div class="kpibar"><i id="kpi2bar" style="width:0%;background:linear-gradient(90deg,var(--gold),var(--amber))"></i></div>
+        <div class="hint" id="kpi2detail" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <div class="sec-title"><h2>เคสล่าสุด</h2><div class="line"></div>
+      <button class="btn btn-ghost btn-sm" data-nav="list">ดูทั้งหมด →</button></div>
+    <div class="caselist" id="recentCases"></div>
+  </div>
+
+  <!-- CASE LIST -->
+  <div class="view" id="view-list">
+    <div class="toolbar">
+      <div class="search"><input id="searchBox" placeholder="ค้นหาชื่อ / HN / การวินิจฉัย..." oninput="renderList()"></div>
+      <select id="filterStatus" onchange="renderList()" style="padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;font-weight:600">
+        <option value="">ทุกสถานะ</option>
+        <option value="active">กำลังรักษา</option>
+        <option value="discharged">จำหน่ายแล้ว</option>
+        <option value="referred">ส่งต่อ</option>
+      </select>
+      <button class="btn btn-primary" onclick="newCase()">➕ เคสใหม่</button>
+      <button class="btn btn-ghost" onclick="exportAll()">⬇️ สำรองข้อมูล</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">⬆️ นำเข้า</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importAll(event)">
+    </div>
+    <div class="caselist" id="fullList"></div>
+  </div>
+
+  <!-- CASE DETAIL -->
+  <div class="view" id="view-detail"></div>
+
+  <!-- GUIDE -->
+  <div class="view" id="view-guide">
+    <div class="card pad">
+      <h2 style="margin-bottom:6px">📖 แนวทางเวชปฏิบัติโดยย่อ</h2>
+      <p class="hint" style="font-size:13px">อ้างอิง: คู่มือแนวทางเวชปฏิบัติ (CPG) การดูแลผู้ป่วยระยะกลาง (Intermediate Care) ด้านการแพทย์แผนไทยและการแพทย์ทางเลือก · กรมการแพทย์แผนไทยฯ มี.ค. 2564</p>
+      <a href="https://drive.google.com/file/d/1kYM8tQP-hL8B9v5J1FBOO9-CbfZQ8ap_/view?usp=sharing" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="margin-top:10px;text-decoration:none">📄 เปิดคู่มือฉบับเต็ม (PDF)</a>
+      <div id="guideBody" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <div class="foot">น้องมายด์ทำให้พี่จี 💚 · ข้อมูลทั้งหมดเก็บในเครื่องของท่านเอง (localStorage) · เปิดออฟไลน์และแชร์ผ่าน Line ได้</div>
+</div>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modalBox"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ DATA MODEL ============ */
+const LS_KEY='imc_ttm_cases_v1';
+let cases=JSON.parse(localStorage.getItem(LS_KEY)||'[]');
+let currentId=null;
+let detailTab='profile';
+
+const save=()=>localStorage.setItem(LS_KEY,JSON.stringify(cases));
+const uid=()=>'c'+Date.now()+Math.random().toString(36).slice(2,6);
+const todayISO=()=>new Date().toISOString().slice(0,10);
+const fmtDate=d=>{ if(!d)return '-'; const x=new Date(d); return x.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'}); };
+
+/* Barthel ADL (20 คะแนน) — ภาคผนวก ค. */
+const ADL=[
+ {k:'feed',q:'1. รับประทานอาหาร (เมื่อเตรียมสำรับไว้ให้)',o:[[0,'ตักอาหารเข้าปากเองไม่ได้'],[1,'ตักเองได้แต่ต้องมีคนช่วย'],[2,'ตักอาหารช่วยตัวเองได้เป็นปกติ']]},
+ {k:'groom',q:'2. ล้างหน้า หวีผม แปรงฟัน โกนหนวด',o:[[0,'ต้องการความช่วยเหลือ'],[1,'ทำได้เอง (รวมที่เตรียมอุปกรณ์ไว้ให้)']]},
+ {k:'transfer',q:'3. ลุกนั่งจากที่นอน/ย้ายตัวขึ้นเก้าอี้',o:[[0,'นั่งไม่ได้ หรือต้องใช้ 2 คนช่วยยก'],[1,'ต้องการความช่วยเหลืออย่างมาก'],[2,'ต้องการความช่วยเหลือบ้าง (พยุงเล็กน้อย)'],[3,'ทำได้เอง']]},
+ {k:'toilet',q:'4. การใช้ห้องน้ำ (ถ่ายอุจจาระ/ปัสสาวะ)',o:[[0,'ช่วยตัวเองไม่ได้'],[1,'ทำเองได้บ้าง (ทำความสะอาดตัวเองได้)'],[2,'ช่วยเหลือตัวเองได้ดี']]},
+ {k:'mobility',q:'5. การเคลื่อนที่ภายในห้อง/บ้าน',o:[[0,'เคลื่อนที่ไปไหนไม่ได้'],[1,'ใช้รถเข็นช่วยตัวเองได้ (ไม่ต้องมีคนเข็น)'],[2,'เดิน/เคลื่อนที่โดยมีคนช่วย'],[3,'เดิน/เคลื่อนที่ได้เอง']]},
+ {k:'dress',q:'6. การสวมใส่เสื้อผ้า',o:[[0,'ต้องมีคนสวมใส่ให้'],[1,'ช่วยตัวเองได้ ~50%'],[2,'ช่วยตัวเองได้ดี (ติดกระดุม รูดซิปได้)']]},
+ {k:'stairs',q:'7. การขึ้นลงบันได 1 ชั้น',o:[[0,'ไม่สามารถทำได้'],[1,'ต้องการคนช่วย'],[2,'ขึ้นลงได้เอง']]},
+ {k:'bath',q:'8. การอาบน้ำ',o:[[0,'ต้องมีคนช่วยหรือทำให้'],[1,'อาบน้ำได้เอง']]},
+ {k:'bowel',q:'9. การกลั้นอุจจาระ (1 สัปดาห์ที่ผ่านมา)',o:[[0,'กลั้นไม่ได้ / ต้องสวนอุจจาระเสมอ'],[1,'กลั้นไม่ได้บางครั้ง (≤1 ครั้ง/สัปดาห์)'],[2,'กลั้นได้เป็นปกติ']]},
+ {k:'bladder',q:'10. การกลั้นปัสสาวะ (1 สัปดาห์ที่ผ่านมา)',o:[[0,'กลั้นไม่ได้ / ใส่สายสวนดูแลเองไม่ได้'],[1,'กลั้นไม่ได้บางครั้ง (≤1 ครั้ง/วัน)'],[2,'กลั้นได้เป็นปกติ']]}
+];
+function adlLevel(s){
+  if(s<=4)return ['ภาวะพึ่งพาโดยสมบูรณ์','b-red'];
+  if(s<=8)return ['ภาวะพึ่งพารุนแรง','b-red'];
+  if(s<=11)return ['ภาวะพึ่งพาปานกลาง','b-amber'];
+  return ['พึ่งพาเล็กน้อย / ไม่พึ่งพา','b-green'];
+}
+function adlSum(o){o=o||{};return ADL.reduce((t,it)=>t+(o[it.k]??0),0);}
+
+/* Motor power grade explanation */
+const MP_GRADES=[
+ '0 = อัมพาต ไม่มีการเคลื่อนไหวเลย','1 = ใยกล้ามเนื้อหดตัวได้ ขยับปลายนิ้วได้เล็กน้อย',
+ '2 = เคลื่อนไหวแนวราบกับพื้นได้','3 = ยกได้ แต่ต้านแรงกดไม่ได้',
+ '4 = ยกได้ ต้านแรงกดได้น้อยกว่าปกติ','5 = กำลังปกติ'];
+const MP_TIMES=['แรกรับ','D/C','1 เดือน','3 เดือน','6 เดือน'];
+const MP_PARTS=['แขนขวา','แขนซ้าย','ขาขวา','ขาซ้าย'];
+
+/* Screening criteria — เกณฑ์คัดกรอง */
+const SCREEN=[
+ 'แพทย์วินิจฉัยเป็น Stroke / TBI / SCI พ้นวิกฤติ อาการคงที่ และแพทย์เจ้าของไข้อนุญาตให้ฟื้นฟู',
+ 'คะแนน ADL < 15 หรือ > 15 แต่มี multiple impairment',
+ 'SBP ไม่เกิน 185 มม.ปรอท และ DBP ไม่เกิน 110 มม.ปรอท',
+ 'ผล DTX อยู่ในช่วง 70 – 250 มก.%'
+];
+/* Referral red flags — เกณฑ์ปรึกษา/ส่งต่อ */
+const REDFLAG=[
+ 'ความดันโลหิตสูงขึ้น','ซึม / อ่อนเพลีย','จิตใจหดหู่','กินไม่ได้ / นอนไม่หลับ',
+ 'ชัก','อาเจียนพุ่ง','ควบคุมการขับถ่ายไม่ได้','ไข้ ≥ 38°C',
+ 'หอบ หายใจลำบาก','หน้าซีด ริมฝีปาก/หน้าเขียว','ชีพจรเบา',
+ 'เจาะคอ เสมหะเหนียว/เยอะ O₂ Sat < 95%'
+];
+/* TTM treatment options — การรักษาด้านแผนไทย */
+const TX=[
+ ['herb','💊 ยาสมุนไพร'],['massage','🤲 นวดไทย / หัตถบำบัด'],
+ ['compress','🌿 ประคบสมุนไพร'],['steam','♨️ อบสมุนไพร'],['teach','👨‍👩‍👧 สอนญาติ/ฝึกที่บ้าน'],
+ ['pt','🏋️ กายภาพบำบัด (สหวิชาชีพ)'],['acu','📍 ฝังเข็ม (แพทย์แผนจีน)']
+];
+
+/* ============ NAV ============ */
+document.querySelectorAll('[data-nav]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.nav)));
+function go(v){
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.querySelectorAll('.nav button[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===v));
+  window.scrollTo(0,0);
+  if(v==='dash')renderDash();
+  if(v==='list')renderList();
+  if(v==='guide')renderGuide();
+}
+
+/* ============ DASHBOARD ============ */
+function renderDash(){
+  const total=cases.length;
+  const active=cases.filter(c=>c.status==='active'||!c.status).length;
+  const dc=cases.filter(c=>c.status==='discharged').length;
+  const ref=cases.filter(c=>c.status==='referred').length;
+  document.getElementById('stats').innerHTML=`
+    ${tile('t','ผู้ป่วยทั้งหมด',total,'ในระบบ','👥')}
+    ${tile('a','กำลังรักษา/ฟื้นฟู',active,'active case','🔄')}
+    ${tile('g','จำหน่ายแล้ว',dc,'discharged','🎯')}
+    ${tile('r','ส่งต่อแผนปัจจุบัน',ref,'referred','↗️')}`;
+  // KPI1: Barthel improved >=1 level among dc/followed
+  const evalCases=cases.filter(c=>c.status==='discharged'||(c.follow&&c.follow.some(f=>f.adl!=='')));
+  let improved=0;
+  evalCases.forEach(c=>{ if(barthelImproved(c))improved++; });
+  const p1=evalCases.length?Math.round(improved/evalCases.length*100):0;
+  document.getElementById('kpi1pct').textContent=p1+'%';
+  document.getElementById('kpi1bar').style.width=p1+'%';
+  document.getElementById('kpi1detail').textContent=`ดีขึ้น ${improved} ราย จากผู้ที่ประเมินผลแล้ว ${evalCases.length} ราย`;
+  // KPI2: followed 6 months
+  const f6=cases.filter(c=>c.follow&&c.follow.find(f=>f.t==='6 เดือน'&&f.adl!=='')).length;
+  const p2=total?Math.round(f6/total*100):0;
+  document.getElementById('kpi2pct').textContent=p2+'%';
+  document.getElementById('kpi2bar').style.width=p2+'%';
+  document.getElementById('kpi2detail').textContent=`ติดตามครบ 6 เดือน ${f6} ราย จาก ${total} ราย`;
+  // recent
+  const recent=[...cases].sort((a,b)=>b.updated-a.updated).slice(0,5);
+  document.getElementById('recentCases').innerHTML = recent.length?recent.map(caseRow).join(''):emptyBox('ยังไม่มีเคส','เริ่มสร้างเคสแรกได้เลยค่ะ');
+}
+const tile=(c,l,n,s,i)=>`<div class="stat ${c}"><div class="ic">${i}</div><div class="lbl">${l}</div><div class="num">${n}</div><div class="sub">${s}</div></div>`;
+
+function barthelImproved(c){
+  const base=c.adlBase?adlSum(c.adlBase):null;
+  const scores=[];
+  if(c.adlDC&&Object.keys(c.adlDC).length)scores.push(adlSum(c.adlDC));
+  (c.follow||[]).forEach(f=>{ if(f.adl!==''&&f.adl!=null)scores.push(+f.adl); });
+  if(base==null||!scores.length)return false;
+  const latest=scores[scores.length-1];
+  return latest-base>=1;
+}
+
+/* ============ CASE LIST ============ */
+function statusBadge(c){
+  const s=c.status||'active';
+  if(s==='discharged')return '<span class="badge b-green">✓ จำหน่ายแล้ว</span>';
+  if(s==='referred')return '<span class="badge b-red">↗ ส่งต่อ</span>';
+  return '<span class="badge b-teal">🔄 กำลังรักษา</span>';
+}
+function caseRow(c){
+  const adl=c.adlBase?adlSum(c.adlBase):null;
+  const [lvl,cls]= adl!=null?adlLevel(adl):['ยังไม่ประเมิน','b-gray'];
+  const init=(c.name||'?').trim().charAt(0)||'?';
+  return `<div class="caserow" onclick="openCase('${c.id}')">
+    <div class="avatar">${init}</div>
+    <div class="info">
+      <b>${c.name||'(ไม่ระบุชื่อ)'}</b>
+      <div class="meta">
+        <span>HN ${c.hn||'-'}</span>
+        <span>•</span><span>${c.sex||'-'} ${c.age?c.age+' ปี':''}</span>
+        <span>•</span><span>${c.dx||'-'}</span>
+        <span>•</span><span>${c.setting||'-'}</span>
+      </div>
+      <div class="tagline">
+        ${statusBadge(c)}
+        ${adl!=null?`<span class="badge ${cls}">ADL ${adl}/20 · ${lvl}</span>`:'<span class="badge b-gray">ยังไม่ประเมิน ADL</span>'}
+      </div>
+    </div>
+    <div class="right"><div class="hint">อัปเดต ${fmtDate(new Date(c.updated).toISOString())}</div></div>
+  </div>`;
+}
+function renderList(){
+  const q=(document.getElementById('searchBox').value||'').toLowerCase();
+  const fs=document.getElementById('filterStatus').value;
+  let rows=[...cases].sort((a,b)=>b.updated-a.updated);
+  if(fs)rows=rows.filter(c=>(c.status||'active')===fs);
+  if(q)rows=rows.filter(c=>(c.name+' '+c.hn+' '+c.dx).toLowerCase().includes(q));
+  document.getElementById('fullList').innerHTML=rows.length?rows.map(caseRow).join(''):emptyBox('ไม่พบเคส','ลองปรับคำค้นหา หรือสร้างเคสใหม่');
+}
+const emptyBox=(t,s)=>`<div class="empty"><div class="e">🗂️</div><b style="font-size:17px">${t}</b><p>${s}</p><br><button class="btn btn-primary" onclick="newCase()">➕ สร้างเคสใหม่</button></div>`;
+
+/* ============ NEW / OPEN CASE ============ */
+function newCase(){
+  const c={id:uid(),created:Date.now(),updated:Date.now(),status:'active',
+    name:'',sex:'ชาย',age:'',hn:'',an:'',dob:'',dx:'Stroke',setting:'ผู้ป่วยใน (Intermediate bed)',
+    admitDate:todayISO(),txStartDate:'',
+    bp:'',pulse:'',rr:'',temp:'',o2:'',dtx:'',bmi:'',
+    cc:'',hpi:'',pmh:'',dxModern:'',
+    screen:{}, redflag:{},
+    adlBase:{}, adlDC:{},
+    motor:{}, /* motor[time][part]=grade */
+    thatChar:'',thatDob:'',paralysisType:'',heel:'',pulseNote:'',painScore:'',ttmDx:'',ttmProblem:'',ttmGoal:'',
+    tx:{}, txMassageLine:'',txFocus:'',txCaution:'',txHerb:'',txNote:'',
+    records:[], /* {date,tx,eval,by,note} */
+    follow:[ {t:'1 เดือน',date:'',adl:'',note:''},{t:'3 เดือน',date:'',adl:'',note:''},{t:'6 เดือน',date:'',adl:'',note:''} ],
+    dischargeDate:'',dischargeNote:'',dischargeResult:''
+  };
+  cases.push(c);save();
+  openCase(c.id);
+}
+function openCase(id){currentId=id;detailTab='profile';go('detail');renderDetail();}
+function cur(){return cases.find(c=>c.id===currentId);}
+function update(fn){const c=cur();fn(c);c.updated=Date.now();save();}
+
+/* ============ DETAIL VIEW ============ */
+function renderDetail(){
+  const c=cur(); if(!c)return;
+  const adl=adlSum(c.adlBase);
+  const [lvl,cls]=adlLevel(adl);
+  const init=(c.name||'?').trim().charAt(0)||'?';
+  const steps=['คัดกรอง','ประเมิน','วางแผน','รักษา','ประเมินผล','จำหน่าย/ติดตาม'];
+  const prog=caseProgress(c);
+  document.getElementById('view-detail').innerHTML=`
+   <div class="no-print" style="margin-bottom:14px"><button class="btn btn-ghost btn-sm" data-nav="list" onclick="go('list')">← กลับรายการเคส</button></div>
+   <div class="card pad">
+     <div class="detail-head">
+       <div class="av">${init}</div>
+       <div style="flex:1;min-width:200px">
+         <h2 style="font-size:22px">${c.name||'(เคสใหม่)'}</h2>
+         <div class="meta hint" style="display:flex;gap:12px;flex-wrap:wrap">
+           <span>HN ${c.hn||'-'}</span><span>${c.sex} ${c.age?c.age+' ปี':''}</span><span>${c.dx}</span><span>${c.setting}</span>
+         </div>
+         <div class="tagline">${statusBadge(c)}<span class="badge ${cls}">ADL แรกรับ ${adl}/20 · ${lvl}</span></div>
+       </div>
+       <div class="no-print" style="display:flex;gap:8px;flex-wrap:wrap">
+         <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ พิมพ์/PDF</button>
+         <button class="btn btn-danger btn-sm" onclick="delCase()">🗑️ ลบ</button>
+       </div>
+     </div>
+     <div class="stepper">${steps.map((s,i)=>`<div class="step ${i<prog?'done':''} ${i===prog?'cur':''}"><div class="dot">${i<prog?'✓':i+1}</div><span>${s}</span></div>`).join('')}</div>
+   </div>
+
+   <div class="subnav no-print" style="margin-top:18px">
+     ${[['profile','👤 ข้อมูล/คัดกรอง'],['assess','📋 ประเมินแผนไทย'],['adl','📊 Barthel ADL'],['motor','💪 Motor Power'],['plan','🗓️ แผน/รักษา'],['records','📝 บันทึกรายวัน'],['follow','📈 ติดตาม/จำหน่าย']]
+       .map(t=>`<button class="${detailTab===t[0]?'active':''}" onclick="setTab('${t[0]}')">${t[1]}</button>`).join('')}
+   </div>
+   <div id="tabBody"></div>`;
+  document.querySelectorAll('#view-detail [data-nav]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.nav)));
+  renderTab();
+}
+function setTab(t){detailTab=t;document.querySelectorAll('.subnav button').forEach(b=>b.classList.remove('active'));event.target.classList.add('active');renderTab();}
+
+function caseProgress(c){
+  let p=0;
+  if(passScreen(c))p=1;
+  if(Object.keys(c.adlBase).length||c.painScore||c.thatChar)p=Math.max(p,2);
+  if(Object.values(c.tx||{}).some(v=>v)||c.ttmGoal)p=Math.max(p,3);
+  if((c.records||[]).length)p=Math.max(p,4);
+  if((c.follow||[]).some(f=>f.adl!=='')||Object.keys(c.adlDC).length)p=Math.max(p,5);
+  if(c.status==='discharged'||c.status==='referred')p=6;
+  return p;
+}
+function passScreen(c){return SCREEN.every((_,i)=>c.screen[i]);}
+
+function renderTab(){
+  const c=cur();const b=document.getElementById('tabBody');
+  if(detailTab==='profile')b.innerHTML=tabProfile(c);
+  if(detailTab==='assess')b.innerHTML=tabAssess(c);
+  if(detailTab==='adl')b.innerHTML=tabADL(c);
+  if(detailTab==='motor')b.innerHTML=tabMotor(c);
+  if(detailTab==='plan')b.innerHTML=tabPlan(c);
+  if(detailTab==='records')b.innerHTML=tabRecords(c);
+  if(detailTab==='follow')b.innerHTML=tabFollow(c);
+}
+
+/* ---- field helpers ---- */
+function fld(label,key,type,opts){
+  const c=cur();const v=c[key]??'';
+  if(type==='select')return `<div class="field"><label>${label}</label><select onchange="update(x=>x.${key}=this.value);">${opts.map(o=>`<option ${v===o?'selected':''}>${o}</option>`).join('')}</select></div>`;
+  if(type==='textarea')return `<div class="field"><label>${label}</label><textarea oninput="update(x=>x.${key}=this.value)">${v}</textarea></div>`;
+  return `<div class="field"><label>${label}</label><input type="${type||'text'}" value="${v}" oninput="update(x=>x.${key}=this.value)"></div>`;
+}
+
+/* ---- TAB: Profile + Screening ---- */
+function tabProfile(c){
+  return `<div class="acc open"><div class="acc-head" onclick="tog(this)"><div class="n">i</div><h3>ข้อมูลผู้ป่วย</h3><div class="chev">▸</div></div>
+    <div class="acc-body">
+      <div class="frow c2">${fld('ชื่อ–สกุล','name')}${fld('HN','hn')}</div>
+      <div class="frow c4">${fld('เพศ','sex','select',['ชาย','หญิง'])}${fld('อายุ (ปี)','age','number')}${fld('AN','an')}${fld('วันเกิด','dob','date')}</div>
+      <div class="frow c2">${fld('การวินิจฉัย','dx','select',['Stroke','TBI','SCI'])}${fld('รูปแบบบริการ','setting','select',['ผู้ป่วยใน (Intermediate bed)','ผู้ป่วยใน (Intermediate ward)','ผู้ป่วยนอก (OPD)','เยี่ยมบ้าน (ชุมชน)'])}</div>
+      <div class="frow c2">${fld('วันที่ Admit','admitDate','date')}${fld('วันที่เริ่มหัตถการ','txStartDate','date')}</div>
+    </div></div>
+
+    <div class="acc open"><div class="acc-head" onclick="tog(this)"><div class="n">✚</div><h3>สัญญาณชีพแรกรับ</h3><div class="chev">▸</div></div>
+    <div class="acc-body">
+      <div class="frow c4">${fld('BP (มม.ปรอท)','bp')}${fld('ชีพจร /นาที','pulse')}${fld('RR /นาที','rr')}${fld('อุณหภูมิ °C','temp')}</div>
+      <div class="frow c4">${fld('O₂ Sat %','o2')}${fld('DTX มก.%','dtx')}${fld('BMI','bmi')}${fld('Pain Score (0–10)','painScore')}</div>
+    </div></div>
+
+    <div class="acc open"><div class="acc-head" onclick="tog(this)"><div class="n">1</div><h3>อาการ & ประวัติ</h3><div class="chev">▸</div></div>
+    <div class="acc-body">
+      ${fld('อาการสำคัญ (CC)','cc','textarea')}
+      ${fld('อาการปัจจุบัน (HPI)','hpi','textarea')}
+      ${fld('ประวัติการเจ็บป่วยในอดีต (PMH)','pmh','textarea')}
+      ${fld('การวินิจฉัยทางการแพทย์แผนปัจจุบัน','dxModern','textarea')}
+    </div></div>
+
+    <div class="acc open"><div class="acc-head" onclick="tog(this)"><div class="n">2</div><h3>เกณฑ์คัดกรอง (Screening)</h3><div class="chev">▸</div></div>
+    <div class="acc-body">
+      <p class="hint" style="margin-bottom:10px">ติ๊กเมื่อผู้ป่วย<b>ผ่าน</b>แต่ละเกณฑ์ — ต้องครบทุกข้อจึงเข้าโปรแกรม IMC</p>
+      ${SCREEN.map((s,i)=>`<label class="chk ${c.screen[i]?'on':''}" style="margin-bottom:8px" onclick="event.preventDefault();toggleScreen(${i})"><input type="checkbox" ${c.screen[i]?'checked':''}><span>${s}</span></label>`).join('')}
+      <div id="gateBox">${gateHTML(c)}</div>
+    </div></div>
+
+    <div class="acc"><div class="acc-head" onclick="tog(this)"><div class="n">⚠</div><h3>เกณฑ์ปรึกษา/ส่งต่อแพทย์แผนปัจจุบัน</h3><div class="chev">▸</div></div>
+    <div class="acc-body">
+      <p class="hint" style="margin-bottom:10px">ติ๊กอาการที่ตรวจพบ หากพบข้อใดข้อหนึ่ง ควรปรึกษา/ส่งต่อ</p>
+      <div class="grid g2">${REDFLAG.map((s,i)=>`<label class="chk red ${c.redflag[i]?'on':''}" onclick="event.preventDefault();toggleFlag(${i})"><input type="checkbox" ${c.redflag[i]?'checked':''}><span>${s}</span></label>`).join('')}</div>
+      <div id="flagBox">${flagHTML(c)}</div>
+    </div></div>`;
+}
+function toggleScreen(i){update(c=>c.screen[i]=!c.screen[i]);const c=cur();
+  document.querySelectorAll('#tabBody .acc')[3].querySelectorAll('.chk')[i].classList.toggle('on',c.screen[i]);
+  document.querySelectorAll('#tabBody .acc')[3].querySelectorAll('.chk input')[i].checked=c.screen[i];
+  document.getElementById('gateBox').innerHTML=gateHTML(c);}
+function toggleFlag(i){update(c=>c.redflag[i]=!c.redflag[i]);const c=cur();
+  const accs=document.querySelectorAll('#tabBody .acc');const acc=accs[accs.length-1];
+  acc.querySelectorAll('.chk')[i].classList.toggle('on',c.redflag[i]);
+  acc.querySelectorAll('.chk input')[i].checked=c.redflag[i];
+  document.getElementById('flagBox').innerHTML=flagHTML(c);}
+function gateHTML(c){
+  return passScreen(c)
+    ?`<div class="gate pass"><span class="ic">✅</span><div>ผ่านเกณฑ์คัดกรอง — เข้ารับการฟื้นฟูด้วยการแพทย์แผนไทย (Admit IMC)</div></div>`
+    :`<div class="gate fail"><span class="ic">📋</span><div>ยังไม่ครบทุกเกณฑ์ — หากไม่ผ่าน ให้ฟื้นฟูที่ OPD และส่งต่อชุมชน ติดตามผล 1, 3, 6 เดือน</div></div>`;
+}
+function flagHTML(c){
+  const n=Object.values(c.redflag).filter(Boolean).length;
+  return n? `<div class="alertbox"><span>🚨</span><div>พบสัญญาณเตือน ${n} ข้อ — ควรปรึกษา/ส่งต่อแพทย์แผนปัจจุบัน และพิจารณาเปลี่ยนสถานะเป็น "ส่งต่อ"</div></div>`:'';
+}
+
+/* ---- TAB: TTM Assessment ---- */
+function tabAssess(c){
+  return `<div class="card pad">
+    <h3 style="margin-bottom:4px">การตรวจประเมินทางการแพทย์แผนไทย</h3>
+    <p class="hint" style="margin-bottom:14px">สมุฏฐานวินิจฉัย · วิเคราะห์ธาตุ · ตรวจกำลังลม-เส้น · วางแผนตั้งตำรับยาและการนวด</p>
+    <div class="frow c2">${fld('ธาตุเจ้าเรือนตามบุคลิก','thatChar')}${fld('ธาตุเจ้าเรือนตามวัน/เดือน/ปีเกิด','thatDob')}</div>
+    <div class="frow c2">
+      ${fld('ชนิดอัมพาต','paralysisType','select',['','อัมพาตชนิดอ่อน (ตอบสนองนวดเร็ว)','อัมพาตชนิดแข็ง (ตอบสนองนวดช้า)','อัมพาตครึ่งซีก','อัมพาตครึ่งท่อน','อัมพาตเฉพาะแขน','อัมพาตเฉพาะขา','อัมพาตทั้งตัว'])}
+      ${fld('วัดส้นเท้า','heel','select',['','ข้างที่เป็นสั้น → อัมพาตชนิดแข็ง','ข้างที่เป็นยาว → อัมพาตชนิดอ่อน'])}
+    </div>
+    ${fld('จับชีพจรมือ-เท้า / ลมเบื้องสูง-ต่ำ','pulseNote','textarea')}
+    ${fld('ปัญหาที่พบจากการตรวจ (วิเคราะห์ธาตุ/เส้น/กำลัง)','ttmProblem','textarea')}
+    ${fld('การวินิจฉัยโรคทางการแพทย์แผนไทย','ttmDx','textarea')}
+    ${fld('เป้าหมายในการรักษา','ttmGoal','textarea')}
+    <div class="hint" style="background:var(--teal-ll);border-radius:10px;padding:12px;margin-top:6px">
+      💡 <b>เกร็ดจากคู่มือ:</b> ส้นเท้าสั้น = อัมพาตชนิดแข็ง ตอบสนองต่อการนวดช้า · ส้นเท้ายาว = อัมพาตชนิดอ่อน ตอบสนองต่อการนวดเร็ว · ถ้าชีพจรมือ-เท้าไม่สมดุล (ลมเบื้องสูง-ต่ำไม่สมดุล) ให้นวดท้องปรับสมดุลก่อน
+    </div>
+  </div>`;
+}
+
+/* ---- TAB: Barthel ADL ---- */
+function tabADL(c){
+  const phase = c._adlPhase||'base';
+  const data = phase==='base'?c.adlBase:c.adlDC;
+  const sum=adlSum(data);const[lvl,cls]=adlLevel(sum);
+  return `<div class="card pad">
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap" class="no-print">
+      <button class="btn btn-sm ${phase==='base'?'btn-primary':'btn-ghost'}" onclick="setADLphase('base')">ประเมินแรกรับ</button>
+      <button class="btn btn-sm ${phase==='dc'?'btn-primary':'btn-ghost'}" onclick="setADLphase('dc')">ประเมินจำหน่าย (D/C)</button>
+    </div>
+    <div class="scorebox">
+      <div><div class="big">${sum}</div><div class="of">/20</div></div>
+      <div style="flex:1">
+        <span class="badge ${cls}" style="font-size:13px">${lvl}</span>
+        <div class="hint" style="margin-top:6px">${phase==='base'?'คะแนนแรกรับ (เกณฑ์เข้า IMC: ADL < 15)':'คะแนนเมื่อจำหน่าย'}</div>
+      </div>
+    </div>
+    ${phase==='dc'&&Object.keys(c.adlBase).length?`<div class="hint" style="margin:6px 0 12px">📈 เปรียบเทียบ: แรกรับ ${adlSum(c.adlBase)} → จำหน่าย ${sum} (${sum-adlSum(c.adlBase)>=0?'+':''}${sum-adlSum(c.adlBase)} คะแนน)</div>`:''}
+    ${ADL.map(it=>biHTML(it,data,phase)).join('')}
+  </div>`;
+}
+function setADLphase(p){const c=cur();c._adlPhase=p;renderTab();}
+function biHTML(it,data,phase){
+  const v=data[it.k];
+  return `<div class="bi"><div class="q">${it.q}</div><div class="opts">
+    ${it.o.map(o=>`<label class="opt ${v===o[0]?'sel':''}"><input type="radio" name="${phase}_${it.k}" ${v===o[0]?'checked':''} onchange="setADL('${it.k}',${o[0]})"><span class="sc">${o[0]}</span><span>${o[1]}</span></label>`).join('')}
+  </div></div>`;
+}
+function setADL(k,val){const c=cur();const phase=c._adlPhase||'base';
+  update(x=>{(phase==='base'?x.adlBase:x.adlDC)[k]=val;});renderTab();}
+
+/* ---- TAB: Motor Power ---- */
+function tabMotor(c){
+  return `<div class="card pad">
+    <h3 style="margin-bottom:4px">แบบประเมิน Motor Power</h3>
+    <p class="hint" style="margin-bottom:14px">บันทึกเกรดกำลังกล้ามเนื้อ (0–5) ตามช่วงเวลา</p>
+    <div style="overflow-x:auto">
+    <table class="mtable"><thead><tr><th>ส่วนที่ประเมิน</th>${MP_TIMES.map(t=>`<th>${t}</th>`).join('')}</tr></thead>
+    <tbody>${MP_PARTS.map(part=>`<tr><td>${part}</td>${MP_TIMES.map(t=>{
+      const key=t+'|'+part;const v=(c.motor[key]??'');
+      return `<td><select onchange="update(x=>x.motor['${key}']=this.value)"><option value=""${v===''?' selected':''}>–</option>${[0,1,2,3,4,5].map(g=>`<option ${v==g?'selected':''}>${g}</option>`).join('')}</select></td>`;
+    }).join('')}</tr>`).join('')}</tbody></table></div>
+    <div class="hint" style="background:var(--teal-ll);border-radius:10px;padding:12px;margin-top:14px">
+      <b>เกณฑ์เกรด:</b><br>${MP_GRADES.join('<br>')}
+    </div>
+  </div>`;
+}
+
+/* ---- TAB: Plan / Treatment ---- */
+function tabPlan(c){
+  return `<div class="card pad">
+    <h3 style="margin-bottom:4px">แผนการรักษาและฟื้นฟู (ทีมสหวิชาชีพ)</h3>
+    <p class="hint" style="margin-bottom:14px">เลือกวิธีการรักษาที่ใช้กับผู้ป่วยรายนี้</p>
+    <div class="grid g2" style="margin-bottom:16px">
+      ${TX.map(t=>`<label class="chk ${c.tx[t[0]]?'on':''}" onclick="event.preventDefault();toggleTx('${t[0]}')"><input type="checkbox" ${c.tx[t[0]]?'checked':''}><span>${t[1]}</span></label>`).join('')}
+    </div>
+    <div class="frow c2">
+      ${fld('แนวการนวด','txMassageLine','textarea')}
+      ${fld('จุดเน้น','txFocus','textarea')}
+    </div>
+    <div class="frow c2">
+      ${fld('ข้อห้าม/ข้อควรระวังการนวด','txCaution','textarea')}
+      ${fld('ตำรับยาสมุนไพรที่ใช้','txHerb','textarea')}
+    </div>
+    ${fld('หมายเหตุแผนการรักษา / เป้าหมายระยะสั้น-ยาว','txNote','textarea')}
+    <div class="hint" style="background:var(--gold-l);border-radius:10px;padding:12px;margin-top:6px">
+      ♨️ <b>โปรแกรมฟื้นฟูตามคู่มือ:</b> ผู้ป่วยใน ≥ 3 ชม./วัน × 5 วัน/สัปดาห์ (ward) หรือ ≥ 1 ชม./วัน × 3 วัน/สัปดาห์ (bed) · OPD ≥ 45 นาที/ครั้ง ≥ 24 ครั้งใน 6 เดือน · เยี่ยมบ้าน 2 ครั้ง/เดือน
+    </div>
+  </div>`;
+}
+function toggleTx(k){update(c=>c.tx[k]=!c.tx[k]);const c=cur();
+  const labels=document.querySelectorAll('#tabBody .grid .chk');
+  TX.forEach((t,i)=>{labels[i].classList.toggle('on',c.tx[t[0]]);labels[i].querySelector('input').checked=c.tx[t[0]];});}
+
+/* ---- TAB: Daily Records ---- */
+function tabRecords(c){
+  return `<div class="card pad">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div><h3>บันทึกการรักษารายวัน</h3><p class="hint">ภาคผนวก ช. · บันทึกการรักษาและประเมินผลแต่ละครั้ง</p></div>
+      <button class="btn btn-primary btn-sm no-print" onclick="addRecord()">➕ เพิ่มบันทึก</button>
+    </div>
+    <div>${(c.records||[]).length?c.records.map((r,i)=>recHTML(r,i)).join(''):'<div class="empty"><div class="e">📝</div><p>ยังไม่มีบันทึกการรักษา</p></div>'}</div>
+  </div>`;
+}
+function recHTML(r,i){
+  return `<div class="rec"><div class="rh"><b>${fmtDate(r.date)} · ผู้ปฏิบัติ: ${r.by||'-'}</b><button class="btn-sm no-print" style="color:var(--red)" onclick="delRecord(${i})">ลบ</button></div>
+    <div class="rb"><b>การรักษา:</b> ${r.tx||'-'}\n<b>ประเมินผล:</b> ${r.eval||'-'}${r.note?'\n<b>หมายเหตุ:</b> '+r.note:''}</div></div>`;
+}
+function addRecord(){
+  modal(`<h3 style="margin-bottom:14px">➕ เพิ่มบันทึกการรักษา</h3>
+    <div class="field"><label>วัน/เดือน/ปี</label><input type="date" id="r_date" value="${todayISO()}"></div>
+    <div class="field"><label>การรักษา (นวด/ประคบ/อบ/ยา/ฝึก)</label><textarea id="r_tx"></textarea></div>
+    <div class="field"><label>ประเมินผลการรักษา</label><textarea id="r_eval"></textarea></div>
+    <div class="frow c2"><div class="field"><label>ผู้ปฏิบัติ</label><input id="r_by"></div><div class="field"><label>หมายเหตุ</label><input id="r_note"></div></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="saveRecord()">บันทึก</button></div>`);
+}
+function saveRecord(){
+  const r={date:val('r_date'),tx:val('r_tx'),eval:val('r_eval'),by:val('r_by'),note:val('r_note')};
+  update(c=>c.records.unshift(r));closeModal();renderTab();toast('บันทึกแล้ว ✓');
+}
+function delRecord(i){update(c=>c.records.splice(i,1));renderTab();}
+
+/* ---- TAB: Follow-up + Discharge ---- */
+function tabFollow(c){
+  return `<div class="card pad">
+    <h3 style="margin-bottom:4px">การติดตามผล (COC 1 / 3 / 6 เดือน)</h3>
+    <p class="hint" style="margin-bottom:14px">ส่งต่อ COC และติดตามผลการรักษาทุกราย</p>
+    ${(c.follow||[]).map((f,i)=>`<div class="acc open"><div class="acc-head" style="cursor:default"><div class="n">${i+1}</div><h3>ติดตาม ${f.t}</h3>${f.adl!==''?`<span class="badge b-teal">ADL ${f.adl}</span>`:''}</div>
+      <div class="acc-body"><div class="frow c3">
+        <div class="field"><label>วันที่ประเมิน</label><input type="date" value="${f.date}" oninput="update(x=>x.follow[${i}].date=this.value)"></div>
+        <div class="field"><label>ADL (0–20)</label><input type="number" min="0" max="20" value="${f.adl}" oninput="update(x=>x.follow[${i}].adl=this.value);refreshFollowBadge()"></div>
+        <div class="field"><label>หมายเหตุ</label><input value="${f.note}" oninput="update(x=>x.follow[${i}].note=this.value)"></div>
+      </div></div></div>`).join('')}
+  </div>
+
+  <div class="card pad" style="margin-top:16px">
+    <h3 style="margin-bottom:4px">การจำหน่ายผู้ป่วย</h3>
+    <p class="hint" style="margin-bottom:14px">ทีมสหวิชาชีพวางแผนจำหน่ายร่วมกัน</p>
+    <div class="frow c2">
+      <div class="field"><label>สถานะเคส</label><select onchange="update(x=>x.status=this.value);toast('อัปเดตสถานะ ✓');renderDetail()">
+        <option value="active" ${(!c.status||c.status==='active')?'selected':''}>🔄 กำลังรักษา/ฟื้นฟู</option>
+        <option value="discharged" ${c.status==='discharged'?'selected':''}>✓ จำหน่ายแล้ว</option>
+        <option value="referred" ${c.status==='referred'?'selected':''}>↗ ส่งต่อแผนปัจจุบัน</option>
+      </select></div>
+      <div class="field"><label>วันที่จำหน่าย</label><input type="date" value="${c.dischargeDate}" oninput="update(x=>x.dischargeDate=this.value)"></div>
+    </div>
+    <div class="field"><label>ผลการรักษา/สรุป</label><select onchange="update(x=>x.dischargeResult=this.value)">
+      ${['','ดีขึ้น','คงเดิม','ส่งต่อเนื่องจากภาวะแทรกซ้อน','ครบโปรแกรม ส่งต่อ Long Term Care'].map(o=>`<option ${c.dischargeResult===o?'selected':''}>${o}</option>`).join('')}
+    </select></div>
+    ${fld('หมายเหตุการจำหน่าย','dischargeNote','textarea')}
+  </div>`;
+}
+function refreshFollowBadge(){/* badge updates on next full render */}
+
+/* ============ UTIL ============ */
+function tog(el){el.parentElement.classList.toggle('open');}
+function val(id){return document.getElementById(id).value;}
+function delCase(){
+  modal(`<h3 style="margin-bottom:8px">ลบเคสนี้?</h3><p class="hint" style="margin-bottom:16px">การลบไม่สามารถกู้คืนได้ ข้อมูลผู้ป่วยรายนี้จะหายถาวร</p>
+   <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-danger" onclick="confirmDel()">ลบถาวร</button></div>`);
+}
+function confirmDel(){cases=cases.filter(c=>c.id!==currentId);save();closeModal();go('list');toast('ลบเคสแล้ว');}
+function modal(html){document.getElementById('modalBox').innerHTML=html;document.getElementById('modalBg').classList.add('show');}
+function closeModal(){document.getElementById('modalBg').classList.remove('show');}
+document.getElementById('modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal();});
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2200);}
+
+/* ---- Export / Import ---- */
+function exportAll(){
+  const blob=new Blob([JSON.stringify(cases,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='IMC_cases_'+todayISO()+'.json';a.click();toast('สำรองข้อมูลแล้ว ⬇️');
+}
+function importAll(e){
+  const f=e.target.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{try{const d=JSON.parse(rd.result);if(Array.isArray(d)){
+    const ids=new Set(cases.map(c=>c.id));d.forEach(c=>{if(!ids.has(c.id))cases.push(c);});
+    save();renderList();toast('นำเข้าสำเร็จ '+d.length+' เคส ⬆️');
+  }}catch(err){toast('ไฟล์ไม่ถูกต้อง');}};rd.readAsText(f);
+  e.target.value='';
+}
+
+/* ---- Guide ---- */
+function renderGuide(){
+  document.getElementById('guideBody').innerHTML=`
+  <div class="grid g2">
+    <div class="card pad"><h3 style="color:var(--teal-d)">🎯 เกณฑ์คัดกรอง</h3><ul class="hint" style="margin:8px 0 0 18px;line-height:1.8">${SCREEN.map(s=>'<li>'+s+'</li>').join('')}</ul></div>
+    <div class="card pad"><h3 style="color:var(--red)">⚠️ เกณฑ์ปรึกษา/ส่งต่อ</h3><div class="hint" style="margin-top:8px">${REDFLAG.join(' · ')}</div></div>
+    <div class="card pad"><h3 style="color:var(--teal-d)">📊 แปลผล Barthel ADL (20)</h3><ul class="hint" style="margin:8px 0 0 18px;line-height:1.8">
+      <li>0–4: ภาวะพึ่งพาโดยสมบูรณ์</li><li>5–8: ภาวะพึ่งพารุนแรง</li><li>9–11: ภาวะพึ่งพาปานกลาง</li><li>12–20: พึ่งพาเล็กน้อย/ไม่พึ่งพา</li></ul></div>
+    <div class="card pad"><h3 style="color:var(--teal-d)">💪 Motor Power</h3><div class="hint" style="margin-top:8px;line-height:1.7">${MP_GRADES.join('<br>')}</div></div>
+    <div class="card pad" style="grid-column:1/-1"><h3 style="color:var(--teal-d)">🔄 ขั้นตอนการดูแล (CPG flow)</h3>
+      <div class="hint" style="margin-top:8px;line-height:1.9">1) คัดกรอง → ผ่านเกณฑ์ → Admit IMC · 2) ตรวจประเมินอาการแผนไทย · 3) กำหนดเป้าหมาย วางแผนโดยทีมสหวิชาชีพ · 4) รักษา/ฟื้นฟู (ยาสมุนไพร · หัตถบำบัด · อบสมุนไพร · สอนญาติ · กายภาพ · ฝังเข็ม) · 5) ประเมินผลโดยสหวิชาชีพ · 6) วางแผนจำหน่ายร่วมกัน → ส่งต่อ COC ติดตาม 1, 3, 6 เดือนทุกราย · ตัวชี้วัด: Barthel ดีขึ้น ≥1 ระดับ ร้อยละ 70</div></div>
+  </div>`;
+}
+
+/* ============ INIT ============ */
+renderDash();
+</script>
+</body>
+</html>
