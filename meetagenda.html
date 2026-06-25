@@ -2,10 +2,17 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
+<meta name="theme-color" content="#2D6A4F">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ระเบียบวาระ">
+<link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22%E0%B8%A3%E0%B8%B0%E0%B9%80%E0%B8%9A%E0%B8%B5%E0%B8%A2%E0%B8%9A%E0%B8%A7%E0%B8%B2%E0%B8%A3%E0%B8%B2%E0%B8%81%E0%B8%B2%E0%B8%A3%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%8A%E0%B8%B8%E0%B8%A1%22%2C%22short_name%22%3A%22%E0%B8%A7%E0%B8%B2%E0%B8%A3%E0%B8%B0%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230d1a12%22%2C%22theme_color%22%3A%22%232D6A4F%22%7D">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระเบียบวาระการประชุม — กลุ่มงานการแพทย์แผนไทยฯ</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@400;600;700&display=swap');
 
@@ -793,6 +800,249 @@
     font-weight: 700;
     margin: 1px;
   }
+
+  /* ─── RECORDING TAB ─── */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse-ring {
+    0%   { transform: scale(1);   opacity: 1; }
+    100% { transform: scale(1.8); opacity: 0; }
+  }
+  .rec-pulse {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: #e74c3c;
+    position: relative;
+  }
+  .rec-pulse::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: #e74c3c;
+    animation: pulse-ring 1.2s ease-out infinite;
+  }
+  .timestamp-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--surface);
+    border-radius: 6px;
+    margin-bottom: 4px;
+    font-size: 12.5px;
+    border: 1px solid var(--border);
+  }
+  .timestamp-item .ts-time {
+    font-family: 'Prompt', sans-serif;
+    font-weight: 700;
+    color: var(--jade);
+    min-width: 48px;
+  }
+  .summary-content {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    font-size: 14px;
+    line-height: 1.9;
+    white-space: pre-wrap;
+  }
+  #btnStartRec { transition: all 0.2s; }
+  #btnStartRec.recording {
+    background: #e74c3c;
+    animation: none;
+  }
+
+  /* AUTO-SAVE INDICATOR */
+  .save-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;transition:all .3s;}
+  .save-badge.saved{background:rgba(255,255,255,.14);color:rgba(255,255,255,.8);}
+  .save-badge.saving{background:rgba(255,210,0,.22);color:#ffe066;}
+  .save-badge.unsaved{background:rgba(231,76,60,.22);color:#ffaaaa;}
+  @keyframes savePulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .saving-anim{animation:savePulse .7s ease infinite;}
+  /* PRINT */
+  @media print{
+    .topbar,.sidebar,.topbar-actions,.modal-overlay,.toast,
+    .btn,.add-item-btn,.item-actions,.summary-bar{display:none!important;}
+    .app-layout{display:block!important;}
+    .main{padding:0!important;}
+    #tab-agenda,#tab-personnel,#tab-info,#tab-record{display:none!important;}
+    #tab-preview{display:block!important;}
+    .preview-doc{border:none!important;box-shadow:none!important;padding:0!important;max-width:100%!important;}
+    body{background:#fff!important;}
+    .preview-group-title,.preview-meta-grid{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    @page{margin:18mm 15mm;}
+  }
+  /* DOC CHIP */
+  .doc-chip{display:inline-flex;align-items:center;gap:3px;background:#EBF5FB;color:#1A6B9A;border-radius:5px;padding:2px 7px;font-size:11.5px;font-weight:600;border:1px solid #bee3f8;}
+  .doc-list-item{display:flex;align-items:center;gap:7px;padding:6px 9px;background:var(--surface);border-radius:7px;border:1px solid var(--border);margin-bottom:5px;}
+  .doc-list-item input{flex:1;border:none;background:transparent;font-size:13px;outline:none;}
+
+  /* ── PRIORITY 2 CSS ── */
+  /* Dashboard */
+  .dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+  .dash-card{background:#fff;border-radius:12px;padding:16px 18px;border:1px solid var(--border);box-shadow:var(--shadow);text-align:center;}
+  .dash-card-num{font-family:'Prompt',sans-serif;font-size:28px;font-weight:700;color:var(--jade);}
+  .dash-card-label{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+  .dash-card.gold .dash-card-num{color:var(--gold);}
+  .dash-card.blue .dash-card-num{color:var(--blue);}
+  .dash-card.purple .dash-card-num{color:var(--purple);}
+  .dash-card.red .dash-card-num{color:var(--red);}
+  .progress-bar-wrap{background:var(--border);border-radius:20px;height:8px;overflow:hidden;margin-top:4px;}
+  .progress-bar-fill{height:100%;border-radius:20px;transition:width .6s ease;}
+  /* Countdown Timer */
+  .timer-modal{background:#fff;border-radius:20px;width:100%;max-width:420px;box-shadow:0 24px 64px rgba(0,0,0,.25);animation:modalIn .22s ease;overflow:hidden;}
+  .timer-display{font-family:'Prompt',sans-serif;font-size:72px;font-weight:700;text-align:center;letter-spacing:.04em;padding:16px 0 8px;line-height:1;}
+  .timer-display.green{color:var(--jade);}
+  .timer-display.orange{color:#e67e22;}
+  .timer-display.red{color:#e74c3c;animation:timerPulse .5s ease infinite;}
+  @keyframes timerPulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .timer-agenda-name{font-size:14px;color:var(--ink-soft);text-align:center;padding:0 20px 12px;min-height:20px;}
+  .timer-controls{display:flex;gap:10px;padding:14px 20px 20px;justify-content:center;}
+  .timer-progress{height:6px;background:var(--border);}
+  .timer-progress-fill{height:100%;background:var(--jade);transition:width .5s linear;}
+  /* Minutes tab */
+  .minutes-agenda-block{border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;}
+  .minutes-agenda-header{padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;}
+  .minutes-agenda-header:hover{opacity:.9;}
+  .minutes-field{padding:12px 14px;border-top:1px solid var(--border);}
+  .minutes-field label{font-size:11.5px;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:5px;}
+  .minutes-field textarea{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 11px;font-family:'Sarabun',sans-serif;font-size:13.5px;resize:vertical;min-height:72px;outline:none;transition:border-color .18s;}
+  .minutes-field textarea:focus{border-color:var(--jade);box-shadow:0 0 0 3px rgba(64,145,108,.09);}
+  .resolution-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;cursor:pointer;border:2px solid transparent;transition:all .15s;}
+  .resolution-tag.noted{background:#D5F5E3;color:#1E8449;border-color:#27AE60;}
+  .resolution-tag.resolved{background:#FDEBD0;color:#A04000;border-color:var(--gold);}
+  .resolution-tag.deferred{background:#EBF5FB;color:#1A6B9A;border-color:var(--blue);}
+  .resolution-tag.unresolved{background:#fdecea;color:#c0392b;border-color:#e74c3c;}
+  /* History */
+  .history-card{background:#fff;border-radius:10px;border:1px solid var(--border);padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all .18s;display:flex;align-items:flex-start;gap:12px;}
+  .history-card:hover{border-color:var(--jade);box-shadow:var(--shadow);}
+  .history-icon{font-size:28px;flex-shrink:0;}
+  .history-meta{flex:1;}
+  .history-name{font-weight:700;font-size:14px;color:var(--ink);}
+  .history-sub{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+  .history-actions{display:flex;gap:6px;flex-shrink:0;}
+
+  /* ── PRIORITY 3 CSS ── */
+
+  /* Dark Mode */
+  body.dark-mode {
+    --jade:#52B788;--jade-mid:#74C69D;--jade-light:#95D5B2;--jade-pale:#1B4332;--jade-bg:#132a1e;
+    --gold:#F4D03F;--gold-pale:#2d2500;--ink:#e8f5ec;--ink-mid:#b7d5c0;--ink-soft:#7aab8a;
+    --border:#2d4a38;--surface:#0f1f17;--white:#1a2e22;background:#0d1a12;
+  }
+  body.dark-mode .topbar{background:linear-gradient(135deg,#0f2d1e,#1a4730);}
+  body.dark-mode .sidebar{background:#0f1f17;border-color:#2d4a38;}
+  body.dark-mode .panel{background:#0f1f17;border-color:#2d4a38;}
+  body.dark-mode .panel-header{background:linear-gradient(135deg,#132a1e,#0f1f17);}
+  body.dark-mode input,body.dark-mode select,body.dark-mode textarea{background:#132a1e;color:#e8f5ec;border-color:#2d4a38;}
+  body.dark-mode .agenda-item{background:#0f1f17;}
+  body.dark-mode .agenda-item:hover{background:#132a1e;}
+  body.dark-mode .modal{background:#0f1f17;}
+  body.dark-mode .modal-footer{background:#0d1a12;}
+  body.dark-mode .add-item-btn{background:#132a1e;color:#52B788;}
+  body.dark-mode .preview-doc{background:#0f1f17;color:#e8f5ec;}
+  body.dark-mode .preview-meta-grid{background:#132a1e;}
+  body.dark-mode .group-body{background:#0d1a12;}
+  body.dark-mode .person-option:hover{background:#132a1e;}
+  body.dark-mode .person-dropdown{background:#0f1f17;}
+  body.dark-mode .doc-list-item{background:#132a1e;}
+  body.dark-mode .type-option{border-color:#2d4a38;color:#7aab8a;}
+  body.dark-mode .history-card{background:#0f1f17;border-color:#2d4a38;}
+  body.dark-mode .minutes-agenda-block{border-color:#2d4a38;}
+  body.dark-mode .minutes-field{background:#0f1f17;}
+  body.dark-mode .minutes-field textarea{background:#132a1e;color:#e8f5ec;}
+  body.dark-mode .csv-dropzone{background:#132a1e;}
+  body.dark-mode .timer-modal{background:#0f1f17;}
+  body.dark-mode ::-webkit-scrollbar-thumb{background:#2d4a38;}
+
+  /* Dark toggle button */
+  .dark-toggle {
+    background: rgba(255,255,255,.12);
+    border: 1.5px solid rgba(255,255,255,.25);
+    color: white;
+    border-radius: 20px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all .2s;
+  }
+  .dark-toggle:hover{background:rgba(255,255,255,.22);}
+
+  /* PIN Lock Screen */
+  .pin-overlay {
+    position: fixed; inset: 0;
+    background: linear-gradient(135deg,#0d1a12 0%,#1B4332 100%);
+    z-index: 9999;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-family: 'Sarabun',sans-serif;
+  }
+  .pin-box {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 20px;
+    padding: 40px 44px;
+    text-align: center;
+    width: 340px;
+    backdrop-filter: blur(8px);
+  }
+  .pin-display {
+    font-family: 'Prompt',sans-serif;
+    font-size: 32px;
+    letter-spacing: .3em;
+    color: #fff;
+    margin: 16px 0;
+    min-height: 44px;
+  }
+  .pin-grid {
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .pin-btn {
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 12px;
+    color: #fff;
+    font-family: 'Prompt',sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    padding: 14px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .pin-btn:hover{background:rgba(255,255,255,.22);}
+  .pin-btn:active{transform:scale(.95);}
+  .pin-error{color:#ff7675;font-size:13px;margin-top:8px;min-height:20px;}
+
+  /* QR Modal */
+  .qr-modal-inner{background:#fff;border-radius:16px;width:340px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.25);animation:modalIn .22s ease;}
+  body.dark-mode .qr-modal-inner{background:#0f1f17;}
+  #qrCanvas{display:block;margin:16px auto;}
+
+  /* Email Modal */
+  .email-preview-box{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:16px;font-size:13.5px;line-height:1.8;white-space:pre-wrap;max-height:320px;overflow-y:auto;font-family:'Sarabun',sans-serif;}
+
+  /* PWA Install banner */
+  .pwa-banner{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:linear-gradient(135deg,var(--jade),var(--jade-mid));
+    color:#fff; padding:12px 20px; border-radius:12px;
+    display:flex; align-items:center; gap:12px;
+    box-shadow:0 8px 24px rgba(45,106,79,.4);
+    z-index:500; font-size:13.5px; font-weight:600;
+    animation:slideUp .4s ease; cursor:pointer;
+  }
+  @keyframes slideUp{from{transform:translateX(-50%) translateY(80px);opacity:0}to{transform:translateX(-50%);opacity:1}}
+  .pwa-banner-close{background:rgba(255,255,255,.2);border:none;color:#fff;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:14px;}
+
 </style>
 </head>
 <body>
@@ -805,8 +1055,16 @@
   </div>
   <div class="topbar-actions">
     <button class="btn btn-outline btn-sm" onclick="switchTab('preview')">👁 ดูตัวอย่าง</button>
-    <button class="btn btn-outline btn-sm" onclick="openCSVModal()">📥 นำเข้า CSV</button>
+    <span class="save-badge saved" id="saveBadge">✅ บันทึกแล้ว</span>
+    <button class="btn btn-outline btn-sm" onclick="openCSVModal()">📥 CSV</button>
+    <button class="btn btn-outline btn-sm" onclick="saveProjectFile()">💾 Save</button>
+    <button class="btn btn-outline btn-sm" onclick="document.getElementById('loadFileInput').click()">📂 Load</button>
+    <input type="file" id="loadFileInput" accept=".json" style="display:none" onchange="loadProjectFile(this)">
+    <button class="btn btn-outline btn-sm" onclick="printDirect()">🖨 พิมพ์</button>
     <button class="btn btn-gold btn-sm" onclick="exportPDF()">📄 ส่งออก PDF</button>
+    <button class="btn btn-outline btn-sm" onclick="openQRModal()">📱 QR</button>
+    <button class="btn btn-outline btn-sm" onclick="openEmailModal()">📧 Email</button>
+    <button class="dark-toggle" onclick="toggleDarkMode()" id="darkToggleBtn">🌙 Dark</button>
     <button class="btn btn-white btn-sm" onclick="resetAll()">🔄 ใหม่</button>
   </div>
 </div>
@@ -814,11 +1072,20 @@
 <div class="app-layout">
   <!-- SIDEBAR -->
   <div class="sidebar">
+    <div style="padding:10px 18px 6px;">
+      <div style="font-size:11px;font-weight:700;color:var(--jade);">📁 โปรเจกต์ปัจจุบัน</div>
+      <div id="sidebarProjectName" style="font-size:12px;color:var(--ink-soft);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">ยังไม่ได้ตั้งชื่อ</div>
+    </div>
+    <div class="sidebar-divider" style="margin-top:4px;"></div>
     <div class="sidebar-section">
       <div class="sidebar-label">เมนูหลัก</div>
       <div class="sidebar-item active" onclick="switchTab('info');setActive(this)">📋 ข้อมูลการประชุม</div>
       <div class="sidebar-item" onclick="switchTab('personnel');setActive(this)">👥 คณะบุคคล</div>
       <div class="sidebar-item" onclick="switchTab('agenda');setActive(this)">📝 วาระการประชุม <span class="badge" id="agendaCountBadge">0</span></div>
+      <div class="sidebar-item" onclick="switchTab('record');setActive(this)">🎙 บันทึก &amp; สรุป</div>
+      <div class="sidebar-item" onclick="switchTab('minutes');setActive(this)">✍️ รายงานการประชุม</div>
+      <div class="sidebar-item" onclick="switchTab('dashboard');setActive(this)">📊 Dashboard</div>
+      <div class="sidebar-item" onclick="switchTab('history');setActive(this)">📅 ประวัติการประชุม</div>
       <div class="sidebar-item" onclick="switchTab('preview');setActive(this)">👁 ดูตัวอย่าง</div>
     </div>
     <div class="sidebar-divider"></div>
@@ -839,6 +1106,14 @@
         <div id="totalTimeDisplay" style="font-family:'Prompt',sans-serif;font-size:24px;font-weight:700;color:var(--jade);">0 นาที</div>
         <div id="endTimeDisplay" style="font-size:12px;color:var(--ink-soft);margin-top:2px;"></div>
       </div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">เครื่องมือ</div>
+      <div class="sidebar-item" onclick="openEmailModal()">📧 Draft Email วาระ</div>
+      <div class="sidebar-item" onclick="openQRModal()">📱 QR Code แชร์</div>
+      <div class="sidebar-item" onclick="toggleDarkMode()">🌙 Dark / Light Mode</div>
+      <div class="sidebar-item" onclick="openPINSettings()">🔐 ตั้งค่า PIN Lock</div>
     </div>
   </div>
 
@@ -991,8 +1266,9 @@
       <div id="agendaGroupsContainer"></div>
 
       <!-- Add Agenda Floating -->
-      <div style="text-align:center;margin-top:16px;">
+      <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center;">
         <button class="btn btn-jade" onclick="openAddModal()">+ เพิ่มวาระใหม่</button>
+        <button class="btn" style="background:#fff;color:var(--jade);border:1.5px solid var(--jade);" onclick="openTimerModal()">⏱ เปิด Countdown Timer</button>
       </div>
     </div>
 
@@ -1009,6 +1285,423 @@
         </div>
       </div>
       <div id="previewContainer"></div>
+    </div>
+
+    <!-- TAB: RECORD -->
+    <div class="tab-content" id="tab-record">
+      <div class="page-title">🎙 บันทึกเสียงและสรุปการประชุม</div>
+      <div class="page-subtitle">อัดเสียงแบบ Real-time → ถอดข้อความอัตโนมัติ → ให้ AI สรุปเป็นรายงานประชุม</div>
+
+      <!-- API Key panel -->
+      <div class="panel" id="apiKeyPanel">
+        <div class="panel-header">
+          <div class="panel-title">🔑 ตั้งค่า Anthropic API Key</div>
+          <button class="btn btn-sm" style="background:var(--gold-pale);color:var(--gold);border:1px solid #f0d060;" onclick="toggleApiKeyPanel()">ซ่อน/แสดง</button>
+        </div>
+        <div class="panel-body" id="apiKeyBody">
+          <div style="background:var(--gold-pale);border:1px solid #f0d060;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px;">
+            ⚠️ API Key จะเก็บเฉพาะใน browser session นี้เท่านั้น ไม่ได้ส่งออกไปที่ใด นอกจาก Anthropic API โดยตรง
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-end;">
+            <div class="field-group" style="flex:1;">
+              <label>Anthropic API Key</label>
+              <input type="password" id="apiKeyInput" placeholder="sk-ant-..." autocomplete="off">
+            </div>
+            <button class="btn btn-jade" onclick="saveApiKey()">💾 บันทึก Key</button>
+          </div>
+          <div id="apiKeyStatus" style="margin-top:8px;font-size:12.5px;"></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+
+        <!-- LEFT: Recording -->
+        <div>
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">🎙 บันทึกเสียง</div>
+              <div id="recStatusBadge" style="font-size:12px;padding:3px 10px;border-radius:20px;background:var(--border);color:var(--ink-soft);font-weight:600;">พร้อมใช้งาน</div>
+            </div>
+            <div class="panel-body">
+              <!-- Waveform -->
+              <div id="waveformWrap" style="height:60px;background:var(--surface);border-radius:10px;border:1.5px solid var(--border);margin-bottom:16px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;">
+                <canvas id="waveCanvas" style="width:100%;height:60px;"></canvas>
+                <div id="waveIdle" style="position:absolute;font-size:13px;color:var(--ink-soft);">กดปุ่มบันทึกเพื่อเริ่ม</div>
+              </div>
+
+              <!-- Timer -->
+              <div style="text-align:center;margin-bottom:16px;">
+                <div id="recTimer" style="font-family:'Prompt',sans-serif;font-size:32px;font-weight:700;color:var(--jade);letter-spacing:0.05em;">00:00</div>
+                <div id="recTimerLabel" style="font-size:12px;color:var(--ink-soft);">ระยะเวลาบันทึก</div>
+              </div>
+
+              <!-- Controls -->
+              <div style="display:flex;gap:10px;justify-content:center;margin-bottom:16px;">
+                <button class="btn btn-jade" id="btnStartRec" onclick="startRecording()" style="flex:1;justify-content:center;">🔴 เริ่มบันทึก</button>
+                <button class="btn btn-danger" id="btnStopRec" onclick="stopRecording()" disabled style="flex:1;justify-content:center;opacity:0.5;">⏹ หยุด</button>
+                <button class="btn btn-sm" id="btnPauseRec" onclick="pauseRecording()" disabled style="background:var(--gold-pale);color:var(--gold);opacity:0.5;">⏸</button>
+              </div>
+
+              <!-- Agenda selector for current item -->
+              <div class="field-group" style="margin-bottom:10px;">
+                <label>วาระที่กำลังประชุม (ระบุเพื่อแยกช่วง)</label>
+                <select id="recCurrentAgenda" style="width:100%;">
+                  <option value="">-- เลือกวาระ (ไม่บังคับ) --</option>
+                </select>
+              </div>
+              <button class="btn btn-sm btn-jade" onclick="markAgendaTimestamp()" style="width:100%;">📌 ปักหมุดวาระนี้ ณ เวลาปัจจุบัน</button>
+
+              <!-- Timestamps -->
+              <div id="timestampList" style="margin-top:12px;max-height:140px;overflow-y:auto;"></div>
+            </div>
+          </div>
+
+          <!-- Audio playback -->
+          <div class="panel" id="audioPlaybackPanel" style="display:none;">
+            <div class="panel-header"><div class="panel-title">🔊 ฟังเสียงที่บันทึก</div></div>
+            <div class="panel-body">
+              <audio id="audioPlayback" controls style="width:100%;border-radius:8px;"></audio>
+              <div style="display:flex;gap:8px;margin-top:10px;">
+                <button class="btn btn-sm btn-jade" onclick="downloadAudio()">⬇️ ดาวน์โหลดไฟล์เสียง</button>
+                <button class="btn btn-sm" style="background:var(--red);color:white;" onclick="clearRecording()">🗑 ลบเสียง</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Transcript & Summary -->
+        <div>
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">📝 ข้อความที่ถอดได้ (Transcript)</div>
+              <div style="display:flex;gap:6px;">
+                <button class="btn btn-sm" style="background:var(--jade-pale);color:var(--jade);" onclick="clearTranscript()">🗑 ล้าง</button>
+                <button class="btn btn-sm btn-jade" onclick="copyTranscript()">📋 Copy</button>
+              </div>
+            </div>
+            <div class="panel-body" style="padding:0;">
+              <!-- Live transcript display -->
+              <div id="liveTranscript" style="padding:12px;min-height:80px;background:var(--jade-bg);border-bottom:1px solid var(--border);font-size:13.5px;color:var(--jade);font-style:italic;line-height:1.6;">
+                <span style="color:var(--ink-soft);">ข้อความ Real-time จะแสดงที่นี่ขณะบันทึก...</span>
+              </div>
+              <textarea id="transcriptText"
+                placeholder="ข้อความการประชุมทั้งหมดจะปรากฏที่นี่&#10;สามารถพิมพ์เพิ่มหรือแก้ไขได้โดยตรง"
+                style="width:100%;min-height:220px;border:none;border-radius:0;resize:vertical;font-size:13.5px;line-height:1.7;padding:14px;background:white;"></textarea>
+              <div style="padding:10px 14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--ink-soft);">
+                <span id="transcriptWordCount">0 คำ / 0 ตัวอักษร</span>
+                <span id="recLangNote">🌐 Chrome รองรับภาษาไทยดีที่สุด</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI Summary -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">🤖 AI สรุปรายงานการประชุม</div>
+            </div>
+            <div class="panel-body">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+                <div class="field-group">
+                  <label>รูปแบบการสรุป</label>
+                  <select id="summaryStyle">
+                    <option value="formal">📄 รายงานการประชุมราชการ</option>
+                    <option value="brief">📝 สรุปสั้นกระชับ</option>
+                    <option value="action">✅ Action Items เท่านั้น</option>
+                    <option value="full">📋 รายละเอียดครบถ้วน</option>
+                  </select>
+                </div>
+                <div class="field-group">
+                  <label>ภาษาที่สรุป</label>
+                  <select id="summaryLang">
+                    <option value="th">🇹🇭 ภาษาไทย</option>
+                    <option value="en">🇬🇧 English</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field-group" style="margin-bottom:12px;">
+                <label>คำแนะนำเพิ่มเติมให้ AI (ไม่บังคับ)</label>
+                <input type="text" id="summaryHint" placeholder="เช่น เน้นมติที่ประชุม และผู้รับผิดชอบ">
+              </div>
+              <button class="btn btn-jade" id="btnSummarize" onclick="summarizeWithAI()" style="width:100%;justify-content:center;padding:12px;">
+                ✨ ให้ AI สรุปรายงานการประชุม
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary Result -->
+      <div class="panel" id="summaryResultPanel" style="display:none;">
+        <div class="panel-header">
+          <div class="panel-title">📋 รายงานการประชุม (AI Generated)</div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-sm" style="background:var(--jade-pale);color:var(--jade);" onclick="copySummary()">📋 Copy</button>
+            <button class="btn btn-sm btn-jade" onclick="exportSummaryPDF()">📄 Export PDF</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div id="aiThinking" style="display:none;text-align:center;padding:20px;">
+            <div style="font-size:28px;margin-bottom:8px;animation:spin 2s linear infinite;display:inline-block;">⚙️</div>
+            <div style="font-size:14px;color:var(--jade);font-weight:600;">AI กำลังวิเคราะห์และสรุปการประชุม...</div>
+            <div id="aiThinkingDetail" style="font-size:12px;color:var(--ink-soft);margin-top:4px;"></div>
+          </div>
+          <div id="summaryOutput" style="font-size:14px;line-height:1.9;color:var(--ink);white-space:pre-wrap;font-family:'Sarabun',sans-serif;"></div>
+        </div>
+      </div>
+    </div><!-- end tab-record -->
+    <!-- TAB: MINUTES -->
+    <div class="tab-content" id="tab-minutes">
+      <div class="page-title">✍️ รายงานการประชุม (Minutes)</div>
+      <div class="page-subtitle">บันทึกมติ ผู้รับผิดชอบ และกำหนดส่งของแต่ละวาระ</div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">📋 ข้อมูลการประชุม</div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-sm btn-jade" onclick="exportMinutesPDF()">📄 Export PDF</button>
+            <button class="btn btn-sm" style="background:var(--jade-pale);color:var(--jade);" onclick="saveMinutesToHistory()">💾 บันทึกในประวัติ</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:13.5px;">
+            <div><span style="font-weight:600;color:var(--jade);">การประชุม:</span><br><span id="min_name">-</span></div>
+            <div><span style="font-weight:600;color:var(--jade);">วันที่:</span><br><span id="min_date">-</span></div>
+            <div><span style="font-weight:600;color:var(--jade);">ประธาน:</span><br><span id="min_chair">-</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">📝 เปิดประชุม</div>
+        </div>
+        <div class="panel-body">
+          <div class="field-group" style="margin-bottom:12px;">
+            <label>เวลาเปิดประชุมจริง</label>
+            <input type="time" id="min_open_time" style="max-width:180px;">
+          </div>
+          <div class="field-group">
+            <label>ข้อความเปิดประชุม</label>
+            <textarea id="min_open_text" placeholder="เช่น ประธานกล่าวเปิดประชุม และแจ้งวัตถุประสงค์ของการประชุมในวันนี้..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div id="minutesAgendaBlocks"></div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">🔒 ปิดประชุม</div></div>
+        <div class="panel-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+            <div class="field-group">
+              <label>เวลาปิดประชุมจริง</label>
+              <input type="time" id="min_close_time">
+            </div>
+            <div class="field-group">
+              <label>นัดประชุมครั้งถัดไป</label>
+              <input type="date" id="min_next_date">
+            </div>
+          </div>
+          <div class="field-group">
+            <label>ข้อความปิดประชุม</label>
+            <textarea id="min_close_text" placeholder="เช่น ประธานขอบคุณผู้เข้าร่วมประชุมทุกท่าน และปิดการประชุมเวลา..."></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: DASHBOARD -->
+    <div class="tab-content" id="tab-dashboard">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+        <div>
+          <div class="page-title">📊 Dashboard ภาพรวมการประชุม</div>
+          <div class="page-subtitle">สรุปสถิติ ความคืบหน้า และ Action Items ทั้งหมด</div>
+        </div>
+        <button class="btn btn-jade" onclick="refreshDashboard()">🔄 รีเฟรช</button>
+      </div>
+      <!-- KPI Cards -->
+      <div class="dash-grid" id="dashKpiCards"></div>
+      <!-- Progress by group -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px;">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">📊 สัดส่วนวาระตามประเภท</div></div>
+          <div class="panel-body" id="dashTypeChart"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">⏱ การใช้เวลาแต่ละกลุ่ม</div></div>
+          <div class="panel-body" id="dashTimeChart"></div>
+        </div>
+      </div>
+      <!-- Action Items -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">✅ Action Items ทั้งหมด</div>
+          <span id="dashActionCount" style="font-size:12px;color:var(--ink-soft);"></span>
+        </div>
+        <div class="panel-body" id="dashActionItems" style="padding:0;"></div>
+      </div>
+      <!-- Line Notify -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">🔔 ส่งสรุปผ่าน LINE Notify</div></div>
+        <div class="panel-body">
+          <div style="background:var(--gold-pale);border:1px solid #f0d060;border-radius:8px;padding:11px 14px;margin-bottom:12px;font-size:13px;">
+            💡 ต้องมี <strong>LINE Notify Token</strong> จาก <a href="https://notify-bot.line.me" target="_blank" style="color:var(--blue);">notify-bot.line.me</a> — เก็บในหน่วยความจำ session เท่านั้น
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:10px;">
+            <div class="field-group" style="flex:1;">
+              <label>LINE Notify Token</label>
+              <input type="password" id="lineNotifyToken" placeholder="วาง Token ที่นี่...">
+            </div>
+            <button class="btn btn-jade" onclick="sendLineNotify()">📤 ส่ง LINE</button>
+          </div>
+          <div id="lineNotifyStatus" style="font-size:12.5px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: HISTORY -->
+    <div class="tab-content" id="tab-history">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+        <div>
+          <div class="page-title">📅 ประวัติการประชุม</div>
+          <div class="page-subtitle">รายการประชุมที่บันทึกไว้ทั้งหมด — คลิกเพื่อโหลดกลับมาใช้งาน</div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="clearAllHistory()">🗑 ล้างทั้งหมด</button>
+      </div>
+      <div id="historyList"></div>
+      <div id="historyEmpty" style="text-align:center;padding:48px;color:var(--ink-soft);">
+        <div style="font-size:48px;margin-bottom:12px;">📭</div>
+        <div style="font-size:15px;font-weight:600;">ยังไม่มีประวัติการประชุม</div>
+        <div style="font-size:13px;margin-top:6px;">กด "💾 บันทึกในประวัติ" ในหน้า Minutes เพื่อเพิ่ม</div>
+      </div>
+    </div>
+
+  </div><!-- end .main -->
+</div><!-- end .app-layout -->
+
+
+
+<!-- QR CODE MODAL -->
+<div class="modal-overlay" id="qrModal">
+  <div class="qr-modal-inner">
+    <div style="background:linear-gradient(135deg,var(--jade),var(--jade-mid));padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-radius:16px 16px 0 0;">
+      <span style="font-family:'Prompt',sans-serif;font-size:15px;font-weight:600;color:#fff;">📱 QR Code แชร์ไฟล์</span>
+      <button class="modal-close" onclick="document.getElementById('qrModal').classList.remove('open')">✕</button>
+    </div>
+    <div style="padding:24px;text-align:center;">
+      <canvas id="qrCanvas" width="220" height="220"></canvas>
+      <div style="font-size:13px;color:var(--ink-soft);margin-top:12px;">QR Code สำหรับแชร์ URL หน้านี้</div>
+      <div id="qrUrlDisplay" style="font-size:11px;color:var(--ink-soft);margin-top:4px;word-break:break-all;padding:0 16px;"></div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:center;">
+        <button class="btn btn-jade btn-sm" onclick="downloadQR()">⬇️ ดาวน์โหลด QR</button>
+        <button class="btn btn-sm" style="background:var(--jade-pale);color:var(--jade);" onclick="copyCurrentURL()">📋 Copy URL</button>
+      </div>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
+        <div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:8px;">หรือกรอก URL ที่ต้องการ</div>
+        <div style="display:flex;gap:7px;">
+          <input type="text" id="qrCustomUrl" placeholder="https://..." style="flex:1;font-size:12.5px;">
+          <button class="btn btn-jade btn-sm" onclick="generateQRFromInput()">สร้าง QR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EMAIL MODAL -->
+<div class="modal-overlay" id="emailModal">
+  <div class="modal" style="max-width:620px;">
+    <div class="modal-header">
+      <span class="modal-title">📧 Draft Email วาระการประชุม</span>
+      <button class="modal-close" onclick="document.getElementById('emailModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div class="field-group">
+          <label>รูปแบบ Email</label>
+          <select id="emailStyle" onchange="generateEmailDraft()">
+            <option value="formal">📄 ทางการ (ราชการ)</option>
+            <option value="friendly">😊 กันเอง (ทีม)</option>
+            <option value="reminder">🔔 แจ้งเตือนล่วงหน้า</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>ภาษา</label>
+          <select id="emailLang" onchange="generateEmailDraft()">
+            <option value="th">🇹🇭 ภาษาไทย</option>
+            <option value="en">🇬🇧 English</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-group" style="margin-bottom:10px;">
+        <label>Subject Line</label>
+        <input type="text" id="emailSubject" style="font-size:13.5px;">
+      </div>
+      <div class="field-group" style="margin-bottom:10px;">
+        <label>เนื้อหา Email (แก้ไขได้)</label>
+        <textarea id="emailBody" style="min-height:260px;font-size:13px;line-height:1.7;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" style="background:var(--jade-pale);color:var(--jade);" onclick="copyEmailDraft()">📋 Copy ทั้งหมด</button>
+      <button class="btn btn-jade" onclick="openMailto()">📤 เปิด Mail App</button>
+    </div>
+  </div>
+</div>
+
+<!-- PIN SETTINGS MODAL -->
+<div class="modal-overlay" id="pinSettingsModal">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header">
+      <span class="modal-title">🔐 ตั้งค่า PIN Lock</span>
+      <button class="modal-close" onclick="document.getElementById('pinSettingsModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--jade-bg);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px;">
+        🔒 PIN จะถูกเก็บใน localStorage ของ browser นี้ ใช้ป้องกันคนอื่นเปิดใช้งานโดยไม่ได้รับอนุญาต
+      </div>
+      <div id="pinCurrentStatus" style="margin-bottom:14px;font-size:13.5px;"></div>
+      <div class="field-group" style="margin-bottom:10px;">
+        <label>PIN ใหม่ (4-6 หลัก)</label>
+        <input type="password" id="pinNewInput" maxlength="6" placeholder="กรอก PIN ใหม่" inputmode="numeric">
+      </div>
+      <div class="field-group" style="margin-bottom:14px;">
+        <label>ยืนยัน PIN</label>
+        <input type="password" id="pinConfirmInput" maxlength="6" placeholder="กรอก PIN อีกครั้ง" inputmode="numeric">
+      </div>
+      <div id="pinSetStatus" style="font-size:12.5px;margin-bottom:10px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-jade" onclick="savePIN()" style="flex:1;justify-content:center;">💾 บันทึก PIN</button>
+        <button class="btn btn-danger" onclick="clearPIN()">🗑 ลบ PIN</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PIN LOCK SCREEN (injected dynamically) -->
+
+<!-- MODAL: Countdown Timer -->
+<div class="modal-overlay" id="timerModal">
+  <div class="timer-modal">
+    <div style="background:linear-gradient(135deg,var(--jade),var(--jade-mid));padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-radius:20px 20px 0 0;">
+      <span style="font-family:'Prompt',sans-serif;font-size:15px;font-weight:600;color:#fff;">⏱ Countdown Timer</span>
+      <button class="modal-close" onclick="closeTimerModal()">✕</button>
+    </div>
+    <div class="timer-progress"><div class="timer-progress-fill" id="timerProgressFill" style="width:100%;"></div></div>
+    <div class="timer-display green" id="timerDisplay">00:00</div>
+    <div class="timer-agenda-name" id="timerAgendaName">เลือกวาระด้านล่าง</div>
+    <div style="padding:0 20px 14px;">
+      <select id="timerAgendaSelect" onchange="loadTimerAgenda()" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 11px;font-family:'Sarabun',sans-serif;font-size:13.5px;margin-bottom:10px;">
+        <option value="">-- เลือกวาระ --</option>
+      </select>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+        <label style="font-size:12.5px;font-weight:600;color:var(--ink-soft);white-space:nowrap;">ตั้งเวลา (นาที):</label>
+        <input type="number" id="timerCustomMin" min="1" max="180" value="15" style="width:70px;border:1.5px solid var(--border);border-radius:7px;padding:6px 9px;font-size:14px;text-align:center;">
+        <button class="btn btn-sm btn-jade" onclick="setTimerFromInput()">ตั้ง</button>
+      </div>
+    </div>
+    <div class="timer-controls">
+      <button class="btn btn-jade" id="btnTimerStart" onclick="startTimer_cd()" style="flex:1;justify-content:center;padding:11px;">▶️ เริ่ม</button>
+      <button class="btn" id="btnTimerPause" onclick="pauseTimer_cd()" style="background:var(--gold-pale);color:var(--gold);flex:1;justify-content:center;padding:11px;" disabled>⏸ หยุดชั่วคราว</button>
+      <button class="btn btn-danger btn-sm" onclick="resetTimer_cd()">↩ รีเซ็ต</button>
+    </div>
+    <div style="padding:0 20px 16px;text-align:center;">
+      <button class="btn btn-sm" style="background:var(--jade-pale);color:var(--jade);" onclick="nextTimerAgenda()">⏭ วาระถัดไป</button>
     </div>
   </div>
 </div>
@@ -1081,6 +1774,13 @@
           </div>
           <div class="person-dropdown" id="personDropdown"></div>
         </div>
+      </div>
+      <!-- DOCUMENT ATTACHMENTS -->
+      <div class="form-row">
+        <label>📎 เอกสารประกอบวาระ</label>
+        <div id="docListContainer"></div>
+        <button type="button" class="btn btn-sm" style="background:var(--jade-pale);color:var(--jade);margin-top:5px;" onclick="addDocRow()">+ เพิ่มเอกสาร</button>
+        <div style="font-size:11px;color:var(--ink-soft);margin-top:3px;">ชื่อเอกสาร / เลขที่หนังสือ / URL</div>
       </div>
     </div>
     <div class="modal-footer">
@@ -2014,9 +2714,1346 @@ function downloadFile(content, filename, mimeType) {
   URL.revokeObjectURL(url);
 }
 
+// ─── RECORDING MODULE ────────────────────────────────────────────────────────
+let mediaRecorder = null;
+let audioChunks   = [];
+let recordedBlob  = null;
+let recTimerInterval = null;
+let recSeconds    = 0;
+let isRecording   = false;
+let isPaused      = false;
+let recognition   = null;
+let fullTranscript = '';
+let audioCtx = null, analyser = null, animFrame = null;
+let timestamps = [];
+
+function refreshRecAgendaList() {
+  const sel = document.getElementById('recCurrentAgenda');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- เลือกวาระ (ไม่บังคับ) --</option>';
+  agendaItems.forEach((item, i) => {
+    const o = document.createElement('option');
+    o.value = item.id;
+    o.textContent = `${i+1}. ${item.title.substring(0,40)}`;
+    sel.appendChild(o);
+  });
+}
+
+function startTimer() {
+  recSeconds = 0;
+  recTimerInterval = setInterval(() => {
+    if (!isPaused) {
+      recSeconds++;
+      const m = String(Math.floor(recSeconds/60)).padStart(2,'0');
+      const s = String(recSeconds%60).padStart(2,'0');
+      document.getElementById('recTimer').textContent = `${m}:${s}`;
+    }
+  }, 1000);
+}
+function stopTimer() { clearInterval(recTimerInterval); }
+function fmtTime(sec) {
+  return String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0');
+}
+
+function startWaveform(stream) {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  audioCtx.createMediaStreamSource(stream).connect(analyser);
+  const canvas = document.getElementById('waveCanvas');
+  const ctx2 = canvas.getContext('2d');
+  canvas.width  = canvas.offsetWidth * window.devicePixelRatio;
+  canvas.height = 120;
+  document.getElementById('waveIdle').style.display = 'none';
+  function draw() {
+    animFrame = requestAnimationFrame(draw);
+    const buf = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteTimeDomainData(buf);
+    ctx2.clearRect(0,0,canvas.width,canvas.height);
+    ctx2.lineWidth = 2.5;
+    ctx2.strokeStyle = isPaused ? '#74C69D' : '#2D6A4F';
+    ctx2.beginPath();
+    const sw = canvas.width / buf.length;
+    let x = 0;
+    for (let i=0;i<buf.length;i++) {
+      const y = (buf[i]/128) * canvas.height/2;
+      i===0 ? ctx2.moveTo(x,y) : ctx2.lineTo(x,y);
+      x += sw;
+    }
+    ctx2.stroke();
+  }
+  draw();
+}
+function stopWaveform() {
+  if (animFrame) cancelAnimationFrame(animFrame);
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  const canvas = document.getElementById('waveCanvas');
+  canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+  document.getElementById('waveIdle').style.display = 'block';
+}
+
+function startSpeechRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { document.getElementById('recLangNote').textContent = '⚠️ ใช้ Chrome เพื่อถอดเสียงอัตโนมัติ'; return; }
+  recognition = new SR();
+  recognition.lang = 'th-TH';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.onresult = (e) => {
+    let interim = '';
+    for (let i=e.resultIndex;i<e.results.length;i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) { fullTranscript += t + ' '; document.getElementById('transcriptText').value = fullTranscript; updateWordCount(); }
+      else interim = t;
+    }
+    document.getElementById('liveTranscript').textContent = interim || '...';
+  };
+  recognition.onerror = (e) => { if (e.error!=='no-speech') showToast(`⚠️ Speech: ${e.error}`,true); };
+  recognition.onend   = () => { if (isRecording && !isPaused) { try{recognition.start();}catch(e){} } };
+  recognition.start();
+}
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    mediaRecorder.ondataavailable = e => { if(e.data.size>0) audioChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      recordedBlob = new Blob(audioChunks, {type:'audio/webm'});
+      document.getElementById('audioPlayback').src = URL.createObjectURL(recordedBlob);
+      document.getElementById('audioPlaybackPanel').style.display = 'block';
+      stopWaveform();
+      stream.getTracks().forEach(t=>t.stop());
+    };
+    mediaRecorder.start(1000);
+    isRecording = true; isPaused = false;
+    startTimer(); startWaveform(stream); startSpeechRecognition();
+    setRecState('recording');
+    showToast('🔴 เริ่มบันทึกเสียงแล้ว');
+  } catch(e) { showToast('⚠️ ไม่สามารถเข้าถึงไมโครโฟนได้ กรุณาอนุญาตการใช้งาน', true); }
+}
+
+function pauseRecording() {
+  if (!mediaRecorder) return;
+  if (!isPaused) {
+    mediaRecorder.pause(); try{recognition&&recognition.stop();}catch(e){}
+    isPaused=true; setRecState('paused'); showToast('⏸ หยุดชั่วคราว');
+  } else {
+    mediaRecorder.resume(); try{recognition&&recognition.start();}catch(e){}
+    isPaused=false; setRecState('recording'); showToast('▶️ บันทึกต่อ');
+  }
+}
+function stopRecording() {
+  if (!mediaRecorder) return;
+  mediaRecorder.stop(); try{recognition&&recognition.stop();}catch(e){}
+  isRecording=false; isPaused=false; stopTimer(); setRecState('stopped');
+  document.getElementById('liveTranscript').innerHTML='<span style="color:var(--ink-soft);">หยุดบันทึกแล้ว — ตรวจสอบข้อความด้านล่าง</span>';
+  showToast('⏹ หยุดบันทึกเสียงแล้ว');
+}
+
+function setRecState(state) {
+  const s=document.getElementById('btnStartRec'), p=document.getElementById('btnPauseRec'), e=document.getElementById('btnStopRec'), b=document.getElementById('recStatusBadge');
+  if (state==='recording') {
+    s.disabled=true; s.style.opacity='0.5'; e.disabled=false; e.style.opacity='1'; p.disabled=false; p.style.opacity='1'; p.textContent='⏸';
+    b.innerHTML='<span class="rec-pulse"></span> กำลังบันทึก'; b.style.background='#fdecea'; b.style.color='#c0392b';
+  } else if (state==='paused') {
+    p.textContent='▶️'; b.innerHTML='⏸ หยุดชั่วคราว'; b.style.background='#FEF9E7'; b.style.color='#B7860B';
+  } else {
+    s.disabled=false; s.style.opacity='1'; e.disabled=true; e.style.opacity='0.5'; p.disabled=true; p.style.opacity='0.5';
+    b.innerHTML='✅ บันทึกเสร็จสิ้น'; b.style.background='var(--jade-pale)'; b.style.color='var(--jade)';
+  }
+}
+
+function markAgendaTimestamp() {
+  const sel=document.getElementById('recCurrentAgenda');
+  const label=sel.options[sel.selectedIndex]?.text||'ไม่ระบุวาระ';
+  timestamps.push({time:recSeconds,label});
+  renderTimestamps();
+  showToast(`📌 ปักหมุด @ ${fmtTime(recSeconds)}`);
+}
+function renderTimestamps() {
+  document.getElementById('timestampList').innerHTML = timestamps.map(t=>
+    `<div class="timestamp-item"><span class="ts-time">⏱ ${fmtTime(t.time)}</span><span>${t.label}</span></div>`
+  ).join('');
+}
+function clearRecording() {
+  if(!confirm('ลบเสียงและ transcript ทั้งหมด?')) return;
+  recordedBlob=null; audioChunks=[]; fullTranscript=''; recSeconds=0; timestamps=[];
+  document.getElementById('audioPlayback').src='';
+  document.getElementById('audioPlaybackPanel').style.display='none';
+  document.getElementById('transcriptText').value='';
+  document.getElementById('liveTranscript').innerHTML='<span style="color:var(--ink-soft);">ข้อความ Real-time จะแสดงที่นี่ขณะบันทึก...</span>';
+  document.getElementById('recTimer').textContent='00:00';
+  document.getElementById('timestampList').innerHTML='';
+  setRecState('stopped'); updateWordCount(); showToast('🗑 ลบข้อมูลเรียบร้อย');
+}
+function clearTranscript() { fullTranscript=''; document.getElementById('transcriptText').value=''; updateWordCount(); showToast('🗑 ล้าง transcript แล้ว'); }
+function copyTranscript() { const t=document.getElementById('transcriptText').value; if(!t){showToast('⚠️ ยังไม่มีข้อความ',true);return;} navigator.clipboard.writeText(t).then(()=>showToast('📋 คัดลอกแล้ว')); }
+function updateWordCount() { const t=document.getElementById('transcriptText').value; const w=t.trim()?t.trim().split(/\s+/).length:0; const el=document.getElementById('transcriptWordCount'); if(el) el.textContent=`${w} คำ / ${t.length} ตัวอักษร`; }
+function downloadAudio() { if(!recordedBlob){showToast('⚠️ ยังไม่มีไฟล์เสียง',true);return;} const a=document.createElement('a'); a.href=URL.createObjectURL(recordedBlob); a.download=`meeting_${new Date().toISOString().slice(0,10)}.webm`; a.click(); showToast('⬇️ ดาวน์โหลดไฟล์เสียงแล้ว'); }
+
+// ─── API KEY ──────────────────────────────────────────────────────────────────
+let apiKey = '';
+function saveApiKey() {
+  const v=document.getElementById('apiKeyInput').value.trim();
+  if (!v.startsWith('sk-ant-')) { document.getElementById('apiKeyStatus').innerHTML='<span style="color:#e74c3c;">⚠️ รูปแบบ Key ไม่ถูกต้อง</span>'; return; }
+  apiKey=v; document.getElementById('apiKeyStatus').innerHTML='<span style="color:var(--jade);">✅ บันทึก API Key แล้ว (เก็บในหน่วยความจำเท่านั้น)</span>'; showToast('✅ บันทึก API Key สำเร็จ');
+}
+function toggleApiKeyPanel() { const b=document.getElementById('apiKeyBody'); b.style.display=b.style.display==='none'?'block':'none'; }
+
+// ─── AI SUMMARIZE ─────────────────────────────────────────────────────────────
+async function summarizeWithAI() {
+  const transcript = document.getElementById('transcriptText').value.trim();
+  if (!transcript) { showToast('⚠️ กรุณาถอดข้อความก่อนสรุป',true); return; }
+  if (!apiKey)     { showToast('⚠️ กรุณาใส่ Anthropic API Key ก่อน',true); document.getElementById('apiKeyBody').style.display='block'; return; }
+
+  const style  = document.getElementById('summaryStyle').value;
+  const lang   = document.getElementById('summaryLang').value;
+  const hint   = document.getElementById('summaryHint').value.trim();
+  const meetName = document.getElementById('meetingName').value||'(ไม่ระบุ)';
+  const meetDate = document.getElementById('meetingDate').value||'(ไม่ระบุ)';
+  const meetLoc  = document.getElementById('location').value||'(ไม่ระบุ)';
+  const chairSel = document.getElementById('p_chair').value;
+  const chairName = PERSONS.find(p=>p.id===chairSel)?.name||'(ไม่ระบุ)';
+  const attendeeList = PERSONS.filter(p=>attendees[p.id]).map(p=>p.name).join(', ');
+  const agendaTitles = agendaItems.map((a,i)=>`${i+1}. ${a.title}`).join('\n');
+  const tsCtx = timestamps.length ? '\n\nจุดเวลาสำคัญ:\n'+timestamps.map(t=>`- ${fmtTime(t.time)}: ${t.label}`).join('\n') : '';
+
+  const styleMap = {
+    formal:'สรุปเป็นรายงานการประชุมราชการแบบเป็นทางการ มีหัวข้อ: ผู้เข้าร่วมประชุม, สาระสำคัญแต่ละวาระ, มติที่ประชุม, การมอบหมายงาน, ปิดประชุม ใช้ภาษาราชการ',
+    brief:'สรุปสั้นกระชับไม่เกิน 10 บรรทัด',
+    action:'สกัดเฉพาะ Action Items: งานที่ต้องทำ ผู้รับผิดชอบ กำหนดส่ง',
+    full:'สรุปรายละเอียดครบถ้วนทุกประเด็น แบ่งตามวาระ',
+  };
+  const langNote = lang==='th'?'ตอบเป็นภาษาไทยเท่านั้น':'Answer in English only';
+
+  document.getElementById('summaryResultPanel').style.display='block';
+  document.getElementById('aiThinking').style.display='block';
+  document.getElementById('summaryOutput').textContent='';
+  document.getElementById('btnSummarize').disabled=true;
+
+  const msgs=['กำลังวิเคราะห์ transcript...','ระบุประเด็นสำคัญ...','จัดรูปแบบรายงาน...','ตรวจสอบความถูกต้อง...'];
+  let mi=0; const ti=setInterval(()=>{document.getElementById('aiThinkingDetail').textContent=msgs[mi++%msgs.length];},1500);
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6', max_tokens:4000,
+        system:`คุณเป็นผู้เชี่ยวชาญสรุปการประชุมราชการไทย ด้านสาธารณสุข ${langNote}`,
+        messages:[{role:'user',content:`ข้อมูลการประชุม:
+- ชื่อ: ${meetName}
+- วันที่: ${meetDate}
+- สถานที่: ${meetLoc}
+- ประธาน: ${chairName}
+- ผู้เข้าร่วม: ${attendeeList}
+- ระเบียบวาระ:\n${agendaTitles}${tsCtx}
+
+Transcript:
+"""
+${transcript}
+"""
+
+${styleMap[style]}
+${hint?`\nคำแนะนำเพิ่มเติม: ${hint}`:''}`}],
+      }),
+    });
+    clearInterval(ti); document.getElementById('aiThinking').style.display='none';
+    if (!resp.ok) { const err=await resp.json(); throw new Error(err.error?.message||`HTTP ${resp.status}`); }
+    const data = await resp.json();
+    const text = data.content?.[0]?.text||'(ไม่มีผลลัพธ์)';
+    document.getElementById('summaryOutput').textContent = text;
+    showToast('✅ AI สรุปรายงานประชุมเรียบร้อยแล้ว!');
+    document.getElementById('summaryResultPanel').scrollIntoView({behavior:'smooth'});
+  } catch(e) {
+    clearInterval(ti); document.getElementById('aiThinking').style.display='none';
+    document.getElementById('summaryOutput').textContent=`❌ เกิดข้อผิดพลาด: ${e.message}\n\nกรุณาตรวจสอบ API Key และเครดิต`;
+    showToast(`❌ ${e.message}`,true);
+  } finally { document.getElementById('btnSummarize').disabled=false; }
+}
+
+function copySummary() { const t=document.getElementById('summaryOutput').textContent; if(!t){showToast('⚠️ ยังไม่มีสรุป',true);return;} navigator.clipboard.writeText(t).then(()=>showToast('📋 คัดลอกสรุปแล้ว')); }
+
+async function exportSummaryPDF() {
+  const summary=document.getElementById('summaryOutput').textContent;
+  if (!summary){showToast('⚠️ ยังไม่มีสรุป',true);return;}
+  const meetName=document.getElementById('meetingName').value||'รายงานการประชุม';
+  const d=document.createElement('div');
+  d.style.cssText='font-family:Sarabun,sans-serif;padding:40px 48px;background:white;max-width:800px;color:#1a2e22;';
+  d.innerHTML=`<div style="text-align:center;margin-bottom:28px;padding-bottom:18px;border-bottom:2px solid #2D6A4F;"><div style="font-size:36px;margin-bottom:6px;">🌿</div><div style="font-size:13px;color:#6b7e72;margin-bottom:4px;">กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สสจ.สมุทรปราการ</div><div style="font-family:Prompt,sans-serif;font-size:20px;font-weight:700;color:#2D6A4F;">รายงานการประชุม</div><div style="font-size:14px;">${meetName}</div></div><div style="font-size:14px;line-height:2;white-space:pre-wrap;">${summary}</div><div style="margin-top:40px;border-top:1px solid #c8ddd0;padding-top:12px;font-size:11px;color:#6b7e72;text-align:center;">สรุปโดยระบบ AI — กลุ่มงานการแพทย์แผนไทยฯ สสจ.สมุทรปราการ</div>`;
+  document.body.appendChild(d);
+  try {
+    showToast('⏳ กำลังสร้าง PDF...');
+    const canvas=await html2canvas(d,{scale:2,backgroundColor:'#ffffff',windowWidth:800});
+    const {jsPDF}=window.jspdf; const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const iw=210,ih=(canvas.height*iw)/canvas.width; let pos=0,left=ih;
+    while(left>0){pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,pos,iw,ih);left-=297;pos-=297;if(left>0)pdf.addPage();}
+    pdf.save(`รายงานประชุม_${meetName}.pdf`); showToast('✅ Export PDF รายงานประชุมแล้ว!');
+  } catch(e){showToast('❌ Export ล้มเหลว',true);}
+  finally{document.body.removeChild(d);}
+}
+
 // Add some sample agenda items on first load
-window.onload = () => {
-  agendaItems = [
+
+// ── Agenda Numbering (ราชการ) ──
+function computeAgendaNumbers() {
+  const counter = {};
+  return agendaItems.map(item => {
+    const cfg = GROUP_CONFIG[item.group];
+    const prefix = cfg ? cfg.num : '?';
+    counter[item.group] = (counter[item.group]||0)+1;
+    return prefix + '.' + counter[item.group];
+  });
+}
+
+
+
+// ═══════════════════════════════════════════════════════
+// PRIORITY 3 JS
+// ═══════════════════════════════════════════════════════
+
+// ─── DARK MODE ────────────────────────────────────────
+function toggleDarkMode() {
+  const isDark = document.body.classList.toggle('dark-mode');
+  localStorage.setItem('darkMode', isDark ? '1' : '0');
+  const btn = document.getElementById('darkToggleBtn');
+  if (btn) btn.textContent = isDark ? '☀️ Light' : '🌙 Dark';
+}
+function initDarkMode() {
+  if (localStorage.getItem('darkMode') === '1') {
+    document.body.classList.add('dark-mode');
+    const btn = document.getElementById('darkToggleBtn');
+    if (btn) btn.textContent = '☀️ Light';
+  }
+}
+
+// ─── PIN LOCK ─────────────────────────────────────────
+const PIN_KEY = 'meetingPIN_v2';
+
+function initPINLock() {
+  const storedPIN = localStorage.getItem(PIN_KEY);
+  if (!storedPIN) return; // no PIN set
+  showPINLockScreen();
+}
+
+function showPINLockScreen() {
+  const overlay = document.createElement('div');
+  overlay.className = 'pin-overlay';
+  overlay.id = 'pinLockOverlay';
+  overlay.innerHTML = `
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:48px;margin-bottom:8px;">🌿</div>
+      <div style="font-family:'Prompt',sans-serif;font-size:20px;font-weight:700;color:#fff;">ระบบระเบียบวาระการประชุม</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.6);margin-top:4px;">กลุ่มงานการแพทย์แผนไทยฯ สสจ.สมุทรปราการ</div>
+    </div>
+    <div class="pin-box">
+      <div style="font-size:14px;color:rgba(255,255,255,.8);font-weight:600;">🔐 กรอก PIN เพื่อเข้าใช้งาน</div>
+      <div class="pin-display" id="pinLockDisplay">••••</div>
+      <div class="pin-grid" id="pinLockGrid"></div>
+      <div class="pin-error" id="pinLockError"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  let enteredPIN = '';
+  const display = overlay.querySelector('#pinLockDisplay');
+  const error   = overlay.querySelector('#pinLockError');
+  const grid    = overlay.querySelector('#pinLockGrid');
+
+  const updateDisplay = () => { display.textContent = '●'.repeat(enteredPIN.length) || '••••'; };
+
+  const checkPIN = () => {
+    const stored = localStorage.getItem(PIN_KEY);
+    if (enteredPIN === stored) {
+      overlay.style.animation = 'none';
+      overlay.style.opacity = '0';
+      overlay.style.transition = 'opacity .3s';
+      setTimeout(() => overlay.remove(), 300);
+    } else {
+      error.textContent = '❌ PIN ไม่ถูกต้อง กรุณาลองใหม่';
+      display.style.color = '#ff7675';
+      setTimeout(() => { enteredPIN=''; updateDisplay(); display.style.color='#fff'; error.textContent=''; }, 1000);
+    }
+  };
+
+  [1,2,3,4,5,6,7,8,9,'',0,'⌫'].forEach(n => {
+    const btn = document.createElement('button');
+    btn.className = 'pin-btn';
+    btn.textContent = n === '' ? '' : String(n);
+    btn.style.visibility = n === '' ? 'hidden' : 'visible';
+    btn.onclick = () => {
+      if (n === '⌫') { enteredPIN = enteredPIN.slice(0,-1); }
+      else if (n !== '' && enteredPIN.length < 6) { enteredPIN += String(n); }
+      updateDisplay();
+      if (enteredPIN.length >= (localStorage.getItem(PIN_KEY)||'').length && enteredPIN.length >= 4) checkPIN();
+    };
+    grid.appendChild(btn);
+  });
+}
+
+function openPINSettings() {
+  const stored = localStorage.getItem(PIN_KEY);
+  const status = document.getElementById('pinCurrentStatus');
+  if (status) status.innerHTML = stored
+    ? `<span style="color:var(--jade);">✅ PIN ตั้งแล้ว (${stored.length} หลัก)</span>`
+    : `<span style="color:var(--ink-soft);">ยังไม่ได้ตั้ง PIN</span>`;
+  document.getElementById('pinNewInput').value = '';
+  document.getElementById('pinConfirmInput').value = '';
+  document.getElementById('pinSetStatus').textContent = '';
+  document.getElementById('pinSettingsModal').classList.add('open');
+}
+
+function savePIN() {
+  const pin  = document.getElementById('pinNewInput').value.trim();
+  const pin2 = document.getElementById('pinConfirmInput').value.trim();
+  const el   = document.getElementById('pinSetStatus');
+  if (!/^\d{4,6}$/.test(pin)) { el.innerHTML='<span style="color:#e74c3c;">⚠️ PIN ต้องเป็นตัวเลข 4-6 หลัก</span>'; return; }
+  if (pin !== pin2)            { el.innerHTML='<span style="color:#e74c3c;">⚠️ PIN ไม่ตรงกัน</span>'; return; }
+  localStorage.setItem(PIN_KEY, pin);
+  el.innerHTML = '<span style="color:var(--jade);">✅ บันทึก PIN แล้ว — จะใช้งานในครั้งถัดไป</span>';
+  showToast('🔐 ตั้ง PIN เรียบร้อย!');
+  setTimeout(() => document.getElementById('pinSettingsModal').classList.remove('open'), 1500);
+}
+function clearPIN() {
+  if (!confirm('ลบ PIN? แอปจะไม่ล็อกอีกต่อไป')) return;
+  localStorage.removeItem(PIN_KEY);
+  document.getElementById('pinSetStatus').innerHTML = '<span style="color:var(--jade);">🗑 ลบ PIN แล้ว</span>';
+  showToast('🗑 ลบ PIN แล้ว');
+}
+
+// ─── QR CODE ──────────────────────────────────────────
+let qrInstance = null;
+
+function openQRModal() {
+  document.getElementById('qrModal').classList.add('open');
+  const url = window.location.href;
+  document.getElementById('qrUrlDisplay').textContent = url;
+  document.getElementById('qrCustomUrl').value = url;
+  generateQR(url);
+}
+
+function generateQR(url) {
+  const canvas = document.getElementById('qrCanvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Use QRCode.js if loaded, fallback to API
+  if (typeof QRCode !== 'undefined') {
+    // Clear old
+    const wrapper = document.createElement('div');
+    new QRCode(wrapper, {
+      text: url, width: 220, height: 220,
+      colorDark: '#2D6A4F', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+    setTimeout(() => {
+      const img = wrapper.querySelector('img') || wrapper.querySelector('canvas');
+      if (img) {
+        const tmpImg = new Image();
+        tmpImg.onload = () => ctx.drawImage(tmpImg, 0, 0, 220, 220);
+        tmpImg.src = img.tagName === 'CANVAS' ? img.toDataURL() : img.src;
+      }
+    }, 100);
+  } else {
+    // Fallback: Google Charts API
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => ctx.drawImage(img, 0, 0, 220, 220);
+    img.src = `https://chart.googleapis.com/chart?chs=220x220&cht=qr&chl=${encodeURIComponent(url)}&choe=UTF-8`;
+  }
+}
+
+function generateQRFromInput() {
+  const url = document.getElementById('qrCustomUrl').value.trim();
+  if (!url) return;
+  document.getElementById('qrUrlDisplay').textContent = url;
+  generateQR(url);
+}
+
+function downloadQR() {
+  const canvas = document.getElementById('qrCanvas');
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = 'qrcode_ระเบียบวาระ.png';
+  a.click();
+  showToast('⬇️ ดาวน์โหลด QR แล้ว!');
+}
+
+function copyCurrentURL() {
+  navigator.clipboard.writeText(window.location.href)
+    .then(() => showToast('📋 Copy URL แล้ว!'));
+}
+
+// ─── EMAIL DRAFT ───────────────────────────────────────
+function openEmailModal() {
+  document.getElementById('emailModal').classList.add('open');
+  generateEmailDraft();
+}
+
+function generateEmailDraft() {
+  const style  = document.getElementById('emailStyle').value;
+  const lang   = document.getElementById('emailLang').value;
+  const meetName = document.getElementById('meetingName').value || '(ยังไม่ระบุ)';
+  const dateVal  = document.getElementById('meetingDate').value;
+  const startT   = document.getElementById('startTime').value;
+  const loc      = document.getElementById('location').value;
+  const chairId  = document.getElementById('p_chair').value;
+  const chairP   = PERSONS.find(p=>p.id===chairId);
+  const secId    = document.getElementById('p_secretary').value;
+  const secP     = PERSONS.find(p=>p.id===secId);
+  const attendeeList = PERSONS.filter(p=>attendees[p.id]).map(p=>p.name).join(', ');
+  const totalMin = agendaItems.reduce((s,i)=>s+i.duration,0);
+
+  const thDate = v => {
+    if (!v) return '-';
+    const [y,m,d] = v.split('-');
+    const mn=['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    return `${parseInt(d)} ${mn[parseInt(m)]} พ.ศ. ${parseInt(y)+543}`;
+  };
+
+  const agendaList = agendaItems.map((item,i) => {
+    const nums = computeAgendaNumbers ? computeAgendaNumbers() : agendaItems.map((_,j)=>`${j+1}`);
+    return lang==='th'
+      ? `   วาระ ${nums[i]} — ${item.title} (${item.duration} นาที)`
+      : `   Agenda ${nums[i]} — ${item.title} (${item.duration} min)`;
+  }).join('\n');
+
+  let subject = '', body = '';
+
+  if (lang === 'th') {
+    if (style === 'formal') {
+      subject = `เรื่อง ขอเชิญประชุม${meetName ? ' — ' + meetName : ''}`;
+      body = `เรียน คณะบุคคลที่เกี่ยวข้องทุกท่าน
+
+${' '.repeat(4)}ด้วย${document.getElementById('org').value || 'กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก'} มีความประสงค์จะจัดประชุม${meetName} ในวันที่ ${thDate(dateVal)} เวลา ${startT||'-'} น. ณ ${loc||'-'}
+
+${' '.repeat(4)}จึงขอเรียนเชิญท่านเข้าร่วมประชุม โดยมีระเบียบวาระการประชุม ดังนี้
+
+ระเบียบวาระการประชุม:
+${agendaList}
+
+${' '.repeat(4)}รวมเวลาประมาณ ${totalMin} นาที
+
+${' '.repeat(4)}จึงเรียนมาเพื่อโปรดพิจารณาและเข้าร่วมประชุมตามวันและเวลาดังกล่าว
+
+ขอแสดงความนับถือ
+${secP ? secP.name + ' (' + secP.role + ')' : '(เลขานุการ)'}
+${document.getElementById('org').value || ''}`;
+    } else if (style === 'friendly') {
+      subject = `📋 ประชุม${meetName} — ${thDate(dateVal)}`;
+      body = `สวัสดีทุกคนครับ/ค่ะ 👋
+
+ขอแจ้งกำหนดการประชุม${meetName}
+📅 วันที่: ${thDate(dateVal)}
+⏰ เวลา: ${startT||'-'} น.
+📍 สถานที่: ${loc||'-'}
+👥 ผู้เข้าร่วม: ${attendeeList}
+
+📝 วาระประชุมวันนี้:
+${agendaList}
+
+⏱ รวมเวลาประมาณ ${totalMin} นาที
+
+รบกวนตรงเวลานะครับ/ค่ะ 🙏
+${secP ? secP.name : '(เลขานุการ)'}`;
+    } else {
+      subject = `🔔 แจ้งเตือน: ประชุม${meetName} — ${thDate(dateVal)} เวลา ${startT}`;
+      body = `เรียน ผู้เข้าร่วมประชุมทุกท่าน
+
+⏰ แจ้งเตือนการประชุม${meetName}
+📅 วันที่: ${thDate(dateVal)} เวลา ${startT||'-'} น.
+📍 สถานที่: ${loc||'-'}
+⏱ ใช้เวลาประมาณ ${totalMin} นาที
+
+วาระสำคัญ:
+${agendaList}
+
+กรุณาเตรียมเอกสารและข้อมูลที่เกี่ยวข้องให้พร้อม
+ขอบคุณครับ/ค่ะ
+${secP ? secP.name : '(เลขานุการ)'}`;
+    }
+  } else {
+    subject = style==='formal'
+      ? `Meeting Invitation: ${meetName}`
+      : `📋 ${meetName} — ${dateVal}`;
+    body = `Dear All,
+
+You are cordially invited to attend the ${meetName}.
+
+Date: ${dateVal}
+Time: ${startT||'-'}
+Venue: ${loc||'-'}
+Duration: approximately ${totalMin} minutes
+
+Agenda:
+${agendaList}
+
+Please confirm your attendance.
+
+Best regards,
+${secP ? secP.name : 'Secretary'}
+${document.getElementById('org').value || ''}`;
+  }
+
+  document.getElementById('emailSubject').value = subject;
+  document.getElementById('emailBody').value    = body;
+}
+
+function copyEmailDraft() {
+  const sub  = document.getElementById('emailSubject').value;
+  const body = document.getElementById('emailBody').value;
+  navigator.clipboard.writeText(`Subject: ${sub}\n\n${body}`)
+    .then(() => showToast('📋 Copy Email แล้ว!'));
+}
+
+function openMailto() {
+  const sub  = encodeURIComponent(document.getElementById('emailSubject').value);
+  const body = encodeURIComponent(document.getElementById('emailBody').value);
+  window.open(`mailto:?subject=${sub}&body=${body}`, '_blank');
+}
+
+// ─── PWA INSTALL ───────────────────────────────────────
+let deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  showPWABanner();
+});
+
+function showPWABanner() {
+  if (document.getElementById('pwaBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'pwaBanner';
+  banner.className = 'pwa-banner';
+  banner.innerHTML = `
+    <span style="font-size:22px;">📱</span>
+    <div>
+      <div style="font-weight:700;">ติดตั้งแอปบนอุปกรณ์ของคุณ</div>
+      <div style="font-size:11.5px;opacity:.85;">ใช้งานออฟไลน์ได้ เหมือนแอปจริง</div>
+    </div>
+    <button class="btn btn-white btn-sm" onclick="installPWA()">ติดตั้ง</button>
+    <button class="pwa-banner-close" onclick="this.parentNode.remove()">✕</button>`;
+  document.body.appendChild(banner);
+}
+
+async function installPWA() {
+  if (!deferredInstallPrompt) {
+    showToast('ℹ️ เปิดในเบราว์เซอร์แล้วกด "Add to Home Screen"');
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  if (outcome === 'accepted') showToast('✅ ติดตั้งแอปแล้ว!');
+  deferredInstallPrompt = null;
+  document.getElementById('pwaBanner')?.remove();
+}
+
+// ─── PATCH window.onload for P3 ──────────────────────
+
+
+
+
+// ═══════════════════════════════════════════════════════
+// PRIORITY 1 — AUTO-SAVE, JSON FILE, PRINT, DOCS
+// ═══════════════════════════════════════════════════════
+const LS_KEY = 'meetingAgendaApp_v2';
+let autoSaveTimer = null;
+let unsavedChanges = false;
+
+function markUnsaved() {
+  unsavedChanges = true;
+  const b = document.getElementById('saveBadge');
+  if (b) { b.textContent = '● ยังไม่บันทึก'; b.className = 'save-badge unsaved'; }
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(autoSave, 2000);
+}
+
+function autoSave() {
+  const b = document.getElementById('saveBadge');
+  if (b) { b.textContent = '⏳ บันทึก...'; b.className = 'save-badge saving saving-anim'; }
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(buildProjectData()));
+    unsavedChanges = false;
+    setTimeout(() => {
+      const b2 = document.getElementById('saveBadge');
+      if (b2) { b2.textContent = '✅ บันทึกแล้ว'; b2.className = 'save-badge saved'; }
+    }, 350);
+  } catch(e) {
+    const b2 = document.getElementById('saveBadge');
+    if (b2) { b2.textContent = '⚠️ บันทึกไม่ได้'; b2.className = 'save-badge unsaved'; }
+  }
+}
+
+function buildProjectData() {
+  return {
+    version: 2, savedAt: new Date().toISOString(),
+    info: {
+      org: document.getElementById('org').value,
+      meetingName: document.getElementById('meetingName').value,
+      meetingNo:   document.getElementById('meetingNo').value,
+      meetingDate: document.getElementById('meetingDate').value,
+      startTime:   document.getElementById('startTime').value,
+      location:    document.getElementById('location').value,
+      meetingNote: document.getElementById('meetingNote').value,
+    },
+    personnel: {
+      chair: document.getElementById('p_chair').value,
+      vice:  document.getElementById('p_vice').value,
+      secretary: document.getElementById('p_secretary').value,
+      asst_sec:  document.getElementById('p_asst_sec').value,
+      recorder:  document.getElementById('p_recorder').value,
+      reviewer:  document.getElementById('p_reviewer').value,
+    },
+    attendees, agendaItems,
+  };
+}
+
+function loadProjectData(data) {
+  if (!data || data.version !== 2) return false;
+  const i = data.info || {};
+  ['org','meetingName','meetingNo','meetingDate','startTime','location','meetingNote'].forEach(k => {
+    const el = document.getElementById(k); if (el && i[k] !== undefined) el.value = i[k];
+  });
+  const p = data.personnel || {};
+  ['chair','vice','secretary','asst_sec','recorder','reviewer'].forEach(k => {
+    const el = document.getElementById('p_'+k); if (el && p[k]) el.value = p[k];
+  });
+  if (data.attendees) {
+    attendees = data.attendees;
+    PERSONS.forEach(p => {
+      const cb = document.getElementById('att_'+p.id);
+      if (cb) { cb.checked = !!attendees[p.id]; toggleAttendee(p.id); }
+    });
+  }
+  agendaItems = (data.agendaItems || []).map(it => ({...it, docs: it.docs||[]}));
+  renderAllGroups(); refreshRecAgendaList(); updateEndTime();
+  return true;
+}
+
+function loadFromLocalStorage() {
+  try {
+    const raw = localStorage.getItem(LS_KEY); if (!raw) return;
+    const data = JSON.parse(raw);
+    if (loadProjectData(data)) {
+      const ts = new Date(data.savedAt);
+      showToast('📂 โหลดข้อมูลล่าสุด ' + ts.toLocaleTimeString('th-TH'));
+    }
+  } catch(e) { console.warn('LS load error:', e); }
+}
+
+// ── JSON File Save/Load ──
+function saveProjectFile() {
+  const data = buildProjectData();
+  const name = document.getElementById('meetingName').value || 'ระเบียบวาระ';
+  const blob = new Blob(['\uFEFF' + JSON.stringify(data, null, 2)], {type: 'application/json;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name + '.json'; a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('💾 บันทึกไฟล์ JSON เรียบร้อย!');
+}
+
+function loadProjectFile(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result.replace(/^\uFEFF/, ''));
+      if (loadProjectData(data)) {
+        showToast('📂 โหลดโปรเจกต์สำเร็จ!');
+        document.getElementById('sidebarProjectName').textContent = document.getElementById('meetingName').value || 'ยังไม่ได้ตั้งชื่อ';
+      } else showToast('⚠️ ไฟล์ไม่ถูกรูปแบบ', true);
+    } catch(err) { showToast('⚠️ อ่านไฟล์ไม่ได้: ' + err.message, true); }
+  };
+  reader.readAsText(file, 'UTF-8'); input.value = '';
+}
+
+// ── Document Attachment helpers ──
+function addDocRow(val = '') {
+  const dc = document.getElementById('docListContainer'); if (!dc) return;
+  const row = document.createElement('div');
+  row.className = 'doc-list-item';
+  row.innerHTML = '<span style="font-size:13px;">📎</span>'
+    + '<input class="doc-input" type="text" value="' + val.replace(/"/g,'&quot;') + '" placeholder="ชื่อเอกสาร / เลขที่หนังสือ / URL">'
+    + '<button type="button" onclick="this.parentNode.remove()" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:16px;padding:0 4px;">×</button>';
+  dc.appendChild(row);
+}
+
+// ── Print ──
+function printDirect() {
+  buildPreview(); switchTab('preview'); setActiveSidebar('preview');
+  setTimeout(() => window.print(), 600);
+}
+
+// ── setActiveSidebar helper (may be missing) ──
+function setActiveSidebar(tab) {
+  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById('sbi-' + tab); if (el) el.classList.add('active');
+}
+
+// ── Patch openAddModal to init docs ──
+const _origOpenAddModal = openAddModal;
+openAddModal = function(groupKey) {
+  _origOpenAddModal(groupKey);
+  const dc = document.getElementById('docListContainer'); if (dc) dc.innerHTML = '';
+};
+
+// ── Patch editItem to load docs ──
+const _origEditItem = editItem;
+editItem = function(id) {
+  _origEditItem(id);
+  const item = agendaItems.find(i => i.id === id); if (!item) return;
+  const dc = document.getElementById('docListContainer'); if (!dc) return;
+  dc.innerHTML = '';
+  (item.docs || []).forEach(d => addDocRow(d));
+};
+
+// ── Patch saveAgendaItem to collect docs ──
+const _origSaveAgendaItem = saveAgendaItem;
+saveAgendaItem = function() {
+  // Collect docs before saving
+  const docs = [...document.querySelectorAll('.doc-input')].map(i => i.value.trim()).filter(Boolean);
+  _origSaveAgendaItem();
+  // Attach docs to last saved item
+  if (agendaItems.length) {
+    const last = editingId ? agendaItems.find(i => i.id === editingId) : agendaItems[agendaItems.length - 1];
+    // editingId is cleared by _origSaveAgendaItem so check by finding recent
+    const target = agendaItems.find(i => i.id === (editingId || agendaItems[agendaItems.length-1]?.id));
+    if (target) target.docs = docs;
+    // fallback: attach to last item if editingId was just used
+    agendaItems[agendaItems.length-1].docs = docs;
+  }
+  renderAllGroups(); markUnsaved();
+};
+
+// ── Patch markUnsaved into renderAllGroups ──
+const _origRenderAllGroups = renderAllGroups;
+renderAllGroups = function() {
+  _origRenderAllGroups();
+};
+
+// ── Auto-save on field changes ──
+function initAutoSaveListeners() {
+  ['org','meetingName','meetingNo','meetingDate','startTime','location','meetingNote'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', markUnsaved);
+  });
+  ['p_chair','p_vice','p_secretary','p_asst_sec','p_recorder','p_reviewer'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', markUnsaved);
+  });
+  // Update sidebar project name live
+  document.getElementById('meetingName')?.addEventListener('input', () => {
+    document.getElementById('sidebarProjectName').textContent = document.getElementById('meetingName').value || 'ยังไม่ได้ตั้งชื่อ';
+  });
+}
+
+// ── Agenda number labels for display (hierarchical) ──
+function getAgendaNumberLabel(item, idx) {
+  const cfg = GROUP_CONFIG[item.group];
+  const prefix = cfg.num;
+  // count items before this one in same group
+  const sub = agendaItems.filter((it,i) => it.group === item.group && i <= idx).length;
+  return 'วาระ ' + prefix + '.' + sub;
+}
+
+// ── Patch window.onload to add Priority 1 init ──
+
+
+
+// ═══════════════════════════════════════════════════════
+// PRIORITY 2 JS
+// ═══════════════════════════════════════════════════════
+
+// ── Minutes data store ──
+let minutesData = {}; // keyed by agendaItem.id
+
+function initMinutesTab() {
+  // Update header info
+  document.getElementById('min_name').textContent  = document.getElementById('meetingName').value || '-';
+  document.getElementById('min_date').textContent  = document.getElementById('meetingDate').value || '-';
+  const chairId = document.getElementById('p_chair').value;
+  const chairP  = PERSONS.find(p=>p.id===chairId);
+  document.getElementById('min_chair').textContent = chairP ? chairP.name+' ('+chairP.role+')' : '-';
+
+  // Build agenda blocks
+  const container = document.getElementById('minutesAgendaBlocks');
+  if (!container) return;
+  container.innerHTML = '';
+  if (!agendaItems.length) {
+    container.innerHTML = '<div style="text-align:center;padding:32px;color:var(--ink-soft);">ยังไม่มีวาระ — กรุณาเพิ่มวาระก่อน</div>';
+    return;
+  }
+
+  const numbers = computeAgendaNumbers ? computeAgendaNumbers() : agendaItems.map((_,i)=>`${i+1}`);
+  const colorMap = {chair:'#1B4332',other:'#1A6B9A',info:'#27AE60',consult:'#6B3FA0',decide:'#B7860B',other2:'#636e72'};
+  const resOptions = [
+    {val:'noted',    label:'รับทราบ',       cls:'noted'},
+    {val:'resolved', label:'มีมติ',         cls:'resolved'},
+    {val:'deferred', label:'เลื่อน',        cls:'deferred'},
+    {val:'none',     label:'ไม่มีมติ',     cls:'unresolved'},
+  ];
+
+  agendaItems.forEach((item, idx) => {
+    if (!minutesData[item.id]) minutesData[item.id] = {summary:'',resolution:'none',assignee:'',dueDate:'',note:''};
+    const md = minutesData[item.id];
+    const cfg = GROUP_CONFIG[item.group];
+    const col = colorMap[item.group];
+    const numLabel = numbers[idx];
+
+    const block = document.createElement('div');
+    block.className = 'minutes-agenda-block';
+    block.innerHTML = `
+      <div class="minutes-agenda-header" style="background:${col};" onclick="toggleMinutesBlock('mb_${item.id}')">
+        <span style="background:rgba(255,255,255,.2);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;">วาระ ${numLabel}</span>
+        <span style="color:#fff;font-weight:600;font-size:13.5px;flex:1;">${item.title}</span>
+        <span style="color:rgba(255,255,255,.7);font-size:11px;">⏱ ${item.duration} นาที</span>
+        <span style="color:rgba(255,255,255,.7);font-size:14px;margin-left:8px;" id="mb_arr_${item.id}">▼</span>
+      </div>
+      <div id="mb_${item.id}" style="display:block;">
+        <div class="minutes-field">
+          <label>สาระสำคัญ / บันทึกการอภิปราย</label>
+          <textarea placeholder="บันทึกประเด็นที่พูดคุย ข้อเท็จจริง ข้อมูลที่นำเสนอ..." 
+            oninput="saveMinuteField('${item.id}','summary',this.value)">${md.summary}</textarea>
+        </div>
+        <div class="minutes-field">
+          <label>ผลการพิจารณา / มติที่ประชุม</label>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px;">
+            ${resOptions.map(r=>`<span class="resolution-tag ${md.resolution===r.val?r.cls+' selected':''}" onclick="setResolution('${item.id}','${r.val}',this)" data-cls="${r.cls}">${r.label}</span>`).join('')}
+          </div>
+          <textarea placeholder="ระบุมติที่ประชุมอย่างละเอียด..." 
+            oninput="saveMinuteField('${item.id}','resolutionText',this.value)">${md.resolutionText||''}</textarea>
+        </div>
+        <div class="minutes-field">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+            <div class="field-group">
+              <label>📌 ผู้รับผิดชอบ (Action)</label>
+              <select onchange="saveMinuteField('${item.id}','assignee',this.value)">
+                <option value="">-- ไม่ระบุ --</option>
+                ${PERSONS.map(p=>`<option value="${p.id}" ${md.assignee===p.id?'selected':''}>${p.name}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field-group">
+              <label>📅 กำหนดส่ง</label>
+              <input type="date" value="${md.dueDate||''}" onchange="saveMinuteField('${item.id}','dueDate',this.value)">
+            </div>
+            <div class="field-group">
+              <label>⏱ เวลาที่ใช้จริง (นาที)</label>
+              <input type="number" min="0" max="300" value="${md.actualMin||''}" placeholder="${item.duration}" onchange="saveMinuteField('${item.id}','actualMin',this.value)">
+            </div>
+          </div>
+        </div>
+        <div class="minutes-field" style="background:var(--surface);">
+          <label>🗒 หมายเหตุเพิ่มเติม</label>
+          <textarea style="min-height:48px;" placeholder="หมายเหตุหรือข้อสังเกตอื่นๆ..." 
+            oninput="saveMinuteField('${item.id}','note',this.value)">${md.note||''}</textarea>
+        </div>
+      </div>`;
+    container.appendChild(block);
+  });
+}
+
+function toggleMinutesBlock(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+}
+
+function saveMinuteField(itemId, field, value) {
+  if (!minutesData[itemId]) minutesData[itemId] = {};
+  minutesData[itemId][field] = value;
+  markUnsaved && markUnsaved();
+}
+
+function setResolution(itemId, val, el) {
+  if (!minutesData[itemId]) minutesData[itemId] = {};
+  minutesData[itemId].resolution = val;
+  // Update UI tags
+  el.closest('.minutes-field').querySelectorAll('.resolution-tag').forEach(tag => {
+    tag.className = 'resolution-tag';
+  });
+  el.classList.add(el.dataset.cls);
+}
+
+// ── Export Minutes PDF ──
+async function exportMinutesPDF() {
+  const meetName = document.getElementById('meetingName').value || 'รายงานการประชุม';
+  const dateVal  = document.getElementById('meetingDate').value;
+  const numbers  = computeAgendaNumbers ? computeAgendaNumbers() : agendaItems.map((_,i)=>`${i+1}`);
+  const colorMap = {chair:'#1B4332',other:'#1A6B9A',info:'#27AE60',consult:'#6B3FA0',decide:'#B7860B',other2:'#636e72'};
+  const resLabel = {noted:'รับทราบ',resolved:'มีมติ',deferred:'เลื่อน',none:'ไม่มีมติ'};
+  const thDate = v => {if(!v)return'-';const[y,m,d]=v.split('-');const mn=['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];return `${parseInt(d)} ${mn[parseInt(m)]} พ.ศ. ${parseInt(y)+543}`;};
+  const chairId = document.getElementById('p_chair').value;
+  const chairP  = PERSONS.find(p=>p.id===chairId);
+
+  let agendaBlocks = agendaItems.map((item,idx) => {
+    const md = minutesData[item.id] || {};
+    const assigneeP = PERSONS.find(p=>p.id===md.assignee);
+    return `<div style="margin-bottom:16px;border:1px solid #c8ddd0;border-radius:8px;overflow:hidden;">
+      <div style="background:${colorMap[item.group]};padding:8px 14px;color:#fff;font-weight:700;font-size:13px;">วาระ ${numbers[idx]} — ${item.title}</div>
+      <table style="width:100%;font-size:13px;border-collapse:collapse;">
+        <tr><td style="padding:8px 14px;width:140px;font-weight:600;color:#2D6A4F;vertical-align:top;">สาระสำคัญ</td><td style="padding:8px 14px;border-left:1px solid #c8ddd0;">${md.summary||'-'}</td></tr>
+        <tr style="background:#f7fbf8;"><td style="padding:8px 14px;font-weight:600;color:#2D6A4F;vertical-align:top;">มติที่ประชุม</td><td style="padding:8px 14px;border-left:1px solid #c8ddd0;"><strong>${resLabel[md.resolution||'none']}</strong>${md.resolutionText?' — '+md.resolutionText:''}</td></tr>
+        <tr><td style="padding:8px 14px;font-weight:600;color:#2D6A4F;">ผู้รับผิดชอบ</td><td style="padding:8px 14px;border-left:1px solid #c8ddd0;">${assigneeP?assigneeP.name+' ('+assigneeP.role+')':'-'}</td></tr>
+        <tr style="background:#f7fbf8;"><td style="padding:8px 14px;font-weight:600;color:#2D6A4F;">กำหนดส่ง</td><td style="padding:8px 14px;border-left:1px solid #c8ddd0;">${thDate(md.dueDate)}</td></tr>
+        ${md.note?`<tr><td style="padding:8px 14px;font-weight:600;color:#2D6A4F;">หมายเหตุ</td><td style="padding:8px 14px;border-left:1px solid #c8ddd0;">${md.note}</td></tr>`:''}
+      </table>
+    </div>`;
+  }).join('');
+
+  const d = document.createElement('div');
+  d.style.cssText = 'font-family:Sarabun,sans-serif;padding:40px 48px;background:white;max-width:800px;color:#1a2e22;';
+  d.innerHTML = `
+    <div style="text-align:center;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #2D6A4F;">
+      <div style="font-size:34px;margin-bottom:6px;">🌿</div>
+      <div style="font-size:12px;color:#6b7e72;">${document.getElementById('org').value}</div>
+      <div style="font-family:'Prompt',sans-serif;font-size:20px;font-weight:700;color:#2D6A4F;margin:4px 0;">รายงานการประชุม</div>
+      <div style="font-size:14px;">${meetName}</div>
+      <div style="font-size:12px;color:#6b7e72;">${thDate(dateVal)}</div>
+    </div>
+    <div style="background:#f0f9f3;padding:12px 16px;border-radius:8px;margin-bottom:20px;font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div><strong style="color:#2D6A4F;">ประธาน:</strong> ${chairP?chairP.name+' ('+chairP.role+')':'-'}</div>
+      <div><strong style="color:#2D6A4F;">เวลาเปิด:</strong> ${document.getElementById('min_open_time').value||'-'}</div>
+      <div><strong style="color:#2D6A4F;">ผู้เข้าร่วม:</strong> ${PERSONS.filter(p=>attendees[p.id]).map(p=>p.name).join(', ')}</div>
+      <div><strong style="color:#2D6A4F;">เวลาปิด:</strong> ${document.getElementById('min_close_time').value||'-'}</div>
+    </div>
+    ${document.getElementById('min_open_text').value ? `<div style="margin-bottom:16px;font-size:13px;"><strong>เปิดประชุม:</strong> ${document.getElementById('min_open_text').value}</div>`:''}
+    <div style="font-family:'Prompt',sans-serif;font-size:14px;font-weight:700;color:#2D6A4F;border-bottom:2px solid #2D6A4F;padding-bottom:5px;margin-bottom:14px;">สรุปรายวาระ</div>
+    ${agendaBlocks}
+    ${document.getElementById('min_close_text').value ? `<div style="margin-top:14px;font-size:13px;border-top:1px solid #c8ddd0;padding-top:12px;"><strong>ปิดประชุม:</strong> ${document.getElementById('min_close_text').value}</div>`:''}
+    <div style="margin-top:40px;display:grid;grid-template-columns:repeat(3,1fr);gap:24px;text-align:center;font-size:12.5px;">
+      ${['ประธานการประชุม','เลขานุการ','ผู้จดบันทึก'].map(l=>`<div><div style="border-top:1px solid #c8ddd0;padding-top:7px;margin-top:44px;">( ${'.'.repeat(15)} )<br>${l}</div></div>`).join('')}
+    </div>`;
+  document.body.appendChild(d);
+  try {
+    showToast('⏳ สร้าง PDF รายงาน...');
+    const canvas = await html2canvas(d,{scale:2,backgroundColor:'#ffffff',windowWidth:800});
+    const {jsPDF} = window.jspdf;
+    const pdf = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const iw=210,ih=(canvas.height*iw)/canvas.width; let pos=0,left=ih;
+    while(left>0){pdf.addImage(canvas.toDataURL('image/jpeg',.95),'JPEG',0,pos,iw,ih);left-=297;pos-=297;if(left>0)pdf.addPage();}
+    pdf.save(`รายงานประชุม_${meetName}.pdf`);
+    showToast('✅ Export รายงานการประชุม PDF แล้ว!');
+  } catch(e) { showToast('❌ Export ล้มเหลว',true); }
+  finally { document.body.removeChild(d); }
+}
+
+// ── History ──
+const HISTORY_KEY = 'meetingHistory_v2';
+
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]'); } catch(e) { return []; }
+}
+function saveHistory(arr) { localStorage.setItem(HISTORY_KEY, JSON.stringify(arr)); }
+
+function saveMinutesToHistory() {
+  const name = document.getElementById('meetingName').value || '(ไม่ระบุ)';
+  const dateVal = document.getElementById('meetingDate').value;
+  const history = getHistory();
+  const entry = {
+    id: Date.now().toString(),
+    name, date: dateVal,
+    savedAt: new Date().toISOString(),
+    totalAgenda: agendaItems.length,
+    totalMin: agendaItems.reduce((s,i)=>s+i.duration,0),
+    projectData: buildProjectData(),
+    minutesData: JSON.parse(JSON.stringify(minutesData)),
+  };
+  history.unshift(entry);
+  if (history.length > 30) history.splice(30);
+  saveHistory(history);
+  renderHistory();
+  showToast('✅ บันทึกในประวัติแล้ว!');
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const empty = document.getElementById('historyEmpty');
+  if (!list) return;
+  const history = getHistory();
+  if (!history.length) { list.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  const thDate = v => {if(!v)return'-';const[y,m,d]=v.split('-');const mn=['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];return `${parseInt(d)} ${mn[parseInt(m)]} ${parseInt(y)+543}`;};
+  list.innerHTML = history.map((entry,i) => `
+    <div class="history-card" onclick="loadFromHistory('${entry.id}')">
+      <div class="history-icon">📋</div>
+      <div class="history-meta">
+        <div class="history-name">${entry.name}</div>
+        <div class="history-sub">${thDate(entry.date)} • ${entry.totalAgenda} วาระ • ${entry.totalMin} นาที</div>
+        <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">บันทึกเมื่อ ${new Date(entry.savedAt).toLocaleString('th-TH')}</div>
+      </div>
+      <div class="history-actions" onclick="event.stopPropagation()">
+        <button class="btn btn-sm btn-jade" onclick="loadFromHistory('${entry.id}')">📂 โหลด</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteHistory('${entry.id}')">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+function loadFromHistory(id) {
+  const history = getHistory();
+  const entry = history.find(h=>h.id===id);
+  if (!entry) return;
+  if (!confirm(`โหลดประชุม "${entry.name}" ? ข้อมูลปัจจุบันจะถูกแทนที่`)) return;
+  loadProjectData(entry.projectData);
+  minutesData = entry.minutesData || {};
+  switchTab('info'); setActiveSidebar && setActiveSidebar('info');
+  document.querySelectorAll('.sidebar-item').forEach(el=>el.classList.remove('active'));
+  showToast(`📂 โหลด "${entry.name}" แล้ว!`);
+}
+
+function deleteHistory(id) {
+  if (!confirm('ลบรายการนี้?')) return;
+  const history = getHistory().filter(h=>h.id!==id);
+  saveHistory(history); renderHistory();
+  showToast('🗑 ลบแล้ว');
+}
+
+function clearAllHistory() {
+  if (!confirm('ล้างประวัติทั้งหมด? ไม่สามารถกู้คืนได้')) return;
+  saveHistory([]); renderHistory();
+  showToast('🗑 ล้างประวัติทั้งหมดแล้ว');
+}
+
+// ── DASHBOARD ──
+function refreshDashboard() {
+  // KPI Cards
+  const totalMin = agendaItems.reduce((s,i)=>s+i.duration,0);
+  const actionItems = agendaItems.filter(i=>minutesData[i.id]?.assignee);
+  const resolved = agendaItems.filter(i=>minutesData[i.id]?.resolution==='resolved');
+  const kpiCards = [
+    {num:agendaItems.length, label:'วาระทั้งหมด', icon:'📝', cls:''},
+    {num:totalMin+' นาที', label:'เวลารวม', icon:'⏱', cls:'blue'},
+    {num:actionItems.length, label:'Action Items', icon:'✅', cls:'gold'},
+    {num:resolved.length, label:'มีมติแล้ว', icon:'🎯', cls:'purple'},
+  ];
+  const kpiEl = document.getElementById('dashKpiCards');
+  if (kpiEl) kpiEl.innerHTML = kpiCards.map(c=>`
+    <div class="dash-card ${c.cls}">
+      <div style="font-size:24px;margin-bottom:4px;">${c.icon}</div>
+      <div class="dash-card-num">${c.num}</div>
+      <div class="dash-card-label">${c.label}</div>
+    </div>`).join('');
+
+  // Type chart
+  const typeCounts = {info:0,consult:0,decide:0};
+  agendaItems.forEach(i=>typeCounts[i.type]=(typeCounts[i.type]||0)+1);
+  const typeColors = {info:'#27AE60',consult:'#6B3FA0',decide:'#B7860B'};
+  const typeLabels = {info:'แจ้งเพื่อทราบ',consult:'ขอความเห็น',decide:'พิจารณา'};
+  const total = agendaItems.length || 1;
+  const typeEl = document.getElementById('dashTypeChart');
+  if (typeEl) typeEl.innerHTML = Object.keys(typeCounts).map(t=>`
+    <div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+        <span style="font-weight:600;color:${typeColors[t]};">${typeLabels[t]}</span>
+        <span>${typeCounts[t]} วาระ (${Math.round(typeCounts[t]/total*100)}%)</span>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${typeCounts[t]/total*100}%;background:${typeColors[t]};"></div></div>
+    </div>`).join('');
+
+  // Time by group
+  const groupColors = {chair:'#1B4332',other:'#1A6B9A',info:'#27AE60',consult:'#6B3FA0',decide:'#B7860B',other2:'#636e72'};
+  const timeEl = document.getElementById('dashTimeChart');
+  if (timeEl) timeEl.innerHTML = Object.keys(GROUP_CONFIG).map(gk=>{
+    const items = agendaItems.filter(i=>i.group===gk);
+    const min = items.reduce((s,i)=>s+i.duration,0);
+    const pct = totalMin ? Math.round(min/totalMin*100) : 0;
+    if (!items.length) return '';
+    return `<div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;">
+        <span style="font-weight:600;color:${groupColors[gk]};">${GROUP_CONFIG[gk].icon} ${GROUP_CONFIG[gk].label.split('(')[0].trim()}</span>
+        <span>${min} นาที (${pct}%)</span>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%;background:${groupColors[gk]};"></div></div>
+    </div>`;
+  }).join('');
+
+  // Action Items table
+  const actEl = document.getElementById('dashActionItems');
+  const actCount = document.getElementById('dashActionCount');
+  if (actEl) {
+    const actions = agendaItems.filter(i=>minutesData[i.id]?.assignee || minutesData[i.id]?.resolution==='resolved');
+    if (actCount) actCount.textContent = actions.length + ' รายการ';
+    if (!actions.length) {
+      actEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--ink-soft);">ยังไม่มี Action Items — บันทึกมติในหน้า Minutes ก่อน</div>';
+    } else {
+      const thDate = v => {if(!v)return'-';const[y,m,d]=v.split('-');return `${parseInt(d)}/${parseInt(m)}/${parseInt(y)+543}`;};
+      const resStyle = {noted:'background:#D5F5E3;color:#1E8449',resolved:'background:#FDEBD0;color:#A04000',deferred:'background:#EBF5FB;color:#1A6B9A',none:'background:#fdecea;color:#c0392b'};
+      const resLabel = {noted:'รับทราบ',resolved:'มีมติ',deferred:'เลื่อน',none:'ไม่มีมติ'};
+      actEl.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead><tr style="background:var(--jade-bg);">
+          <th style="padding:9px 14px;text-align:left;font-weight:700;color:var(--jade);">วาระ</th>
+          <th style="padding:9px 14px;text-align:left;font-weight:700;color:var(--jade);">มติ</th>
+          <th style="padding:9px 14px;text-align:left;font-weight:700;color:var(--jade);">ผู้รับผิดชอบ</th>
+          <th style="padding:9px 14px;text-align:left;font-weight:700;color:var(--jade);">กำหนดส่ง</th>
+        </tr></thead><tbody>` +
+        actions.map((item,i) => {
+          const md = minutesData[item.id] || {};
+          const assigneeP = PERSONS.find(p=>p.id===md.assignee);
+          const res = md.resolution||'none';
+          return `<tr style="${i%2?'background:var(--surface)':''}">
+            <td style="padding:8px 14px;">${item.title.substring(0,42)}${item.title.length>42?'...':''}</td>
+            <td style="padding:8px 14px;"><span style="padding:2px 8px;border-radius:20px;font-size:11.5px;font-weight:700;${resStyle[res]}">${resLabel[res]}</span></td>
+            <td style="padding:8px 14px;">${assigneeP?assigneeP.name:'-'}</td>
+            <td style="padding:8px 14px;">${thDate(md.dueDate)}</td>
+          </tr>`;
+        }).join('') + '</tbody></table>';
+    }
+  }
+}
+
+// ── LINE Notify ──
+async function sendLineNotify() {
+  const token = document.getElementById('lineNotifyToken').value.trim();
+  if (!token) { showToast('⚠️ กรุณาใส่ LINE Notify Token',true); return; }
+
+  const meetName = document.getElementById('meetingName').value || '(ไม่ระบุ)';
+  const dateVal  = document.getElementById('meetingDate').value;
+  const totalMin = agendaItems.reduce((s,i)=>s+i.duration,0);
+  const actions  = agendaItems.filter(i=>minutesData[i.id]?.assignee);
+  const thDate = v => {if(!v)return'-';const[y,m,d]=v.split('-');const mn=['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];return `${parseInt(d)} ${mn[parseInt(m)]} ${parseInt(y)+543}`;};
+
+  let msg = `\n🌿 สรุปการประชุม\n📋 ${meetName}\n📅 ${thDate(dateVal)}\n⏱ รวม ${totalMin} นาที\n📝 ${agendaItems.length} วาระ\n`;
+  if (actions.length) {
+    msg += `\n✅ Action Items (${actions.length} รายการ):`;
+    actions.forEach((item,i) => {
+      const md = minutesData[item.id]||{};
+      const p  = PERSONS.find(x=>x.id===md.assignee);
+      msg += `\n${i+1}. ${item.title}\n   👤 ${p?p.name:'?'} | 📅 ${thDate(md.dueDate)}`;
+    });
+  }
+  msg += '\n\n— ระบบระเบียบวาระการประชุม สสจ.สมุทรปราการ';
+
+  const statusEl = document.getElementById('lineNotifyStatus');
+  statusEl.innerHTML = '<span style="color:var(--jade);">⏳ กำลังส่ง...</span>';
+
+  try {
+    const resp = await fetch('https://notify-api.line.me/api/notify', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'message=' + encodeURIComponent(msg),
+    });
+    if (resp.ok) {
+      statusEl.innerHTML = '<span style="color:var(--jade);">✅ ส่ง LINE สำเร็จ!</span>';
+      showToast('✅ ส่ง LINE Notify แล้ว!');
+    } else {
+      throw new Error('HTTP ' + resp.status + ' — ตรวจสอบ Token อีกครั้ง');
+    }
+  } catch(e) {
+    statusEl.innerHTML = `<span style="color:#e74c3c;">❌ ${e.message}</span>`;
+    showToast('❌ ส่ง LINE ไม่ได้: ' + e.message, true);
+  }
+}
+
+// ── COUNTDOWN TIMER ──
+let cdTotalSec = 0, cdRemaining = 0, cdInterval = null, cdPaused = false, cdAgendaIdx = -1;
+
+function openTimerModal() {
+  // Populate agenda select
+  const sel = document.getElementById('timerAgendaSelect');
+  sel.innerHTML = '<option value="">-- เลือกวาระ --</option>';
+  agendaItems.forEach((item,i) => {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = `วาระ ${i+1}. ${item.title.substring(0,35)} (${item.duration} นาที)`;
+    sel.appendChild(o);
+  });
+  resetTimer_cd();
+  document.getElementById('timerModal').classList.add('open');
+}
+function closeTimerModal() {
+  clearInterval(cdInterval);
+  document.getElementById('timerModal').classList.remove('open');
+}
+function loadTimerAgenda() {
+  const sel = document.getElementById('timerAgendaSelect');
+  const idx = parseInt(sel.value);
+  if (isNaN(idx) || idx < 0) return;
+  cdAgendaIdx = idx;
+  const item = agendaItems[idx];
+  document.getElementById('timerCustomMin').value = item.duration;
+  document.getElementById('timerAgendaName').textContent = `วาระ ${idx+1}: ${item.title}`;
+  setTimerFromInput();
+}
+function setTimerFromInput() {
+  const min = parseInt(document.getElementById('timerCustomMin').value)||15;
+  clearInterval(cdInterval); cdPaused=false;
+  cdTotalSec=min*60; cdRemaining=cdTotalSec;
+  updateTimerDisplay();
+  document.getElementById('btnTimerStart').disabled=false;
+  document.getElementById('btnTimerPause').disabled=true;
+  document.getElementById('btnTimerPause').textContent='⏸ หยุดชั่วคราว';
+}
+function startTimer_cd() {
+  if (cdRemaining<=0) { setTimerFromInput(); }
+  clearInterval(cdInterval);
+  cdPaused=false;
+  cdInterval=setInterval(()=>{
+    cdRemaining--;
+    updateTimerDisplay();
+    if (cdRemaining<=0) {
+      clearInterval(cdInterval);
+      document.getElementById('timerDisplay').classList.remove('green','orange');
+      document.getElementById('timerDisplay').classList.add('red');
+      document.getElementById('timerAgendaName').textContent='⏰ หมดเวลาแล้ว!';
+      try { new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAA...').play(); } catch(e){}
+    }
+  },1000);
+  document.getElementById('btnTimerStart').disabled=true;
+  document.getElementById('btnTimerPause').disabled=false;
+}
+function pauseTimer_cd() {
+  if (!cdPaused) {
+    clearInterval(cdInterval); cdPaused=true;
+    document.getElementById('btnTimerPause').textContent='▶️ ต่อ';
+  } else {
+    cdPaused=false; startTimer_cd();
+    document.getElementById('btnTimerPause').textContent='⏸ หยุดชั่วคราว';
+  }
+}
+function resetTimer_cd() {
+  clearInterval(cdInterval); cdPaused=false;
+  cdRemaining=cdTotalSec; updateTimerDisplay();
+  document.getElementById('btnTimerStart').disabled=false;
+  document.getElementById('btnTimerPause').disabled=true;
+  document.getElementById('btnTimerPause').textContent='⏸ หยุดชั่วคราว';
+}
+function nextTimerAgenda() {
+  clearInterval(cdInterval);
+  cdAgendaIdx = Math.min(cdAgendaIdx+1, agendaItems.length-1);
+  if (cdAgendaIdx<0 || cdAgendaIdx>=agendaItems.length) return;
+  document.getElementById('timerAgendaSelect').value = cdAgendaIdx;
+  loadTimerAgenda();
+  startTimer_cd();
+}
+function updateTimerDisplay() {
+  const m=Math.floor(cdRemaining/60), s=cdRemaining%60;
+  const str=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  document.getElementById('timerDisplay').textContent=str;
+  const pct = cdTotalSec>0 ? (cdRemaining/cdTotalSec)*100 : 0;
+  document.getElementById('timerProgressFill').style.width=pct+'%';
+  const el=document.getElementById('timerDisplay');
+  el.className='timer-display';
+  if (cdRemaining>cdTotalSec*0.33) el.classList.add('green');
+  else if (cdRemaining>cdTotalSec*0.1) el.classList.add('orange');
+  else el.classList.add('red');
+}
+
+// ── Patch switchTab to init P2 tabs ──
+const _p2_origSwitchTab = switchTab;
+switchTab = function(tab) {
+  _p2_origSwitchTab(tab);
+  if (tab==='minutes')   initMinutesTab();
+  if (tab==='dashboard') refreshDashboard();
+  if (tab==='history')   renderHistory();
+};
+
+
+
+
+window.onload = function() {
+  // ── Core init ──
+  init();
+  // ── Demo data (only if localStorage empty) ──
+agendaItems = [
     { id:'s1', group:'chair', title:'แจ้งนโยบายและเป้าหมายด้านการแพทย์แผนไทยจากสาธารณสุขจังหวัด', detail:'นโยบายสำคัญจากระดับเขตสุขภาพที่ 6 และกระทรวงสาธารณสุข', type:'info', duration:15, persons:['vipha'] },
     { id:'s2', group:'other', title:'ผลการประชุม Service Plan แพทย์แผนไทย เขตสุขภาพที่ 6', detail:'สรุปมติและข้อสั่งการจากการประชุมระดับเขต', type:'info', duration:10, persons:['jeer'] },
     { id:'s3', group:'info', title:'รายงานความก้าวหน้าตัวชี้วัด KPI 14, 15 และ 26', detail:'ผลการดำเนินงาน รอบ 6 เดือน แยกรายอำเภอ 6 อำเภอ', type:'info', duration:20, persons:['jeer','khajee'] },
@@ -2027,11 +4064,23 @@ window.onload = () => {
     { id:'s8', group:'other2', title:'นัดหมายการประชุมครั้งถัดไป', detail:'กำหนดวันประชุมครั้งที่ 2/2568', type:'info', duration:5, persons:[] },
   ];
   renderAllGroups();
+  refreshRecAgendaList();
   document.getElementById('meetingName').value = 'ประชุมกลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก';
   document.getElementById('meetingNo').value = '1/2568';
   document.getElementById('location').value = 'ห้องประชุมสำนักงานสาธารณสุขจังหวัดสมุทรปราการ ชั้น 4';
   updateEndTime();
+  document.getElementById('transcriptText')?.addEventListener('input', updateWordCount);
+  // ── Priority 1: Auto-save & project name ──
+  loadFromLocalStorage();
+  initAutoSaveListeners();
+  const pName = document.getElementById('meetingName')?.value || 'ยังไม่ได้ตั้งชื่อ';
+  const pEl = document.getElementById('sidebarProjectName');
+  if (pEl) pEl.textContent = pName;
+  // ── Priority 3: Dark mode & PIN ──
+  initDarkMode();
+  initPINLock();
 };
+
 </script>
 </body>
 </html>
