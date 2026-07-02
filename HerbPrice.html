@@ -462,19 +462,24 @@ tbody tr:last-child td{border-bottom:none;}
   </div>
 </div>
 
-<!-- Compare Hospitals Modal -->
+<!-- Compare Modal -->
 <div class="overlay" id="compareOverlay">
   <div class="modal" style="max-width:900px;">
     <div class="modal-head">
-      <div><h2>เปรียบเทียบโรงพยาบาล</h2><div class="meta">เลือก 2 หน่วยบริการขึ้นไปเพื่อเทียบราคาทุกรายการ</div></div>
+      <div><h2 id="compareTitle">เปรียบเทียบโรงพยาบาล</h2><div class="meta" id="compareSubtitle">เลือก 2 หน่วยบริการขึ้นไปเพื่อเทียบราคาทุกรายการ</div></div>
       <button class="modal-close" onclick="closeModal('compareOverlay')">✕</button>
     </div>
     <div class="modal-body">
+      <div class="view-toggle" style="display:inline-flex; margin-bottom:12px;">
+        <button id="compareModeHospital" class="active">ตามหน่วยบริการ</button>
+        <button id="compareModeVendor">ตามบริษัทผู้ขาย</button>
+      </div>
       <div class="hosp-picker" id="hospPicker"></div>
       <button class="btn btn-gold btn-sm" id="btnRunCompare">เปรียบเทียบ</button>
       <div class="compare-table-wrap" id="compareResult"></div>
     </div>
   </div>
+
 </div>
 
 <!-- Google Sheets Sync Modal -->
@@ -512,12 +517,12 @@ tbody tr:last-child td{border-bottom:none;}
 
 <script>
 /* ================= DATA LAYER ================= */
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.1.0";
 const DISTRICTS = ["เมืองสมุทรปราการ","บางบ่อ","บางพลี","พระประแดง","พระสมุทรเจดีย์","บางเสาธง"];
 const STORAGE_KEY = "herbPriceCatalog_v1";
 const META_KEY = "herbPriceCatalog_meta_v1";
 
-let records = []; // {id, item, category(รูปแบบยา), vendor(ชื่อบริษัท/หน่วยงาน ผู้ขาย), unit, district, hospital(ผู้จัดซื้อ), price, subUnitPrice, remark, date, poRef}
+let records = []; // {id, item, category(รูปแบบยา), vendor(ชื่อบริษัท/หน่วยงาน ผู้ขาย), unit, district, hospital(ผู้จัดซื้อ), price, subUnitPrice, remark}
 let importedRows = []; // staged rows before confirm
 let importHeaders = [];
 
@@ -581,9 +586,7 @@ function sampleData(){
         id:id++, item:it.item, category:it.category, vendor:vendorPool[Math.floor(Math.random()*vendorPool.length)], unit:it.unit,
         district:d, hospital: HOSPITAL_NAMES[d] || ("รพ."+d),
         price, subUnitPrice: +(price/it.perUnit).toFixed(2),
-        remark: remarks[Math.floor(Math.random()*remarks.length)],
-        date: "2569-0"+(Math.ceil(Math.random()*6))+"-15",
-        poRef: "PO-25"+(Math.floor(Math.random()*900)+100)+"-"+String(id).padStart(4,'0')
+        remark: remarks[Math.floor(Math.random()*remarks.length)]
       });
     });
   });
@@ -797,7 +800,7 @@ function openDetail(itemName){
       <div class="dstat"><div class="v">${g.count}</div><div class="k">หน่วยบริการ</div></div>
     </div>
     <div class="trend-wrap">
-      <h4>แนวโน้มราคาย้อนหลัง</h4>
+      <h4>เปรียบเทียบราคาตามบริษัทผู้ขาย</h4>
       <div id="trendChartHolder"></div>
     </div>
     <div style="font-size:12.5px; color:#7a715a; margin-bottom:8px; font-weight:600;">รายละเอียดราคาตามหน่วยบริการ</div>
@@ -806,7 +809,7 @@ function openDetail(itemName){
       const isMin = r.price===g.min, isMax = r.price===g.max;
       const anomaly = isAnomaly(r.price, g.avg);
       return `<div class="hosp-row ${anomaly?'anomaly':''}">
-        <div class="hosp-name">${r.hospital}<span class="district">อ.${r.district}${r.date?(' · '+r.date):''}${r.poRef?(' · เลขที่: '+r.poRef):''}</span>
+        <div class="hosp-name">${r.hospital}<span class="district">อ.${r.district}</span>
           ${r.vendor ? `<span class="vendor-note">ผู้ขาย: ${r.vendor}</span>` : ''}
           ${r.remark && r.remark!=='ไม่มี' ? `<span class="remark-note">หมายเหตุ: ${r.remark}</span>` : ''}
         </div>
@@ -821,33 +824,33 @@ function openDetail(itemName){
     }).join('')}
   `;
   document.getElementById('detailOverlay').classList.add('show');
-  renderTrendChart(rows);
+  renderVendorChart(rows);
 }
 
-function renderTrendChart(rows){
+function renderVendorChart(rows){
   const holder = document.getElementById('trendChartHolder');
-  const dated = rows.filter(r=>r.date);
-  const distinctDates = [...new Set(dated.map(r=>r.date))].sort();
+  const vendored = rows.filter(r=>r.vendor);
+  const vendors = [...new Set(vendored.map(r=>r.vendor))];
   if(trendChartInstance){ trendChartInstance.destroy(); trendChartInstance = null; }
-  if(distinctDates.length < 2){
-    holder.innerHTML = `<div class="trend-empty">ยังมีข้อมูลวันที่ไม่หลากหลายพอสำหรับกราฟแนวโน้ม (ต้องมีอย่างน้อย 2 วันที่แตกต่างกัน)</div>`;
+  if(vendors.length < 1){
+    holder.innerHTML = `<div class="trend-empty">ยังไม่มีข้อมูลบริษัทผู้ขายสำหรับรายการนี้</div>`;
     return;
   }
   holder.innerHTML = `<canvas id="trendCanvas" height="90"></canvas>`;
-  const avgByDate = distinctDates.map(d=>{
-    const ps = dated.filter(r=>r.date===d).map(r=>r.price);
+  const avgByVendor = vendors.map(v=>{
+    const ps = vendored.filter(r=>r.vendor===v).map(r=>r.price);
     return ps.reduce((a,b)=>a+b,0)/ps.length;
   });
   const ctx = document.getElementById('trendCanvas').getContext('2d');
   trendChartInstance = new Chart(ctx, {
-    type:'line',
-    data:{ labels: distinctDates, datasets:[{
-      label:'ราคาเฉลี่ย (฿)', data: avgByDate, borderColor:'#2D4A3E', backgroundColor:'rgba(45,74,62,0.12)',
-      fill:true, tension:.25, pointBackgroundColor:'#B8902F', pointRadius:4
+    type:'bar',
+    data:{ labels: vendors, datasets:[{
+      label:'ราคาเฉลี่ย (฿)', data: avgByVendor, backgroundColor:'#7C9885',
+      borderColor:'#2D4A3E', borderWidth:1.5, borderRadius:4
     }]},
     options:{
       plugins:{legend:{display:false}},
-      scales:{ y:{beginAtZero:false, ticks:{callback:v=>'฿'+v}} }
+      scales:{ y:{beginAtZero:true, ticks:{callback:v=>'฿'+v}} }
     }
   });
 }
@@ -868,8 +871,6 @@ const HEADER_ALIASES = {
   subUnitPrice: ['ราคาต่อหน่วยย่อยสุด','ราคาต่อหน่วยย่อย','หน่วยย่อยสุด','subunitprice'],
   price: ['ราคาต่อหน่วยจำหน่าย','ราคาต่อหน่วย','ราคา','price'],
   remark: ['หมายเหตุ','แถมหรือส่วนลด','remark','note'],
-  date: ['วันที่จัดซื้อ','วันที่','date'],
-  poRef: ['เลขที่ใบสั่งซื้อ','เลขที่สัญญา','เลขที่เอกสาร','poref','เลขที่'],
 };
 function guessField(header){
   const h = (header||'').toString().trim().toLowerCase();
@@ -923,12 +924,12 @@ function handleFile(file){
 function showImportPreview(){
   document.getElementById('dropzone').style.display='none';
   document.getElementById('importPreviewWrap').style.display='block';
-  const fieldKeys = ['item','category','vendor','unit','price','subUnitPrice','hospital','district','remark','date','poRef'];
+  const fieldKeys = ['item','category','vendor','unit','price','subUnitPrice','hospital','district','remark'];
   const fieldLabels = {
     item:'รายการ', category:'รูปแบบยา', vendor:'ชื่อบริษัท/หน่วยงาน ผู้ขาย', unit:'หน่วยที่จำหน่าย',
     price:'ราคาต่อหน่วยจำหน่าย (รวม VAT 7%)', subUnitPrice:'ราคาต่อหน่วยย่อยสุด',
     hospital:'ผู้จัดซื้อ (หน่วยบริการ)', district:'อำเภอ',
-    remark:'หมายเหตุ (แถมหรือส่วนลด)', date:'วันที่ (ถ้ามี)', poRef:'เลขที่ใบสั่งซื้อ/สัญญา (ถ้ามี)'
+    remark:'หมายเหตุ (แถมหรือส่วนลด)'
   };
   const map = document.getElementById('fieldMap');
   map.innerHTML = fieldKeys.map(k=>{
@@ -980,8 +981,6 @@ function buildRecordsFromImport(){
     price: parseFloat(r[map.price]) || 0,
     subUnitPrice: map.subUnitPrice ? (parseFloat(r[map.subUnitPrice]) || 0) : 0,
     remark: map.remark ? (r[map.remark]||'').toString().trim() : '',
-    date: map.date ? (r[map.date]||'').toString().trim() : '',
-    poRef: map.poRef ? (r[map.poRef]||'').toString().trim() : '',
   })).filter(r=>r.item && r.price>0);
 }
 
@@ -1023,8 +1022,7 @@ function exportExcel(list, filenameSuffix){
   const detailSheet = XLSX.utils.json_to_sheet(list.map(r=>({
     'รายการ': r.item, 'รูปแบบยา': r.category, 'ชื่อบริษัท/หน่วยงาน ผู้ขาย': r.vendor||'', 'หน่วยที่จำหน่าย': r.unit, 'อำเภอ': r.district,
     'ผู้จัดซื้อ': r.hospital, 'ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท)': r.price,
-    'ราคาต่อหน่วยย่อยสุด(บาท)': r.subUnitPrice||'', 'หมายเหตุ (แถมหรือส่วนลด)': r.remark||'',
-    'วันที่': r.date||'', 'เลขที่ใบสั่งซื้อ/สัญญา': r.poRef||''
+    'ราคาต่อหน่วยย่อยสุด(บาท)': r.subUnitPrice||'', 'หมายเหตุ (แถมหรือส่วนลด)': r.remark||''
   })));
   const districtPivot = {};
   list.forEach(r=>{
@@ -1050,8 +1048,7 @@ document.getElementById('expCSV').addEventListener('click', ()=>{
   const ws = XLSX.utils.json_to_sheet(records.map(r=>({
     'รายการ': r.item, 'รูปแบบยา': r.category, 'ชื่อบริษัท/หน่วยงาน ผู้ขาย': r.vendor||'', 'หน่วยที่จำหน่าย': r.unit, 'อำเภอ': r.district,
     'ผู้จัดซื้อ': r.hospital, 'ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท)': r.price,
-    'ราคาต่อหน่วยย่อยสุด(บาท)': r.subUnitPrice||'', 'หมายเหตุ (แถมหรือส่วนลด)': r.remark||'',
-    'วันที่': r.date||'', 'เลขที่ใบสั่งซื้อ/สัญญา': r.poRef||''
+    'ราคาต่อหน่วยย่อยสุด(บาท)': r.subUnitPrice||'', 'หมายเหตุ (แถมหรือส่วนลด)': r.remark||''
   })));
   const csv = XLSX.utils.sheet_to_csv(ws);
   const blob = new Blob(["\uFEFF"+csv], {type:'text/csv;charset=utf-8;'});
@@ -1142,35 +1139,67 @@ document.getElementById('btnSettings').addEventListener('click', ()=>{
   document.getElementById('settingsOverlay').classList.add('show');
 });
 
-/* ================= COMPARE HOSPITALS ================= */
-let selectedHospitals = new Set();
-document.getElementById('btnCompare').addEventListener('click', ()=>{
-  const hospitals = [...new Set(records.map(r=>r.hospital))].sort();
+/* ================= COMPARE (HOSPITAL / VENDOR) ================= */
+let compareMode = 'hospital'; // 'hospital' | 'vendor'
+let selectedCompareItems = new Set();
+
+function openComparePicker(){
+  const field = compareMode; // 'hospital' or 'vendor'
+  const values = [...new Set(records.map(r=>r[field]).filter(Boolean))].sort();
   const picker = document.getElementById('hospPicker');
-  if(hospitals.length===0){
-    picker.innerHTML = '<div class="import-note">ยังไม่มีข้อมูลโรงพยาบาลให้เปรียบเทียบ</div>';
+  selectedCompareItems = new Set();
+  if(values.length===0){
+    picker.innerHTML = `<div class="import-note">ยังไม่มีข้อมูล${field==='hospital'?'โรงพยาบาล':'บริษัทผู้ขาย'}ให้เปรียบเทียบ</div>`;
   } else {
-    picker.innerHTML = hospitals.map(h=>`<div class="hosp-chip" data-h="${h}">${h}</div>`).join('');
+    picker.innerHTML = values.map(v=>`<div class="hosp-chip" data-v="${v}">${v}</div>`).join('');
     picker.querySelectorAll('.hosp-chip').forEach(chip=>{
       chip.addEventListener('click', ()=>{
-        const h = chip.dataset.h;
-        if(selectedHospitals.has(h)){ selectedHospitals.delete(h); chip.classList.remove('selected'); }
-        else{ selectedHospitals.add(h); chip.classList.add('selected'); }
+        const v = chip.dataset.v;
+        if(selectedCompareItems.has(v)){ selectedCompareItems.delete(v); chip.classList.remove('selected'); }
+        else{ selectedCompareItems.add(v); chip.classList.add('selected'); }
       });
     });
   }
   document.getElementById('compareResult').innerHTML = '';
+}
+document.getElementById('btnCompare').addEventListener('click', ()=>{
+  compareMode = 'hospital';
+  document.getElementById('compareModeHospital').classList.add('active');
+  document.getElementById('compareModeVendor').classList.remove('active');
+  document.getElementById('compareTitle').textContent = 'เปรียบเทียบโรงพยาบาล';
+  document.getElementById('compareSubtitle').textContent = 'เลือก 2 หน่วยบริการขึ้นไปเพื่อเทียบราคาทุกรายการ';
+  openComparePicker();
   document.getElementById('compareOverlay').classList.add('show');
 });
+document.getElementById('compareModeHospital').addEventListener('click', ()=>{
+  compareMode = 'hospital';
+  document.getElementById('compareModeHospital').classList.add('active');
+  document.getElementById('compareModeVendor').classList.remove('active');
+  document.getElementById('compareTitle').textContent = 'เปรียบเทียบโรงพยาบาล';
+  document.getElementById('compareSubtitle').textContent = 'เลือก 2 หน่วยบริการขึ้นไปเพื่อเทียบราคาทุกรายการ';
+  openComparePicker();
+});
+document.getElementById('compareModeVendor').addEventListener('click', ()=>{
+  compareMode = 'vendor';
+  document.getElementById('compareModeVendor').classList.add('active');
+  document.getElementById('compareModeHospital').classList.remove('active');
+  document.getElementById('compareTitle').textContent = 'เปรียบเทียบบริษัทผู้ขาย';
+  document.getElementById('compareSubtitle').textContent = 'เลือก 2 บริษัทขึ้นไปเพื่อเทียบราคาเฉลี่ยทุกรายการ';
+  openComparePicker();
+});
 document.getElementById('btnRunCompare').addEventListener('click', ()=>{
-  const hosps = [...selectedHospitals];
+  const field = compareMode;
+  const selections = [...selectedCompareItems];
   const resultEl = document.getElementById('compareResult');
-  if(hosps.length < 2){ resultEl.innerHTML = '<div class="import-note">กรุณาเลือกอย่างน้อย 2 โรงพยาบาล</div>'; return; }
-  const items = [...new Set(records.filter(r=>hosps.includes(r.hospital)).map(r=>r.item))].sort((a,b)=>a.localeCompare(b,'th'));
+  if(selections.length < 2){ resultEl.innerHTML = `<div class="import-note">กรุณาเลือกอย่างน้อย 2 ${field==='hospital'?'โรงพยาบาล':'บริษัท'}</div>`; return; }
+  const items = [...new Set(records.filter(r=>selections.includes(r[field])).map(r=>r.item))].sort((a,b)=>a.localeCompare(b,'th'));
   const rowsHtml = items.map(item=>{
-    const cells = hosps.map(h=>{
-      const rec = records.find(r=>r.item===item && r.hospital===h);
-      return rec ? {price:rec.price, vendor:rec.vendor||''} : null;
+    const cells = selections.map(v=>{
+      const matches = records.filter(r=>r.item===item && r[field]===v);
+      if(matches.length===0) return null;
+      const avgPrice = matches.reduce((a,r)=>a+r.price,0)/matches.length;
+      const detail = field==='hospital' ? (matches[0].vendor||'') : matches.map(m=>m.hospital).join(', ');
+      return {price:avgPrice, detail};
     });
     const valid = cells.filter(c=>c!==null).map(c=>c.price);
     const min = Math.min(...valid), max = Math.max(...valid);
@@ -1179,12 +1208,12 @@ document.getElementById('btnRunCompare').addEventListener('click', ()=>{
       ${cells.map(c=>{
         if(c===null) return '<td class="num-cell">-</td>';
         const cls = c.price===min && valid.length>1 ? 'cell-cheapest' : (c.price===max && valid.length>1 ? 'cell-priciest' : '');
-        return `<td class="num-cell ${cls}" title="${c.vendor}">฿${fmtBaht(c.price)}</td>`;
+        return `<td class="num-cell ${cls}" title="${c.detail}">฿${fmtBaht(c.price)}</td>`;
       }).join('')}
     </tr>`;
   }).join('');
   resultEl.innerHTML = `<table>
-    <thead><tr><th>รายการ</th>${hosps.map(h=>`<th style="text-align:right">${h}</th>`).join('')}</tr></thead>
+    <thead><tr><th>รายการ</th>${selections.map(v=>`<th style="text-align:right">${v}</th>`).join('')}</tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table>`;
 });
