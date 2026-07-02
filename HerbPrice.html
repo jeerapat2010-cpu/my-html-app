@@ -240,7 +240,7 @@ tbody tr:last-child td{border-bottom:none;}
 .hosp-price{font-family:'IBM Plex Mono',monospace; font-weight:600; min-width:70px; text-align:right; font-size:13.5px;}
 .tag-min{color:var(--ok); font-weight:700;}
 .tag-max{color:var(--warn); font-weight:700;}
-.buyer-note{font-size:11px; color:#a39a7f; margin-top:1px;}
+.buyer-note, .remark-note{font-size:11px; color:#a39a7f; margin-top:1px;}
 
 /* Import modal */
 .dropzone{
@@ -344,6 +344,7 @@ tbody tr:last-child td{border-bottom:none;}
       <button class="btn btn-outline" id="btnSample">＋ ข้อมูลตัวอย่าง</button>
       <button class="btn btn-outline" id="btnCompare">⇄ เปรียบเทียบ รพ.</button>
       <button class="btn btn-outline" id="btnSync">🔗 ซิงก์ Google Sheets</button>
+      <button class="btn btn-outline" id="btnTemplate">⇩ เทมเพลต Excel</button>
       <button class="btn btn-outline" id="btnImport">⇪ นำเข้าข้อมูล</button>
       <button class="btn btn-gold" id="btnExport">⇩ ส่งออกรายงาน</button>
       <button class="btn btn-outline" id="btnSettings" title="ตั้งค่า PIN ป้องกันการแก้ไข">⚙</button>
@@ -357,7 +358,7 @@ tbody tr:last-child td{border-bottom:none;}
   <div class="toolbar">
     <div class="search-box"><input type="text" id="searchInput" placeholder="ค้นหารายการยาสมุนไพร..."></div>
     <select id="filterDistrict"><option value="">ทุกอำเภอ</option></select>
-    <select id="filterCategory"><option value="">ทุกหมวดหมู่</option></select>
+    <select id="filterCategory"><option value="">ทุกรูปแบบยา</option></select>
     <select id="sortBy">
       <option value="name">เรียงตามชื่อ</option>
       <option value="avg-desc">ราคาเฉลี่ยสูง→ต่ำ</option>
@@ -406,7 +407,8 @@ tbody tr:last-child td{border-bottom:none;}
       <div class="dropzone" id="dropzone">
         <div class="glyph">📄</div>
         <div><b>ลากไฟล์มาวาง</b> หรือคลิกเพื่อเลือกไฟล์</div>
-        <div class="import-note">คอลัมน์ที่รองรับ: รายการ, หมวดหมู่, หน่วย, อำเภอ, โรงพยาบาล, ราคา, ผู้จัดซื้อ, วันที่, เลขที่ใบสั่งซื้อ/สัญญา</div>
+        <div class="import-note">คอลัมน์ที่รองรับ: รายการ, รูปแบบยา, หน่วยที่จำหน่าย, ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท), ราคาต่อหน่วยย่อยสุด(บาท), ผู้จัดซื้อ, อำเภอ, หมายเหตุ (แถมหรือส่วนลด)</div>
+        <button class="btn btn-ghost btn-sm no-print" id="btnTemplateInModal" style="margin-top:10px;" onclick="event.stopPropagation()">⇩ ดาวน์โหลดเทมเพลต Excel</button>
       </div>
       <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
       <div id="importPreviewWrap" style="display:none;">
@@ -507,7 +509,7 @@ const DISTRICTS = ["เมืองสมุทรปราการ","บาง
 const STORAGE_KEY = "herbPriceCatalog_v1";
 const META_KEY = "herbPriceCatalog_meta_v1";
 
-let records = []; // {id, item, category, unit, district, hospital, price, buyer, date}
+let records = []; // {id, item, category(รูปแบบยา), unit, district, hospital(ผู้จัดซื้อ), price, subUnitPrice, remark, date, poRef}
 let importedRows = []; // staged rows before confirm
 let importHeaders = [];
 
@@ -541,20 +543,20 @@ function updateFooterDate(){
 
 function sampleData(){
   const items = [
-    {item:"ฟ้าทะลายโจร แคปซูล", category:"ยาบรรเทาหวัด", unit:"กระปุก/300แคปซูล", base:145},
-    {item:"ขมิ้นชัน แคปซูล", category:"ยาระบบทางเดินอาหาร", unit:"กระปุก/100แคปซูล", base:68},
-    {item:"ไพลเจล", category:"ยาภายนอก", unit:"หลอด/50ก.", base:52},
-    {item:"กระชายดำ สารสกัด", category:"ยาบำรุง", unit:"กระปุก/60แคปซูล", base:210},
-    {item:"บัวบก แคปซูล", category:"ยาบำรุง", unit:"กระปุก/100แคปซูล", base:95},
-    {item:"มะขามแขก ชนิดชง", category:"ยาระบบทางเดินอาหาร", unit:"กล่อง/10ซอง", base:38},
-    {item:"เพชรสังฆาต แคปซูล", category:"ยาระบบทางเดินอาหาร", unit:"กระปุก/100แคปซูล", base:120},
-    {item:"ว่านหางจระเข้ เจล", category:"ยาภายนอก", unit:"หลอด/100ก.", base:45},
-    {item:"ยาดมสมุนไพร", category:"ยาสูดดม", unit:"ขวด", base:22},
-    {item:"ยาหอมเทพจิตร", category:"ยาบำรุงหัวใจ", unit:"ซอง", base:15},
-    {item:"เถาวัลย์เปรียง แคปซูล", category:"ยาบรรเทาปวด", unit:"กระปุก/100แคปซูล", base:88},
-    {item:"ลูกประคบสมุนไพร", category:"ยาภายนอก", unit:"ลูก", base:35},
+    {item:"ฟ้าทะลายโจร แคปซูล", category:"แคปซูล", unit:"กระปุก/300แคปซูล", base:145, perUnit:300},
+    {item:"ขมิ้นชัน แคปซูล", category:"แคปซูล", unit:"กระปุก/100แคปซูล", base:68, perUnit:100},
+    {item:"ไพลเจล", category:"เจล", unit:"หลอด/50ก.", base:52, perUnit:50},
+    {item:"กระชายดำ สารสกัด", category:"แคปซูล", unit:"กระปุก/60แคปซูล", base:210, perUnit:60},
+    {item:"บัวบก แคปซูล", category:"แคปซูล", unit:"กระปุก/100แคปซูล", base:95, perUnit:100},
+    {item:"มะขามแขก ชนิดชง", category:"ชนิดชง", unit:"กล่อง/10ซอง", base:38, perUnit:10},
+    {item:"เพชรสังฆาต แคปซูล", category:"แคปซูล", unit:"กระปุก/100แคปซูล", base:120, perUnit:100},
+    {item:"ว่านหางจระเข้ เจล", category:"เจล", unit:"หลอด/100ก.", base:45, perUnit:100},
+    {item:"ยาดมสมุนไพร", category:"ยาดม", unit:"ขวด", base:22, perUnit:1},
+    {item:"ยาหอมเทพจิตร", category:"ผงยาซอง", unit:"ซอง", base:15, perUnit:1},
+    {item:"เถาวัลย์เปรียง แคปซูล", category:"แคปซูล", unit:"กระปุก/100แคปซูล", base:88, perUnit:100},
+    {item:"ลูกประคบสมุนไพร", category:"ลูกประคบ", unit:"ลูก", base:35, perUnit:1},
   ];
-  const buyers = ["ภก.สมชาย ใจดี","นางสาวปิยะดา รักษ์ไทย","ภญ.วิภาวีร์ ศรีสมุทร","นายขจีวรรณ ธัญญะ","กลุ่มงานเภสัชกรรม"];
+  const remarks = ["ไม่มี","ไม่มี","ไม่มี","แถมของแถม 1 ชิ้น","ส่วนลด 5%","ส่วนลด 10% ซื้อเกิน 50 ชุด"];
   const HOSPITAL_NAMES = {
     "พระประแดง": "รพ.บางจาก",
   };
@@ -569,7 +571,8 @@ function sampleData(){
       rows.push({
         id:id++, item:it.item, category:it.category, unit:it.unit,
         district:d, hospital: HOSPITAL_NAMES[d] || ("รพ."+d),
-        price, buyer:buyers[Math.floor(Math.random()*buyers.length)],
+        price, subUnitPrice: +(price/it.perUnit).toFixed(2),
+        remark: remarks[Math.floor(Math.random()*remarks.length)],
         date: "2569-0"+(Math.ceil(Math.random()*6))+"-15",
         poRef: "PO-25"+(Math.floor(Math.random()*900)+100)+"-"+String(id).padStart(4,'0')
       });
@@ -592,7 +595,9 @@ function groupByItem(list){
     const min = Math.min(...prices), max = Math.max(...prices);
     const avg = prices.reduce((a,b)=>a+b,0)/prices.length;
     const spread = min>0 ? (max-min)/min : 0;
-    return {...g, min, max, avg, spread, count:g.rows.length};
+    const subUnitPrices = g.rows.map(r=>r.subUnitPrice).filter(v=>v>0);
+    const avgSubUnit = subUnitPrices.length ? subUnitPrices.reduce((a,b)=>a+b,0)/subUnitPrices.length : null;
+    return {...g, min, max, avg, spread, count:g.rows.length, avgSubUnit};
   });
 }
 function fmtBaht(n){ return n.toLocaleString('th-TH',{minimumFractionDigits:2, maximumFractionDigits:2}); }
@@ -704,7 +709,7 @@ function cardHTML(g){
     ${anomalyCount ? `<div class="anomaly-flag">⚠ ผิดปกติ ${anomalyCount} รพ.</div>` : ''}
     <div class="spec-top">
       <div>
-        <div class="spec-cat">${g.category||'ไม่ระบุหมวดหมู่'}</div>
+        <div class="spec-cat">${g.category||'ไม่ระบุรูปแบบยา'}</div>
         <div class="spec-name">${g.item}</div>
         <div class="spec-unit">${g.unit||''}</div>
       </div>
@@ -721,7 +726,7 @@ function cardHTML(g){
       <div class="spec-foot">
         <div>
           <div class="spec-avg">฿${fmtBaht(g.avg)}<span style="font-size:11px;font-weight:400;color:#8a8168;"> เฉลี่ย</span></div>
-          <div class="spec-hosp-count">${g.count} หน่วยบริการ</div>
+          <div class="spec-hosp-count">${g.count} หน่วยบริการ${g.avgSubUnit ? ` · ≈฿${fmtBaht(g.avgSubUnit)}/หน่วยย่อย` : ''}</div>
         </div>
         <span class="spread-tag ${tag.cls}">${tag.label}</span>
       </div>
@@ -732,8 +737,9 @@ function cardHTML(g){
 function tableHTML(groups){
   return `<div class="table-wrap"><table>
     <thead><tr>
-      <th>รายการ</th><th>หมวดหมู่</th><th>หน่วย</th>
+      <th>รายการ</th><th>รูปแบบยา</th><th>หน่วยที่จำหน่าย</th>
       <th style="text-align:right">ต่ำสุด</th><th style="text-align:right">เฉลี่ย</th><th style="text-align:right">สูงสุด</th>
+      <th style="text-align:right">เฉลี่ย/หน่วยย่อย</th>
       <th style="text-align:right">จำนวน รพ.</th><th style="text-align:right">ส่วนต่าง</th><th style="text-align:right">ผิดปกติ</th>
     </tr></thead>
     <tbody>
@@ -747,6 +753,7 @@ function tableHTML(groups){
         <td class="num-cell">฿${fmtBaht(g.min)}</td>
         <td class="num-cell"><b>฿${fmtBaht(g.avg)}</b></td>
         <td class="num-cell">฿${fmtBaht(g.max)}</td>
+        <td class="num-cell">${g.avgSubUnit ? '฿'+fmtBaht(g.avgSubUnit) : '-'}</td>
         <td class="num-cell">${g.count}</td>
         <td class="num-cell">${(g.spread*100).toFixed(0)}%</td>
         <td class="num-cell">${anomalyCount ? `<span class="anomaly-inline">⚠ ${anomalyCount}</span>` : '-'}</td>
@@ -762,7 +769,7 @@ function openDetail(itemName){
   const rows = records.filter(r=>r.item===itemName).sort((a,b)=>a.price-b.price);
   const g = groupByItem(rows)[0];
   document.getElementById('detailName').textContent = itemName;
-  document.getElementById('detailMeta').textContent = `${g.category||'ไม่ระบุหมวดหมู่'} · ${g.unit||''}`;
+  document.getElementById('detailMeta').textContent = `${g.category||'ไม่ระบุรูปแบบยา'} · ${g.unit||''}`;
   const body = document.getElementById('detailBody');
   body.innerHTML = `
     <div class="detail-stats">
@@ -781,12 +788,15 @@ function openDetail(itemName){
       const isMin = r.price===g.min, isMax = r.price===g.max;
       const anomaly = isAnomaly(r.price, g.avg);
       return `<div class="hosp-row ${anomaly?'anomaly':''}">
-        <div class="hosp-name">${r.hospital}<span class="district">อ.${r.district} · ${r.date||'-'}${r.poRef?(' · เลขที่: '+r.poRef):''}</span>
-          ${r.buyer?`<span class="buyer-note">ผู้จัดซื้อ: ${r.buyer}</span>`:''}
+        <div class="hosp-name">${r.hospital}<span class="district">อ.${r.district}${r.date?(' · '+r.date):''}${r.poRef?(' · เลขที่: '+r.poRef):''}</span>
+          ${r.remark && r.remark!=='ไม่มี' ? `<span class="remark-note">หมายเหตุ: ${r.remark}</span>` : ''}
         </div>
         <div class="hosp-price-wrap">
           <div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.max(pct,6)}%"></div></div>
-          <div class="hosp-price ${isMin?'tag-min':isMax?'tag-max':''}">฿${fmtBaht(r.price)}${anomaly?'<span class="anomaly-inline">⚠</span>':''}</div>
+          <div style="text-align:right;">
+            <div class="hosp-price ${isMin?'tag-min':isMax?'tag-max':''}">฿${fmtBaht(r.price)}${anomaly?'<span class="anomaly-inline">⚠</span>':''}</div>
+            ${r.subUnitPrice ? `<div style="font-size:10.5px;color:#8a8168;">≈฿${fmtBaht(r.subUnitPrice)}/หน่วยย่อย</div>` : ''}
+          </div>
         </div>
       </div>`;
     }).join('')}
@@ -831,20 +841,24 @@ document.querySelectorAll('.overlay').forEach(ov=>{
 /* ================= IMPORT ================= */
 const HEADER_ALIASES = {
   item: ['รายการ','ชื่อยา','ชื่อสมุนไพร','item','name'],
-  category: ['หมวดหมู่','ประเภท','category'],
-  unit: ['หน่วย','unit'],
+  category: ['รูปแบบยา','หมวดหมู่','ประเภท','category'],
+  unit: ['หน่วยที่จำหน่าย','หน่วยนับ','หน่วย','unit'],
   district: ['อำเภอ','district'],
-  hospital: ['โรงพยาบาล','หน่วยบริการ','รพ','hospital'],
-  price: ['ราคา','ราคาต่อหน่วย','price'],
-  buyer: ['ผู้จัดซื้อ','ผู้ซื้อ','ผู้จำหน่าย','buyer'],
-  date: ['วันที่','วันที่จัดซื้อ','date'],
-  poRef: ['เลขที่ใบสั่งซื้อ','เลขที่สัญญา','เลขที่เอกสาร','poref','po ','เลขที่'],
+  hospital: ['ผู้จัดซื้อ','โรงพยาบาล','หน่วยบริการ','รพ','hospital','purchaser'],
+  subUnitPrice: ['ราคาต่อหน่วยย่อยสุด','ราคาต่อหน่วยย่อย','หน่วยย่อยสุด','subunitprice'],
+  price: ['ราคาต่อหน่วยจำหน่าย','ราคาต่อหน่วย','ราคา','price'],
+  remark: ['หมายเหตุ','แถมหรือส่วนลด','remark','note'],
+  date: ['วันที่จัดซื้อ','วันที่','date'],
+  poRef: ['เลขที่ใบสั่งซื้อ','เลขที่สัญญา','เลขที่เอกสาร','poref','เลขที่'],
 };
 function guessField(header){
   const h = (header||'').toString().trim().toLowerCase();
+  const pairs = [];
   for(const [key, aliases] of Object.entries(HEADER_ALIASES)){
-    if(aliases.some(a=>h.includes(a.toLowerCase()))) return key;
+    aliases.forEach(a=>pairs.push({key, alias:a.toLowerCase()}));
   }
+  pairs.sort((a,b)=>b.alias.length - a.alias.length); // longest/most specific alias wins
+  for(const p of pairs){ if(h.includes(p.alias)) return p.key; }
   return '';
 }
 
@@ -889,8 +903,13 @@ function handleFile(file){
 function showImportPreview(){
   document.getElementById('dropzone').style.display='none';
   document.getElementById('importPreviewWrap').style.display='block';
-  const fieldKeys = ['item','category','unit','district','hospital','price','buyer','date','poRef'];
-  const fieldLabels = {item:'รายการ',category:'หมวดหมู่',unit:'หน่วย',district:'อำเภอ',hospital:'โรงพยาบาล',price:'ราคา',buyer:'ผู้จัดซื้อ',date:'วันที่',poRef:'เลขที่ใบสั่งซื้อ/สัญญา'};
+  const fieldKeys = ['item','category','unit','price','subUnitPrice','hospital','district','remark','date','poRef'];
+  const fieldLabels = {
+    item:'รายการ', category:'รูปแบบยา', unit:'หน่วยที่จำหน่าย',
+    price:'ราคาต่อหน่วยจำหน่าย (รวม VAT 7%)', subUnitPrice:'ราคาต่อหน่วยย่อยสุด',
+    hospital:'ผู้จัดซื้อ (หน่วยบริการ)', district:'อำเภอ',
+    remark:'หมายเหตุ (แถมหรือส่วนลด)', date:'วันที่ (ถ้ามี)', poRef:'เลขที่ใบสั่งซื้อ/สัญญา (ถ้ามี)'
+  };
   const map = document.getElementById('fieldMap');
   map.innerHTML = fieldKeys.map(k=>{
     const guess = importHeaders.find(h=>guessField(h)===k) || '';
@@ -926,19 +945,20 @@ function renderPreviewTable(){
 function buildRecordsFromImport(){
   const map = currentFieldMap();
   if(!map.item || !map.price || !map.hospital || !map.district){
-    alert('กรุณาจับคู่คอลัมน์ รายการ, ราคา, โรงพยาบาล และ อำเภอ ให้ครบก่อน');
+    alert('กรุณาจับคู่คอลัมน์ รายการ, ราคา, ผู้จัดซื้อ และ อำเภอ ให้ครบก่อน');
     return null;
   }
   let id = Date.now();
   return importedRows.map(r=>({
     id: id++,
     item: (r[map.item]||'').toString().trim(),
-    category: map.category ? (r[map.category]||'').toString().trim() : 'ไม่ระบุหมวดหมู่',
+    category: map.category ? (r[map.category]||'').toString().trim() : 'ไม่ระบุรูปแบบยา',
     unit: map.unit ? (r[map.unit]||'').toString().trim() : '',
     district: (r[map.district]||'').toString().trim(),
     hospital: (r[map.hospital]||'').toString().trim(),
     price: parseFloat(r[map.price]) || 0,
-    buyer: map.buyer ? (r[map.buyer]||'').toString().trim() : '',
+    subUnitPrice: map.subUnitPrice ? (parseFloat(r[map.subUnitPrice]) || 0) : 0,
+    remark: map.remark ? (r[map.remark]||'').toString().trim() : '',
     date: map.date ? (r[map.date]||'').toString().trim() : '',
     poRef: map.poRef ? (r[map.poRef]||'').toString().trim() : '',
   })).filter(r=>r.item && r.price>0);
@@ -972,14 +992,17 @@ document.getElementById('btnExport').addEventListener('click', ()=>{
 function exportExcel(list, filenameSuffix){
   const groups = groupByItem(list);
   const summarySheet = XLSX.utils.json_to_sheet(groups.map(g=>({
-    'รายการ': g.item, 'หมวดหมู่': g.category, 'หน่วย': g.unit,
+    'รายการ': g.item, 'รูปแบบยา': g.category, 'หน่วยที่จำหน่าย': g.unit,
     'ราคาต่ำสุด': +g.min.toFixed(2), 'ราคาเฉลี่ย': +g.avg.toFixed(2), 'ราคาสูงสุด': +g.max.toFixed(2),
+    'เฉลี่ย/หน่วยย่อย': g.avgSubUnit ? +g.avgSubUnit.toFixed(2) : '',
     'จำนวน รพ.': g.count, 'ส่วนต่าง(%)': +(g.spread*100).toFixed(1),
     'จำนวน รพ.ราคาผิดปกติ': g.rows.filter(r=>isAnomaly(r.price,g.avg)).length
   })));
   const detailSheet = XLSX.utils.json_to_sheet(list.map(r=>({
-    'รายการ': r.item, 'หมวดหมู่': r.category, 'หน่วย': r.unit, 'อำเภอ': r.district,
-    'โรงพยาบาล': r.hospital, 'ราคา': r.price, 'ผู้จัดซื้อ': r.buyer, 'วันที่': r.date, 'เลขที่ใบสั่งซื้อ/สัญญา': r.poRef||''
+    'รายการ': r.item, 'รูปแบบยา': r.category, 'หน่วยที่จำหน่าย': r.unit, 'อำเภอ': r.district,
+    'ผู้จัดซื้อ': r.hospital, 'ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท)': r.price,
+    'ราคาต่อหน่วยย่อยสุด(บาท)': r.subUnitPrice||'', 'หมายเหตุ (แถมหรือส่วนลด)': r.remark||'',
+    'วันที่': r.date||'', 'เลขที่ใบสั่งซื้อ/สัญญา': r.poRef||''
   })));
   const districtPivot = {};
   list.forEach(r=>{
@@ -1003,8 +1026,10 @@ document.getElementById('expExcelFull').addEventListener('click', ()=>{ exportEx
 document.getElementById('expExcelFiltered').addEventListener('click', ()=>{ exportExcel(filteredRecords(), 'เฉพาะที่กรอง'); closeModal('exportOverlay'); });
 document.getElementById('expCSV').addEventListener('click', ()=>{
   const ws = XLSX.utils.json_to_sheet(records.map(r=>({
-    'รายการ': r.item, 'หมวดหมู่': r.category, 'หน่วย': r.unit, 'อำเภอ': r.district,
-    'โรงพยาบาล': r.hospital, 'ราคา': r.price, 'ผู้จัดซื้อ': r.buyer, 'วันที่': r.date, 'เลขที่ใบสั่งซื้อ/สัญญา': r.poRef||''
+    'รายการ': r.item, 'รูปแบบยา': r.category, 'หน่วยที่จำหน่าย': r.unit, 'อำเภอ': r.district,
+    'ผู้จัดซื้อ': r.hospital, 'ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท)': r.price,
+    'ราคาต่อหน่วยย่อยสุด(บาท)': r.subUnitPrice||'', 'หมายเหตุ (แถมหรือส่วนลด)': r.remark||'',
+    'วันที่': r.date||'', 'เลขที่ใบสั่งซื้อ/สัญญา': r.poRef||''
   })));
   const csv = XLSX.utils.sheet_to_csv(ws);
   const blob = new Blob(["\uFEFF"+csv], {type:'text/csv;charset=utf-8;'});
@@ -1160,6 +1185,44 @@ document.getElementById('btnFetchSheet').addEventListener('click', async ()=>{
     statusEl.textContent = 'ดึงข้อมูลไม่สำเร็จ: ตรวจสอบว่าลิงก์เผยแพร่แบบ CSV แล้ว และตั้งค่าการแชร์เป็นสาธารณะ ('+err.message+')';
   }
 });
+
+/* ================= TEMPLATE ================= */
+function downloadTemplate(){
+  const headers = ['ลำดับที่','รายการ','รูปแบบยา','หน่วยที่จำหน่าย','ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท)','ราคาต่อหน่วยย่อยสุด(บาท)','ผู้จัดซื้อ','อำเภอ','หมายเหตุ ( แถมหรือส่วนลด)'];
+  const example = [
+    { 'ลำดับที่':1, 'รายการ':'ฟ้าทะลายโจร แคปซูล', 'รูปแบบยา':'แคปซูล', 'หน่วยที่จำหน่าย':'กระปุก/300แคปซูล',
+      'ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท)':321, 'ราคาต่อหน่วยย่อยสุด(บาท)':1.07,
+      'ผู้จัดซื้อ':'รพ.สมุทรปราการ', 'อำเภอ':'เมืองสมุทรปราการ', 'หมายเหตุ ( แถมหรือส่วนลด)':'ไม่มี' },
+    { 'ลำดับที่':2, 'รายการ':'ขมิ้นชัน แคปซูล', 'รูปแบบยา':'แคปซูล', 'หน่วยที่จำหน่าย':'กระปุก/100แคปซูล',
+      'ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท)':68.50, 'ราคาต่อหน่วยย่อยสุด(บาท)':0.69,
+      'ผู้จัดซื้อ':'รพ.บางพลี', 'อำเภอ':'บางพลี', 'หมายเหตุ ( แถมหรือส่วนลด)':'ส่วนลด 5%' },
+  ];
+  const dataSheet = XLSX.utils.json_to_sheet(example, {header:headers});
+  dataSheet['!cols'] = headers.map(h=>({wch: Math.max(16, h.length+4)}));
+
+  const guideRows = [
+    {'คอลัมน์':'ลำดับที่','คำอธิบาย':'ลำดับรายการ (ไม่บังคับ ใช้อ้างอิงเท่านั้น)'},
+    {'คอลัมน์':'รายการ *','คำอธิบาย':'ชื่อยาสมุนไพร (บังคับ)'},
+    {'คอลัมน์':'รูปแบบยา','คำอธิบาย':'รูปแบบของยา เช่น แคปซูล, เจล, ยาน้ำ, ผงชง, ยาดม (ถ้าเว้นว่างจะขึ้นเป็น "ไม่ระบุรูปแบบยา")'},
+    {'คอลัมน์':'หน่วยที่จำหน่าย','คำอธิบาย':'หน่วยนับที่จำหน่าย เช่น กระปุก/100แคปซูล, หลอด/50ก.'},
+    {'คอลัมน์':'ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท) *','คำอธิบาย':'ราคาต่อหน่วยจำหน่ายรวมภาษีมูลค่าเพิ่มแล้ว เป็นตัวเลขเท่านั้น (บังคับ) — ใช้เป็นราคาหลักในการเปรียบเทียบทั้งหมดในแอป'},
+    {'คอลัมน์':'ราคาต่อหน่วยย่อยสุด(บาท)','คำอธิบาย':'ราคาต่อหน่วยย่อยที่สุด เช่น ราคาต่อ 1 แคปซูล หรือ 1 กรัม ช่วยเทียบราคาที่แม่นยำขึ้นระหว่างขนาดบรรจุที่ต่างกัน (ถ้ามี)'},
+    {'คอลัมน์':'ผู้จัดซื้อ *','คำอธิบาย':'ชื่อหน่วยบริการ/โรงพยาบาลที่จัดซื้อ (บังคับ)'},
+    {'คอลัมน์':'อำเภอ *','คำอธิบาย':'ต้องเป็นหนึ่งใน 6 อำเภอ: '+DISTRICTS.join(', ')+' (บังคับ)'},
+    {'คอลัมน์':'หมายเหตุ ( แถมหรือส่วนลด)','คำอธิบาย':'ระบุของแถมหรือส่วนลดที่ได้รับจากการจัดซื้อครั้งนี้ (ถ้ามี ถ้าไม่มีให้ใส่ "ไม่มี")'},
+    {'คอลัมน์':'','คำอธิบาย':''},
+    {'คอลัมน์':'หมายเหตุ','คำอธิบาย':'* คือคอลัมน์บังคับ ลบแถวตัวอย่างในชีต "นำเข้าข้อมูล" ออกก่อนกรอกข้อมูลจริง แล้วอัปโหลดไฟล์นี้ผ่านปุ่ม "นำเข้าข้อมูล" ในแอป ระบบจะจับคู่คอลัมน์ให้อัตโนมัติ'},
+  ];
+  const guideSheet = XLSX.utils.json_to_sheet(guideRows, {header:['คอลัมน์','คำอธิบาย']});
+  guideSheet['!cols'] = [{wch:42},{wch:80}];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, dataSheet, 'นำเข้าข้อมูล');
+  XLSX.utils.book_append_sheet(wb, guideSheet, 'คำแนะนำ');
+  XLSX.writeFile(wb, `เทมเพลตนำเข้าข้อมูล_Price_List_สมุนไพร_${todayStr()}.xlsx`);
+}
+document.getElementById('btnTemplate').addEventListener('click', downloadTemplate);
+document.getElementById('btnTemplateInModal').addEventListener('click', downloadTemplate);
 
 /* ================= INIT ================= */
 loadData();
