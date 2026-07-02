@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Price List ยาสมุนไพรสมุทรปราการ | สสจ.สมุทรปราการ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Thai:wght@400;600;700;800&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --ink:#1F2A24;
+  --forest:#2D4A3E;
+  --forest-deep:#1B3129;
+  --sage:#7C9885;
+  --sage-pale:#DCE6DD;
+  --parchment:#F6F2E7;
+  --parchment-deep:#EDE6D3;
+  --gold:#B8902F;
+  --gold-bright:#D4A93A;
+  --clay:#A85C3E;
+  --line:#C9BFA0;
+  --ok:#4C7A5E;
+  --warn:#B8542F;
+  --shadow:0 8px 24px -8px rgba(31,42,36,0.25);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--parchment);
+  background-image:
+    radial-gradient(circle at 15% 8%, rgba(184,144,47,0.07), transparent 40%),
+    radial-gradient(circle at 85% 92%, rgba(45,74,62,0.08), transparent 45%);
+  color:var(--ink);
+  font-family:'IBM Plex Sans Thai', sans-serif;
+  min-height:100vh;
+}
+h1,h2,h3,.serif{font-family:'Noto Serif Thai', serif;}
+.mono{font-family:'IBM Plex Mono', monospace;}
+::selection{background:var(--gold-bright); color:var(--forest-deep);}
+
+/* ===== Layout shell ===== */
+.wrap{max-width:1240px; margin:0 auto; padding:0 20px 80px;}
+
+/* ===== Header / Hero ===== */
+.hero{
+  background:
+    linear-gradient(180deg, var(--forest-deep) 0%, var(--forest) 100%);
+  color:var(--parchment);
+  padding:34px 20px 30px;
+  position:relative;
+  overflow:hidden;
+  border-bottom:6px solid var(--gold);
+}
+.hero::before{
+  content:"";
+  position:absolute; inset:0;
+  background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.025) 0 2px, transparent 2px 26px);
+  pointer-events:none;
+}
+.hero-inner{max-width:1240px; margin:0 auto; position:relative; display:flex; justify-content:space-between; align-items:flex-end; gap:24px; flex-wrap:wrap;}
+.hero-eyebrow{
+  display:flex; align-items:center; gap:8px;
+  font-size:12.5px; letter-spacing:.14em; color:var(--gold-bright); text-transform:uppercase; margin-bottom:10px; font-weight:600;
+}
+.hero-eyebrow .seal{
+  width:20px;height:20px;border-radius:50%;border:1.5px solid var(--gold-bright);
+  display:flex;align-items:center;justify-content:center;font-size:11px;
+}
+.hero h1{font-size:32px; font-weight:700; margin:0 0 6px; letter-spacing:.01em;}
+.hero p.sub{margin:0; font-size:14.5px; color:var(--sage-pale); max-width:520px; line-height:1.6;}
+.hero-actions{display:flex; gap:10px; flex-wrap:wrap;}
+
+.btn{
+  border:none; cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:600;
+  padding:11px 18px; border-radius:3px; display:inline-flex; align-items:center; gap:7px;
+  transition:transform .12s ease, box-shadow .12s ease, background .15s ease;
+  letter-spacing:.01em;
+}
+.btn:active{transform:translateY(1px);}
+.btn-gold{background:var(--gold-bright); color:var(--forest-deep);}
+.btn-gold:hover{background:#e3ba4c; box-shadow:0 4px 14px -4px rgba(212,169,58,0.6);}
+.btn-outline{background:transparent; color:var(--parchment); border:1px solid rgba(246,242,231,0.4);}
+.btn-outline:hover{border-color:var(--parchment); background:rgba(246,242,231,0.08);}
+.btn-ghost{background:var(--sage-pale); color:var(--forest-deep);}
+.btn-ghost:hover{background:#cbdccc;}
+.btn-sm{padding:7px 12px; font-size:12.5px;}
+input[type=file]{display:none;}
+
+/* ===== Stat strip ===== */
+.stats{
+  display:grid; grid-template-columns:repeat(6,1fr); gap:1px;
+  background:var(--line); border:1px solid var(--line);
+  margin-top:-1px;
+  box-shadow:var(--shadow);
+}
+.stat{
+  background:var(--parchment); padding:16px 18px; text-align:left;
+}
+.stat .num{font-family:'Noto Serif Thai',serif; font-size:24px; font-weight:700; color:var(--forest-deep); line-height:1.1;}
+.stat .lbl{font-size:11.5px; color:#7a715a; margin-top:4px; letter-spacing:.03em;}
+
+/* ===== Toolbar ===== */
+.toolbar{
+  display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+  padding:18px 0 6px;
+}
+.search-box{
+  flex:1; min-width:220px; position:relative;
+}
+.search-box input{
+  width:100%; padding:11px 14px 11px 36px; border:1px solid var(--line); border-radius:3px;
+  background:#fff; font-family:inherit; font-size:14px; color:var(--ink);
+}
+.search-box input:focus{outline:none; border-color:var(--gold);}
+.search-box::before{
+  content:"⌕"; position:absolute; left:12px; top:50%; transform:translateY(-50%);
+  color:#a39a7f; font-size:16px;
+}
+select{
+  padding:10px 12px; border:1px solid var(--line); border-radius:3px; background:#fff;
+  font-family:inherit; font-size:13.5px; color:var(--ink); cursor:pointer;
+}
+select:focus{outline:none; border-color:var(--gold);}
+.view-toggle{display:flex; border:1px solid var(--line); border-radius:3px; overflow:hidden;}
+.view-toggle button{
+  border:none; background:#fff; padding:9px 13px; cursor:pointer; font-size:13px; color:#7a715a;
+}
+.view-toggle button.active{background:var(--forest); color:#fff;}
+
+/* ===== Catalog grid ===== */
+.catalog{
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:16px;
+  margin-top:16px;
+}
+.spec-card{
+  background:#fff; border:1px solid var(--line); border-radius:4px; position:relative;
+  box-shadow:0 2px 6px -2px rgba(31,42,36,0.12);
+  cursor:pointer; transition:transform .15s ease, box-shadow .15s ease;
+  display:flex; flex-direction:column;
+}
+.spec-card:hover{transform:translateY(-3px); box-shadow:0 12px 24px -10px rgba(31,42,36,0.3);}
+.spec-top{
+  padding:16px 16px 12px; border-bottom:1px dashed var(--line);
+  display:flex; justify-content:space-between; align-items:flex-start; gap:10px;
+}
+.spec-cat{
+  font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--gold);
+  font-weight:700; margin-bottom:5px;
+}
+.spec-name{font-family:'Noto Serif Thai',serif; font-size:18px; font-weight:700; color:var(--forest-deep); line-height:1.3;}
+.spec-unit{font-size:12px; color:#8a8168; margin-top:3px;}
+.spec-badge{
+  min-width:44px; height:44px; border-radius:50%; border:2px solid var(--gold);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-family:'IBM Plex Mono',monospace; font-size:9.5px; color:var(--forest-deep); flex-shrink:0;
+  background:radial-gradient(circle, #fffdf7 60%, var(--parchment-deep));
+}
+.spec-badge b{font-size:12.5px; line-height:1;}
+.spec-body{padding:14px 16px 16px; flex:1; display:flex; flex-direction:column; gap:10px;}
+.price-range-lbl{display:flex; justify-content:space-between; font-size:11px; color:#8a8168; margin-bottom:3px;}
+.price-bar-track{
+  height:8px; border-radius:4px; background:var(--sage-pale); position:relative; overflow:visible;
+}
+.price-bar-fill{
+  position:absolute; top:0; bottom:0; left:0; border-radius:4px;
+  background:linear-gradient(90deg, var(--sage), var(--forest));
+}
+.price-bar-avg{
+  position:absolute; top:-3px; width:2px; height:14px; background:var(--gold); border-radius:1px;
+}
+.spec-foot{display:flex; justify-content:space-between; align-items:center; margin-top:auto; padding-top:4px;}
+.spec-hosp-count{font-size:12px; color:#7a715a;}
+.spec-avg{font-family:'IBM Plex Mono',monospace; font-weight:600; color:var(--forest-deep); font-size:15px;}
+.spread-tag{
+  font-size:10.5px; padding:2px 7px; border-radius:10px; font-weight:600; letter-spacing:.02em;
+}
+.spread-low{background:#E4EFE6; color:var(--ok);}
+.spread-mid{background:#F5EBD6; color:var(--gold);}
+.spread-high{background:#F5E1D6; color:var(--warn);}
+
+/* ===== Table view ===== */
+.table-wrap{margin-top:16px; background:#fff; border:1px solid var(--line); border-radius:4px; overflow:hidden; box-shadow:0 2px 6px -2px rgba(31,42,36,0.1);}
+table{width:100%; border-collapse:collapse; font-size:13.5px;}
+thead th{
+  background:var(--forest-deep); color:var(--parchment); text-align:left; padding:11px 14px;
+  font-weight:600; font-size:12px; letter-spacing:.02em; position:sticky; top:0; cursor:pointer;
+}
+thead th:hover{background:var(--forest);}
+tbody td{padding:10px 14px; border-bottom:1px solid #EFE9D8;}
+tbody tr:hover{background:var(--parchment);}
+tbody tr:last-child td{border-bottom:none;}
+.num-cell{font-family:'IBM Plex Mono',monospace; text-align:right;}
+
+.empty-state{
+  text-align:center; padding:60px 20px; color:#8a8168;
+}
+.empty-state .glyph{font-size:40px; margin-bottom:10px; opacity:.5;}
+.empty-state h3{color:var(--forest-deep); margin:0 0 6px;}
+
+/* ===== Modal ===== */
+.overlay{
+  position:fixed; inset:0; background:rgba(27,49,41,0.55); backdrop-filter:blur(2px);
+  display:none; align-items:center; justify-content:center; z-index:100; padding:20px;
+}
+.overlay.show{display:flex;}
+.modal{
+  background:#FFFDF8; border-radius:6px; max-width:720px; width:100%; max-height:88vh; overflow:auto;
+  box-shadow:0 30px 60px -20px rgba(0,0,0,0.4); border:1px solid var(--line);
+}
+.modal-head{
+  padding:20px 24px; border-bottom:2px solid var(--forest-deep); display:flex; justify-content:space-between; align-items:flex-start;
+  background:linear-gradient(180deg,#fff,#FFFDF8);
+  position:sticky; top:0; z-index:2;
+}
+.modal-head h2{margin:0 0 4px; font-size:22px; color:var(--forest-deep);}
+.modal-head .meta{font-size:12.5px; color:#8a8168;}
+.modal-close{
+  background:none; border:none; font-size:20px; cursor:pointer; color:#8a8168; line-height:1; padding:4px;
+}
+.modal-close:hover{color:var(--warn);}
+.modal-body{padding:20px 24px 26px;}
+
+.detail-stats{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px;}
+.dstat{background:var(--parchment); border:1px solid var(--line); border-radius:4px; padding:10px 12px; text-align:center;}
+.dstat .v{font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:16px; color:var(--forest-deep);}
+.dstat .k{font-size:10.5px; color:#8a8168; margin-top:2px;}
+
+.hosp-row{
+  display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center;
+  padding:9px 0; border-bottom:1px solid #EFE9D8;
+}
+.hosp-row:last-child{border-bottom:none;}
+.hosp-name{font-size:13.5px;}
+.hosp-name .district{font-size:11px; color:#8a8168; display:block;}
+.hosp-price-wrap{display:flex; align-items:center; gap:10px; min-width:220px;}
+.mini-bar{flex:1; height:6px; background:var(--sage-pale); border-radius:3px; overflow:hidden;}
+.mini-bar-fill{height:100%; background:var(--forest); border-radius:3px;}
+.hosp-price{font-family:'IBM Plex Mono',monospace; font-weight:600; min-width:70px; text-align:right; font-size:13.5px;}
+.tag-min{color:var(--ok); font-weight:700;}
+.tag-max{color:var(--warn); font-weight:700;}
+.buyer-note{font-size:11px; color:#a39a7f; margin-top:1px;}
+
+/* Import modal */
+.dropzone{
+  border:2px dashed var(--line); border-radius:6px; padding:30px 20px; text-align:center; cursor:pointer;
+  transition:border-color .15s ease, background .15s ease;
+}
+.dropzone:hover, .dropzone.drag{border-color:var(--gold); background:var(--parchment);}
+.dropzone .glyph{font-size:32px; margin-bottom:8px;}
+.field-map{display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; margin-top:16px;}
+.field-map label{font-size:12px; color:#7a715a; display:block; margin-bottom:3px;}
+.field-map select{width:100%;}
+.preview-table{max-height:220px; overflow:auto; border:1px solid var(--line); border-radius:4px; margin-top:14px;}
+.import-note{font-size:12px; color:#8a8168; margin-top:10px; line-height:1.6;}
+
+.export-options{display:grid; gap:10px; margin-top:6px;}
+.export-opt{
+  border:1px solid var(--line); border-radius:4px; padding:14px 16px; display:flex; justify-content:space-between; align-items:center;
+  cursor:pointer; transition:border-color .15s;
+}
+.export-opt:hover{border-color:var(--gold);}
+.export-opt .t{font-weight:600; font-size:14px; color:var(--forest-deep);}
+.export-opt .d{font-size:12px; color:#8a8168; margin-top:2px;}
+
+.app-footer{
+  margin-top:36px; padding-top:16px; border-top:1px dashed var(--line);
+  display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px 16px;
+  font-size:11.5px; color:#9a9078;
+}
+.ver-tag{
+  display:inline-block; margin-left:4px; padding:1px 7px; border-radius:9px;
+  background:var(--sage-pale); color:var(--forest-deep); font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600;
+}
+@media (max-width:720px){
+  .app-footer{flex-direction:column;}
+}
+
+/* Anomaly */
+.anomaly-flag{
+  position:absolute; top:-8px; right:12px; background:var(--warn); color:#fff;
+  font-size:10px; font-weight:700; padding:3px 8px; border-radius:10px; letter-spacing:.02em;
+  box-shadow:0 3px 8px -2px rgba(184,84,47,0.5);
+}
+.hosp-row.anomaly .hosp-price{color:var(--warn);}
+.anomaly-inline{
+  font-size:10px; font-weight:700; color:var(--warn); background:#F5E1D6; border-radius:8px;
+  padding:1px 6px; margin-left:6px;
+}
+.threshold-field{display:flex; align-items:center; gap:6px; font-size:12.5px; color:#7a715a;}
+.threshold-field input{width:52px; padding:8px 8px; border:1px solid var(--line); border-radius:3px; font-family:inherit;}
+
+/* Trend chart */
+.trend-wrap{margin:18px 0 22px; padding:14px; background:var(--parchment); border:1px solid var(--line); border-radius:4px;}
+.trend-wrap h4{margin:0 0 10px; font-size:12.5px; color:#7a715a; font-weight:600;}
+.trend-empty{font-size:12px; color:#a39a7f; text-align:center; padding:16px 0;}
+
+/* PIN modal */
+.pin-input{
+  width:100%; text-align:center; font-size:24px; letter-spacing:.4em; padding:12px; border:1px solid var(--line);
+  border-radius:4px; font-family:'IBM Plex Mono',monospace;
+}
+.settings-list{display:flex; flex-direction:column; gap:10px;}
+
+/* Compare hospitals */
+.hosp-picker{display:flex; flex-wrap:wrap; gap:8px; margin:12px 0;}
+.hosp-chip{
+  border:1px solid var(--line); border-radius:16px; padding:6px 13px; font-size:12.5px; cursor:pointer;
+  background:#fff; user-select:none; transition:all .12s;
+}
+.hosp-chip.selected{background:var(--forest); color:#fff; border-color:var(--forest);}
+.compare-table-wrap{max-height:400px; overflow:auto; margin-top:14px; border:1px solid var(--line); border-radius:4px;}
+.cell-cheapest{background:#E4EFE6; font-weight:700; color:var(--ok);}
+.cell-priciest{color:var(--warn);}
+
+/* Sync */
+.sync-input{width:100%; padding:11px 14px; border:1px solid var(--line); border-radius:3px; font-family:inherit; font-size:13.5px; margin-top:8px;}
+
+@media print{
+  .hero, .toolbar, .modal-close, .btn, .no-print{display:none !important;}
+  body{background:#fff;}
+  .spec-card{break-inside:avoid;}
+}
+
+@media (max-width:720px){
+  .stats{grid-template-columns:repeat(2,1fr);}
+  .hero h1{font-size:26px;}
+  .detail-stats{grid-template-columns:repeat(2,1fr);}
+  .field-map{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div>
+      <div class="hero-eyebrow"><span class="seal">仁</span> สสจ.สมุทรปราการ · แพทย์แผนไทยและการแพทย์ทางเลือก</div>
+      <h1>Price List ยาสมุนไพรสมุทรปราการ</h1>
+      <p class="sub">เปรียบเทียบราคาจัดซื้อยาสมุนไพร ของหน่วยบริการ 6 อำเภอ ในจังหวัดสมุทรปราการ — นำเข้าข้อมูลจาก Excel/CSV และส่งออกรายงานได้ทันที</p>
+    </div>
+    <div class="hero-actions">
+      <button class="btn btn-outline" id="btnSample">＋ ข้อมูลตัวอย่าง</button>
+      <button class="btn btn-outline" id="btnCompare">⇄ เปรียบเทียบ รพ.</button>
+      <button class="btn btn-outline" id="btnSync">🔗 ซิงก์ Google Sheets</button>
+      <button class="btn btn-outline" id="btnImport">⇪ นำเข้าข้อมูล</button>
+      <button class="btn btn-gold" id="btnExport">⇩ ส่งออกรายงาน</button>
+      <button class="btn btn-outline" id="btnSettings" title="ตั้งค่า PIN ป้องกันการแก้ไข">⚙</button>
+    </div>
+  </div>
+</div>
+
+<div class="stats" id="statsStrip"></div>
+
+<div class="wrap">
+  <div class="toolbar">
+    <div class="search-box"><input type="text" id="searchInput" placeholder="ค้นหารายการยาสมุนไพร..."></div>
+    <select id="filterDistrict"><option value="">ทุกอำเภอ</option></select>
+    <select id="filterCategory"><option value="">ทุกหมวดหมู่</option></select>
+    <select id="sortBy">
+      <option value="name">เรียงตามชื่อ</option>
+      <option value="avg-desc">ราคาเฉลี่ยสูง→ต่ำ</option>
+      <option value="avg-asc">ราคาเฉลี่ยต่ำ→สูง</option>
+      <option value="spread-desc">ส่วนต่างราคามาก→น้อย</option>
+      <option value="count-desc">จำนวน รพ. มาก→น้อย</option>
+    </select>
+    <div class="view-toggle">
+      <button id="viewCatalog" class="active">แคตตาล็อก</button>
+      <button id="viewTable">ตาราง</button>
+    </div>
+    <div class="threshold-field">เกณฑ์ผิดปกติ ± <input type="number" id="anomalyThreshold" value="20" min="1" max="200">%</div>
+  </div>
+
+  <div id="content"></div>
+
+  <div class="app-footer no-print">
+    <div>Price List ยาสมุนไพรสมุทรปราการ <span class="ver-tag" id="verTag">v1.0</span></div>
+    <div>พัฒนาโดย ภก.จีรภัทร พลายงาม · กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สสจ.สมุทรปราการ</div>
+    <div>อัปเดตล่าสุด: <span id="footerDate"></span></div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="overlay" id="detailOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h2 id="detailName">-</h2>
+        <div class="meta" id="detailMeta">-</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('detailOverlay')">✕</button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+  </div>
+</div>
+
+<!-- Import Modal -->
+<div class="overlay" id="importOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h2>นำเข้าข้อมูล</h2><div class="meta">รองรับไฟล์ .xlsx .xls .csv</div></div>
+      <button class="modal-close" onclick="closeModal('importOverlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="dropzone" id="dropzone">
+        <div class="glyph">📄</div>
+        <div><b>ลากไฟล์มาวาง</b> หรือคลิกเพื่อเลือกไฟล์</div>
+        <div class="import-note">คอลัมน์ที่รองรับ: รายการ, หมวดหมู่, หน่วย, อำเภอ, โรงพยาบาล, ราคา, ผู้จัดซื้อ, วันที่, เลขที่ใบสั่งซื้อ/สัญญา</div>
+      </div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+      <div id="importPreviewWrap" style="display:none;">
+        <div class="field-map" id="fieldMap"></div>
+        <div class="preview-table"><table id="previewTable"></table></div>
+        <div class="import-note" id="importCount"></div>
+        <div style="display:flex; gap:10px; margin-top:16px;">
+          <button class="btn btn-gold" id="btnConfirmImport">✓ ยืนยันนำเข้า (แทนที่ข้อมูลเดิม)</button>
+          <button class="btn btn-ghost" id="btnConfirmImportAppend">＋ เพิ่มเข้าข้อมูลเดิม</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Export Modal -->
+<div class="overlay" id="exportOverlay">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-head">
+      <div><h2>ส่งออกรายงาน</h2><div class="meta" id="exportMeta">-</div></div>
+      <button class="modal-close" onclick="closeModal('exportOverlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="export-options">
+        <div class="export-opt" id="expExcelFull">
+          <div><div class="t">Excel — รายงานฉบับเต็ม</div><div class="d">สรุป + รายละเอียดทุกรายการ ทุก รพ. + ตารางเปรียบเทียบ</div></div>
+          <span>⇩</span>
+        </div>
+        <div class="export-opt" id="expExcelFiltered">
+          <div><div class="t">Excel — เฉพาะรายการที่กรองอยู่</div><div class="d">ตามตัวกรอง/คำค้นหาปัจจุบันบนหน้าจอ</div></div>
+          <span>⇩</span>
+        </div>
+        <div class="export-opt" id="expPrint">
+          <div><div class="t">พิมพ์ / บันทึก PDF แคตตาล็อก</div><div class="d">รูปแบบแคตตาล็อกสวยงาม พร้อมพิมพ์</div></div>
+          <span>⎙</span>
+        </div>
+        <div class="export-opt" id="expCSV">
+          <div><div class="t">CSV — ข้อมูลดิบทั้งหมด</div><div class="d">สำหรับนำไปวิเคราะห์ต่อ</div></div>
+          <span>⇩</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Compare Hospitals Modal -->
+<div class="overlay" id="compareOverlay">
+  <div class="modal" style="max-width:900px;">
+    <div class="modal-head">
+      <div><h2>เปรียบเทียบโรงพยาบาล</h2><div class="meta">เลือก 2 หน่วยบริการขึ้นไปเพื่อเทียบราคาทุกรายการ</div></div>
+      <button class="modal-close" onclick="closeModal('compareOverlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="hosp-picker" id="hospPicker"></div>
+      <button class="btn btn-gold btn-sm" id="btnRunCompare">เปรียบเทียบ</button>
+      <div class="compare-table-wrap" id="compareResult"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Google Sheets Sync Modal -->
+<div class="overlay" id="syncOverlay">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head">
+      <div><h2>ซิงก์จาก Google Sheets</h2><div class="meta">ดึงข้อมูลจากชีตที่เผยแพร่แบบ CSV</div></div>
+      <button class="modal-close" onclick="closeModal('syncOverlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="import-note">
+        วิธีเตรียมลิงก์: เปิด Google Sheets → ไฟล์ → แชร์ → เผยแพร่บนเว็บ → เลือกชีต → รูปแบบ CSV → คัดลอกลิงก์มาวางด้านล่าง (ลิงก์จะลงท้ายด้วย output=csv)
+      </div>
+      <input type="text" class="sync-input" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv">
+      <div style="margin-top:14px; display:flex; gap:10px;">
+        <button class="btn btn-gold" id="btnFetchSheet">⇩ ดึงข้อมูล</button>
+      </div>
+      <div class="import-note" id="syncStatus"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings / PIN Modal -->
+<div class="overlay" id="settingsOverlay">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-head">
+      <div><h2>ตั้งค่า</h2><div class="meta">ป้องกันการนำเข้า/แก้ไขข้อมูลด้วยรหัส PIN</div></div>
+      <button class="modal-close" onclick="closeModal('settingsOverlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="settings-list" id="settingsBody"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= DATA LAYER ================= */
+const APP_VERSION = "1.0.0";
+const DISTRICTS = ["เมืองสมุทรปราการ","บางบ่อ","บางพลี","พระประแดง","พระสมุทรเจดีย์","บางเสาธง"];
+const STORAGE_KEY = "herbPriceCatalog_v1";
+const META_KEY = "herbPriceCatalog_meta_v1";
+
+let records = []; // {id, item, category, unit, district, hospital, price, buyer, date}
+let importedRows = []; // staged rows before confirm
+let importHeaders = [];
+
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){ records = JSON.parse(raw); return; }
+  }catch(e){}
+  records = [];
+}
+function saveData(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    localStorage.setItem(META_KEY, JSON.stringify({lastUpdated: new Date().toISOString()}));
+  }catch(e){}
+  updateFooterDate();
+}
+function updateFooterDate(){
+  const el = document.getElementById('footerDate');
+  if(!el) return;
+  let ts = null;
+  try{
+    const meta = JSON.parse(localStorage.getItem(META_KEY) || 'null');
+    if(meta && meta.lastUpdated) ts = new Date(meta.lastUpdated);
+  }catch(e){}
+  if(!ts) ts = new Date();
+  const thDate = ts.toLocaleDateString('th-TH', {year:'numeric', month:'long', day:'numeric'});
+  const thTime = ts.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+  el.textContent = `${thDate} เวลา ${thTime} น.`;
+}
+
+function sampleData(){
+  const items = [
+    {item:"ฟ้าทะลายโจร แคปซูล", category:"ยาบรรเทาหวัด", unit:"กระปุก/300แคปซูล", base:145},
+    {item:"ขมิ้นชัน แคปซูล", category:"ยาระบบทางเดินอาหาร", unit:"กระปุก/100แคปซูล", base:68},
+    {item:"ไพลเจล", category:"ยาภายนอก", unit:"หลอด/50ก.", base:52},
+    {item:"กระชายดำ สารสกัด", category:"ยาบำรุง", unit:"กระปุก/60แคปซูล", base:210},
+    {item:"บัวบก แคปซูล", category:"ยาบำรุง", unit:"กระปุก/100แคปซูล", base:95},
+    {item:"มะขามแขก ชนิดชง", category:"ยาระบบทางเดินอาหาร", unit:"กล่อง/10ซอง", base:38},
+    {item:"เพชรสังฆาต แคปซูล", category:"ยาระบบทางเดินอาหาร", unit:"กระปุก/100แคปซูล", base:120},
+    {item:"ว่านหางจระเข้ เจล", category:"ยาภายนอก", unit:"หลอด/100ก.", base:45},
+    {item:"ยาดมสมุนไพร", category:"ยาสูดดม", unit:"ขวด", base:22},
+    {item:"ยาหอมเทพจิตร", category:"ยาบำรุงหัวใจ", unit:"ซอง", base:15},
+    {item:"เถาวัลย์เปรียง แคปซูล", category:"ยาบรรเทาปวด", unit:"กระปุก/100แคปซูล", base:88},
+    {item:"ลูกประคบสมุนไพร", category:"ยาภายนอก", unit:"ลูก", base:35},
+  ];
+  const buyers = ["ภก.สมชาย ใจดี","นางสาวปิยะดา รักษ์ไทย","ภญ.วิภาวีร์ ศรีสมุทร","นายขจีวรรณ ธัญญะ","กลุ่มงานเภสัชกรรม"];
+  const HOSPITAL_NAMES = {
+    "พระประแดง": "รพ.บางจาก",
+  };
+  const rows = [];
+  let id=1;
+  items.forEach(it=>{
+    DISTRICTS.forEach((d,di)=>{
+      // not every item purchased in every district, simulate realistic gaps
+      if(Math.random() < 0.12) return;
+      const variance = (Math.random()*0.5 - 0.2); // -20% to +30%
+      const price = Math.round(it.base * (1+variance) * 100)/100;
+      rows.push({
+        id:id++, item:it.item, category:it.category, unit:it.unit,
+        district:d, hospital: HOSPITAL_NAMES[d] || ("รพ."+d),
+        price, buyer:buyers[Math.floor(Math.random()*buyers.length)],
+        date: "2569-0"+(Math.ceil(Math.random()*6))+"-15",
+        poRef: "PO-25"+(Math.floor(Math.random()*900)+100)+"-"+String(id).padStart(4,'0')
+      });
+    });
+  });
+  records = rows;
+  saveData();
+  render();
+}
+
+/* ================= HELPERS ================= */
+function groupByItem(list){
+  const map = {};
+  list.forEach(r=>{
+    if(!map[r.item]) map[r.item] = {item:r.item, category:r.category, unit:r.unit, rows:[]};
+    map[r.item].rows.push(r);
+  });
+  return Object.values(map).map(g=>{
+    const prices = g.rows.map(r=>r.price);
+    const min = Math.min(...prices), max = Math.max(...prices);
+    const avg = prices.reduce((a,b)=>a+b,0)/prices.length;
+    const spread = min>0 ? (max-min)/min : 0;
+    return {...g, min, max, avg, spread, count:g.rows.length};
+  });
+}
+function fmtBaht(n){ return n.toLocaleString('th-TH',{minimumFractionDigits:2, maximumFractionDigits:2}); }
+function spreadTag(spread){
+  if(spread <= 0.1) return {cls:'spread-low', label:'ราคาใกล้เคียง'};
+  if(spread <= 0.3) return {cls:'spread-mid', label:'ต่างปานกลาง'};
+  return {cls:'spread-high', label:'ต่างมาก'};
+}
+
+/* ================= FILTER STATE ================= */
+let state = { search:"", district:"", category:"", sort:"name", view:"catalog", anomalyPct:20 };
+
+function isAnomaly(price, avg){
+  if(!avg || avg<=0) return false;
+  return Math.abs(price-avg)/avg*100 > state.anomalyPct;
+}
+
+function filteredRecords(){
+  return records.filter(r=>{
+    if(state.search && !r.item.toLowerCase().includes(state.search.toLowerCase())) return false;
+    if(state.district && r.district !== state.district) return false;
+    if(state.category && r.category !== state.category) return false;
+    return true;
+  });
+}
+
+/* ================= RENDER ================= */
+function renderStats(){
+  const list = records;
+  const groups = groupByItem(list);
+  const hospitals = new Set(list.map(r=>r.hospital));
+  const totalAvg = groups.length ? groups.reduce((a,g)=>a+g.avg,0)/groups.length : 0;
+  const maxSpread = groups.length ? Math.max(...groups.map(g=>g.spread)) : 0;
+  const anomalyItemCount = groups.filter(g=>g.rows.some(r=>isAnomaly(r.price, g.avg))).length;
+  const el = document.getElementById('statsStrip');
+  el.innerHTML = `
+    <div class="stat"><div class="num">${groups.length}</div><div class="lbl">รายการยาสมุนไพร</div></div>
+    <div class="stat"><div class="num">${hospitals.size}</div><div class="lbl">หน่วยบริการที่มีข้อมูล</div></div>
+    <div class="stat"><div class="num">${DISTRICTS.length}</div><div class="lbl">อำเภอ</div></div>
+    <div class="stat"><div class="num">฿${fmtBaht(totalAvg)}</div><div class="lbl">ราคาเฉลี่ยรวมทุกรายการ</div></div>
+    <div class="stat"><div class="num">${(maxSpread*100).toFixed(0)}%</div><div class="lbl">ส่วนต่างราคาสูงสุด</div></div>
+    <div class="stat"><div class="num" style="color:${anomalyItemCount?'var(--warn)':'inherit'}">${anomalyItemCount}</div><div class="lbl">รายการราคาผิดปกติ</div></div>
+  `;
+}
+
+function populateFilters(){
+  const dSel = document.getElementById('filterDistrict');
+  const cSel = document.getElementById('filterCategory');
+  const cats = [...new Set(records.map(r=>r.category))].sort();
+  dSel.innerHTML = '<option value="">ทุกอำเภอ</option>' + DISTRICTS.map(d=>`<option value="${d}">${d}</option>`).join('');
+  cSel.innerHTML = '<option value="">ทุกหมวดหมู่</option>' + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  dSel.value = state.district; cSel.value = state.category;
+}
+
+function sortGroups(groups){
+  const s = state.sort;
+  const arr = [...groups];
+  if(s==='name') arr.sort((a,b)=>a.item.localeCompare(b.item,'th'));
+  if(s==='avg-desc') arr.sort((a,b)=>b.avg-a.avg);
+  if(s==='avg-asc') arr.sort((a,b)=>a.avg-b.avg);
+  if(s==='spread-desc') arr.sort((a,b)=>b.spread-a.spread);
+  if(s==='count-desc') arr.sort((a,b)=>b.count-a.count);
+  return arr;
+}
+
+function render(){
+  renderStats();
+  populateFilters();
+  const list = filteredRecords();
+  const groups = sortGroups(groupByItem(list));
+  const content = document.getElementById('content');
+
+  if(records.length===0){
+    content.innerHTML = `<div class="empty-state">
+      <div class="glyph">🌿</div>
+      <h3>ยังไม่มีข้อมูลราคา</h3>
+      <div>เริ่มต้นด้วยการนำเข้าไฟล์ Excel/CSV หรือใช้ข้อมูลตัวอย่างเพื่อดูตัวอย่างการทำงาน</div>
+    </div>`;
+    return;
+  }
+  if(groups.length===0){
+    content.innerHTML = `<div class="empty-state"><div class="glyph">🔍</div><h3>ไม่พบรายการที่ค้นหา</h3><div>ลองปรับคำค้นหาหรือตัวกรอง</div></div>`;
+    return;
+  }
+
+  if(state.view === 'catalog'){
+    content.innerHTML = `<div class="catalog">${groups.map(cardHTML).join('')}</div>`;
+    groups.forEach(g=>{
+      document.getElementById('card-'+cssId(g.item)).addEventListener('click', ()=>openDetail(g.item));
+    });
+  } else {
+    content.innerHTML = tableHTML(groups);
+    groups.forEach(g=>{
+      const row = document.getElementById('row-'+cssId(g.item));
+      if(row) row.addEventListener('click', ()=>openDetail(g.item));
+    });
+  }
+}
+
+function cssId(s){ return s.replace(/[^a-zA-Z0-9ก-๙]/g,'_'); }
+
+function cardHTML(g){
+  const range = g.max - g.min || 1;
+  const avgPct = ((g.avg - g.min)/range)*100;
+  const tag = spreadTag(g.spread);
+  const anomalyCount = g.rows.filter(r=>isAnomaly(r.price, g.avg)).length;
+  return `
+  <div class="spec-card" id="card-${cssId(g.item)}">
+    ${anomalyCount ? `<div class="anomaly-flag">⚠ ผิดปกติ ${anomalyCount} รพ.</div>` : ''}
+    <div class="spec-top">
+      <div>
+        <div class="spec-cat">${g.category||'ไม่ระบุหมวดหมู่'}</div>
+        <div class="spec-name">${g.item}</div>
+        <div class="spec-unit">${g.unit||''}</div>
+      </div>
+      <div class="spec-badge"><b>${g.count}</b>รพ.</div>
+    </div>
+    <div class="spec-body">
+      <div>
+        <div class="price-range-lbl"><span>ต่ำสุด ฿${fmtBaht(g.min)}</span><span>สูงสุด ฿${fmtBaht(g.max)}</span></div>
+        <div class="price-bar-track">
+          <div class="price-bar-fill" style="width:100%"></div>
+          <div class="price-bar-avg" style="left:${avgPct}%"></div>
+        </div>
+      </div>
+      <div class="spec-foot">
+        <div>
+          <div class="spec-avg">฿${fmtBaht(g.avg)}<span style="font-size:11px;font-weight:400;color:#8a8168;"> เฉลี่ย</span></div>
+          <div class="spec-hosp-count">${g.count} หน่วยบริการ</div>
+        </div>
+        <span class="spread-tag ${tag.cls}">${tag.label}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function tableHTML(groups){
+  return `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>รายการ</th><th>หมวดหมู่</th><th>หน่วย</th>
+      <th style="text-align:right">ต่ำสุด</th><th style="text-align:right">เฉลี่ย</th><th style="text-align:right">สูงสุด</th>
+      <th style="text-align:right">จำนวน รพ.</th><th style="text-align:right">ส่วนต่าง</th><th style="text-align:right">ผิดปกติ</th>
+    </tr></thead>
+    <tbody>
+    ${groups.map(g=>{
+      const anomalyCount = g.rows.filter(r=>isAnomaly(r.price, g.avg)).length;
+      return `
+      <tr id="row-${cssId(g.item)}" style="cursor:pointer">
+        <td>${g.item}</td>
+        <td>${g.category||'-'}</td>
+        <td>${g.unit||'-'}</td>
+        <td class="num-cell">฿${fmtBaht(g.min)}</td>
+        <td class="num-cell"><b>฿${fmtBaht(g.avg)}</b></td>
+        <td class="num-cell">฿${fmtBaht(g.max)}</td>
+        <td class="num-cell">${g.count}</td>
+        <td class="num-cell">${(g.spread*100).toFixed(0)}%</td>
+        <td class="num-cell">${anomalyCount ? `<span class="anomaly-inline">⚠ ${anomalyCount}</span>` : '-'}</td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+/* ================= DETAIL MODAL ================= */
+let trendChartInstance = null;
+function openDetail(itemName){
+  const rows = records.filter(r=>r.item===itemName).sort((a,b)=>a.price-b.price);
+  const g = groupByItem(rows)[0];
+  document.getElementById('detailName').textContent = itemName;
+  document.getElementById('detailMeta').textContent = `${g.category||'ไม่ระบุหมวดหมู่'} · ${g.unit||''}`;
+  const body = document.getElementById('detailBody');
+  body.innerHTML = `
+    <div class="detail-stats">
+      <div class="dstat"><div class="v">฿${fmtBaht(g.min)}</div><div class="k">ราคาต่ำสุด</div></div>
+      <div class="dstat"><div class="v">฿${fmtBaht(g.avg)}</div><div class="k">ราคาเฉลี่ย</div></div>
+      <div class="dstat"><div class="v">฿${fmtBaht(g.max)}</div><div class="k">ราคาสูงสุด</div></div>
+      <div class="dstat"><div class="v">${g.count}</div><div class="k">หน่วยบริการ</div></div>
+    </div>
+    <div class="trend-wrap">
+      <h4>แนวโน้มราคาย้อนหลัง</h4>
+      <div id="trendChartHolder"></div>
+    </div>
+    <div style="font-size:12.5px; color:#7a715a; margin-bottom:8px; font-weight:600;">รายละเอียดราคาตามหน่วยบริการ</div>
+    ${rows.map(r=>{
+      const pct = ((r.price - g.min)/((g.max-g.min)||1))*100;
+      const isMin = r.price===g.min, isMax = r.price===g.max;
+      const anomaly = isAnomaly(r.price, g.avg);
+      return `<div class="hosp-row ${anomaly?'anomaly':''}">
+        <div class="hosp-name">${r.hospital}<span class="district">อ.${r.district} · ${r.date||'-'}${r.poRef?(' · เลขที่: '+r.poRef):''}</span>
+          ${r.buyer?`<span class="buyer-note">ผู้จัดซื้อ: ${r.buyer}</span>`:''}
+        </div>
+        <div class="hosp-price-wrap">
+          <div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.max(pct,6)}%"></div></div>
+          <div class="hosp-price ${isMin?'tag-min':isMax?'tag-max':''}">฿${fmtBaht(r.price)}${anomaly?'<span class="anomaly-inline">⚠</span>':''}</div>
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+  document.getElementById('detailOverlay').classList.add('show');
+  renderTrendChart(rows);
+}
+
+function renderTrendChart(rows){
+  const holder = document.getElementById('trendChartHolder');
+  const dated = rows.filter(r=>r.date);
+  const distinctDates = [...new Set(dated.map(r=>r.date))].sort();
+  if(trendChartInstance){ trendChartInstance.destroy(); trendChartInstance = null; }
+  if(distinctDates.length < 2){
+    holder.innerHTML = `<div class="trend-empty">ยังมีข้อมูลวันที่ไม่หลากหลายพอสำหรับกราฟแนวโน้ม (ต้องมีอย่างน้อย 2 วันที่แตกต่างกัน)</div>`;
+    return;
+  }
+  holder.innerHTML = `<canvas id="trendCanvas" height="90"></canvas>`;
+  const avgByDate = distinctDates.map(d=>{
+    const ps = dated.filter(r=>r.date===d).map(r=>r.price);
+    return ps.reduce((a,b)=>a+b,0)/ps.length;
+  });
+  const ctx = document.getElementById('trendCanvas').getContext('2d');
+  trendChartInstance = new Chart(ctx, {
+    type:'line',
+    data:{ labels: distinctDates, datasets:[{
+      label:'ราคาเฉลี่ย (฿)', data: avgByDate, borderColor:'#2D4A3E', backgroundColor:'rgba(45,74,62,0.12)',
+      fill:true, tension:.25, pointBackgroundColor:'#B8902F', pointRadius:4
+    }]},
+    options:{
+      plugins:{legend:{display:false}},
+      scales:{ y:{beginAtZero:false, ticks:{callback:v=>'฿'+v}} }
+    }
+  });
+}
+
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('.overlay').forEach(ov=>{
+  ov.addEventListener('click', e=>{ if(e.target===ov) ov.classList.remove('show'); });
+});
+
+/* ================= IMPORT ================= */
+const HEADER_ALIASES = {
+  item: ['รายการ','ชื่อยา','ชื่อสมุนไพร','item','name'],
+  category: ['หมวดหมู่','ประเภท','category'],
+  unit: ['หน่วย','unit'],
+  district: ['อำเภอ','district'],
+  hospital: ['โรงพยาบาล','หน่วยบริการ','รพ','hospital'],
+  price: ['ราคา','ราคาต่อหน่วย','price'],
+  buyer: ['ผู้จัดซื้อ','ผู้ซื้อ','ผู้จำหน่าย','buyer'],
+  date: ['วันที่','วันที่จัดซื้อ','date'],
+  poRef: ['เลขที่ใบสั่งซื้อ','เลขที่สัญญา','เลขที่เอกสาร','poref','po ','เลขที่'],
+};
+function guessField(header){
+  const h = (header||'').toString().trim().toLowerCase();
+  for(const [key, aliases] of Object.entries(HEADER_ALIASES)){
+    if(aliases.some(a=>h.includes(a.toLowerCase()))) return key;
+  }
+  return '';
+}
+
+document.getElementById('btnImport').addEventListener('click', ()=>{
+  document.getElementById('importPreviewWrap').style.display='none';
+  document.getElementById('dropzone').style.display='block';
+  document.getElementById('importOverlay').classList.add('show');
+});
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.addEventListener('click', ()=>fileInput.click());
+dropzone.addEventListener('dragover', e=>{e.preventDefault(); dropzone.classList.add('drag');});
+dropzone.addEventListener('dragleave', ()=>dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e=>{
+  e.preventDefault(); dropzone.classList.remove('drag');
+  if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e=>{ if(e.target.files.length) handleFile(e.target.files[0]); });
+
+function handleFile(file){
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    let wb;
+    try{
+      if(file.name.toLowerCase().endsWith('.csv')){
+        wb = XLSX.read(e.target.result, {type:'binary'});
+      } else {
+        wb = XLSX.read(e.target.result, {type:'array'});
+      }
+    }catch(err){ alert('ไม่สามารถอ่านไฟล์ได้: '+err.message); return; }
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet, {defval:''});
+    if(json.length===0){ alert('ไม่พบข้อมูลในไฟล์'); return; }
+    importHeaders = Object.keys(json[0]);
+    importedRows = json;
+    showImportPreview();
+  };
+  if(file.name.toLowerCase().endsWith('.csv')) reader.readAsBinaryString(file);
+  else reader.readAsArrayBuffer(file);
+}
+
+function showImportPreview(){
+  document.getElementById('dropzone').style.display='none';
+  document.getElementById('importPreviewWrap').style.display='block';
+  const fieldKeys = ['item','category','unit','district','hospital','price','buyer','date','poRef'];
+  const fieldLabels = {item:'รายการ',category:'หมวดหมู่',unit:'หน่วย',district:'อำเภอ',hospital:'โรงพยาบาล',price:'ราคา',buyer:'ผู้จัดซื้อ',date:'วันที่',poRef:'เลขที่ใบสั่งซื้อ/สัญญา'};
+  const map = document.getElementById('fieldMap');
+  map.innerHTML = fieldKeys.map(k=>{
+    const guess = importHeaders.find(h=>guessField(h)===k) || '';
+    return `<div>
+      <label>${fieldLabels[k]}${(k==='item'||k==='price'||k==='hospital'||k==='district')?' *':''}</label>
+      <select data-field="${k}">
+        <option value="">— ไม่ใช้ —</option>
+        ${importHeaders.map(h=>`<option value="${h}" ${h===guess?'selected':''}>${h}</option>`).join('')}
+      </select>
+    </div>`;
+  }).join('');
+
+  renderPreviewTable();
+  map.querySelectorAll('select').forEach(s=>s.addEventListener('change', renderPreviewTable));
+  document.getElementById('importCount').textContent = `พบข้อมูล ${importedRows.length} แถวในไฟล์ · กรุณาตรวจสอบการจับคู่คอลัมน์ด้านบนก่อนยืนยัน`;
+}
+
+function currentFieldMap(){
+  const map = {};
+  document.querySelectorAll('#fieldMap select').forEach(s=>{ if(s.value) map[s.dataset.field] = s.value; });
+  return map;
+}
+
+function renderPreviewTable(){
+  const map = currentFieldMap();
+  const cols = Object.keys(map);
+  const t = document.getElementById('previewTable');
+  const rows = importedRows.slice(0,8);
+  t.innerHTML = `<thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+  <tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td>${r[map[c]]}</td>`).join('')}</tr>`).join('')}</tbody>`;
+}
+
+function buildRecordsFromImport(){
+  const map = currentFieldMap();
+  if(!map.item || !map.price || !map.hospital || !map.district){
+    alert('กรุณาจับคู่คอลัมน์ รายการ, ราคา, โรงพยาบาล และ อำเภอ ให้ครบก่อน');
+    return null;
+  }
+  let id = Date.now();
+  return importedRows.map(r=>({
+    id: id++,
+    item: (r[map.item]||'').toString().trim(),
+    category: map.category ? (r[map.category]||'').toString().trim() : 'ไม่ระบุหมวดหมู่',
+    unit: map.unit ? (r[map.unit]||'').toString().trim() : '',
+    district: (r[map.district]||'').toString().trim(),
+    hospital: (r[map.hospital]||'').toString().trim(),
+    price: parseFloat(r[map.price]) || 0,
+    buyer: map.buyer ? (r[map.buyer]||'').toString().trim() : '',
+    date: map.date ? (r[map.date]||'').toString().trim() : '',
+    poRef: map.poRef ? (r[map.poRef]||'').toString().trim() : '',
+  })).filter(r=>r.item && r.price>0);
+}
+
+document.getElementById('btnConfirmImport').addEventListener('click', ()=>{
+  requirePin(()=>{
+    const newRecs = buildRecordsFromImport();
+    if(!newRecs) return;
+    records = newRecs;
+    saveData(); render();
+    closeModal('importOverlay');
+  });
+});
+document.getElementById('btnConfirmImportAppend').addEventListener('click', ()=>{
+  requirePin(()=>{
+    const newRecs = buildRecordsFromImport();
+    if(!newRecs) return;
+    records = records.concat(newRecs);
+    saveData(); render();
+    closeModal('importOverlay');
+  });
+});
+
+/* ================= EXPORT ================= */
+document.getElementById('btnExport').addEventListener('click', ()=>{
+  document.getElementById('exportMeta').textContent = `${records.length} รายการราคา · ${groupByItem(records).length} รายการยา`;
+  document.getElementById('exportOverlay').classList.add('show');
+});
+
+function exportExcel(list, filenameSuffix){
+  const groups = groupByItem(list);
+  const summarySheet = XLSX.utils.json_to_sheet(groups.map(g=>({
+    'รายการ': g.item, 'หมวดหมู่': g.category, 'หน่วย': g.unit,
+    'ราคาต่ำสุด': +g.min.toFixed(2), 'ราคาเฉลี่ย': +g.avg.toFixed(2), 'ราคาสูงสุด': +g.max.toFixed(2),
+    'จำนวน รพ.': g.count, 'ส่วนต่าง(%)': +(g.spread*100).toFixed(1),
+    'จำนวน รพ.ราคาผิดปกติ': g.rows.filter(r=>isAnomaly(r.price,g.avg)).length
+  })));
+  const detailSheet = XLSX.utils.json_to_sheet(list.map(r=>({
+    'รายการ': r.item, 'หมวดหมู่': r.category, 'หน่วย': r.unit, 'อำเภอ': r.district,
+    'โรงพยาบาล': r.hospital, 'ราคา': r.price, 'ผู้จัดซื้อ': r.buyer, 'วันที่': r.date, 'เลขที่ใบสั่งซื้อ/สัญญา': r.poRef||''
+  })));
+  const districtPivot = {};
+  list.forEach(r=>{
+    if(!districtPivot[r.item]) districtPivot[r.item] = {'รายการ': r.item};
+    districtPivot[r.item][r.district] = r.price;
+  });
+  const pivotSheet = XLSX.utils.json_to_sheet(Object.values(districtPivot));
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, summarySheet, 'สรุปราคา');
+  XLSX.utils.book_append_sheet(wb, pivotSheet, 'เปรียบเทียบรายอำเภอ');
+  XLSX.utils.book_append_sheet(wb, detailSheet, 'ข้อมูลดิบ');
+  XLSX.writeFile(wb, `Price List ยาสมุนไพรสมุทรปราการ_${filenameSuffix}_${todayStr()}.xlsx`);
+}
+function todayStr(){
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+}
+
+document.getElementById('expExcelFull').addEventListener('click', ()=>{ exportExcel(records, 'ฉบับเต็ม'); closeModal('exportOverlay'); });
+document.getElementById('expExcelFiltered').addEventListener('click', ()=>{ exportExcel(filteredRecords(), 'เฉพาะที่กรอง'); closeModal('exportOverlay'); });
+document.getElementById('expCSV').addEventListener('click', ()=>{
+  const ws = XLSX.utils.json_to_sheet(records.map(r=>({
+    'รายการ': r.item, 'หมวดหมู่': r.category, 'หน่วย': r.unit, 'อำเภอ': r.district,
+    'โรงพยาบาล': r.hospital, 'ราคา': r.price, 'ผู้จัดซื้อ': r.buyer, 'วันที่': r.date, 'เลขที่ใบสั่งซื้อ/สัญญา': r.poRef||''
+  })));
+  const csv = XLSX.utils.sheet_to_csv(ws);
+  const blob = new Blob(["\uFEFF"+csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `Price List ยาสมุนไพรสมุทรปราการ_ข้อมูลดิบ_${todayStr()}.csv`;
+  a.click();
+  closeModal('exportOverlay');
+});
+document.getElementById('expPrint').addEventListener('click', ()=>{
+  closeModal('exportOverlay');
+  state.view = 'catalog';
+  document.getElementById('viewCatalog').classList.add('active');
+  document.getElementById('viewTable').classList.remove('active');
+  render();
+  setTimeout(()=>window.print(), 200);
+});
+
+/* ================= EVENTS ================= */
+document.getElementById('searchInput').addEventListener('input', e=>{ state.search = e.target.value; render(); });
+document.getElementById('filterDistrict').addEventListener('change', e=>{ state.district = e.target.value; render(); });
+document.getElementById('filterCategory').addEventListener('change', e=>{ state.category = e.target.value; render(); });
+document.getElementById('sortBy').addEventListener('change', e=>{ state.sort = e.target.value; render(); });
+document.getElementById('anomalyThreshold').addEventListener('input', e=>{
+  state.anomalyPct = parseFloat(e.target.value) || 20; render();
+});
+document.getElementById('viewCatalog').addEventListener('click', ()=>{ state.view='catalog'; document.getElementById('viewCatalog').classList.add('active'); document.getElementById('viewTable').classList.remove('active'); render(); });
+document.getElementById('viewTable').addEventListener('click', ()=>{ state.view='table'; document.getElementById('viewTable').classList.add('active'); document.getElementById('viewCatalog').classList.remove('active'); render(); });
+document.getElementById('btnSample').addEventListener('click', ()=>{
+  requirePin(()=>{
+    if(records.length && !confirm('ข้อมูลตัวอย่างจะแทนที่ข้อมูลปัจจุบัน ดำเนินการต่อ?')) return;
+    sampleData();
+  });
+});
+
+/* ================= PIN PROTECTION ================= */
+const PIN_KEY = "herbPriceCatalog_pin_v1";
+async function sha256(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function getPinHash(){ try{ return localStorage.getItem(PIN_KEY) || ''; }catch(e){ return ''; } }
+async function requirePin(callback){
+  const hash = getPinHash();
+  if(!hash){ callback(); return; } // no PIN set — open access
+  const entered = prompt('กรุณาใส่รหัส PIN เพื่อดำเนินการต่อ:');
+  if(entered===null) return;
+  const enteredHash = await sha256(entered);
+  if(enteredHash === hash){ callback(); }
+  else{ alert('รหัส PIN ไม่ถูกต้อง'); }
+}
+function renderSettings(){
+  const hasPin = !!getPinHash();
+  document.getElementById('settingsBody').innerHTML = `
+    <div class="import-note">${hasPin ? 'ขณะนี้มีรหัส PIN ป้องกันการนำเข้า/แก้ไขข้อมูลอยู่' : 'ยังไม่ได้ตั้งรหัส PIN — ใครก็สามารถนำเข้า/แก้ไขข้อมูลได้'}</div>
+    <button class="btn btn-gold btn-sm" id="btnSetPin">${hasPin ? 'เปลี่ยนรหัส PIN' : 'ตั้งรหัส PIN'}</button>
+    ${hasPin ? '<button class="btn btn-ghost btn-sm" id="btnRemovePin">ยกเลิกการป้องกันด้วย PIN</button>' : ''}
+  `;
+  document.getElementById('btnSetPin').addEventListener('click', async ()=>{
+    const doSet = async ()=>{
+      const p1 = prompt('ตั้งรหัส PIN ใหม่ (ตัวเลขหรือตัวอักษรก็ได้):');
+      if(!p1) return;
+      const p2 = prompt('กรุณาใส่รหัส PIN อีกครั้งเพื่อยืนยัน:');
+      if(p1 !== p2){ alert('รหัส PIN ไม่ตรงกัน กรุณาลองใหม่'); return; }
+      localStorage.setItem(PIN_KEY, await sha256(p1));
+      alert('ตั้งรหัส PIN เรียบร้อยแล้ว');
+      renderSettings();
+    };
+    if(hasPin){ requirePin(doSet); } else { doSet(); }
+  });
+  const removeBtn = document.getElementById('btnRemovePin');
+  if(removeBtn) removeBtn.addEventListener('click', ()=>{
+    requirePin(()=>{ localStorage.removeItem(PIN_KEY); alert('ยกเลิกการป้องกันด้วย PIN แล้ว'); renderSettings(); });
+  });
+}
+document.getElementById('btnSettings').addEventListener('click', ()=>{
+  renderSettings();
+  document.getElementById('settingsOverlay').classList.add('show');
+});
+
+/* ================= COMPARE HOSPITALS ================= */
+let selectedHospitals = new Set();
+document.getElementById('btnCompare').addEventListener('click', ()=>{
+  const hospitals = [...new Set(records.map(r=>r.hospital))].sort();
+  const picker = document.getElementById('hospPicker');
+  if(hospitals.length===0){
+    picker.innerHTML = '<div class="import-note">ยังไม่มีข้อมูลโรงพยาบาลให้เปรียบเทียบ</div>';
+  } else {
+    picker.innerHTML = hospitals.map(h=>`<div class="hosp-chip" data-h="${h}">${h}</div>`).join('');
+    picker.querySelectorAll('.hosp-chip').forEach(chip=>{
+      chip.addEventListener('click', ()=>{
+        const h = chip.dataset.h;
+        if(selectedHospitals.has(h)){ selectedHospitals.delete(h); chip.classList.remove('selected'); }
+        else{ selectedHospitals.add(h); chip.classList.add('selected'); }
+      });
+    });
+  }
+  document.getElementById('compareResult').innerHTML = '';
+  document.getElementById('compareOverlay').classList.add('show');
+});
+document.getElementById('btnRunCompare').addEventListener('click', ()=>{
+  const hosps = [...selectedHospitals];
+  const resultEl = document.getElementById('compareResult');
+  if(hosps.length < 2){ resultEl.innerHTML = '<div class="import-note">กรุณาเลือกอย่างน้อย 2 โรงพยาบาล</div>'; return; }
+  const items = [...new Set(records.filter(r=>hosps.includes(r.hospital)).map(r=>r.item))].sort((a,b)=>a.localeCompare(b,'th'));
+  const rowsHtml = items.map(item=>{
+    const cells = hosps.map(h=>{
+      const rec = records.find(r=>r.item===item && r.hospital===h);
+      return rec ? rec.price : null;
+    });
+    const valid = cells.filter(c=>c!==null);
+    const min = Math.min(...valid), max = Math.max(...valid);
+    return `<tr>
+      <td>${item}</td>
+      ${cells.map(c=>{
+        if(c===null) return '<td class="num-cell">-</td>';
+        const cls = c===min && valid.length>1 ? 'cell-cheapest' : (c===max && valid.length>1 ? 'cell-priciest' : '');
+        return `<td class="num-cell ${cls}">฿${fmtBaht(c)}</td>`;
+      }).join('')}
+    </tr>`;
+  }).join('');
+  resultEl.innerHTML = `<table>
+    <thead><tr><th>รายการ</th>${hosps.map(h=>`<th style="text-align:right">${h}</th>`).join('')}</tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>`;
+});
+
+/* ================= GOOGLE SHEETS SYNC ================= */
+document.getElementById('btnSync').addEventListener('click', ()=>{
+  document.getElementById('syncStatus').textContent = '';
+  document.getElementById('sheetUrl').value = '';
+  document.getElementById('syncOverlay').classList.add('show');
+});
+document.getElementById('btnFetchSheet').addEventListener('click', async ()=>{
+  const url = document.getElementById('sheetUrl').value.trim();
+  const statusEl = document.getElementById('syncStatus');
+  if(!url){ statusEl.textContent = 'กรุณาใส่ลิงก์ก่อน'; return; }
+  statusEl.textContent = 'กำลังดึงข้อมูล...';
+  try{
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const csvText = await res.text();
+    const wb = XLSX.read(csvText, {type:'string'});
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet, {defval:''});
+    if(json.length===0){ statusEl.textContent = 'ไม่พบข้อมูลในชีต'; return; }
+    importHeaders = Object.keys(json[0]);
+    importedRows = json;
+    closeModal('syncOverlay');
+    document.getElementById('importOverlay').classList.add('show');
+    showImportPreview();
+  }catch(err){
+    statusEl.textContent = 'ดึงข้อมูลไม่สำเร็จ: ตรวจสอบว่าลิงก์เผยแพร่แบบ CSV แล้ว และตั้งค่าการแชร์เป็นสาธารณะ ('+err.message+')';
+  }
+});
+
+/* ================= INIT ================= */
+loadData();
+document.getElementById('verTag').textContent = 'v'+APP_VERSION;
+updateFooterDate();
+render();
+</script>
+</body>
+</html>
