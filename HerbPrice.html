@@ -241,6 +241,12 @@ tbody tr:last-child td{border-bottom:none;}
 .tag-min{color:var(--ok); font-weight:700;}
 .tag-max{color:var(--warn); font-weight:700;}
 .buyer-note, .remark-note{font-size:11px; color:#a39a7f; margin-top:1px;}
+.vendor-note{font-size:11px; color:var(--gold); margin-top:1px; display:block; font-weight:600;}
+.spec-vendor{font-size:11px; color:#8a8168; margin-top:4px;}
+.vendor-chip{
+  display:inline-block; font-size:10.5px; background:var(--sage-pale); color:var(--forest-deep);
+  padding:1px 7px; border-radius:8px; margin:1px 3px 1px 0; font-weight:600;
+}
 
 /* Import modal */
 .dropzone{
@@ -342,6 +348,7 @@ tbody tr:last-child td{border-bottom:none;}
     </div>
     <div class="hero-actions">
       <button class="btn btn-outline" id="btnSample">＋ ข้อมูลตัวอย่าง</button>
+      <button class="btn btn-outline" id="btnClear">🗑 ล้างข้อมูล</button>
       <button class="btn btn-outline" id="btnCompare">⇄ เปรียบเทียบ รพ.</button>
       <button class="btn btn-outline" id="btnSync">🔗 ซิงก์ Google Sheets</button>
       <button class="btn btn-outline" id="btnTemplate">⇩ เทมเพลต Excel</button>
@@ -359,6 +366,7 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="search-box"><input type="text" id="searchInput" placeholder="ค้นหารายการยาสมุนไพร..."></div>
     <select id="filterDistrict"><option value="">ทุกอำเภอ</option></select>
     <select id="filterCategory"><option value="">ทุกรูปแบบยา</option></select>
+    <select id="filterVendor"><option value="">ทุกบริษัทผู้ขาย</option></select>
     <select id="sortBy">
       <option value="name">เรียงตามชื่อ</option>
       <option value="avg-desc">ราคาเฉลี่ยสูง→ต่ำ</option>
@@ -407,7 +415,7 @@ tbody tr:last-child td{border-bottom:none;}
       <div class="dropzone" id="dropzone">
         <div class="glyph">📄</div>
         <div><b>ลากไฟล์มาวาง</b> หรือคลิกเพื่อเลือกไฟล์</div>
-        <div class="import-note">คอลัมน์ที่รองรับ: รายการ, รูปแบบยา, หน่วยที่จำหน่าย, ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท), ราคาต่อหน่วยย่อยสุด(บาท), ผู้จัดซื้อ, อำเภอ, หมายเหตุ (แถมหรือส่วนลด)</div>
+        <div class="import-note">คอลัมน์ที่รองรับ: รายการ, รูปแบบยา, ชื่อบริษัท/หน่วยงาน ผู้ขาย, หน่วยที่จำหน่าย, ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท), ราคาต่อหน่วยย่อยสุด(บาท), ผู้จัดซื้อ, อำเภอ, หมายเหตุ (แถมหรือส่วนลด)</div>
         <button class="btn btn-ghost btn-sm no-print" id="btnTemplateInModal" style="margin-top:10px;" onclick="event.stopPropagation()">⇩ ดาวน์โหลดเทมเพลต Excel</button>
       </div>
       <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
@@ -509,7 +517,7 @@ const DISTRICTS = ["เมืองสมุทรปราการ","บาง
 const STORAGE_KEY = "herbPriceCatalog_v1";
 const META_KEY = "herbPriceCatalog_meta_v1";
 
-let records = []; // {id, item, category(รูปแบบยา), unit, district, hospital(ผู้จัดซื้อ), price, subUnitPrice, remark, date, poRef}
+let records = []; // {id, item, category(รูปแบบยา), vendor(ชื่อบริษัท/หน่วยงาน ผู้ขาย), unit, district, hospital(ผู้จัดซื้อ), price, subUnitPrice, remark, date, poRef}
 let importedRows = []; // staged rows before confirm
 let importHeaders = [];
 
@@ -557,6 +565,7 @@ function sampleData(){
     {item:"ลูกประคบสมุนไพร", category:"ลูกประคบ", unit:"ลูก", base:35, perUnit:1},
   ];
   const remarks = ["ไม่มี","ไม่มี","ไม่มี","แถมของแถม 1 ชิ้น","ส่วนลด 5%","ส่วนลด 10% ซื้อเกิน 50 ชุด"];
+  const vendorPool = ["บ.ดีซีเอช ออริก้าจำกัด","บ.ธงทองโอสถจำกัด","บ.ขาวละออเภสัช จำกัด","บ.ฟาร์มาฮอฟ จำกัด","องค์การเภสัชกรรม"];
   const HOSPITAL_NAMES = {
     "พระประแดง": "รพ.บางจาก",
   };
@@ -569,7 +578,7 @@ function sampleData(){
       const variance = (Math.random()*0.5 - 0.2); // -20% to +30%
       const price = Math.round(it.base * (1+variance) * 100)/100;
       rows.push({
-        id:id++, item:it.item, category:it.category, unit:it.unit,
+        id:id++, item:it.item, category:it.category, vendor:vendorPool[Math.floor(Math.random()*vendorPool.length)], unit:it.unit,
         district:d, hospital: HOSPITAL_NAMES[d] || ("รพ."+d),
         price, subUnitPrice: +(price/it.perUnit).toFixed(2),
         remark: remarks[Math.floor(Math.random()*remarks.length)],
@@ -597,7 +606,8 @@ function groupByItem(list){
     const spread = min>0 ? (max-min)/min : 0;
     const subUnitPrices = g.rows.map(r=>r.subUnitPrice).filter(v=>v>0);
     const avgSubUnit = subUnitPrices.length ? subUnitPrices.reduce((a,b)=>a+b,0)/subUnitPrices.length : null;
-    return {...g, min, max, avg, spread, count:g.rows.length, avgSubUnit};
+    const vendors = [...new Set(g.rows.map(r=>r.vendor).filter(Boolean))];
+    return {...g, min, max, avg, spread, count:g.rows.length, avgSubUnit, vendors};
   });
 }
 function fmtBaht(n){ return n.toLocaleString('th-TH',{minimumFractionDigits:2, maximumFractionDigits:2}); }
@@ -608,7 +618,7 @@ function spreadTag(spread){
 }
 
 /* ================= FILTER STATE ================= */
-let state = { search:"", district:"", category:"", sort:"name", view:"catalog", anomalyPct:20 };
+let state = { search:"", district:"", category:"", vendor:"", sort:"name", view:"catalog", anomalyPct:20 };
 
 function isAnomaly(price, avg){
   if(!avg || avg<=0) return false;
@@ -620,6 +630,7 @@ function filteredRecords(){
     if(state.search && !r.item.toLowerCase().includes(state.search.toLowerCase())) return false;
     if(state.district && r.district !== state.district) return false;
     if(state.category && r.category !== state.category) return false;
+    if(state.vendor && r.vendor !== state.vendor) return false;
     return true;
   });
 }
@@ -629,6 +640,7 @@ function renderStats(){
   const list = records;
   const groups = groupByItem(list);
   const hospitals = new Set(list.map(r=>r.hospital));
+  const vendors = new Set(list.map(r=>r.vendor).filter(Boolean));
   const totalAvg = groups.length ? groups.reduce((a,g)=>a+g.avg,0)/groups.length : 0;
   const maxSpread = groups.length ? Math.max(...groups.map(g=>g.spread)) : 0;
   const anomalyItemCount = groups.filter(g=>g.rows.some(r=>isAnomaly(r.price, g.avg))).length;
@@ -636,7 +648,7 @@ function renderStats(){
   el.innerHTML = `
     <div class="stat"><div class="num">${groups.length}</div><div class="lbl">รายการยาสมุนไพร</div></div>
     <div class="stat"><div class="num">${hospitals.size}</div><div class="lbl">หน่วยบริการที่มีข้อมูล</div></div>
-    <div class="stat"><div class="num">${DISTRICTS.length}</div><div class="lbl">อำเภอ</div></div>
+    <div class="stat"><div class="num">${vendors.size}</div><div class="lbl">บริษัทผู้ขาย</div></div>
     <div class="stat"><div class="num">฿${fmtBaht(totalAvg)}</div><div class="lbl">ราคาเฉลี่ยรวมทุกรายการ</div></div>
     <div class="stat"><div class="num">${(maxSpread*100).toFixed(0)}%</div><div class="lbl">ส่วนต่างราคาสูงสุด</div></div>
     <div class="stat"><div class="num" style="color:${anomalyItemCount?'var(--warn)':'inherit'}">${anomalyItemCount}</div><div class="lbl">รายการราคาผิดปกติ</div></div>
@@ -646,10 +658,13 @@ function renderStats(){
 function populateFilters(){
   const dSel = document.getElementById('filterDistrict');
   const cSel = document.getElementById('filterCategory');
-  const cats = [...new Set(records.map(r=>r.category))].sort();
+  const vSel = document.getElementById('filterVendor');
+  const cats = [...new Set(records.map(r=>r.category))].filter(Boolean).sort();
+  const vendors = [...new Set(records.map(r=>r.vendor))].filter(Boolean).sort();
   dSel.innerHTML = '<option value="">ทุกอำเภอ</option>' + DISTRICTS.map(d=>`<option value="${d}">${d}</option>`).join('');
-  cSel.innerHTML = '<option value="">ทุกหมวดหมู่</option>' + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
-  dSel.value = state.district; cSel.value = state.category;
+  cSel.innerHTML = '<option value="">ทุกรูปแบบยา</option>' + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  vSel.innerHTML = '<option value="">ทุกบริษัทผู้ขาย</option>' + vendors.map(v=>`<option value="${v}">${v}</option>`).join('');
+  dSel.value = state.district; cSel.value = state.category; vSel.value = state.vendor;
 }
 
 function sortGroups(groups){
@@ -727,6 +742,7 @@ function cardHTML(g){
         <div>
           <div class="spec-avg">฿${fmtBaht(g.avg)}<span style="font-size:11px;font-weight:400;color:#8a8168;"> เฉลี่ย</span></div>
           <div class="spec-hosp-count">${g.count} หน่วยบริการ${g.avgSubUnit ? ` · ≈฿${fmtBaht(g.avgSubUnit)}/หน่วยย่อย` : ''}</div>
+          ${g.vendors.length ? `<div class="spec-vendor">ผู้ขาย: ${g.vendors.length===1 ? g.vendors[0] : g.vendors.length+' ราย'}</div>` : ''}
         </div>
         <span class="spread-tag ${tag.cls}">${tag.label}</span>
       </div>
@@ -737,7 +753,7 @@ function cardHTML(g){
 function tableHTML(groups){
   return `<div class="table-wrap"><table>
     <thead><tr>
-      <th>รายการ</th><th>รูปแบบยา</th><th>หน่วยที่จำหน่าย</th>
+      <th>รายการ</th><th>รูปแบบยา</th><th>หน่วยที่จำหน่าย</th><th>ผู้ขาย</th>
       <th style="text-align:right">ต่ำสุด</th><th style="text-align:right">เฉลี่ย</th><th style="text-align:right">สูงสุด</th>
       <th style="text-align:right">เฉลี่ย/หน่วยย่อย</th>
       <th style="text-align:right">จำนวน รพ.</th><th style="text-align:right">ส่วนต่าง</th><th style="text-align:right">ผิดปกติ</th>
@@ -745,11 +761,13 @@ function tableHTML(groups){
     <tbody>
     ${groups.map(g=>{
       const anomalyCount = g.rows.filter(r=>isAnomaly(r.price, g.avg)).length;
+      const vendorLabel = g.vendors.length===0 ? '-' : (g.vendors.length===1 ? g.vendors[0] : g.vendors.length+' ราย');
       return `
-      <tr id="row-${cssId(g.item)}" style="cursor:pointer">
+      <tr id="row-${cssId(g.item)}" style="cursor:pointer" title="${g.vendors.join(', ')}">
         <td>${g.item}</td>
         <td>${g.category||'-'}</td>
         <td>${g.unit||'-'}</td>
+        <td>${vendorLabel}</td>
         <td class="num-cell">฿${fmtBaht(g.min)}</td>
         <td class="num-cell"><b>฿${fmtBaht(g.avg)}</b></td>
         <td class="num-cell">฿${fmtBaht(g.max)}</td>
@@ -789,6 +807,7 @@ function openDetail(itemName){
       const anomaly = isAnomaly(r.price, g.avg);
       return `<div class="hosp-row ${anomaly?'anomaly':''}">
         <div class="hosp-name">${r.hospital}<span class="district">อ.${r.district}${r.date?(' · '+r.date):''}${r.poRef?(' · เลขที่: '+r.poRef):''}</span>
+          ${r.vendor ? `<span class="vendor-note">ผู้ขาย: ${r.vendor}</span>` : ''}
           ${r.remark && r.remark!=='ไม่มี' ? `<span class="remark-note">หมายเหตุ: ${r.remark}</span>` : ''}
         </div>
         <div class="hosp-price-wrap">
@@ -842,6 +861,7 @@ document.querySelectorAll('.overlay').forEach(ov=>{
 const HEADER_ALIASES = {
   item: ['รายการ','ชื่อยา','ชื่อสมุนไพร','item','name'],
   category: ['รูปแบบยา','หมวดหมู่','ประเภท','category'],
+  vendor: ['ชื่อบริษัท/หน่วยงาน ผู้ขาย','ชื่อบริษัท','หน่วยงาน ผู้ขาย','บริษัท','ผู้ขาย','vendor','supplier'],
   unit: ['หน่วยที่จำหน่าย','หน่วยนับ','หน่วย','unit'],
   district: ['อำเภอ','district'],
   hospital: ['ผู้จัดซื้อ','โรงพยาบาล','หน่วยบริการ','รพ','hospital','purchaser'],
@@ -903,9 +923,9 @@ function handleFile(file){
 function showImportPreview(){
   document.getElementById('dropzone').style.display='none';
   document.getElementById('importPreviewWrap').style.display='block';
-  const fieldKeys = ['item','category','unit','price','subUnitPrice','hospital','district','remark','date','poRef'];
+  const fieldKeys = ['item','category','vendor','unit','price','subUnitPrice','hospital','district','remark','date','poRef'];
   const fieldLabels = {
-    item:'รายการ', category:'รูปแบบยา', unit:'หน่วยที่จำหน่าย',
+    item:'รายการ', category:'รูปแบบยา', vendor:'ชื่อบริษัท/หน่วยงาน ผู้ขาย', unit:'หน่วยที่จำหน่าย',
     price:'ราคาต่อหน่วยจำหน่าย (รวม VAT 7%)', subUnitPrice:'ราคาต่อหน่วยย่อยสุด',
     hospital:'ผู้จัดซื้อ (หน่วยบริการ)', district:'อำเภอ',
     remark:'หมายเหตุ (แถมหรือส่วนลด)', date:'วันที่ (ถ้ามี)', poRef:'เลขที่ใบสั่งซื้อ/สัญญา (ถ้ามี)'
@@ -953,6 +973,7 @@ function buildRecordsFromImport(){
     id: id++,
     item: (r[map.item]||'').toString().trim(),
     category: map.category ? (r[map.category]||'').toString().trim() : 'ไม่ระบุรูปแบบยา',
+    vendor: map.vendor ? (r[map.vendor]||'').toString().trim() : '',
     unit: map.unit ? (r[map.unit]||'').toString().trim() : '',
     district: (r[map.district]||'').toString().trim(),
     hospital: (r[map.hospital]||'').toString().trim(),
@@ -993,13 +1014,14 @@ function exportExcel(list, filenameSuffix){
   const groups = groupByItem(list);
   const summarySheet = XLSX.utils.json_to_sheet(groups.map(g=>({
     'รายการ': g.item, 'รูปแบบยา': g.category, 'หน่วยที่จำหน่าย': g.unit,
+    'ผู้ขาย': g.vendors.join(', '),
     'ราคาต่ำสุด': +g.min.toFixed(2), 'ราคาเฉลี่ย': +g.avg.toFixed(2), 'ราคาสูงสุด': +g.max.toFixed(2),
     'เฉลี่ย/หน่วยย่อย': g.avgSubUnit ? +g.avgSubUnit.toFixed(2) : '',
     'จำนวน รพ.': g.count, 'ส่วนต่าง(%)': +(g.spread*100).toFixed(1),
     'จำนวน รพ.ราคาผิดปกติ': g.rows.filter(r=>isAnomaly(r.price,g.avg)).length
   })));
   const detailSheet = XLSX.utils.json_to_sheet(list.map(r=>({
-    'รายการ': r.item, 'รูปแบบยา': r.category, 'หน่วยที่จำหน่าย': r.unit, 'อำเภอ': r.district,
+    'รายการ': r.item, 'รูปแบบยา': r.category, 'ชื่อบริษัท/หน่วยงาน ผู้ขาย': r.vendor||'', 'หน่วยที่จำหน่าย': r.unit, 'อำเภอ': r.district,
     'ผู้จัดซื้อ': r.hospital, 'ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท)': r.price,
     'ราคาต่อหน่วยย่อยสุด(บาท)': r.subUnitPrice||'', 'หมายเหตุ (แถมหรือส่วนลด)': r.remark||'',
     'วันที่': r.date||'', 'เลขที่ใบสั่งซื้อ/สัญญา': r.poRef||''
@@ -1026,7 +1048,7 @@ document.getElementById('expExcelFull').addEventListener('click', ()=>{ exportEx
 document.getElementById('expExcelFiltered').addEventListener('click', ()=>{ exportExcel(filteredRecords(), 'เฉพาะที่กรอง'); closeModal('exportOverlay'); });
 document.getElementById('expCSV').addEventListener('click', ()=>{
   const ws = XLSX.utils.json_to_sheet(records.map(r=>({
-    'รายการ': r.item, 'รูปแบบยา': r.category, 'หน่วยที่จำหน่าย': r.unit, 'อำเภอ': r.district,
+    'รายการ': r.item, 'รูปแบบยา': r.category, 'ชื่อบริษัท/หน่วยงาน ผู้ขาย': r.vendor||'', 'หน่วยที่จำหน่าย': r.unit, 'อำเภอ': r.district,
     'ผู้จัดซื้อ': r.hospital, 'ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท)': r.price,
     'ราคาต่อหน่วยย่อยสุด(บาท)': r.subUnitPrice||'', 'หมายเหตุ (แถมหรือส่วนลด)': r.remark||'',
     'วันที่': r.date||'', 'เลขที่ใบสั่งซื้อ/สัญญา': r.poRef||''
@@ -1052,6 +1074,7 @@ document.getElementById('expPrint').addEventListener('click', ()=>{
 document.getElementById('searchInput').addEventListener('input', e=>{ state.search = e.target.value; render(); });
 document.getElementById('filterDistrict').addEventListener('change', e=>{ state.district = e.target.value; render(); });
 document.getElementById('filterCategory').addEventListener('change', e=>{ state.category = e.target.value; render(); });
+document.getElementById('filterVendor').addEventListener('change', e=>{ state.vendor = e.target.value; render(); });
 document.getElementById('sortBy').addEventListener('change', e=>{ state.sort = e.target.value; render(); });
 document.getElementById('anomalyThreshold').addEventListener('input', e=>{
   state.anomalyPct = parseFloat(e.target.value) || 20; render();
@@ -1062,6 +1085,15 @@ document.getElementById('btnSample').addEventListener('click', ()=>{
   requirePin(()=>{
     if(records.length && !confirm('ข้อมูลตัวอย่างจะแทนที่ข้อมูลปัจจุบัน ดำเนินการต่อ?')) return;
     sampleData();
+  });
+});
+document.getElementById('btnClear').addEventListener('click', ()=>{
+  requirePin(()=>{
+    if(records.length===0){ alert('ยังไม่มีข้อมูลอยู่ในระบบ'); return; }
+    if(!confirm(`ต้องการล้างข้อมูลทั้งหมด (${records.length} รายการ) ออกจากแอปนี้หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้`)) return;
+    records = [];
+    saveData();
+    render();
   });
 });
 
@@ -1138,16 +1170,16 @@ document.getElementById('btnRunCompare').addEventListener('click', ()=>{
   const rowsHtml = items.map(item=>{
     const cells = hosps.map(h=>{
       const rec = records.find(r=>r.item===item && r.hospital===h);
-      return rec ? rec.price : null;
+      return rec ? {price:rec.price, vendor:rec.vendor||''} : null;
     });
-    const valid = cells.filter(c=>c!==null);
+    const valid = cells.filter(c=>c!==null).map(c=>c.price);
     const min = Math.min(...valid), max = Math.max(...valid);
     return `<tr>
       <td>${item}</td>
       ${cells.map(c=>{
         if(c===null) return '<td class="num-cell">-</td>';
-        const cls = c===min && valid.length>1 ? 'cell-cheapest' : (c===max && valid.length>1 ? 'cell-priciest' : '');
-        return `<td class="num-cell ${cls}">฿${fmtBaht(c)}</td>`;
+        const cls = c.price===min && valid.length>1 ? 'cell-cheapest' : (c.price===max && valid.length>1 ? 'cell-priciest' : '');
+        return `<td class="num-cell ${cls}" title="${c.vendor}">฿${fmtBaht(c.price)}</td>`;
       }).join('')}
     </tr>`;
   }).join('');
@@ -1188,12 +1220,12 @@ document.getElementById('btnFetchSheet').addEventListener('click', async ()=>{
 
 /* ================= TEMPLATE ================= */
 function downloadTemplate(){
-  const headers = ['ลำดับที่','รายการ','รูปแบบยา','หน่วยที่จำหน่าย','ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท)','ราคาต่อหน่วยย่อยสุด(บาท)','ผู้จัดซื้อ','อำเภอ','หมายเหตุ ( แถมหรือส่วนลด)'];
+  const headers = ['ลำดับที่','รายการ','รูปแบบยา','ชื่อบริษัท/หน่วยงาน ผู้ขาย','หน่วยที่จำหน่าย','ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท)','ราคาต่อหน่วยย่อยสุด(บาท)','ผู้จัดซื้อ','อำเภอ','หมายเหตุ ( แถมหรือส่วนลด)'];
   const example = [
-    { 'ลำดับที่':1, 'รายการ':'ฟ้าทะลายโจร แคปซูล', 'รูปแบบยา':'แคปซูล', 'หน่วยที่จำหน่าย':'กระปุก/300แคปซูล',
+    { 'ลำดับที่':1, 'รายการ':'ฟ้าทะลายโจร แคปซูล', 'รูปแบบยา':'แคปซูล', 'ชื่อบริษัท/หน่วยงาน ผู้ขาย':'บ.ดีซีเอช ออริก้าจำกัด', 'หน่วยที่จำหน่าย':'กระปุก/300แคปซูล',
       'ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท)':321, 'ราคาต่อหน่วยย่อยสุด(บาท)':1.07,
       'ผู้จัดซื้อ':'รพ.สมุทรปราการ', 'อำเภอ':'เมืองสมุทรปราการ', 'หมายเหตุ ( แถมหรือส่วนลด)':'ไม่มี' },
-    { 'ลำดับที่':2, 'รายการ':'ขมิ้นชัน แคปซูล', 'รูปแบบยา':'แคปซูล', 'หน่วยที่จำหน่าย':'กระปุก/100แคปซูล',
+    { 'ลำดับที่':2, 'รายการ':'ขมิ้นชัน แคปซูล', 'รูปแบบยา':'แคปซูล', 'ชื่อบริษัท/หน่วยงาน ผู้ขาย':'บ.ธงทองโอสถจำกัด', 'หน่วยที่จำหน่าย':'กระปุก/100แคปซูล',
       'ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท)':68.50, 'ราคาต่อหน่วยย่อยสุด(บาท)':0.69,
       'ผู้จัดซื้อ':'รพ.บางพลี', 'อำเภอ':'บางพลี', 'หมายเหตุ ( แถมหรือส่วนลด)':'ส่วนลด 5%' },
   ];
@@ -1204,6 +1236,7 @@ function downloadTemplate(){
     {'คอลัมน์':'ลำดับที่','คำอธิบาย':'ลำดับรายการ (ไม่บังคับ ใช้อ้างอิงเท่านั้น)'},
     {'คอลัมน์':'รายการ *','คำอธิบาย':'ชื่อยาสมุนไพร (บังคับ)'},
     {'คอลัมน์':'รูปแบบยา','คำอธิบาย':'รูปแบบของยา เช่น แคปซูล, เจล, ยาน้ำ, ผงชง, ยาดม (ถ้าเว้นว่างจะขึ้นเป็น "ไม่ระบุรูปแบบยา")'},
+    {'คอลัมน์':'ชื่อบริษัท/หน่วยงาน ผู้ขาย','คำอธิบาย':'ชื่อบริษัทหรือหน่วยงานที่จำหน่ายให้ (ถ้ามี ใช้เปรียบเทียบราคาระหว่างผู้ขายแต่ละรายได้)'},
     {'คอลัมน์':'หน่วยที่จำหน่าย','คำอธิบาย':'หน่วยนับที่จำหน่าย เช่น กระปุก/100แคปซูล, หลอด/50ก.'},
     {'คอลัมน์':'ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท) *','คำอธิบาย':'ราคาต่อหน่วยจำหน่ายรวมภาษีมูลค่าเพิ่มแล้ว เป็นตัวเลขเท่านั้น (บังคับ) — ใช้เป็นราคาหลักในการเปรียบเทียบทั้งหมดในแอป'},
     {'คอลัมน์':'ราคาต่อหน่วยย่อยสุด(บาท)','คำอธิบาย':'ราคาต่อหน่วยย่อยที่สุด เช่น ราคาต่อ 1 แคปซูล หรือ 1 กรัม ช่วยเทียบราคาที่แม่นยำขึ้นระหว่างขนาดบรรจุที่ต่างกัน (ถ้ามี)'},
