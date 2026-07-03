@@ -344,13 +344,14 @@ tbody tr:last-child td{border-bottom:none;}
     <div>
       <div class="hero-eyebrow"><span class="seal">仁</span> สสจ.สมุทรปราการ · แพทย์แผนไทยและการแพทย์ทางเลือก</div>
       <h1>Price List ยาสมุนไพรสมุทรปราการ</h1>
-      <p class="sub">เปรียบเทียบราคาจัดซื้อยาสมุนไพร ของหน่วยบริการ 6 อำเภอ ในจังหวัดสมุทรปราการ — ข้อมูลฝังไว้ในแอปโดยกลุ่มงานฯ อัปเดตผ่านการแจ้ง Claude เท่านั้น</p>
+      <p class="sub">เปรียบเทียบราคาจัดซื้อยาสมุนไพร ของหน่วยบริการ 6 อำเภอ ในจังหวัดสมุทรปราการ — นำเข้าข้อมูลจาก Excel/CSV และส่งออกรายงานได้ทันที</p>
     </div>
     <div class="hero-actions">
       <button class="btn btn-outline" id="btnSample">＋ ข้อมูลตัวอย่าง</button>
       <button class="btn btn-outline" id="btnClear">🗑 ล้างข้อมูล</button>
       <button class="btn btn-outline" id="btnCompare">⇄ เปรียบเทียบ รพ.</button>
       <button class="btn btn-outline" id="btnTemplate">⇩ เทมเพลต Excel</button>
+      <button class="btn btn-outline" id="btnImport">⇪ นำเข้าข้อมูล</button>
       <button class="btn btn-gold" id="btnExport">⇩ ส่งออกรายงาน</button>
       <button class="btn btn-outline" id="btnSettings" title="ตั้งค่า PIN ป้องกันการแก้ไข">⚙</button>
     </div>
@@ -399,6 +400,34 @@ tbody tr:last-child td{border-bottom:none;}
       <button class="modal-close" onclick="closeModal('detailOverlay')">✕</button>
     </div>
     <div class="modal-body" id="detailBody"></div>
+  </div>
+</div>
+
+<!-- Import Modal -->
+<div class="overlay" id="importOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h2>นำเข้าข้อมูล</h2><div class="meta">รองรับไฟล์ .xlsx .xls .csv</div></div>
+      <button class="modal-close" onclick="closeModal('importOverlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="dropzone" id="dropzone">
+        <div class="glyph">📄</div>
+        <div><b>ลากไฟล์มาวาง</b> หรือคลิกเพื่อเลือกไฟล์</div>
+        <div class="import-note">คอลัมน์ที่รองรับ: รายการ, รูปแบบยา, ชื่อบริษัท/หน่วยงาน ผู้ขาย, หน่วยที่จำหน่าย, ราคาต่อหน่วยจำหน่าย รวม Vat 7% (บาท), ราคาต่อหน่วยย่อยสุด(บาท), ผู้จัดซื้อ, อำเภอ, หมายเหตุ (แถมหรือส่วนลด)</div>
+        <button class="btn btn-ghost btn-sm no-print" id="btnTemplateInModal" style="margin-top:10px;" onclick="event.stopPropagation()">⇩ ดาวน์โหลดเทมเพลต Excel</button>
+      </div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+      <div id="importPreviewWrap" style="display:none;">
+        <div class="field-map" id="fieldMap"></div>
+        <div class="preview-table"><table id="previewTable"></table></div>
+        <div class="import-note" id="importCount"></div>
+        <div style="display:flex; gap:10px; margin-top:16px;">
+          <button class="btn btn-gold" id="btnConfirmImport">✓ ยืนยันนำเข้า (แทนที่ข้อมูลเดิม)</button>
+          <button class="btn btn-ghost" id="btnConfirmImportAppend">＋ เพิ่มเข้าข้อมูลเดิม</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -457,7 +486,7 @@ tbody tr:last-child td{border-bottom:none;}
 <div class="overlay" id="settingsOverlay">
   <div class="modal" style="max-width:460px;">
     <div class="modal-head">
-      <div><h2>ตั้งค่า</h2><div class="meta">ป้องกันการล้าง/สลับข้อมูลตัวอย่างด้วยรหัส PIN</div></div>
+      <div><h2>ตั้งค่า</h2><div class="meta">ป้องกันการนำเข้า/แก้ไขข้อมูลด้วยรหัส PIN</div></div>
       <button class="modal-close" onclick="closeModal('settingsOverlay')">✕</button>
     </div>
     <div class="modal-body">
@@ -468,7 +497,7 @@ tbody tr:last-child td{border-bottom:none;}
 
 <script>
 /* ================= DATA LAYER ================= */
-const APP_VERSION = "2.1.0";
+const APP_VERSION = "2.2.0";
 const DISTRICTS = ["เมืองสมุทรปราการ","บางบ่อ","บางพลี","พระประแดง","พระสมุทรเจดีย์","บางเสาธง"];
 const STORAGE_KEY = "herbPriceCatalog_v1";
 const META_KEY = "herbPriceCatalog_meta_v1";
@@ -645,7 +674,7 @@ function render(){
     content.innerHTML = `<div class="empty-state">
       <div class="glyph">🌿</div>
       <h3>ยังไม่มีข้อมูลราคา</h3>
-      <div>หากต้องการอัปเดตข้อมูล กรุณาส่งไฟล์ Excel มาทางแชทกับ Claude เพื่อฝังข้อมูลเข้าไปในแอปเวอร์ชันใหม่ หรือกด "ข้อมูลตัวอย่าง" เพื่อดูตัวอย่างการทำงานไปก่อน</div>
+      <div>เริ่มต้นด้วยการนำเข้าไฟล์ Excel/CSV หรือใช้ข้อมูลตัวอย่างเพื่อดูตัวอย่างการทำงาน</div>
     </div>`;
     return;
   }
@@ -813,6 +842,152 @@ document.querySelectorAll('.overlay').forEach(ov=>{
   ov.addEventListener('click', e=>{ if(e.target===ov) ov.classList.remove('show'); });
 });
 
+/* ================= IMPORT ================= */
+const HEADER_ALIASES = {
+  item: ['รายการ','ชื่อยา','ชื่อสมุนไพร','item','name'],
+  category: ['รูปแบบยา','หมวดหมู่','ประเภท','category'],
+  vendor: ['ชื่อบริษัท/หน่วยงาน ผู้ขาย','ชื่อบริษัท','หน่วยงาน ผู้ขาย','บริษัท','ผู้ขาย','vendor','supplier'],
+  unit: ['หน่วยที่จำหน่าย','หน่วยนับ','หน่วย','unit'],
+  district: ['อำเภอ','district'],
+  hospital: ['ผู้จัดซื้อ','โรงพยาบาล','หน่วยบริการ','รพ','hospital','purchaser'],
+  subUnitPrice: ['ราคาต่อหน่วยย่อยสุด','ราคาต่อหน่วยย่อย','หน่วยย่อยสุด','subunitprice'],
+  price: ['ราคาต่อหน่วยจำหน่าย','ราคาต่อหน่วย','ราคา','price'],
+  remark: ['หมายเหตุ','แถมหรือส่วนลด','remark','note'],
+};
+function guessField(header){
+  const h = (header||'').toString().trim().toLowerCase();
+  const pairs = [];
+  for(const [key, aliases] of Object.entries(HEADER_ALIASES)){
+    aliases.forEach(a=>pairs.push({key, alias:a.toLowerCase()}));
+  }
+  pairs.sort((a,b)=>b.alias.length - a.alias.length); // longest/most specific alias wins
+  for(const p of pairs){ if(h.includes(p.alias)) return p.key; }
+  return '';
+}
+
+document.getElementById('btnImport').addEventListener('click', ()=>{
+  document.getElementById('importPreviewWrap').style.display='none';
+  document.getElementById('dropzone').style.display='block';
+  document.getElementById('importOverlay').classList.add('show');
+});
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.addEventListener('click', ()=>fileInput.click());
+dropzone.addEventListener('dragover', e=>{e.preventDefault(); dropzone.classList.add('drag');});
+dropzone.addEventListener('dragleave', ()=>dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e=>{
+  e.preventDefault(); dropzone.classList.remove('drag');
+  if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e=>{ if(e.target.files.length) handleFile(e.target.files[0]); });
+
+let importedRows = [];
+let importHeaders = [];
+
+function handleFile(file){
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    let wb;
+    try{
+      if(file.name.toLowerCase().endsWith('.csv')){
+        wb = XLSX.read(e.target.result, {type:'binary'});
+      } else {
+        wb = XLSX.read(e.target.result, {type:'array'});
+      }
+    }catch(err){ alert('ไม่สามารถอ่านไฟล์ได้: '+err.message); return; }
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet, {defval:''});
+    if(json.length===0){ alert('ไม่พบข้อมูลในไฟล์'); return; }
+    importHeaders = Object.keys(json[0]);
+    importedRows = json;
+    showImportPreview();
+  };
+  if(file.name.toLowerCase().endsWith('.csv')) reader.readAsBinaryString(file);
+  else reader.readAsArrayBuffer(file);
+}
+
+function showImportPreview(){
+  document.getElementById('dropzone').style.display='none';
+  document.getElementById('importPreviewWrap').style.display='block';
+  const fieldKeys = ['item','category','vendor','unit','price','subUnitPrice','hospital','district','remark'];
+  const fieldLabels = {
+    item:'รายการ', category:'รูปแบบยา', vendor:'ชื่อบริษัท/หน่วยงาน ผู้ขาย', unit:'หน่วยที่จำหน่าย',
+    price:'ราคาต่อหน่วยจำหน่าย (รวม VAT 7%)', subUnitPrice:'ราคาต่อหน่วยย่อยสุด',
+    hospital:'ผู้จัดซื้อ (หน่วยบริการ)', district:'อำเภอ',
+    remark:'หมายเหตุ (แถมหรือส่วนลด)'
+  };
+  const map = document.getElementById('fieldMap');
+  map.innerHTML = fieldKeys.map(k=>{
+    const guess = importHeaders.find(h=>guessField(h)===k) || '';
+    return `<div>
+      <label>${fieldLabels[k]}${(k==='item'||k==='price'||k==='hospital'||k==='district')?' *':''}</label>
+      <select data-field="${k}">
+        <option value="">— ไม่ใช้ —</option>
+        ${importHeaders.map(h=>`<option value="${h}" ${h===guess?'selected':''}>${h}</option>`).join('')}
+      </select>
+    </div>`;
+  }).join('');
+
+  renderPreviewTable();
+  map.querySelectorAll('select').forEach(s=>s.addEventListener('change', renderPreviewTable));
+  document.getElementById('importCount').textContent = `พบข้อมูล ${importedRows.length} แถวในไฟล์ · กรุณาตรวจสอบการจับคู่คอลัมน์ด้านบนก่อนยืนยัน`;
+}
+
+function currentFieldMap(){
+  const map = {};
+  document.querySelectorAll('#fieldMap select').forEach(s=>{ if(s.value) map[s.dataset.field] = s.value; });
+  return map;
+}
+
+function renderPreviewTable(){
+  const map = currentFieldMap();
+  const cols = Object.keys(map);
+  const t = document.getElementById('previewTable');
+  const rows = importedRows.slice(0,8);
+  t.innerHTML = `<thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+  <tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td>${r[map[c]]}</td>`).join('')}</tr>`).join('')}</tbody>`;
+}
+
+function buildRecordsFromImport(){
+  const map = currentFieldMap();
+  if(!map.item || !map.price || !map.hospital || !map.district){
+    alert('กรุณาจับคู่คอลัมน์ รายการ, ราคา, ผู้จัดซื้อ และ อำเภอ ให้ครบก่อน');
+    return null;
+  }
+  let id = Date.now();
+  return importedRows.map(r=>({
+    id: id++,
+    item: (r[map.item]||'').toString().trim(),
+    category: map.category ? (r[map.category]||'').toString().trim() : 'ไม่ระบุรูปแบบยา',
+    vendor: map.vendor ? (r[map.vendor]||'').toString().trim() : '',
+    unit: map.unit ? (r[map.unit]||'').toString().trim() : '',
+    district: (r[map.district]||'').toString().trim(),
+    hospital: (r[map.hospital]||'').toString().trim(),
+    price: parseFloat(r[map.price]) || 0,
+    subUnitPrice: map.subUnitPrice ? (parseFloat(r[map.subUnitPrice]) || 0) : 0,
+    remark: map.remark ? (r[map.remark]||'').toString().trim() : '',
+  })).filter(r=>r.item && r.price>0);
+}
+
+document.getElementById('btnConfirmImport').addEventListener('click', ()=>{
+  requirePin(()=>{
+    const newRecs = buildRecordsFromImport();
+    if(!newRecs) return;
+    records = newRecs;
+    saveData(); render();
+    closeModal('importOverlay');
+  });
+});
+document.getElementById('btnConfirmImportAppend').addEventListener('click', ()=>{
+  requirePin(()=>{
+    const newRecs = buildRecordsFromImport();
+    if(!newRecs) return;
+    records = records.concat(newRecs);
+    saveData(); render();
+    closeModal('importOverlay');
+  });
+});
+
 /* ================= EXPORT ================= */
 document.getElementById('btnExport').addEventListener('click', ()=>{
   document.getElementById('exportMeta').textContent = `${records.length} รายการราคา · ${groupByItem(records).length} รายการยา`;
@@ -923,7 +1098,7 @@ async function requirePin(callback){
 function renderSettings(){
   const hasPin = !!getPinHash();
   document.getElementById('settingsBody').innerHTML = `
-    <div class="import-note">${hasPin ? 'ขณะนี้มีรหัส PIN ป้องกันการล้าง/สลับข้อมูลอยู่' : 'ยังไม่ได้ตั้งรหัส PIN — ใครก็สามารถล้าง/สลับข้อมูลตัวอย่างได้'}</div>
+    <div class="import-note">${hasPin ? 'ขณะนี้มีรหัส PIN ป้องกันการนำเข้า/แก้ไขข้อมูลอยู่' : 'ยังไม่ได้ตั้งรหัส PIN — ใครก็สามารถนำเข้า/แก้ไขข้อมูลได้'}</div>
     <button class="btn btn-gold btn-sm" id="btnSetPin">${hasPin ? 'เปลี่ยนรหัส PIN' : 'ตั้งรหัส PIN'}</button>
     ${hasPin ? '<button class="btn btn-ghost btn-sm" id="btnRemovePin">ยกเลิกการป้องกันด้วย PIN</button>' : ''}
   `;
@@ -1054,7 +1229,7 @@ function downloadTemplate(){
     {'คอลัมน์':'อำเภอ *','คำอธิบาย':'ต้องเป็นหนึ่งใน 6 อำเภอ: '+DISTRICTS.join(', ')+' (บังคับ)'},
     {'คอลัมน์':'หมายเหตุ ( แถมหรือส่วนลด)','คำอธิบาย':'ระบุของแถมหรือส่วนลดที่ได้รับจากการจัดซื้อครั้งนี้ (ถ้ามี ถ้าไม่มีให้ใส่ "ไม่มี")'},
     {'คอลัมน์':'','คำอธิบาย':''},
-    {'คอลัมน์':'หมายเหตุ','คำอธิบาย':'* คือคอลัมน์บังคับ ลบแถวตัวอย่างในชีต "กรอกข้อมูล" ออกก่อนกรอกข้อมูลจริง แล้วส่งไฟล์นี้กลับมาทางแชทกับ Claude เพื่อฝังข้อมูลเข้าไปในแอปเวอร์ชันถัดไป (แอปนี้ไม่มีปุ่มนำเข้าข้อมูลในตัวแล้ว การอัปเดตข้อมูลทำผ่านการแจ้ง Claude เท่านั้น)'},
+    {'คอลัมน์':'หมายเหตุ','คำอธิบาย':'* คือคอลัมน์บังคับ ลบแถวตัวอย่างในชีต "กรอกข้อมูล" ออกก่อนกรอกข้อมูลจริง แล้วอัปโหลดไฟล์นี้ผ่านปุ่ม "นำเข้าข้อมูล" ในแอป ระบบจะจับคู่คอลัมน์ให้อัตโนมัติ'},
   ];
   const guideSheet = XLSX.utils.json_to_sheet(guideRows, {header:['คอลัมน์','คำอธิบาย']});
   guideSheet['!cols'] = [{wch:42},{wch:80}];
@@ -1065,6 +1240,7 @@ function downloadTemplate(){
   XLSX.writeFile(wb, `เทมเพลตกรอกข้อมูล_Price_List_สมุนไพร_${todayStr()}.xlsx`);
 }
 document.getElementById('btnTemplate').addEventListener('click', downloadTemplate);
+document.getElementById('btnTemplateInModal').addEventListener('click', downloadTemplate);
 
 /* ================= INIT ================= */
 loadData();
