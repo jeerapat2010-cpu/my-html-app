@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<script>document.documentElement.classList.toggle('dark', localStorage.getItem('cannabisEvidenceDark')==='1');</script>
+<title>ระบบบันทึกหลักฐานตรวจยึดช่อดอกกัญชา</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans+Thai+Looped:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@4.0.1/dist/pptxgen.min.js" defer></script>
+<style>
+:root{
+  --green-900:#0f3d2e;
+  --green-700:#1b6b45;
+  --green-600:#227a4f;
+  --green-500:#2f9160;
+  --green-100:#e6f4ec;
+  --green-50:#f3faf6;
+  --gold:#a9791f;
+  --gold-light:#fbf1dc;
+  --ink:#1c2622;
+  --ink-soft:#54615b;
+  --line:#dbe6df;
+  --paper:#ffffff;
+  --bg:#eef4f0;
+  --danger:#b3392c;
+  --danger-light:#fbe9e6;
+  --warn:#b3811f;
+  --warn-light:#fbf1dd;
+  --ok:#1b6b45;
+  --ok-light:#e6f4ec;
+  --radius:14px;
+  --shadow:0 2px 10px rgba(15,61,46,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans Thai',sans-serif;font-size:15px;line-height:1.5;padding-bottom:70px}
+h1,h2,h3{font-family:'IBM Plex Sans Thai Looped','IBM Plex Sans Thai',sans-serif;margin:0}
+button{font-family:inherit;cursor:pointer}
+input,textarea,select{font-family:inherit;font-size:15px}
+
+/* ===== top bar ===== */
+.topbar{position:sticky;top:0;z-index:40;background:linear-gradient(135deg,var(--green-900),var(--green-700));color:#fff;padding:14px 16px;box-shadow:var(--shadow)}
+.topbar .row1{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .leaf{width:34px;height:34px;flex:none}
+.brand-text h1{font-size:16px;font-weight:700;letter-spacing:.2px}
+.brand-text small{opacity:.85;font-size:11.5px;display:block;margin-top:2px}
+.case-chip{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);border-radius:10px;padding:6px 10px;font-size:12px;cursor:pointer;white-space:nowrap}
+.case-chip b{display:block;font-size:13px}
+
+/* ===== stat strip ===== */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 12px 4px;max-width:900px;margin:0 auto}
+.stat{background:var(--paper);border-radius:var(--radius);padding:10px 8px;text-align:center;box-shadow:var(--shadow);border:1px solid var(--line)}
+.stat .num{font-size:20px;font-weight:700;color:var(--green-700)}
+.stat .num.weight{color:var(--gold)}
+.stat .lbl{font-size:11px;color:var(--ink-soft);margin-top:2px}
+.progress-wrap{max-width:900px;margin:6px auto 0;padding:0 12px}
+.progress-bar{height:8px;border-radius:6px;background:var(--green-100);overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--green-500),var(--green-700));transition:width .3s}
+
+/* ===== toolbar ===== */
+.toolbar{max-width:900px;margin:10px auto 0;padding:0 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.search-box{flex:1;min-width:160px;position:relative}
+.search-box input{width:100%;padding:10px 34px 10px 34px;border-radius:10px;border:1px solid var(--line);background:var(--paper)}
+.search-box svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.5}
+.search-box .clear-x{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:26px;height:26px;border:none;background:var(--green-100);color:var(--green-700);border-radius:50%;font-size:13px;display:none;align-items:center;justify-content:center}
+.search-box .clear-x.show{display:flex}
+select.status-filter{padding:10px 8px;border-radius:10px;border:1px solid var(--line);background:var(--paper)}
+.btn{border:none;border-radius:10px;padding:10px 14px;font-weight:600;font-size:13.5px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn-primary{background:var(--green-700);color:#fff}
+.btn-primary:active{background:var(--green-900)}
+.btn-ghost{background:var(--paper);color:var(--green-700);border:1px solid var(--line)}
+.btn-gold{background:var(--gold);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-sm{padding:7px 10px;font-size:12.5px;border-radius:8px}
+.icon-btn{width:38px;height:38px;border-radius:10px;background:var(--paper);border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+
+/* ===== list ===== */
+.list-wrap{max-width:900px;margin:12px auto 0;padding:0 12px;display:flex;flex-direction:column;gap:8px}
+.item-card{background:var(--paper);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow);border:1px solid var(--line);display:flex;gap:10px;align-items:center}
+.item-card .seq{width:30px;height:30px;border-radius:50%;background:var(--green-100);color:var(--green-700);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px;flex:none}
+.item-main{flex:1;min-width:0}
+.item-ref{font-weight:700;font-size:14px;letter-spacing:.3px}
+.item-hidden{font-size:12.5px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-meta{display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;align-items:center}
+.badge{font-size:11px;padding:3px 8px;border-radius:999px;font-weight:600}
+.badge-pending{background:var(--danger-light);color:var(--danger)}
+.badge-progress{background:var(--warn-light);color:var(--warn)}
+.badge-done{background:var(--ok-light);color:var(--ok)}
+.photo-count{font-size:11px;color:var(--ink-soft);display:flex;align-items:center;gap:3px}
+.weight-tag{font-size:12.5px;font-weight:700;color:var(--gold)}
+.chev{opacity:.4;flex:none}
+.empty-state{text-align:center;padding:50px 20px;color:var(--ink-soft)}
+.empty-state svg{opacity:.5;margin-bottom:10px}
+
+/* ===== fab ===== */
+.fab{position:fixed;bottom:18px;right:18px;z-index:45;width:56px;height:56px;border-radius:50%;background:var(--green-700);color:#fff;border:none;box-shadow:0 6px 18px rgba(15,61,46,.35);display:flex;align-items:center;justify-content:center}
+
+/* ===== modal / drawer ===== */
+.overlay{position:fixed;inset:0;background:rgba(15,38,28,.45);z-index:60;display:none}
+.overlay.show{display:block}
+.sheet{position:fixed;inset:0;background:var(--bg);z-index:61;transform:translateY(100%);transition:transform .25s ease;display:flex;flex-direction:column;overflow:hidden}
+.sheet.show{transform:translateY(0)}
+.sheet-head{background:linear-gradient(135deg,var(--green-900),var(--green-700));color:#fff;padding:14px 14px;display:flex;align-items:center;gap:10px;flex:none}
+.sheet-head h2{font-size:15px;flex:1}
+.sheet-body{flex:1;overflow-y:auto;padding:14px;max-width:720px;margin:0 auto;width:100%}
+.close-btn{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.15);border:none;color:#fff;display:flex;align-items:center;justify-content:center}
+
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);margin-bottom:5px}
+.field input,.field textarea,.field select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--paper)}
+.field textarea{min-height:60px;resize:vertical}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.section-card{background:var(--paper);border-radius:var(--radius);padding:14px;margin-bottom:12px;border:1px solid var(--line)}
+.section-title{font-size:13.5px;font-weight:700;color:var(--green-700);display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.section-title .n{width:20px;height:20px;border-radius:50%;background:var(--green-700);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;flex:none}
+
+/* photo stage */
+.stage-block{margin-bottom:16px}
+.stage-label{font-size:13px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.stage-label .dot{width:8px;height:8px;border-radius:50%;background:var(--green-500)}
+.photo-grid{display:flex;flex-wrap:wrap;gap:8px}
+.photo-thumb{position:relative;width:78px;height:78px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.photo-thumb .del{position:absolute;top:2px;right:2px;width:20px;height:20px;background:rgba(179,57,44,.9);color:#fff;border:none;border-radius:50%;font-size:12px;display:flex;align-items:center;justify-content:center}
+.add-photo{width:78px;height:78px;border-radius:10px;border:2px dashed var(--green-500);background:var(--green-50);color:var(--green-700);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10.5px;gap:3px;text-align:center;position:relative}
+.add-photo input{position:absolute;inset:0;opacity:0;cursor:pointer}
+
+.sheet-foot{flex:none;padding:12px 14px;background:var(--paper);border-top:1px solid var(--line);display:flex;gap:8px}
+.sheet-foot .btn{flex:1;justify-content:center}
+
+/* case setup */
+.chip-select{display:flex;flex-wrap:wrap;gap:7px}
+.chip-opt{padding:7px 11px;border-radius:999px;border:1px solid var(--line);background:var(--paper);font-size:12.5px;cursor:pointer}
+.chip-opt.on{background:var(--green-700);color:#fff;border-color:var(--green-700)}
+
+/* toast */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;z-index:80;opacity:0;transition:.25s;pointer-events:none;max-width:88%;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* menu popover */
+.menu-pop{position:fixed;z-index:70;background:var(--paper);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.18);border:1px solid var(--line);overflow:hidden;min-width:210px;display:none}
+.menu-pop.show{display:block}
+.menu-pop button{display:flex;align-items:center;gap:8px;width:100%;padding:12px 14px;background:none;border:none;text-align:left;font-size:13.5px;color:var(--ink)}
+.menu-pop button:not(:last-child){border-bottom:1px solid var(--line)}
+.menu-pop button:active{background:var(--green-50)}
+
+/* print area, hidden on screen */
+#printArea{display:none}
+
+/* ===== bottom tab bar ===== */
+.tabbar{position:fixed;bottom:0;left:0;right:0;z-index:50;background:var(--paper);border-top:1px solid var(--line);display:flex;box-shadow:0 -4px 14px rgba(15,61,46,.08)}
+.tab-btn{flex:1;border:none;background:none;padding:9px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--ink-soft);font-size:10.5px;font-weight:600}
+.tab-btn .ic{font-size:19px;line-height:1}
+.tab-btn.active{color:var(--green-700)}
+.tab-btn.active .ic{transform:translateY(-1px)}
+body{padding-bottom:78px}
+
+.mini-progress{max-width:900px;margin:8px auto 0;padding:0 12px}
+.mini-progress .bar{height:6px;border-radius:5px;background:var(--green-100);overflow:hidden}
+.mini-progress .fill{height:100%;background:linear-gradient(90deg,var(--green-500),var(--green-700));transition:width .3s}
+.mini-progress .txt{font-size:11px;color:var(--ink-soft);text-align:center;margin-top:4px}
+
+.view{max-width:900px;margin:0 auto;padding:12px}
+.view.hidden-view{display:none}
+
+/* import tab */
+.import-card{background:var(--paper);border-radius:var(--radius);padding:14px;margin-bottom:10px;border:1px solid var(--line);box-shadow:var(--shadow)}
+.import-card h3{font-size:13.5px;color:var(--green-700);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.case-mini-row{font-size:12.5px;color:var(--ink-soft);margin-bottom:2px}
+.import-actions{display:flex;flex-direction:column;gap:8px}
+.import-actions .btn{justify-content:center}
+
+/* photo stage indicator row */
+.stage-dots{display:flex;gap:5px;margin-top:5px}
+.stage-dot{width:15px;height:15px;border-radius:50%;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:8px}
+.stage-dot.filled{background:var(--green-600);border-color:var(--green-600);color:#fff}
+
+/* weight entry rows */
+.weight-row{background:var(--paper);border-radius:12px;padding:10px 12px;margin-bottom:8px;border:1px solid var(--line);display:flex;align-items:center;gap:10px;box-shadow:var(--shadow)}
+.weight-row .seq{width:26px;height:26px;border-radius:50%;background:var(--green-100);color:var(--green-700);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11.5px;flex:none}
+.weight-row .info{flex:1;min-width:0}
+.weight-row .ref{font-weight:700;font-size:13px}
+.weight-row .hid{font-size:11.5px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.weight-row .inputs{display:flex;gap:6px;flex:none}
+.weight-row input{width:72px;padding:8px;border-radius:8px;border:1px solid var(--line);text-align:center;font-weight:700}
+.weight-row input.count-input{width:52px;font-weight:500}
+.weight-row .unit{font-size:10px;color:var(--ink-soft);text-align:center;margin-top:2px}
+
+/* summary tab */
+.summary-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.summary-actions .btn{justify-content:center;font-size:12.5px}
+.summary-table-wrap{background:var(--paper);border-radius:var(--radius);border:1px solid var(--line);overflow-x:auto;box-shadow:var(--shadow)}
+table.summary-table{width:100%;border-collapse:collapse;font-size:12.5px;white-space:nowrap}
+table.summary-table th{background:var(--green-50);color:var(--green-700);text-align:left;padding:8px 10px;position:sticky;top:0;font-size:11.5px}
+table.summary-table td{padding:8px 10px;border-top:1px solid var(--line)}
+table.summary-table td.num{font-weight:700;color:var(--gold);text-align:right}
+
+/* ===== dark mode ===== */
+html.dark{
+  --bg:#0f1a15;
+  --paper:#16261f;
+  --ink:#e9f2ec;
+  --ink-soft:#93a89c;
+  --line:#28392f;
+  --green-100:#1c3628;
+  --green-50:#182a20;
+  --danger-light:#3a221d;
+  --warn-light:#3a2f18;
+  --ok-light:#1c3628;
+  --gold-light:#3a2f18;
+  --shadow:0 2px 10px rgba(0,0,0,.35);
+}
+html.dark .add-photo{background:var(--green-50)}
+html.dark select, html.dark input, html.dark textarea{color:var(--ink)}
+.dark-toggle{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;flex:none}
+
+/* ===== barcode scanner ===== */
+.scan-btn{width:44px;height:44px;flex:none;border-radius:10px;background:var(--green-700);color:#fff;border:none;display:flex;align-items:center;justify-content:center;font-size:18px}
+.ref-input-row{display:flex;gap:8px}
+.ref-input-row input{flex:1}
+#qr-reader{width:100%;border-radius:12px;overflow:hidden}
+#qr-reader video{border-radius:12px}
+.scan-hint{font-size:12px;color:var(--ink-soft);text-align:center;margin-top:10px}
+
+@media print{
+  body *{visibility:hidden}
+  #printArea, #printArea *{visibility:visible}
+  #printArea{display:block;position:absolute;left:0;top:0;width:100%}
+  .print-label{page-break-after:always;padding:26px;border:2px solid #0f3d2e;border-radius:10px;margin:10px;font-family:'IBM Plex Sans Thai',sans-serif}
+  .print-label:last-child{page-break-after:auto}
+  .pl-tag{font-size:12px;color:#a9791f;font-weight:700;letter-spacing:1px}
+  .pl-title{font-size:20px;font-weight:700;color:#0f3d2e;margin:6px 0 14px;text-align:center;border-bottom:2px solid #0f3d2e;padding-bottom:10px}
+  .pl-row{margin-bottom:10px;font-size:14px}
+  .pl-row b{display:block;font-size:11px;color:#54615b;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+  .pl-weight{font-size:22px;font-weight:700;color:#a9791f;border:2px dashed #a9791f;border-radius:10px;padding:10px;text-align:center;margin:14px 0}
+  .pl-photos{display:flex;gap:6px;margin-top:10px}
+  .pl-photos img{width:70px;height:70px;object-fit:cover;border-radius:6px;border:1px solid #ccc}
+}
+.hidden{display:none !important}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="row1">
+    <div class="brand">
+      <svg class="leaf" viewBox="0 0 48 48" fill="none"><path d="M24 4C14 10 8 20 8 28c0 8 7 14 16 16 9-2 16-8 16-16 0-8-6-18-16-24Z" fill="#ffffff" fill-opacity=".14"/><path d="M24 8c-7 5-12 13-12 19a12 12 0 0 0 24 0c0-6-5-14-12-19Z" stroke="#fff" stroke-width="2"/><path d="M24 12v24M24 18l-6 5M24 24l7 5M24 30l-5 4" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <div class="brand-text">
+        <h1>บันทึกหลักฐานตรวจยึดช่อดอกกัญชา</h1>
+        <small id="caseSubtitle">แตะ "ข้อมูลคดี" เพื่อเริ่มต้น</small>
+      </div>
+    </div>
+    <button class="dark-toggle" id="darkToggleBtn" title="สลับโหมดมืด/สว่าง">🌙</button>
+    <div class="case-chip" id="caseChipBtn">⚙️ ข้อมูลคดี</div>
+  </div>
+</div>
+
+<div class="mini-progress">
+  <div class="bar"><div class="fill" id="progressFill" style="width:0%"></div></div>
+  <div class="txt" id="miniProgressTxt">0/0 รายการเสร็จสิ้น • น้ำหนักรวม 0 กก.</div>
+</div>
+
+<!-- ===================== TAB: นำเข้า ===================== -->
+<div class="view" id="viewImport">
+  <div class="import-card">
+    <h3>📁 ข้อมูลคดี</h3>
+    <div class="case-mini-row" id="importCaseSummary">แตะ "ข้อมูลคดี" มุมขวาบนเพื่อกรอกรายละเอียด</div>
+  </div>
+  <div class="import-card">
+    <h3>➕ นำเข้ารายการพัสดุ</h3>
+    <div class="import-actions">
+      <button class="btn btn-gold" id="mBulkImport">📄 นำเข้าจากไฟล์ Word / วางข้อความ</button>
+      <button class="btn btn-ghost" id="mImportSample">📦 โหลดตัวอย่างชุดข้อมูลคดีนี้ (61 รายการ)</button>
+      <button class="btn btn-ghost" id="addItemFab">✏️ เพิ่มรายการเดี่ยวด้วยตนเอง</button>
+    </div>
+  </div>
+  <div class="import-card">
+    <h3>📋 สถานะการนำเข้า</h3>
+    <div class="case-mini-row">นำเข้าแล้วทั้งหมด <b id="importCount">0</b> รายการ</div>
+    <div class="case-mini-row" style="margin-top:4px">ไปที่แท็บ "ถ่ายรูป" หรือ "บันทึกน้ำหนัก" เพื่อทำงานต่อ</div>
+  </div>
+  <div class="import-card">
+    <h3>🗑️ ล้างข้อมูล</h3>
+    <div class="case-mini-row" style="margin-bottom:8px">ใช้เมื่อเริ่มคดีใหม่ หรือกรอกผิดต้องการเริ่มใหม่ทั้งหมด</div>
+    <div class="import-actions">
+      <button class="btn btn-danger" id="mClearCaseImport">🗑️ ล้างข้อมูลคดีนี้ทั้งหมด</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== TAB: ถ่ายรูป ===================== -->
+<div class="view hidden-view" id="viewPhotos">
+  <div class="toolbar" style="margin:0 0 10px;padding:0">
+    <div class="search-box">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#54615b" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="searchInputPhotos" placeholder="ค้นหาเลขอ้างอิงพัสดุ / รายละเอียด...">
+      <button class="clear-x" id="clearSearchPhotos" title="ล้างคำค้นหา">✕</button>
+    </div>
+    <select class="status-filter" id="statusFilterPhotos">
+      <option value="all">ทั้งหมด</option>
+      <option value="pending">ยังไม่ตรวจ</option>
+      <option value="progress">กำลังตรวจ</option>
+      <option value="done">เสร็จสิ้น</option>
+    </select>
+  </div>
+  <div class="list-wrap" id="photosListWrap"></div>
+</div>
+
+<!-- ===================== TAB: บันทึกน้ำหนัก ===================== -->
+<div class="view hidden-view" id="viewWeight">
+  <div class="toolbar" style="margin:0 0 10px;padding:0">
+    <div class="search-box">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#54615b" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="searchInputWeight" placeholder="ค้นหาเลขอ้างอิงพัสดุ / รายละเอียด...">
+      <button class="clear-x" id="clearSearchWeight" title="ล้างคำค้นหา">✕</button>
+    </div>
+    <select class="status-filter" id="statusFilterWeight">
+      <option value="all">ทั้งหมด</option>
+      <option value="pending">ยังไม่ตรวจ</option>
+      <option value="progress">กำลังตรวจ</option>
+      <option value="done">เสร็จสิ้น</option>
+    </select>
+  </div>
+  <div id="weightListWrap"></div>
+</div>
+
+<!-- ===================== TAB: สรุป ===================== -->
+<div class="view hidden-view" id="viewSummary">
+  <div class="stats" style="padding:0;margin:0 0 10px">
+    <div class="stat"><div class="num" id="statTotal">0</div><div class="lbl">รายการทั้งหมด</div></div>
+    <div class="stat"><div class="num" id="statDone">0</div><div class="lbl">ตรวจเสร็จแล้ว</div></div>
+    <div class="stat"><div class="num" id="statPending">0</div><div class="lbl">ยังไม่ตรวจ</div></div>
+    <div class="stat"><div class="num weight" id="statWeight">0</div><div class="lbl">น้ำหนักรวม (กก.)</div></div>
+  </div>
+  <div class="summary-actions">
+    <button class="btn btn-gold" id="mPhotoSummaryPptx" style="grid-column:1/3">🖼️ สรุปภาพการเข้าตรวจ (PPT)</button>
+    <button class="btn btn-gold" id="mExportAllPhotosZip" style="grid-column:1/3">📦 ส่งออกรูปทั้งหมด (ZIP)</button>
+    <button class="btn btn-gold" id="mPrintLabels">🖨️ พิมพ์ปะหน้าซองทั้งหมด</button>
+    <button class="btn btn-ghost" id="mExportCSV">📊 ส่งออกสรุปน้ำหนัก (CSV)</button>
+    <button class="btn btn-ghost" id="mCopySummary">📝 คัดลอกสรุปผลการตรวจ</button>
+    <button class="btn btn-ghost" id="mExportJSON">💾 สำรองข้อมูล (JSON)</button>
+    <button class="btn btn-ghost" id="mImportJSON">📥 นำเข้าไฟล์สำรอง</button>
+    <button class="btn btn-danger" id="mClearCase">🗑️ ล้างรายการทั้งหมด</button>
+  </div>
+  <div class="summary-table-wrap">
+    <table class="summary-table">
+      <thead><tr><th>ที่</th><th>เลขอ้างอิง</th><th>ซุกซ่อนใน</th><th>น้ำหนัก(กก.)</th><th>สถานะ</th></tr></thead>
+      <tbody id="summaryTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <button class="tab-btn active" data-tab="Import"><span class="ic">📥</span>นำเข้า</button>
+  <button class="tab-btn" data-tab="Photos"><span class="ic">📷</span>ถ่ายรูป</button>
+  <button class="tab-btn" data-tab="Weight"><span class="ic">⚖️</span>บันทึกน้ำหนัก</button>
+  <button class="tab-btn" data-tab="Summary"><span class="ic">📊</span>สรุป</button>
+</nav>
+
+<!-- ===================== CASE SETUP SHEET ===================== -->
+<div class="overlay" id="caseOverlay"></div>
+<div class="sheet" id="caseSheet">
+  <div class="sheet-head">
+    <h2>ข้อมูลคดี / การตรวจยึด</h2>
+    <button class="close-btn" data-close="case">✕</button>
+  </div>
+  <div class="sheet-body">
+    <div class="section-card">
+      <div class="section-title"><span class="n">1</span> ข้อมูลทั่วไป</div>
+      <div class="field"><label>เลขที่บันทึก / ชื่อคดี</label><input id="cfCaseNo" placeholder="เช่น บันทึกตรวจยึด DHL กค.69"></div>
+      <div class="field-row">
+        <div class="field"><label>วันที่ตรวจ</label><input id="cfDate" type="date"></div>
+        <div class="field"><label>เวลาเริ่มตรวจ</label><input id="cfTime" type="time"></div>
+      </div>
+      <div class="field"><label>สถานที่ตรวจ / เก็บวัตถุพยาน</label><textarea id="cfLocation" placeholder="เช่น บ.ดีเอชแอล เอ๊กซ์เพรสฯ สาขาบางนา-ตราด กม.16.5 ต.บางโฉลง อ.บางพลี จ.สมุทรปราการ"></textarea></div>
+      <div class="field"><label>นำส่ง (สถานีตำรวจ/หน่วยงานปลายทาง)</label><input id="cfDeliverTo" placeholder="เช่น สภ.บางพลี สมุทรปราการ"></div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-title"><span class="n">2</span> พนักงานเจ้าหน้าที่ / ผู้ร่วมตรวจ</div>
+      <div class="field"><label>เลือกรายชื่อที่ใช้บ่อย</label>
+        <div class="chip-select" id="officerChips"></div>
+      </div>
+      <div class="field"><label>เพิ่มรายชื่อ / หน่วยงานอื่น (พิมพ์เอง)</label><textarea id="cfOtherOfficers" placeholder="เช่น เจ้าหน้าที่ ปปส. 2 คน, เจ้าหน้าที่ สสอ.บางพลี 3 คน"></textarea></div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-title"><span class="n">3</span> ผู้นำตรวจ / ผู้ให้ถ้อยคำฝ่ายสถานที่</div>
+      <div class="field-row">
+        <div class="field"><label>ชื่อ-สกุล</label><input id="cfWitnessName" placeholder="เช่น นายโยธิน กระแสทรง"></div>
+        <div class="field"><label>ตำแหน่ง</label><input id="cfWitnessRole" placeholder="เช่น ผู้จัดการฝ่ายความปลอดภัย"></div>
+      </div>
+    </div>
+  </div>
+  <div class="sheet-foot">
+    <button class="btn btn-ghost" data-close="case">ยกเลิก</button>
+    <button class="btn btn-primary" id="saveCaseBtn">บันทึกข้อมูลคดี</button>
+  </div>
+</div>
+
+<!-- ===================== ITEM DETAIL SHEET ===================== -->
+<div class="overlay" id="itemOverlay"></div>
+<div class="sheet" id="itemSheet">
+  <div class="sheet-head">
+    <h2 id="itemSheetTitle">รายการที่ 1</h2>
+    <button class="close-btn" data-close="item">✕</button>
+  </div>
+  <div class="sheet-body">
+    <div class="section-card">
+      <div class="section-title"><span class="n">1</span> ข้อมูลพัสดุ</div>
+      <div class="field"><label>เลขอ้างอิงพัสดุ (Primary Key) *</label>
+        <div class="ref-input-row">
+          <input id="ifRef" placeholder="เช่น 5343798913">
+          <button type="button" class="scan-btn" id="scanBarcodeBtn" title="สแกนบาร์โค้ด">📷</button>
+        </div>
+      </div>
+      <div class="field"><label>ซุกซ่อนในพัสดุที่จัดส่งเป็น</label><textarea id="ifHidden" placeholder="เช่น เสื้อยืดผู้ชาย (โพลีเอสเตอร์ 100%)"></textarea></div>
+      <div class="field-row">
+        <div class="field"><label>ผู้ส่ง</label><input id="ifSender" placeholder="ชื่อ/ที่อยู่ผู้ส่ง"></div>
+        <div class="field"><label>ประเทศปลายทาง</label><input id="ifCountry" placeholder="เช่น United Kingdom"></div>
+      </div>
+      <div class="field"><label>ผู้รับ</label><input id="ifReceiver" placeholder="ชื่อ/ที่อยู่ผู้รับ"></div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-title"><span class="n">2</span> ภาพถ่ายหลักฐาน</div>
+      <div class="stage-block">
+        <div class="stage-label"><span class="dot"></span> ① ก่อนเปิด / สภาพหีบห่อเดิม</div>
+        <div class="photo-grid" id="photoBefore"></div>
+      </div>
+      <div class="stage-block">
+        <div class="stage-label"><span class="dot" style="background:#a9791f"></span> ② แกะ / แยกจัดเก็บ / นับจำนวน</div>
+        <div class="photo-grid" id="photoCount"></div>
+      </div>
+      <div class="stage-block">
+        <div class="stage-label"><span class="dot" style="background:#1b6b45"></span> ③ ชั่งน้ำหนัก (เห็นหน้าจอเครื่องชั่ง)</div>
+        <div class="photo-grid" id="photoWeigh"></div>
+      </div>
+      <div class="stage-block">
+        <div class="stage-label"><span class="dot" style="background:#b3392c"></span> ④ บรรจุซองวัตถุพยาน (ถ้ามี)</div>
+        <div class="photo-grid" id="photoSealed"></div>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-title"><span class="n">3</span> ผลชั่งน้ำหนัก / นับจำนวน</div>
+      <div class="field-row">
+        <div class="field"><label>น้ำหนักช่อดอกกัญชา (กก.) *</label><input id="ifWeight" type="number" step="0.01" inputmode="decimal" placeholder="0.00"></div>
+        <div class="field"><label>จำนวน (มัด/ช่อ ถ้านับ)</label><input id="ifCount" type="number" inputmode="numeric" placeholder="ไม่บังคับ"></div>
+      </div>
+      <div class="field"><label>หมายเหตุ</label><textarea id="ifNotes" placeholder="ข้อสังเกตเพิ่มเติม..."></textarea></div>
+      <div class="field"><label>สถานะรายการ</label>
+        <div class="chip-select">
+          <div class="chip-opt" data-status="pending">ยังไม่ตรวจ</div>
+          <div class="chip-opt" data-status="progress">กำลังตรวจ</div>
+          <div class="chip-opt" data-status="done">ตรวจเสร็จสิ้น</div>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-danger" id="deleteItemBtn" style="width:100%;justify-content:center;margin-bottom:20px">🗑️ ลบรายการนี้</button>
+  </div>
+  <div class="sheet-foot">
+    <button class="btn btn-ghost" data-close="item">ปิด</button>
+    <button class="btn btn-primary" id="saveItemBtn">บันทึกรายการ</button>
+  </div>
+</div>
+
+<!-- ===================== BARCODE SCANNER SHEET ===================== -->
+<div class="overlay" id="scanOverlay"></div>
+<div class="sheet" id="scanSheet">
+  <div class="sheet-head"><h2>สแกนบาร์โค้ดพัสดุ</h2><button class="close-btn" data-close="scan">✕</button></div>
+  <div class="sheet-body">
+    <div id="qr-reader"></div>
+    <div class="scan-hint">เล็งกล้องไปที่บาร์โค้ด/QR บนซองพัสดุ ระบบจะกรอกเลขอ้างอิงให้อัตโนมัติ</div>
+  </div>
+</div>
+
+<!-- ===================== BULK IMPORT SHEET ===================== -->
+<div class="overlay" id="bulkOverlay"></div>
+<div class="sheet" id="bulkSheet">
+  <div class="sheet-head"><h2>นำเข้ารายการหลายรายการ</h2><button class="close-btn" data-close="bulk">✕</button></div>
+  <div class="sheet-body">
+    <div class="section-card">
+      <div class="section-title"><span class="n">1</span> นำเข้าจากไฟล์ Word (.docx) โดยตรง</div>
+      <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px">เลือกไฟล์ "บันทึกคำให้การ" และ/หรือ "แบบบันทึกการตรวจยึดสมุนไพรควบคุม" ได้ทีเดียวหลายไฟล์ ระบบจะอ่านและดึงข้อมูลให้อัตโนมัติ โดยไม่ต้องเปิดไฟล์เองแล้วก็อปข้อความ (ต้องมีอินเทอร์เน็ตตอนโหลดหน้านี้ครั้งแรกเพื่อดึงตัวอ่านไฟล์ Word)</p>
+      <button class="btn btn-gold" id="pickWordBtn" style="width:100%;justify-content:center">📄 เลือกไฟล์ Word (.docx) — เลือกได้หลายไฟล์</button>
+      <input type="file" id="wordFileInput" accept=".docx" multiple class="hidden">
+      <div id="wordImportStatus" style="font-size:12px;color:var(--ink-soft);margin-top:8px"></div>
+    </div>
+    <div class="section-card">
+      <div class="section-title"><span class="n">2</span> หรือวางข้อความเอง</div>
+      <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px">
+        รองรับการวางข้อความจาก 2 เอกสารนี้โดยอัตโนมัติ:<br>
+        ✅ <b>บันทึกคำให้การ</b> — ก็อปมาวางเพื่อ "ตั้งเลขลำดับรายการที่" ตามเอกสารทางการล่วงหน้า (ก่อนลงพื้นที่จริง) ระบบจะจับคู่ด้วยเลขอ้างอิงพัสดุ แล้วปรับเลขลำดับ+น้ำหนัก(ถ้ามี)ให้ตรงกับเอกสาร ช่วยให้ค้นหา/อ้างอิงรายการตรงกับสำนวนคดีทุกงวด<br>
+        ✅ <b>แบบบันทึกการตรวจยึดสมุนไพรควบคุม</b> — ก็อปมาวางเพื่อดึงเลขอ้างอิง/รายละเอียดที่ซุกซ่อน/ผู้ส่ง/ผู้รับ ให้อัตโนมัติ (ถ้ามีรายการเดิมอยู่แล้วจะเติมข้อมูลให้ ไม่สร้างซ้ำ)<br>
+        หรือพิมพ์เอง ใช้รูปแบบ 1 บรรทัดต่อ 1 รายการ: <b>เลขอ้างอิงพัสดุ | รายละเอียดที่ซุกซ่อน | ผู้ส่ง | ประเทศปลายทาง | ผู้รับ</b>
+      </p>
+      <textarea id="bulkText" style="min-height:180px;width:100%;padding:10px;border-radius:10px;border:1px solid var(--line)" placeholder="วางข้อความจากบันทึกคำให้การ หรือแบบบันทึกการตรวจยึดฯ ได้เลย
+หรือพิมพ์เอง เช่น
+5343798913 | เสื้อยืดผู้ชาย (โพลีเอสเตอร์ 100%)
+5083602005 | เสื้อยืดผ้าฝ้ายและผ้าคลุมเตียง"></textarea>
+    </div>
+  </div>
+  <div class="sheet-foot">
+    <button class="btn btn-ghost" data-close="bulk">ยกเลิก</button>
+    <button class="btn btn-primary" id="bulkImportBtn">นำเข้าข้อความที่วาง</button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<div id="printArea"></div>
+<input type="file" id="jsonFileInput" accept="application/json" class="hidden">
+
+<script>
+/* =========================================================
+   DB LAYER (IndexedDB) — fully offline, no network required
+   ========================================================= */
+const DB_NAME='cannabisEvidenceDB', DB_VER=1;
+let db;
+function openDB(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open(DB_NAME,DB_VER);
+    req.onupgradeneeded=e=>{
+      const d=e.target.result;
+      if(!d.objectStoreNames.contains('cases')) d.createObjectStore('cases',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('items')) {
+        const s=d.createObjectStore('items',{keyPath:'id'});
+        s.createIndex('caseId','caseId',{unique:false});
+      }
+    };
+    req.onsuccess=e=>{db=e.target.result;res(db)};
+    req.onerror=e=>rej(e);
+  });
+}
+function tx(store,mode='readonly'){return db.transaction(store,mode).objectStore(store)}
+function idbGet(store,key){return new Promise((res,rej)=>{const r=tx(store).get(key);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+function idbPut(store,val){return new Promise((res,rej)=>{const r=tx(store,'readwrite').put(val);r.onsuccess=()=>res(val);r.onerror=()=>rej(r.error)})}
+function idbDelete(store,key){return new Promise((res,rej)=>{const r=tx(store,'readwrite').delete(key);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
+function idbGetAllByIndex(store,idx,key){return new Promise((res,rej)=>{const r=tx(store).index(idx).getAll(key);r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error)})}
+function idbClearByCase(store,idx,key){
+  return new Promise((res,rej)=>{
+    const s=tx(store,'readwrite'); const cursorReq=s.index(idx).openCursor(IDBKeyRange.only(key));
+    cursorReq.onsuccess=e=>{const c=e.target.result; if(c){c.delete();c.continue();} else res();};
+    cursorReq.onerror=()=>rej(cursorReq.error);
+  });
+}
+
+/* =========================================================
+   STATE
+   ========================================================= */
+let CASE_ID = localStorage.getItem('cannabisEvidence_lastCase') || 'case_'+Date.now();
+localStorage.setItem('cannabisEvidence_lastCase', CASE_ID);
+let currentCase = null;
+let items = [];
+let activeItemId = null;
+let searchTerm='';
+let statusFilterVal='all';
+
+const OFFICER_TEMPLATES = [
+  "นายจีรภัทร พลายงาม (เภสัชกรชำนาญการ)",
+  "นางสาวพัชรา สุดกังวาน (จพง.สาธารณสุขชำนาญงาน)",
+  "นางสาววิลาวัลย์ อริยภูชัย (เภสัชกรปฏิบัติการ)",
+  "เจ้าหน้าที่ ปปส. สำนักปราบปรามยาเสพติด",
+  "เจ้าหน้าที่สำนักงานสาธารณสุขอำเภอบางพลี"
+];
+let selectedOfficers = new Set();
+
+/* =========================================================
+   INIT
+   ========================================================= */
+async function init(){
+  await openDB();
+  currentCase = await idbGet('cases', CASE_ID);
+  if(!currentCase){
+    currentCase = {id:CASE_ID, caseNo:'', date:new Date().toISOString().slice(0,10), time:'09:30',
+      location:'', deliverTo:'', officers:[], otherOfficers:'', witnessName:'', witnessRole:''};
+    await idbPut('cases', currentCase);
+  }
+  selectedOfficers = new Set(currentCase.officers||[]);
+  items = await idbGetAllByIndex('items','caseId',CASE_ID);
+  items.sort((a,b)=>a.seq-b.seq);
+  renderOfficerChips();
+  fillCaseForm();
+  renderAll();
+}
+
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+/* =========================================================
+   CASE SHEET
+   ========================================================= */
+function renderOfficerChips(){
+  const wrap=document.getElementById('officerChips'); wrap.innerHTML='';
+  OFFICER_TEMPLATES.forEach(name=>{
+    const c=document.createElement('div');
+    c.className='chip-opt'+(selectedOfficers.has(name)?' on':'');
+    c.textContent=name;
+    c.onclick=()=>{ if(selectedOfficers.has(name)) selectedOfficers.delete(name); else selectedOfficers.add(name); renderOfficerChips(); };
+    wrap.appendChild(c);
+  });
+}
+function fillCaseForm(){
+  document.getElementById('cfCaseNo').value=currentCase.caseNo||'';
+  document.getElementById('cfDate').value=currentCase.date||'';
+  document.getElementById('cfTime').value=currentCase.time||'';
+  document.getElementById('cfLocation').value=currentCase.location||'';
+  document.getElementById('cfDeliverTo').value=currentCase.deliverTo||'';
+  document.getElementById('cfOtherOfficers').value=currentCase.otherOfficers||'';
+  document.getElementById('cfWitnessName').value=currentCase.witnessName||'';
+  document.getElementById('cfWitnessRole').value=currentCase.witnessRole||'';
+  updateCaseSubtitle();
+}
+function updateCaseSubtitle(){
+  const sub=document.getElementById('caseSubtitle');
+  sub.textContent = currentCase.caseNo ? `${currentCase.caseNo} • ${currentCase.date||''}` : 'แตะ "ข้อมูลคดี" เพื่อเริ่มต้น';
+}
+document.getElementById('caseChipBtn').onclick=()=>openSheet('case');
+function updateDarkIcon(){ document.getElementById('darkToggleBtn').textContent = document.documentElement.classList.contains('dark') ? '☀️' : '🌙'; }
+updateDarkIcon();
+document.getElementById('darkToggleBtn').onclick=()=>{
+  const isDark=document.documentElement.classList.toggle('dark');
+  localStorage.setItem('cannabisEvidenceDark', isDark?'1':'0');
+  updateDarkIcon();
+};
+document.getElementById('saveCaseBtn').onclick=async ()=>{
+  currentCase.caseNo=document.getElementById('cfCaseNo').value.trim();
+  currentCase.date=document.getElementById('cfDate').value;
+  currentCase.time=document.getElementById('cfTime').value;
+  currentCase.location=document.getElementById('cfLocation').value.trim();
+  currentCase.deliverTo=document.getElementById('cfDeliverTo').value.trim();
+  currentCase.officers=[...selectedOfficers];
+  currentCase.otherOfficers=document.getElementById('cfOtherOfficers').value.trim();
+  currentCase.witnessName=document.getElementById('cfWitnessName').value.trim();
+  currentCase.witnessRole=document.getElementById('cfWitnessRole').value.trim();
+  await idbPut('cases', currentCase);
+  updateCaseSubtitle();
+  renderImportTab();
+  closeSheet('case');
+  toast('บันทึกข้อมูลคดีแล้ว');
+};
+
+/* =========================================================
+   SHEET open/close helpers
+   ========================================================= */
+function openSheet(name){
+  document.getElementById(name+'Overlay').classList.add('show');
+  document.getElementById(name+'Sheet').classList.add('show');
+}
+function closeSheet(name){
+  document.getElementById(name+'Overlay').classList.remove('show');
+  document.getElementById(name+'Sheet').classList.remove('show');
+  if(name==='scan') stopScanner();
+}
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closeSheet(b.dataset.close));
+document.getElementById('caseOverlay').onclick=()=>closeSheet('case');
+document.getElementById('itemOverlay').onclick=()=>closeSheet('item');
+document.getElementById('bulkOverlay').onclick=()=>closeSheet('bulk');
+document.getElementById('scanOverlay').onclick=()=>closeSheet('scan');
+
+/* =========================================================
+   RENDER: shared helpers + per-tab renderers
+   ========================================================= */
+function statusLabel(s){return s==='done'?'เสร็จสิ้น':s==='progress'?'กำลังตรวจ':'ยังไม่ตรวจ'}
+function statusBadgeClass(s){return s==='done'?'badge-done':s==='progress'?'badge-progress':'badge-pending'}
+function photoCount(item){
+  return (item.photos.before.length+item.photos.count.length+item.photos.weigh.length+item.photos.sealed.length);
+}
+function filterItems(){
+  return items.filter(i=>{
+    if(statusFilterVal!=='all' && i.status!==statusFilterVal) return false;
+    if(searchTerm){
+      const hay=(i.packageRef+' '+i.hidden+' '+i.sender+' '+i.receiver).toLowerCase();
+      if(!hay.includes(searchTerm.toLowerCase())) return false;
+    }
+    return true;
+  });
+}
+function emptyStateHTML(msg){
+  return `<div class="empty-state">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#54615b" stroke-width="1.5"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+    <div>${msg}</div>
+  </div>`;
+}
+
+function renderAll(){
+  renderStats();
+  renderImportTab();
+  renderPhotosList();
+  renderWeightList();
+  renderSummaryTable();
+}
+
+function renderStats(){
+  const total=items.length;
+  const done=items.filter(i=>i.status==='done').length;
+  const weight=items.reduce((s,i)=>s+(parseFloat(i.weight)||0),0);
+  document.getElementById('statTotal').textContent=total;
+  document.getElementById('statDone').textContent=done;
+  document.getElementById('statPending').textContent=total-done;
+  document.getElementById('statWeight').textContent=weight.toFixed(2);
+  document.getElementById('progressFill').style.width=(total? (done/total*100):0)+'%';
+  document.getElementById('miniProgressTxt').textContent=`${done}/${total} รายการเสร็จสิ้น • น้ำหนักรวม ${weight.toFixed(2)} กก.`;
+}
+
+function renderImportTab(){
+  document.getElementById('importCount').textContent=items.length;
+  const s=document.getElementById('importCaseSummary');
+  if(currentCase && currentCase.caseNo){
+    s.innerHTML=`<b>${currentCase.caseNo}</b><br>${currentCase.date||''} ${currentCase.time?'เวลา '+currentCase.time+' น.':''}<br>${currentCase.location||''}`;
+  } else {
+    s.textContent='แตะ "ข้อมูลคดี" มุมขวาบนเพื่อกรอกรายละเอียด';
+  }
+}
+
+/* --- ถ่ายรูป tab: item cards with per-stage photo indicators --- */
+function renderPhotosList(){
+  const wrap=document.getElementById('photosListWrap'); if(!wrap) return;
+  wrap.innerHTML='';
+  const filtered=filterItems();
+  if(filtered.length===0){
+    wrap.innerHTML=emptyStateHTML('ยังไม่มีรายการ — ไปที่แท็บ "นำเข้า" เพื่อเพิ่มรายการก่อน');
+    return;
+  }
+  filtered.forEach(item=>{
+    const stages=[
+      {key:'before', label:'①'}, {key:'count', label:'②'}, {key:'weigh', label:'③'}, {key:'sealed', label:'④'}
+    ];
+    const dots=stages.map(st=>`<div class="stage-dot ${item.photos[st.key].length?'filled':''}">${st.label}</div>`).join('');
+    const card=document.createElement('div');
+    card.className='item-card';
+    card.innerHTML=`
+      <div class="seq">${item.seq}</div>
+      <div class="item-main">
+        <div class="item-ref">เลขอ้างอิง ${item.packageRef||'(ยังไม่ระบุ)'}</div>
+        <div class="item-hidden">${item.hidden||'ยังไม่ระบุรายละเอียด'}</div>
+        <div class="stage-dots">${dots}<span class="photo-count" style="margin-left:4px">📷 ${photoCount(item)}</span></div>
+      </div>
+      <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1c2622" stroke-width="2"><polyline points="9 6 15 12 9 18"/></svg>
+    `;
+    card.onclick=()=>openItemDetail(item.id);
+    wrap.appendChild(card);
+  });
+}
+
+/* --- บันทึกน้ำหนัก tab: inline weight/count entry, auto-saves --- */
+function renderWeightList(){
+  const wrap=document.getElementById('weightListWrap'); if(!wrap) return;
+  wrap.innerHTML='';
+  const filtered=filterItems();
+  if(filtered.length===0){
+    wrap.innerHTML=emptyStateHTML('ยังไม่มีรายการ — ไปที่แท็บ "นำเข้า" เพื่อเพิ่มรายการก่อน');
+    return;
+  }
+  filtered.forEach(item=>{
+    const row=document.createElement('div');
+    row.className='weight-row';
+    row.innerHTML=`
+      <div class="seq">${item.seq}</div>
+      <div class="info">
+        <div class="ref">${item.packageRef||'(ยังไม่ระบุ)'}</div>
+        <div class="hid">${item.hidden||'ยังไม่ระบุรายละเอียด'}</div>
+      </div>
+      <div class="inputs">
+        <div><input type="number" step="0.01" inputmode="decimal" class="weight-input" placeholder="น้ำหนัก" value="${item.weight||''}"><div class="unit">กก.</div></div>
+        <div><input type="number" inputmode="numeric" class="count-input" placeholder="จน." value="${item.count||''}"><div class="unit">จำนวน</div></div>
+      </div>
+    `;
+    const wInput=row.querySelector('.weight-input'), cInput=row.querySelector('.count-input');
+    wInput.onchange=async ()=>{
+      item.weight=wInput.value;
+      if(item.weight && item.status==='pending') item.status='progress';
+      await idbPut('items', item);
+      renderStats(); renderPhotosList(); renderSummaryTable();
+    };
+    cInput.onchange=async ()=>{ item.count=cInput.value; await idbPut('items', item); };
+    row.querySelector('.info').onclick=()=>openItemDetail(item.id);
+    wrap.appendChild(row);
+  });
+}
+
+/* --- สรุป tab: full read-only table --- */
+function renderSummaryTable(){
+  const body=document.getElementById('summaryTableBody'); if(!body) return;
+  body.innerHTML='';
+  if(items.length===0){
+    body.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--ink-soft);padding:20px">ยังไม่มีรายการ</td></tr>`;
+    return;
+  }
+  items.forEach(item=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${item.seq}</td><td>${item.packageRef||'-'}</td><td>${item.hidden||'-'}</td>
+      <td class="num">${item.weight?parseFloat(item.weight).toFixed(2):'-'}</td>
+      <td><span class="badge ${statusBadgeClass(item.status)}">${statusLabel(item.status)}</span></td>`;
+    tr.onclick=()=>openItemDetail(item.id);
+    tr.style.cursor='pointer';
+    body.appendChild(tr);
+  });
+}
+
+function syncSearchUI(){
+  document.getElementById('searchInputPhotos').value=searchTerm;
+  document.getElementById('searchInputWeight').value=searchTerm;
+  document.getElementById('clearSearchPhotos').classList.toggle('show', !!searchTerm);
+  document.getElementById('clearSearchWeight').classList.toggle('show', !!searchTerm);
+}
+document.getElementById('searchInputPhotos').oninput=e=>{searchTerm=e.target.value; syncSearchUI(); renderPhotosList(); renderWeightList();};
+document.getElementById('statusFilterPhotos').onchange=e=>{statusFilterVal=e.target.value; document.getElementById('statusFilterWeight').value=e.target.value; renderPhotosList(); renderWeightList();};
+document.getElementById('searchInputWeight').oninput=e=>{searchTerm=e.target.value; syncSearchUI(); renderPhotosList(); renderWeightList();};
+document.getElementById('statusFilterWeight').onchange=e=>{statusFilterVal=e.target.value; document.getElementById('statusFilterPhotos').value=e.target.value; renderPhotosList(); renderWeightList();};
+document.getElementById('clearSearchPhotos').onclick=()=>{searchTerm=''; syncSearchUI(); renderPhotosList(); renderWeightList();};
+document.getElementById('clearSearchWeight').onclick=()=>{searchTerm=''; syncSearchUI(); renderPhotosList(); renderWeightList();};
+
+/* --- tab bar switching --- */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden-view'));
+    document.getElementById('view'+btn.dataset.tab).classList.remove('hidden-view');
+  };
+});
+
+
+/* =========================================================
+   ITEM CRUD
+   ========================================================= */
+function blankPhotos(){return {before:[],count:[],weigh:[],sealed:[]}}
+function nextSeq(){return items.length? Math.max(...items.map(i=>i.seq))+1 : 1}
+
+async function addNewItem(){
+  const item={
+    id:'item_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+    caseId:CASE_ID, seq:nextSeq(), packageRef:'', hidden:'', sender:'', country:'', receiver:'',
+    weight:'', count:'', notes:'', status:'pending', photos:blankPhotos(), createdAt:Date.now()
+  };
+  await idbPut('items', item);
+  items.push(item);
+  renderAll();
+  openItemDetail(item.id);
+}
+document.getElementById('addItemFab').onclick=addNewItem;
+
+function openItemDetail(id){
+  activeItemId=id;
+  const item=items.find(i=>i.id===id);
+  if(!item) return;
+  document.getElementById('itemSheetTitle').textContent='รายการที่ '+item.seq;
+  document.getElementById('ifRef').value=item.packageRef||'';
+  document.getElementById('ifHidden').value=item.hidden||'';
+  document.getElementById('ifSender').value=item.sender||'';
+  document.getElementById('ifCountry').value=item.country||'';
+  document.getElementById('ifReceiver').value=item.receiver||'';
+  document.getElementById('ifWeight').value=item.weight||'';
+  document.getElementById('ifCount').value=item.count||'';
+  document.getElementById('ifNotes').value=item.notes||'';
+  renderStatusChips(item.status);
+  renderPhotoGrid('photoBefore','before',item);
+  renderPhotoGrid('photoCount','count',item);
+  renderPhotoGrid('photoWeigh','weigh',item);
+  renderPhotoGrid('photoSealed','sealed',item);
+  openSheet('item');
+}
+function renderStatusChips(current){
+  document.querySelectorAll('#itemSheet .chip-opt').forEach(c=>{
+    c.classList.toggle('on', c.dataset.status===current);
+    c.onclick=()=>{ document.querySelectorAll('#itemSheet .chip-opt').forEach(x=>x.classList.remove('on')); c.classList.add('on'); };
+  });
+}
+function getSelectedStatus(){
+  const on=document.querySelector('#itemSheet .chip-opt.on');
+  return on? on.dataset.status : 'pending';
+}
+
+function renderPhotoGrid(elId, stage, item){
+  const wrap=document.getElementById(elId); wrap.innerHTML='';
+  item.photos[stage].forEach((dataUrl, idx)=>{
+    const t=document.createElement('div'); t.className='photo-thumb';
+    t.innerHTML=`<img src="${dataUrl}"><button class="del">✕</button>`;
+    t.querySelector('.del').onclick=async (e)=>{
+      e.stopPropagation();
+      item.photos[stage].splice(idx,1);
+      await idbPut('items', item);
+      renderPhotoGrid(elId, stage, item);
+      renderPhotosList();
+    };
+    wrap.appendChild(t);
+  });
+  const add=document.createElement('div'); add.className='add-photo';
+  add.innerHTML=`📷<span>เพิ่มรูป</span><input type="file" accept="image/*" capture="environment" multiple>`;
+  add.querySelector('input').onchange=async (e)=>{
+    const files=[...e.target.files];
+    for(const f of files){
+      const compressed = await compressImage(f);
+      item.photos[stage].push(compressed);
+    }
+    await idbPut('items', item);
+    renderPhotoGrid(elId, stage, item);
+    renderPhotosList();
+    e.target.value='';
+  };
+  wrap.appendChild(add);
+}
+
+function compressImage(file){
+  return new Promise((resolve)=>{
+    const img=new Image();
+    const reader=new FileReader();
+    reader.onload=e=>{ img.onload=()=>{
+        const maxDim=1280;
+        let w=img.width, h=img.height;
+        if(w>h && w>maxDim){h=h*maxDim/w; w=maxDim;}
+        else if(h>=w && h>maxDim){w=w*maxDim/h; h=maxDim;}
+        const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg',0.68));
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+document.getElementById('saveItemBtn').onclick=async ()=>{
+  const item=items.find(i=>i.id===activeItemId); if(!item) return;
+  const ref=document.getElementById('ifRef').value.trim();
+  if(!ref){ toast('กรุณาระบุเลขอ้างอิงพัสดุ'); return; }
+  const dup=items.find(i=>i.id!==item.id && i.packageRef===ref);
+  if(dup){ toast('เลขอ้างอิงพัสดุนี้มีอยู่แล้วในรายการที่ '+dup.seq); return; }
+  item.packageRef=ref;
+  item.hidden=document.getElementById('ifHidden').value.trim();
+  item.sender=document.getElementById('ifSender').value.trim();
+  item.country=document.getElementById('ifCountry').value.trim();
+  item.receiver=document.getElementById('ifReceiver').value.trim();
+  item.weight=document.getElementById('ifWeight').value;
+  item.count=document.getElementById('ifCount').value;
+  item.notes=document.getElementById('ifNotes').value.trim();
+  item.status=getSelectedStatus();
+  await idbPut('items', item);
+  renderAll();
+  closeSheet('item');
+  toast('บันทึกรายการที่ '+item.seq+' แล้ว');
+};
+document.getElementById('deleteItemBtn').onclick=async ()=>{
+  if(!confirm('ยืนยันลบรายการนี้? (รูปถ่ายทั้งหมดในรายการนี้จะถูกลบด้วย)')) return;
+  await idbDelete('items', activeItemId);
+  items=items.filter(i=>i.id!==activeItemId);
+  renderAll();
+  closeSheet('item');
+  toast('ลบรายการแล้ว');
+};
+
+/* =========================================================
+   BARCODE / QR SCANNER (html5-qrcode) — fills เลขอ้างอิงพัสดุ automatically
+   ========================================================= */
+let scannerInstance=null;
+function openScanner(){
+  if(typeof Html5Qrcode==='undefined'){
+    toast('ตัวสแกนบาร์โค้ดยังโหลดไม่เสร็จ หรืออุปกรณ์ไม่รองรับ — พิมพ์เลขอ้างอิงเองแทนได้เลย');
+    return;
+  }
+  openSheet('scan');
+  scannerInstance=new Html5Qrcode('qr-reader', { formatsToSupport:[
+    Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39,
+    Html5QrcodeSupportedFormats.CODE_93, Html5QrcodeSupportedFormats.ITF,
+    Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8,
+    Html5QrcodeSupportedFormats.CODABAR, Html5QrcodeSupportedFormats.QR_CODE
+  ]});
+  scannerInstance.start(
+    {facingMode:'environment'},
+    {fps:10, qrbox:{width:260, height:160}},
+    (decodedText)=>{
+      document.getElementById('ifRef').value=decodedText.trim();
+      toast('สแกนสำเร็จ: '+decodedText.trim());
+      closeSheet('scan');
+    },
+    ()=>{ /* per-frame no-match, ignore */ }
+  ).catch(err=>{
+    toast('เปิดกล้องไม่สำเร็จ: '+(err && err.message ? err.message : 'ตรวจสอบสิทธิ์การใช้กล้อง'));
+    closeSheet('scan');
+  });
+}
+function stopScanner(){
+  if(scannerInstance){
+    const s=scannerInstance; scannerInstance=null;
+    s.stop().then(()=>s.clear()).catch(()=>{});
+  }
+}
+document.getElementById('scanBarcodeBtn').onclick=openScanner;
+
+/* =========================================================
+   ACTIONS: import sample / bulk import / export / print
+   ========================================================= */
+const SAMPLE_DATA = [
+["5343798913","เสื้อยืดผู้ชาย (โพลีเอสเตอร์ 100%)","KANER PERSONAL BASEL C/O SIAM EXPRESS DELIVERY CO.,LTD. 219/2 M.10 NONGPRUE BANGLAMUNG 20150 CHONBURI","Switzerland","KANER PERSONAL BASEL AG SIGNALSTRASSE 11 UID: CHE-310.847.005 MWST BASEL 4058 BASEL"],
+["5083602005","เสื้อยืดผ้าฝ้ายและผ้าคลุมเตียง","MISS PRATIDA LAKASAN 13/45 MOO.3 SRISAMARN RD., BANMAI PAKKRET 11120 NONTHABURI","United Kingdom","MR: RAMIN MORADI FLAT 2/1 1 BROOMPARK DRIVE GLASGOW G31 2DA SCOTLAND GLASGOW G31 2DA GLASGOW"],
+["1564512983","เสื้อยืดผ้าฝ้ายและผ้าคลุมเตียง","MISS PRATIDA LAKASAN 13/45 MOO.3 SRISAMARN RD., BANMAI PAKKRET 11120 NONTHABURI","United Kingdom","MR: REZGAR BAHARY FLAT 2/2 135 BARDOWIE STREET GLASGOW G22 5QJ SCOTLAND GLASGOW G22 5QJ GLASGOW"],
+["3283676465","เครื่องเขียน, ของใช้เด็กอ่อน","SALMANUL BISHRI 368 Soi Inthamara 47 Ratchdaphisek Din Daeng, Bangkok, Thailand - 10400 10400 BANGKOK","United Arab Emirates","MOHAMMED SHAFEEQUE B 103, AL MULLA WAREHOUSE AL QUSAIS IND AREA 1 DUBAI DUBAI"],
+["5818690150","นวมชกมวย","MISS. ARAYA JANKRAJANG C/O SIAM PARCEL DELIVERY CO.,LTD 40/3 KLONG LUANG MUANG MAI ROAD KHLONG SONG, KHLONG LUANG, 12120 PATHUMTHANI","Belgium","KEVIN BASSEM RUE THEOPHILE MASSART 12 LA LOUVIERE 7100 LA LOUVIERE"],
+["7824279746","ชุดสมุนไพรจับเลี้ยงอบแห้งสำเร็จรูป","KETSARIN SAISO 95 VILLAGE NO. 9, SUNG NOEN SUBDISTRICT, KRASANG DISTRICT, BURIRAM BURIRAM 31160 BURIRAM","United Kingdom","MARK DAVID 2 JUBILEE CLOSE STOW ON THE WOLD CHELTENHAM GLOUCESTERSHIRE GL54 1EF GL54 1EF CHELTENHAM"],
+["2519161363","ของเล่นหุ่นยนต์, คุกกี้, ทองม้วนไทย","WANIDA MAKPRAKHON SUVARNABHUMI SERVICE CENTER (ZVB) / 09112 2/31-34 MOO 1, BANGNA-TRAD RD. KM.16.5 T. BANGCHALONG, A. BANGPHLI 10540 SAMUTPRAKARN","Gambia","DR.HATIB NJIE 80 LANCASTER STREET BANJUL,WEST AFRICA BANJUL BANJUL"],
+["6223319616","ชุดป้องกันอันตราย","ALAN THOMAS ROBERTS SUVARNABHUMI SERVICE CENTER (ZVB) / 00424 2/31-34 MOO 1, BANGNA-TRAD RD. KM.16.5 T. BANGCHALONG, A. BANGPHLI 10540 SAMUTPRAKARN","United Kingdom","LEE BEAMAER 37 BRINDLE CLOSE LANCASTER LA1 5JE LANCASTER"],
+["4567208601","โคมไฟระย้า","MUHAMMAD SOHAIL HAZRAT GHULAM CARE OF MOVE FREEDOM 120/189-191 PRATUNAM RATCHAPRAROB RD., RATCHATAVEE PHAYATHAI 10400 BANGKOK","United Arab Emirates","MUHAMMAD SOHAIL HAZRAT GHULAM SHOROOQ AL WARD CAFETERIA AL BARSHA SOUTH FOURTH JUMEIRAH VILLAGE CIRCLE-DUBAI DUBAI"],
+["9063117556","การ์ดการ์ตูน, ขนมแบงแบงเวเฟอร์, ขนมแท่งป๊อกกี้","MS.KATGAMOL PHOLBOON C/O SIAM EXPRESS DELIVERY CO LTD. 665? M.5 WINDMILL RESORT, PATTAYA-NAKLUA RD,NAKLUA 20150 CHONBURI","Gambia","MR.MAMADOU MUMUN JALLOW BARRAKAH ESTATE, SEREKUNDA SEREKUNDA SEREKUNDA"],
+["5270855203","ลำโพงบลูทูธปาร์ตี้ยี่ห้อเซฟลาร์","PENPRAPHA PREEDEE 198/113 BANG BUA THONG SUBDISTRICT BANG BUA THONG DISTRICT NONTHABURI PROVINCE 11110 NONTHABURI 11110 NONTHABURI","United Kingdom","MR. MEFLAH SIDALI FLAT 2/2 135 BARDOWIE STREET SCOTLAND G22 5QJ GLASGOW"],
+["7959989785","แจกันเซรามิกวาดมือลายจีน 3 ใบ","MOHAMMED SHAFI ALIKKARAN STATE TOWER 1055 Silom Road, Si Lom, Bang R 10500 BANGKOK 10500 BANGKOK","United Arab Emirates","ABDUL SABITH 686J+RP3 AL JADAF, DUBAI, UNITED ARAB EMIRAT DUBAI DUBAI"],
+["3032672985","ชาไทย, บ๊วยแห้ง","ENZI SSENYOMO SUVARNABHUMI SERVICE CENTER (ZVB) / 09181 2/31-34 MOO 1, BANGNA-TRAD RD. KM.16.5 T. BANGCHALONG, A. BANGPHLI 10540 SAMUTPRAKARN","Uganda","SSEMPALA SSENYOMO PLOT 6 3RD STREET INDUSTRIAL AREA KAMPALA KAMPALA"],
+["4324284182","ไดร์เป่าผม","AT HAIR SPECIALIST WHOLESALE C/O SIAM EXPRESS DELIVERY CO.,LTD 1/2 TESSABAN 1 RD. T.SRIRACHA , A.SRIRACHA 20110 CHONBURI","United Kingdom","LUX PRODUCTS UK LTD SHURGARD HARLOW EDINBURGH WAY, TEMPLE FIELDS HARLOW CM20 2GF HARLOW"],
+["1503857574","ไดร์เป่าผม","AT HAIR SPECIALIST WHOLESALE C/O SIAM EXPRESS DELIVERY CO.,LTD 1/2 TESSABAN 1 RD. T.SRIRACHA , A.SRIRACHA 20110 CHONBURI","United Kingdom","LUX PRODUCTS UK LTD SHURGARD HARLOW EDINBURGH WAY, TEMPLE FIELDS HARLOW CM20 2GF HARLOW"],
+["2597097801","ซีเรียลอาหารเช้ายี่ห้อคอปป์","MR.SAROJ BUAJOOM C/O SIAM EXPRESS DELIVERY CO.,LTD 584/58 M.10 NONGPRUE, BANGLAMUNG 20150 CHONBURI","India","PRINCE MAKKAR 38 , SAN MARTIN MARG , RAILWAY ENCLAVE , CHANAKYAPURI NEW DELHI 110021 NEW DELHI"],
+["2597096526","ขนมปังเบเกอรี่","MR.SAROJ BUAJOOM C/O SIAM EXPRESS DELIVERY CO.,LTD 584/58 M.10 NONGPRUE, BANGLAMUNG 20150 CHONBURI","Germany","CLARA WALTER ANNA KLAHN STRASSE 3 HANNOVER 30163 HANNOVER"],
+["2232064682","น้ำผึ้งขวดสำหรับบริโภคส่วนตัว","MR. MIAN SULEMAN KHAN SUKHUMVIT SOI 3, THE GRACE HOTEL ROOM 48/4, WATTANA, KHLONG TOEI BANGKOK 10110 BANGKOK","United Arab Emirates","ABU DHABI NATIONAL OIL COMPANY ADNOC P J S C NEAR 8P94+J39 MADINAT AL RIYAD- RD73 ROAD NOL BNS-RD73-FH-008 VILAA NUMBER 53, GROUND FLOOR, ROOM, NUMBER G02 ABU DHABI CITY"],
+["2269456895","ของใช้ส่วนตัว","KANCHANA PHRAMMANOP 421 MOO 4, NONG PHLAP SUBDISTRICT, HUA HIN DISTRICT PRACHUAP KHRI KHAN 77110 PRACHUAP KHRI KHAN","Netherlands","RAYMOND VAN MUIJEN ALEXANDER FLEMING STREET 9 ALKMAAR 1824 ALKMAAR"],
+["2269434241","ของใช้ส่วนตัว","KANCHANA PHRAMMANOP 421 MOO 4, NONG PHLAP SUBDISTRICT, HUA HIN DISTRICT PRACHUAP KHRI KHAN 77110 PRACHUAP KHRI KHAN","United Kingdom","JACK ELLISE 36 GRANT CLOSE LIVERPOOL L14 0LJ LIVERPOOL"],
+["3798038204","ของใช้ส่วนตัว","KANCHANA PHRAMMANOP 421 MOO 4, NONG PHLAP SUBDISTRICT, HUA HIN DISTRICT PRACHUAP KHRI KHAN 77110 PRACHUAP KHRI KHAN","United Kingdom","ADAM BRODY 15 BROOK ROAD, APARTMENT 4 LIVERPOOL LIVERPOOL L9 2BE LIVERPOOL"],
+["3797987734","ของใช้ส่วนตัว","KANCHANA PHRAMMANOP 421 MOO 4, NONG PHLAP SUBDISTRICT, HUA HIN DISTRICT PRACHUAP KHRI KHAN 77110 PRACHUAP KHRI KHAN","United Kingdom","JAMES KELLY 53 COLWELL ROAD, LIVERPOOL L14 8XY LIVERPOOL"],
+["1815589425","ชุดโคมไฟตกแต่งกล่อง","MISS SORAYA KHANKEAW 2009/3 BEARING 34 SUKHUMVIT SAMUTPRAKARN 10270 SAMUTPRAKARN","Bahrain","ZAWARUL HASSAN BUILDING 64, ROAD 901, BLOCK 309 MANAMA MANAMA"],
+["2722393144","ของขวัญสำหรับหลานชาย","HATTHAKAN KHENDONG AMAZON RESIDENCE , VVQQ+79C, PATTAY Bang Lamung District, 20150 CHONBURI 20150 CHONBURI","France","SERY ANGE 96 RUE CURIAL PARIS 75019 PARIS"],
+["3394892874","เครื่องฟอกอากาศ","THEEMAPHON SUVARNABHUMI SERVICE CENTER (ZVB) / 09245 2/31-34 MOO 1, BANGNA-TRAD RD. KM.16.5 T. BANGCHALONG, A. BANGPHLI 10540 SAMUTPRAKARN","United Kingdom","ZHANG ZHU 1201 VANTAGE TOWER SOUTHAMPTON SO19 9XH SOUTHAMPTON"],
+["6774102974","น้ำผึ้งกลิ่นมะนาวยี่ห้อดอยคำ ฯลฯ","MISS SUNISA SRIDA 159/34 MOO 1 PAIYANG BANGKRUAI NONTHABURI NONTHABURI 11130 NONTHABURI","Uganda","ATTN: WILSON MUGANYIZI SAFIIKI PLOT 067, KITALA KAMPALA KAMPALA KAMPALA"],
+["1361334870","ชุดน็อตสแตนเลส","MS.MAYVIKA BANPOT C/O SIAM EXPRESS DELIVERY CO LTD. 665? M.5 WINDMILL RESORT, PATTAYA-NAKLUA RD,NAKLUA 20150 CHONBURI","United Kingdom","MERIDEN AUTO LTD UNIT 6 MERIDEN WORKS BIRMINGHAM ROAD COVENTRY CV5 9AZ COVENTRY"],
+["2232070013","ตู้เบรกเกอร์ไฟฟ้ายี่ห้อชไนเดอร์","MR.RAVINDER PAHAL REGENT RAMKHAMHAENG 22 BANGKOK 10240 BANGKOK","United Arab Emirates","ATTN: MR. UTSAVKUMAR GHANSHYAMBHAI JASANI JADDAF STAR BUILDING ROOM NUMBER 1302, ABOVE GREENCITY RESTAURENT JADDAF, DUBAI DUBAI DUBAI"],
+["6982669680","ชุดของเล่นพลาสติกเด็กในกล่อง","MR.NARATIP SENAJAN 579 SOI CHARANSANIT WONG 44 BANGYHEE KHAN.,BANG PLAD BANGKOK 10700 BANGKOK","Bahrain","ATTN MARY JOY NO. BUILDING 3644, ROAD 1862 BLK 318 FLAT 2 HOORA MANAMA MANAMA"],
+["2466632630","บะหมี่กึ่งสำเร็จรูปผัดไทย ฯลฯ","MR. PIYA SAETANG PRACHASINGKAO 39 DIN DAENG, HUAI KHWANG BANGKOK 10400 BANGKOK","Chile","ORIOL VENTURA SAN ROMAN CALLE LIRA 360, DEPARTAMENTO #911, SANTIAGO CENTRO REGION METROPOLITANA, POST CODE : 8320000 SANTIAGO CENTRO"],
+["9198255931","เครื่องกรองบ่อปลา","JONATHAN MARSHAL CARE OF SIAM WORLDWIDE CO.,LTD 120/189-191 PRATUNAM RATCHAPRAROB RD., RATCHATAVEE PHAYATHAI 10400 BANGKOK","United Kingdom","GRAHAM CLARK 41 Castleton Road SCUNTHORPE DN157UX UNITED KINGDOM DN15 7UX SCUNTHORPE"],
+["5785870171","ถั่วแมคคาเดเมีย","MR. NATTPOOM CHAIYAWAN 19/227 LIEB KLONG SONG 27 BANGKOK 10510 BANGKOK","United Arab Emirates","SASINDU PAMITH YASMITHA WARNAKULASURIYA SHARJAH AL KHAN AL KHALIDIYA VILLA NUMBER 5, STREET 50 SHARJAH SHARJAH"],
+["1890255021","ตุ๊กตาหมีนุ่ม","MS. NITTIYA KRONGSIN 109 MOO 2, NON PHO SUBDISTRICT MUANG AMNAT CHAROEN AMNAT CHAROEN 37000 AMNAT CHAROEN","United Kingdom","KULDIP DHESI 123 COLLEGE RD. STOKE-ON-TRENT, STAFFORDSHIRE STOKE-ON-TRENT ST4 2EE STOKE-ON-TRENT"],
+["8570582101","เครื่องดื่มกาแฟสำเร็จรูป 3 อิน 1 โกปิโก้","MISS PRATIDA LAKASAN 13/45 MOO.3 SRISAMARN RD., BANMAI PAKKRET 11120 NONTHABURI","United Kingdom","MR.DANIEL EDWARD FLAT 247B JUNCTION ROAD TUFFNELL PARK LONDON N19 5QG LONDON"],
+["4336465755","เห็ดแห้ง, บะหมี่กึ่งสำเร็จรูป","SAURABH RANA, JONGKOLNEE C/O CITY-LINK EXPRESS & LOGISTICS (THAILAND) 3362 RAMA 4 ROAD, KLONGTON, KLONGTOEY, BANGKOK 10110 BANGKOK","United Arab Emirates","VISHAL VISHAL Building no-46,room no-201 Floor 2nd,Street no-16,Al Muteena -1, DUBAI DUBAI"],
+["4781889383","ของใช้ส่วนตัว","UNIKIOSH LDPD PICKUP HYATT PLACE SUKHUMVIT HOTEL 78 SOI SUKHUMVIT 1, KHLONG TOEI NUEA SUBDISTR BANGKOK 10110 BANGKOK","Germany","UNIKIOSH LDPD PICKUP BACKERGASSE 3 MUENSTER 48143 MUENSTER"],
+["7816305416","เครื่องดื่มกาแฟสำเร็จรูป 3 อิน 1 มาณี","MR.JESDA PHOONDUEN 41/6 MOO8, T.BANGPHUD, A.PAKKRET 11120 NONTHABURI","United Kingdom","MR.NICKY GALLAGHER 26 ASPERN GROVE,HAMPSTEAD, LONDON NW3 2AU LONDON"],
+["8146525170","เครื่องดื่มกาแฟสำเร็จรูป 3 อิน 1 มาณี","MISS PRATIDA LAKASAN 13/45 MOO.3 SRISAMARN RD., BANMAI PAKKRET 11120 NONTHABURI","United Kingdom","MR.PETER MCDONNAUGHE 92 TEMPLAR HOUSE LONDON NW2 3TO LONDON"],
+["5111765993","ขนมแป้งผสมน้ำตาล, บะหมี่กึ่งสำเร็จรูปไวไว","ALI BELLAVIA C/O SIAM EXPRESS DELIVERY CO, LTD V.O.P SUITE CHAWENG 81/5 MOO.6 BO PHUT KOH SAMUI 84320 SURAT THANI","France","ILIES HATIM 50 RUE DE LA FILATURE VILLEURBANNE 69100 VILLEURBANNE"],
+["1197801813","สบู่ก้อนลักซ์","TRAN NAM 11-1 SUAN KASET ROAD LAT SAWAI, LAMLUKKA PATHUMTHANI 12150 PATHUMTHANI","United Kingdom","HUY VAN 93 ASH LEIGH ROAD LEICESTER-ENGLAND LEICESTER LE3 0FD LEICESTER"],
+["1580142152","พริกแกงกะเพรา, มะม่วงอบแห้ง ฯลฯ","RADAKAN THITISART 105-107 SOI.HAPPYLAND1 LADPROW RD, KLONGJUN BANGKAPI BANGKOK 10240 BANGKOK","Denmark","MATEUSZ LUPINSKI RONNEVEJ 59B ALLINGE 3770 ALLINGE"],
+["1725992052","แจกัน","TRANSPEED CO.,LTD. 3360/6-3360/8, SOI MANOROM, RAMA 4 KLONTON KLONGTOEY BANGKOK 10110 BANGKOK","United Arab Emirates","N/A HOR AL ANZ STREET 34A BUILDING 30 BESIDE HAAFIZ ARSHAD GROCERY STORE, DUBAI, UNITED ARAB EMIRATES DUBAI"],
+["1134473664","เส้นก๋วยเตี๋ยวแห้งในถุงพลาสติก (แป้งข้าว 80% แป้งมัน...)","DEEPAK C/O SIAM PARCEL DELIVERY CO,LTD 426,SUPALAI PARK,ASOKE RATCTHDA 10400 BANGKOK","United Arab Emirates","SACHIN KUMAR THE CROWN TOWER, 406, 54TH STREET AL MAMZAR DUBAI DUBAI"],
+["6348151740","แจกันเซรามิก (ใบใหญ่)","DEEPAK C/O SIAM PARCEL DELIVERY CO.,LTD. SUPARAI PARK ASOKE, 826 DIN DEANG 10400 BANGKOK","United Arab Emirates","SAHIL KUMAR BUILDING NO-45 ,ROOM NO-217 19B STREET, 2ND FLOOR AL MUTEENA , DUBAI DUBAI"],
+["9562512271","ผักอบแห้งแช่แข็ง","D&D DEVELOPMENT LIMITED PARTNERSHIP 199/1330 PRUKSA 15 VILLAGE SOI 27, TAMRU BANG PHLI, PHRAEK SA MAI SAMUTPRAKARN 10280 SAMUTPRAKARN","Netherlands","KINGSSHOP JT DEN DEN HAAG 2515 DEN HAAG"],
+["9562516854","ผักอบแห้งแช่แข็ง","D&D DEVELOPMENT LIMITED PARTNERSHIP 199/1330 PRUKSA 15 VILLAGE SOI 27, TAMRU BANG PHLI, PHRAEK SA MAI SAMUTPRAKARN 10280 SAMUTPRAKARN","India","MOHAMMAD SHAFI 1067 Ward Number 7 Rajasthan NEW DELHI 110030 NEW DELHI"],
+["1120846451","หนังสืออัลกุรอาน","ABDUL GAFOOR FAROOK YAZEEDH ROOM NO-152/403,SUPALAI CITY RESORT SOI -12, RAMKHAMHAENG BANGKOK 10240 BANGKOK","United Arab Emirates","MAHAMAD SAMIM BSM BUILDING,ROOM NUMBER- 703, 7TH FLOOR,STREET 11TH,AL NAHDA FIRST. DUBAI DUBAI"],
+["9770438731","สำลีแผ่น ฯลฯ","MR. ARUNSIN DUANGSRI ROMKLAO 199/44 PRAWET BANGKOK 10520 BANGKOK","United Kingdom","ATTN: MR. JOHNSON 56 LONGSTONE ROADS BIRMINGHAM B42 2DP BIRMINGHAM"],
+["8466861760","เครื่องฟอกอากาศมือสอง","T.K. EXPRESS LOGISTICS CO.,LTD 196/43 MAHIDOL RD., T.PADAET NAN 55120 NAN","United Kingdom","LEE SELLERS STOKE HEATH 31 VILLIERS STREET COVENTRY CV2 4HQ COVENTRY"],
+["1304148893","เตาย่างไฟฟ้า","NIROOT RAUMBOON THE CONNECT KASET - NAVAMIN 199/156 PRASERT MANUKIT 48 KHLONG KUM, BUENG KUM 10240 BANGKOK","Sri Lanka","SHEHANI ROBERT 87, NAWALA ROAD NUGEGODA 10250 NUGEGODA"],
+["2489857123","เตาย่างไฟฟ้า","NIROOT RAUMBOON THE CONNECT KASET - NAVAMIN 199/156 PRASERT MANUKIT 48 KHLONG KUM, BUENG KUM 10240 BANGKOK","United Arab Emirates","DILUM ACHINTHA AL QOUZ 1 ARAB DUBAI DUBAI"],
+["3822580613","ลูกอม","SIRIPHON SRITHONG SUVARNABHUMI SERVICE CENTER (ZVB) / 09112 2/31-34 MOO 1, BANGNA-TRAD RD. KM.16.5 T. BANGCHALONG, A. BANGPHLI 10540 SAMUTPRAKARN","Sierra Leone","ABIGAIL KANDEH 17 DWARZARK FARM FREETOWN FREETOWN"],
+["6521903220","เจลว่านหางจระเข้","HIMALAI LAKSANAKHON C/O SIAM EXPRESS DELIVERY CO., LTD. 198/1 MANEENOPARAT RD. CHIANG MAI 50200 CHIANG MAI","United Kingdom","SARAH CHARD 139 HORNBEAM CLOSE BRADLY STOKE BS328FE BS32 8FE BRISTOL"],
+["2701614521","ลูกอม","NOPPARAT SRITHONG SUVARNABHUMI SERVICE CENTER (ZVB) / 09112 2/31-34 MOO 1, BANGNA-TRAD RD. KM.16.5 T. BANGCHALONG, A. BANGPHLI 10540 SAMUTPRAKARN","Jamaica","DAVID SIMPSON 402 9TH STREET KINGSTON 12 KINGSTON KINGSTON 12 KINGSTON 12"],
+["3995202223","ผลไม้อบแห้ง","TAWEEWUT SAOCHAK SUVARNABHUMI SERVICE CENTER (ZVB) / 50220 2/31-34 MOO 1, BANGNA-TRAD RD. KM.16.5 T. BANGCHALONG, A. BANGPHLI 10540 SAMUTPRAKARN","Cabo Verde","CARLOS ALBERTO DE PINA 13 FERNANDO PO SAO VICENTE MINDELO MINDELO"],
+["5598144156","ชาไทยพรีเมียมธรรมชาติ - ใช้ส่วนตัวเท่านั้น","JAY NATTAPONG CHAIYAPHUM (Andy Supermarket) VVGP+W8V, 103 Thanon Chaiyaphruek, Pattaya City, Bang Lamung District, 20150, Thailand 20150 CHONBURI","Philippines","CHRISTOPHER MARTINEZ (INDIVIDUAL) 1268A. Apolinario Bangkal Makati City ML MAKATI CITY - BANGKAL 1233 MAKATI CITY - BANGKAL"],
+["8483125556","ผงปรุงรส","MR PRIYADARSHANI CARE OF SIAM WORLDWIDE CO.,LTD 120/189-191 PRATUNAM RATCHAPRAROB RD., RATCHATAVEE PHAYATHAI 10400 BANGKOK","Sri Lanka","MR PRIYADARSHANI X-32 WELUVANARAMA ROAD COLOMBO 06, POSTER CODE 00600 COLOMBO 06 00600 COLOMBO 06"],
+["9841272280","แจกันเซรามิก 17 ใบ แจกันไม้ 1 ใบ ถาดไม้ 1 ใบ","SRAVAN PAKYARA Phuket Villa Airport, soi 3/5, 139/209 PHUKET 83110 PHUKET","United Arab Emirates","VINOD PERUMANNAN KUNJHUNNY AZIZI RIVERIA, AL MEYDAN 1, NAD AL DUBAI DUBAI DUBAI"],
+["3820775722","หูฟังบลูทูธสำหรับของขวัญ","MR. WARAWAT SORA 230 CHOKCHAI ST. PHOTHARAM PHOTHARAM 70110 RATCHABURI","Democratic Republic of the Congo","KAMBA MAYU AVENUE KATO 22 LINGWALA 22 01212 KINSHASA"],
+["2357003460","เครื่องฟอกอากาศ","MS.PHANIDA KONGSANAN C/O SIAM EXPRESS DELIVERY CO.,LTD 1/2 TESSABAN 1 RD. T.SRIRACHA , A.SRIRACHA 20110 CHONBURI","United Kingdom","MR.JURGEN WALLEM 1 LBBETSON AVE GLENFIELD LEICESTER LE3 8NF LEICESTER"],
+["5619849270","ของใช้ส่วนตัวส่งให้ญาติที่บ้านพักคนชรา","MISS.PRATIDA LAKASA 13/45 MOO 3, BAN MAI SUBDISTRICT NONTHABURI 11120 NONTHABURI","United Kingdom","GARY TURNER 92 TEMPLAR HOUSE, SHOOT UP HILL, LONDON, NW2 3TB LONDON NW2 3TB LONDON"]
+];
+
+document.getElementById('mImportSample').onclick=async ()=>{
+  if(items.length>0 && !confirm('จะเพิ่มตัวอย่าง 61 รายการต่อจากรายการที่มีอยู่ ต้องการดำเนินการต่อหรือไม่?')) return;
+  for(const [ref,hidden,sender,country,receiver] of SAMPLE_DATA){
+    const item={id:'item_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), caseId:CASE_ID, seq:nextSeq(),
+      packageRef:ref, hidden:hidden, sender:sender||'', country:country||'', receiver:receiver||'', weight:'', count:'', notes:'',
+      status:'pending', photos:blankPhotos(), createdAt:Date.now()};
+    await idbPut('items', item);
+    items.push(item);
+  }
+  renderAll();
+  toast('โหลดตัวอย่าง 61 รายการเรียบร้อย (พร้อมข้อมูลผู้ส่ง/ผู้รับ)');
+};
+
+/* --- Smart parse: paste raw text copied from "แบบบันทึกการตรวจยึดสมุนไพรควบคุม" Word doc --- */
+function smartParseSeizureText(text){
+  const re=/ซุกซ่อนอยู่ใน\s+([\s\S]*?)\s+จำนวน[\s\S]*?เลขอ้างอิงพัสดุของบริษัทฯ\s*(\d+)(?:[\s\S]*?โดยมีผู้ส่งคือ\s+([\s\S]*?)\s+โทร\.)?(?:[\s\S]*?จัดส่งไปยัง\s+([\s\S]*?)\s*\(ประเทศปลายทาง\))?(?:[\s\S]*?มีข้อมูลผู้รับ\s+([\s\S]*?)\s*Email:)?/g;
+  const rows=[]; let m;
+  while((m=re.exec(text))!==null){
+    rows.push({
+      ref:m[2].trim(),
+      hidden:(m[1]||'').trim().replace(/\s+/g,' '),
+      sender:(m[3]||'').trim().replace(/\s+/g,' '),
+      country:(m[4]||'').trim().replace(/\s+/g,' '),
+      receiver:(m[5]||'').trim().replace(/\s+/g,' ')
+    });
+    if(m.index===re.lastIndex) re.lastIndex++;
+  }
+  return rows;
+}
+
+/* --- Smart parse: paste raw text copied from "บันทึกคำให้การ" Word doc.
+   This document carries the OFFICIAL "รายการที่ N" running number per งวด(batch) plus
+   the เลขที่ใบอ้างอิงที่ and, if already filled in, the น้ำหนักรวม — useful to pre-load
+   BEFORE field work, so items can be searched/matched by the same official number later. --- */
+function smartParseTestimonyText(text){
+  const re=/รายการที่\s*(\d+)\s*เลขที่ใบอ้างอิงที่\s*\t?\s*(\d+)\s*มีน้ำหนักรวมทั้งสิ้น\s*([\d.]+|[.\s]+)\s*กิโลกรัม/g;
+  const rows=[]; let m;
+  while((m=re.exec(text))!==null){
+    const wRaw=m[3].trim();
+    rows.push({ seq:parseInt(m[1],10), ref:m[2].trim(), weight:/^[.\s]*$/.test(wRaw)?'':wRaw });
+  }
+  return rows;
+}
+
+document.getElementById('mBulkImport').onclick=()=>{openSheet('bulk'); document.getElementById('wordImportStatus').textContent='';};
+
+async function processImportText(text){
+  text=(text||'').trim();
+  if(!text) return {msg:null};
+
+  // --- Pattern B: บันทึกคำให้การ (official รายการที่ / เลขที่ใบอ้างอิงที่ / น้ำหนัก) ---
+  if(text.includes('เลขที่ใบอ้างอิงที่') && text.includes('มีน้ำหนักรวมทั้งสิ้น')){
+    const rows=smartParseTestimonyText(text);
+    if(rows.length===0) return {msg:'ตรวจพบรูปแบบบันทึกคำให้การ แต่ดึงข้อมูลไม่สำเร็จ'};
+    let updated=0, created=0;
+    for(const r of rows){
+      let item=items.find(i=>i.packageRef===r.ref);
+      if(item){
+        item.seq=r.seq; // ใช้เลขลำดับ "รายการที่" ตามเอกสารทางการเป็นหลัก เพื่อความสะดวกในการค้น
+        if(r.weight && !item.weight) item.weight=r.weight;
+        await idbPut('items', item);
+        updated++;
+      } else {
+        item={id:'item_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), caseId:CASE_ID, seq:r.seq,
+          packageRef:r.ref, hidden:'', sender:'', country:'', receiver:'', weight:r.weight||'', count:'', notes:'',
+          status:'pending', photos:blankPhotos(), createdAt:Date.now()};
+        await idbPut('items', item);
+        items.push(item);
+        created++;
+      }
+    }
+    items.sort((a,b)=>a.seq-b.seq);
+    return {msg:`บันทึกคำให้การ: ตั้งเลขลำดับ+น้ำหนัก ${updated} รายการ, เพิ่มใหม่ ${created} รายการ`};
+  }
+
+  // --- Pattern A: แบบบันทึกการตรวจยึดสมุนไพรควบคุม (ซุกซ่อนอยู่ใน / เลขอ้างอิงพัสดุของบริษัทฯ) ---
+  let rows=[];
+  if(text.includes('เลขอ้างอิงพัสดุของบริษัทฯ') && text.includes('ซุกซ่อนอยู่ใน')){
+    rows=smartParseSeizureText(text);
+    if(rows.length===0) return {msg:'ตรวจพบรูปแบบเอกสารแต่ดึงข้อมูลไม่สำเร็จ'};
+  } else {
+    const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);
+    rows=lines.map(line=>{ const p=line.split('|').map(x=>x.trim()); return {ref:p[0], hidden:p[1]||'', sender:p[2]||'', country:p[3]||'', receiver:p[4]||''}; });
+  }
+  let added=0, merged=0;
+  for(const r of rows){
+    if(!r.ref) continue;
+    const existing=items.find(i=>i.packageRef===r.ref);
+    if(existing){
+      if(r.hidden && !existing.hidden) existing.hidden=r.hidden;
+      if(r.sender && !existing.sender) existing.sender=r.sender;
+      if(r.country && !existing.country) existing.country=r.country;
+      if(r.receiver && !existing.receiver) existing.receiver=r.receiver;
+      await idbPut('items', existing);
+      merged++;
+      continue;
+    }
+    const item={id:'item_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), caseId:CASE_ID, seq:nextSeq(),
+      packageRef:r.ref, hidden:r.hidden||'', sender:r.sender||'', country:r.country||'', receiver:r.receiver||'',
+      weight:'', count:'', notes:'', status:'pending', photos:blankPhotos(), createdAt:Date.now()};
+    await idbPut('items', item);
+    items.push(item);
+    added++;
+  }
+  items.sort((a,b)=>a.seq-b.seq);
+  return {msg:`แบบบันทึกการตรวจยึดฯ: เพิ่มใหม่ ${added} รายการ, เติมข้อมูลรายการเดิม ${merged} รายการ`};
+}
+
+document.getElementById('bulkImportBtn').onclick=async ()=>{
+  const text=document.getElementById('bulkText').value;
+  if(!text.trim()){ toast('ยังไม่ได้วางข้อความ'); return; }
+  const result=await processImportText(text);
+  renderAll();
+  closeSheet('bulk');
+  document.getElementById('bulkText').value='';
+  toast(result.msg || 'นำเข้าเรียบร้อย');
+};
+
+/* --- Direct .docx upload via mammoth.js (browser-side, no server) --- */
+document.getElementById('pickWordBtn').onclick=()=>document.getElementById('wordFileInput').click();
+document.getElementById('wordFileInput').onchange=async (e)=>{
+  const files=[...e.target.files];
+  if(files.length===0) return;
+  const statusEl=document.getElementById('wordImportStatus');
+  if(typeof mammoth==='undefined'){
+    statusEl.textContent='⚠️ ไม่พบตัวอ่านไฟล์ Word (ต้องมีอินเทอร์เน็ตอย่างน้อยครั้งแรกที่เปิดหน้านี้) — ลองก็อปข้อความมาวางในช่องด้านล่างแทน';
+    return;
+  }
+  const messages=[];
+  for(const file of files){
+    statusEl.textContent=`กำลังอ่านไฟล์ "${file.name}"...`;
+    try{
+      const arrayBuffer=await file.arrayBuffer();
+      const result=await mammoth.extractRawText({arrayBuffer});
+      const {msg}=await processImportText(result.value);
+      messages.push(`${file.name}: ${msg||'ไม่พบรูปแบบที่รู้จักในไฟล์นี้'}`);
+    }catch(err){
+      messages.push(`${file.name}: อ่านไฟล์ไม่สำเร็จ (${err.message||err})`);
+    }
+  }
+  renderAll();
+  statusEl.innerHTML=messages.map(m=>'✅ '+m).join('<br>');
+  toast('นำเข้าจากไฟล์ Word เรียบร้อย');
+  e.target.value='';
+};
+
+document.getElementById('mExportJSON').onclick=()=>{
+  const payload={case:currentCase, items:items, exportedAt:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(payload)], {type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`evidence_backup_${currentCase.caseNo||'case'}_${Date.now()}.json`;
+  a.click();
+  toast('สำรองข้อมูลเรียบร้อย — เก็บไฟล์นี้ไว้ให้ปลอดภัย');
+};
+
+document.getElementById('mImportJSON').onclick=()=>{document.getElementById('jsonFileInput').click();};
+document.getElementById('jsonFileInput').onchange=async (e)=>{
+  const file=e.target.files[0]; if(!file) return;
+  const text=await file.text();
+  try{
+    const payload=JSON.parse(text);
+    if(!confirm('นำเข้าไฟล์นี้จะแทนที่ข้อมูลคดีปัจจุบันทั้งหมด ต้องการดำเนินการต่อหรือไม่?')) return;
+    await idbClearByCase('items','caseId',CASE_ID);
+    currentCase = {...payload.case, id:CASE_ID};
+    await idbPut('cases', currentCase);
+    items=[];
+    for(const it of payload.items){ it.caseId=CASE_ID; await idbPut('items', it); items.push(it); }
+    selectedOfficers=new Set(currentCase.officers||[]);
+    fillCaseForm(); renderOfficerChips(); renderAll();
+    toast('นำเข้าข้อมูลสำเร็จ');
+  }catch(err){ toast('ไฟล์ไม่ถูกต้อง'); }
+  e.target.value='';
+};
+
+document.getElementById('mExportCSV').onclick=()=>{
+  let csv='รายการที่,เลขอ้างอิงพัสดุ,ซุกซ่อนใน,ผู้ส่ง,ประเทศปลายทาง,ผู้รับ,น้ำหนัก(กก.),จำนวน,สถานะ,หมายเหตุ\n';
+  items.forEach(i=>{
+    const row=[i.seq,i.packageRef,i.hidden,i.sender,i.country,i.receiver,i.weight,i.count,statusLabel(i.status),i.notes]
+      .map(v=>`"${(v||'').toString().replace(/"/g,'""')}"`).join(',');
+    csv+=row+'\n';
+  });
+  const totalWeight=items.reduce((s,i)=>s+(parseFloat(i.weight)||0),0);
+  csv+=`\n,,,,,,รวมน้ำหนักทั้งสิ้น,"${totalWeight.toFixed(2)} กก.",,\n`;
+  const blob=new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`สรุปน้ำหนัก_${currentCase.caseNo||'case'}.csv`;
+  a.click();
+  toast('ส่งออก CSV เรียบร้อย');
+};
+
+document.getElementById('mCopySummary').onclick=async ()=>{
+  const totalWeight=items.reduce((s,i)=>s+(parseFloat(i.weight)||0),0);
+  const done=items.filter(i=>i.status==='done').length;
+  let text=`สรุปผลการตรวจยึดช่อดอกกัญชา\n`;
+  text+=`สถานที่: ${currentCase.location||'-'}\n`;
+  text+=`วันที่: ${currentCase.date||'-'} เวลา ${currentCase.time||'-'} น.\n`;
+  text+=`จำนวนรายการที่ตรวจสอบทั้งสิ้น ${items.length} รายการ (ตรวจเสร็จแล้ว ${done} รายการ)\n`;
+  text+=`น้ำหนักช่อดอกกัญชาที่ยึดได้ทั้งสิ้น ${totalWeight.toFixed(2)} กิโลกรัม\n`;
+  text+=`นำส่ง: ${currentCase.deliverTo||'-'}\n\n`;
+  text+=`รายละเอียดรายการ:\n`;
+  items.forEach(i=>{
+    text+=`- รายการที่ ${i.seq} เลขที่ใบอ้างอิง ${i.packageRef} มีน้ำหนักรวมทั้งสิ้น ${i.weight? parseFloat(i.weight).toFixed(2):'..........'} กิโลกรัม (ซุกซ่อนในพัสดุที่จัดส่งเป็น ${i.hidden||'-'})\n`;
+  });
+  try{
+    await navigator.clipboard.writeText(text);
+    toast('คัดลอกสรุปผลแล้ว วางในเอกสาร Word ได้เลย');
+  }catch(e){
+    const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    toast('คัดลอกสรุปผลแล้ว');
+  }
+};
+
+async function clearAllItemsInCase(){
+  if(!confirm('ยืนยันลบรายการทั้งหมดในคดีนี้? การกระทำนี้ไม่สามารถย้อนกลับได้')) return;
+  await idbClearByCase('items','caseId',CASE_ID);
+  items=[];
+  renderAll();
+  toast('ล้างรายการทั้งหมดแล้ว');
+}
+document.getElementById('mClearCase').onclick=clearAllItemsInCase;
+document.getElementById('mClearCaseImport').onclick=clearAllItemsInCase;
+
+/* =========================================================
+   PHOTO SUMMARY → PPTX (client-side, via PptxGenJS)
+   Layout inspired by the case's own "ภาพการเข้าตรวจสถานที่" deck:
+   portrait page, large photos, case name + date + page number footer.
+   ========================================================= */
+document.getElementById('mPhotoSummaryPptx').onclick=async ()=>{
+  if(typeof PptxGenJS==='undefined'){
+    toast('ตัวสร้าง PPT ยังโหลดไม่เสร็จ (ต้องมีอินเทอร์เน็ตตอนเปิดหน้านี้ครั้งแรก) ลองใหม่อีกครั้ง');
+    return;
+  }
+  const withPhotos=items.filter(i=>photoCount(i)>0);
+  if(withPhotos.length===0){ toast('ยังไม่มีรูปถ่ายในรายการใดเลย'); return; }
+  toast('กำลังสร้างไฟล์ PPT...');
+
+  const GREEN_900='0F3D2E', GREEN_700='1B6B45', GOLD='A9791F', INK_SOFT='54615B', LINE='DBE6DF', PAPER_TINT='F3FAF6';
+  const pptx=new PptxGenJS();
+  pptx.defineLayout({name:'A4P', width:8.27, height:11.69});
+  pptx.layout='A4P';
+
+  // --- title slide ---
+  let title=pptx.addSlide();
+  title.background={color:GREEN_900};
+  title.addText('สรุปภาพการเข้าตรวจสถานที่', {x:0.5,y:4.2,w:7.27,h:0.9,fontSize:30,bold:true,color:'FFFFFF',fontFace:'Cambria',align:'center'});
+  title.addText(currentCase.caseNo||'-', {x:0.5,y:5.05,w:7.27,h:0.5,fontSize:17,color:'FFFFFF',align:'center',fontFace:'Calibri'});
+  const whenLine=[currentCase.date||'', currentCase.time?('เวลา '+currentCase.time+' น.'):''].filter(Boolean).join(' ');
+  title.addText(whenLine, {x:0.5,y:5.6,w:7.27,h:0.4,fontSize:13,color:'CFE6D9',align:'center',fontFace:'Calibri'});
+  title.addText(currentCase.location||'', {x:0.9,y:6.05,w:6.47,h:0.9,fontSize:12,color:'CFE6D9',align:'center',fontFace:'Calibri'});
+  title.addText(`รวมภาพหลักฐาน ${withPhotos.length} รายการ (จากทั้งหมด ${items.length} รายการ)`, {x:0.5,y:10.9,w:7.27,h:0.4,fontSize:11,color:'CFE6D9',align:'center',fontFace:'Calibri'});
+
+  const stages=[
+    {key:'before', label:'① ก่อนเปิด'},
+    {key:'count',  label:'② นับจำนวน'},
+    {key:'weigh',  label:'③ ชั่งน้ำหนัก'},
+    {key:'sealed', label:'④ บรรจุซอง'}
+  ];
+  const gridTop=1.35, gridLeft=0.5, gridW=7.27, gridH=9.3, gap=0.18;
+  const cellW=(gridW-gap)/2, cellOuterH=(gridH-gap)/2, cellH=cellOuterH-0.3;
+
+  withPhotos.forEach((item, idx)=>{
+    const s=pptx.addSlide();
+    s.background={color:'FFFFFF'};
+    s.addText(`รายการที่ ${item.seq}  •  เลขอ้างอิงพัสดุ ${item.packageRef||'-'}`, {x:0.5,y:0.38,w:5.3,h:0.38,fontSize:15,bold:true,color:GREEN_700,fontFace:'Cambria'});
+    if(item.weight){
+      s.addText(`${parseFloat(item.weight).toFixed(2)} กก.`, {x:5.8,y:0.36,w:1.97,h:0.42,fontSize:15,bold:true,color:GOLD,align:'right',fontFace:'Calibri'});
+    }
+    s.addText(item.hidden||'ยังไม่ระบุรายละเอียด', {x:0.5,y:0.76,w:7.27,h:0.35,fontSize:11,color:INK_SOFT,fontFace:'Calibri'});
+
+    stages.forEach((st,i)=>{
+      const col=i%2, row=Math.floor(i/2);
+      const x=gridLeft+col*(cellW+gap), y=gridTop+row*(cellOuterH+gap);
+      const photo=item.photos[st.key] && item.photos[st.key][0];
+      if(photo){
+        s.addImage({data:photo, x, y, w:cellW, h:cellH, sizing:{type:'contain', w:cellW, h:cellH}});
+      } else {
+        s.addShape('roundRect', {x, y, w:cellW, h:cellH, fill:{color:PAPER_TINT}, line:{color:LINE, width:1}, rectRadius:0.06});
+        s.addText('ไม่มีภาพขั้นตอนนี้', {x, y, w:cellW, h:cellH, align:'center', valign:'middle', fontSize:11, color:INK_SOFT, fontFace:'Calibri'});
+      }
+      s.addText(st.label, {x, y:y+cellH+0.02, w:cellW, h:0.26, align:'center', fontSize:10, color:INK_SOFT, fontFace:'Calibri'});
+    });
+
+    s.addText(`${currentCase.caseNo||''}  •  ${currentCase.date||''}`, {x:0.5,y:10.95,w:5.7,h:0.3,fontSize:9,color:INK_SOFT,fontFace:'Calibri'});
+    s.addText(String(idx+2), {x:7.17,y:10.95,w:0.6,h:0.3,fontSize:9,color:INK_SOFT,align:'right',fontFace:'Calibri'});
+  });
+
+  try{
+    await pptx.writeFile({fileName:`สรุปภาพการเข้าตรวจ_${currentCase.caseNo||'case'}.pptx`});
+    toast('สร้างไฟล์ PPT สำเร็จ ดาวน์โหลดแล้ว');
+  }catch(err){
+    toast('สร้างไฟล์ PPT ไม่สำเร็จ: '+(err && err.message ? err.message : err));
+  }
+};
+
+/* =========================================================
+   EXPORT ALL PHOTOS → ZIP (every photo, every stage — not just the first)
+   Folder per item: "รายการที่_{seq}_{ref}/{stage}_{n}.jpg"
+   ========================================================= */
+document.getElementById('mExportAllPhotosZip').onclick=async ()=>{
+  if(typeof JSZip==='undefined'){
+    toast('ตัวบีบอัดไฟล์ ZIP ยังโหลดไม่เสร็จ (ต้องมีอินเทอร์เน็ตตอนเปิดหน้านี้ครั้งแรก) ลองใหม่อีกครั้ง');
+    return;
+  }
+  const withPhotos=items.filter(i=>photoCount(i)>0);
+  if(withPhotos.length===0){ toast('ยังไม่มีรูปถ่ายในรายการใดเลย'); return; }
+  toast('กำลังรวบรวมรูปทั้งหมด อาจใช้เวลาสักครู่...');
+
+  const stageNames={before:'1_ก่อนเปิด', count:'2_นับจำนวน', weigh:'3_ชั่งน้ำหนัก', sealed:'4_บรรจุซอง'};
+  const zip=new JSZip();
+  let totalPhotos=0;
+
+  withPhotos.forEach(item=>{
+    const folderName=`รายการที่_${item.seq}_${item.packageRef||'ไม่ระบุ'}`;
+    const folder=zip.folder(folderName);
+    Object.keys(stageNames).forEach(stageKey=>{
+      (item.photos[stageKey]||[]).forEach((dataUrl, idx)=>{
+        const base64=dataUrl.split(',')[1];
+        if(!base64) return;
+        folder.file(`${stageNames[stageKey]}_${idx+1}.jpg`, base64, {base64:true});
+        totalPhotos++;
+      });
+    });
+  });
+
+  // include a text summary for reference alongside the photos
+  let infoTxt=`สรุปคดี: ${currentCase.caseNo||'-'}\nวันที่: ${currentCase.date||'-'} เวลา ${currentCase.time||'-'} น.\nสถานที่: ${currentCase.location||'-'}\n\nรายการที่มีรูปภาพทั้งหมด ${withPhotos.length} รายการ รวม ${totalPhotos} รูป\n\n`;
+  withPhotos.forEach(item=>{
+    infoTxt+=`รายการที่ ${item.seq} • เลขอ้างอิง ${item.packageRef} • น้ำหนัก ${item.weight?parseFloat(item.weight).toFixed(2)+' กก.':'-'} • ${photoCount(item)} รูป\n`;
+  });
+  zip.file('สรุปรายการ.txt', infoTxt);
+
+  try{
+    const blob=await zip.generateAsync({type:'blob', compression:'DEFLATE'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`รูปทั้งหมด_${currentCase.caseNo||'case'}.zip`;
+    a.click();
+    toast(`ส่งออกรูปทั้งหมด ${totalPhotos} รูป (${withPhotos.length} รายการ) เรียบร้อย`);
+  }catch(err){
+    toast('ส่งออก ZIP ไม่สำเร็จ: '+(err && err.message ? err.message : err));
+  }
+};
+
+/* =========================================================
+   PRINT EVIDENCE LABELS
+   ========================================================= */
+document.getElementById('mPrintLabels').onclick=()=>{
+  if(items.length===0){ toast('ยังไม่มีรายการให้พิมพ์'); return; }
+  const area=document.getElementById('printArea'); area.innerHTML='';
+  items.forEach(item=>{
+    const photos=[...item.photos.weigh, ...item.photos.count].slice(0,3);
+    const div=document.createElement('div'); div.className='print-label';
+    div.innerHTML=`
+      <div class="pl-tag">ซองที่ ${item.seq} / ${items.length} — วัตถุพยาน/ของกลาง</div>
+      <div class="pl-title">วัตถุต้องสงสัยว่าเป็นช่อดอกกัญชา</div>
+      <div class="pl-weight">น้ำหนัก ${item.weight? parseFloat(item.weight).toFixed(2):'..............'} กิโลกรัม</div>
+      <div class="pl-row"><b>จากหีบห่อที่ซุกซ่อน</b>${item.hidden||'-'}</div>
+      <div class="pl-row"><b>เลขอ้างอิงพัสดุของบริษัทฯ</b>${item.packageRef}</div>
+      <div class="pl-row"><b>สถานที่เก็บวัตถุพยาน</b>${currentCase.location||'-'}</div>
+      <div class="pl-row"><b>วันที่เก็บ</b>${currentCase.date||'-'} เวลา ${currentCase.time||'-'} น.</div>
+      <div class="pl-row"><b>นำส่ง</b>${currentCase.deliverTo||'-'}</div>
+      ${photos.length? `<div class="pl-photos">${photos.map(p=>`<img src="${p}">`).join('')}</div>`:''}
+    `;
+    area.appendChild(div);
+  });
+  setTimeout(()=>window.print(), 150);
+};
+
+init();
+</script>
+</body>
+</html>
