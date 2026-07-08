@@ -367,6 +367,53 @@
             return { weight: 0, needsReview: true, source: 'not found' };
         };
 
+        // The date tracked throughout the app is the REGISTRATION date (when the case/parcel was
+        // logged into the system) — not EDD (Estimated Delivery Date, a future estimate) or any
+        // other date field. Column names below are common variants seen in courier/customs exports.
+        const REG_DATE_COLUMN_NAMES = [
+            'Reg Date', 'Registration Date', 'Register Date', 'Regist Date', 'Registered Date',
+            'Reg. Date', 'RegDate', 'Booking Date', 'วันที่ลงทะเบียน', 'วันลงทะเบียน'
+        ];
+
+        // Normalizes whatever the source file gives us (Excel serial number, JS Date object, or a
+        // string in various formats) into a consistent 'YYYY-MM-DD' string, since every date-based
+        // feature in the app (filtering, monthly charts, burst/pattern detection, sorting) compares
+        // dates as strings.
+        const normalizeDateValue = (val) => {
+            if (val === undefined || val === null || val === '') return '';
+            if (val instanceof Date && !isNaN(val)) return val.toISOString().slice(0, 10);
+            if (typeof val === 'number') {
+                // Excel serial date (days since 1899-12-30)
+                const d = new Date(Date.UTC(1899, 11, 30) + val * 86400000);
+                if (!isNaN(d)) return d.toISOString().slice(0, 10);
+            }
+            const s = String(val).trim();
+            const isoMatch = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+            if (isoMatch) return `${isoMatch[1]}-${isoMatch[2].padStart(2, '0')}-${isoMatch[3].padStart(2, '0')}`;
+            const slashMatch = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);
+            if (slashMatch) {
+                // Assume DD/MM/YYYY (Thai convention) rather than US MM/DD/YYYY
+                const [, day, month, year] = slashMatch;
+                return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            }
+            const parsed = new Date(s);
+            if (!isNaN(parsed)) return parsed.toISOString().slice(0, 10);
+            return s; // couldn't confidently parse — keep the raw value rather than silently dropping it
+        };
+
+        // Returns the registration date for a row — checking known column names first, and only
+        // falling back to other date-ish columns (EDD/Date/Shipment Date) if no registration date
+        // column exists at all. Returns '' (not a fabricated date) if nothing usable is found, so the
+        // case shows up correctly under "วันที่ไม่ระบุ" in the data-quality check instead of being
+        // silently assigned a fake date.
+        const getRegistrationDate = (row) => {
+            for (const col of REG_DATE_COLUMN_NAMES) {
+                if (row[col] !== undefined && row[col] !== '') return normalizeDateValue(row[col]);
+            }
+            const fallback = row['EDD'] || row['Date'] || row['Shipment Date'];
+            return fallback ? normalizeDateValue(fallback) : '';
+        };
+
         // PIN is stored as a SHA-256 hash rather than plaintext so it isn't visible at a glance via
         // view-source. Note: this is still a client-side-only gate, not real access control — anyone
         // with dev tools can bypass it. For genuinely sensitive data, a server-side login is needed.
@@ -527,7 +574,7 @@
                         </div>
                         <div className="p-6 grid grid-cols-2 gap-5 max-h-[70vh] overflow-y-auto bg-slate-50">
                             <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">HWB No</label><input type="text" value={formData.hwb} className="w-full p-2 bg-slate-100 border border-slate-200 rounded text-slate-500 text-sm cursor-not-allowed" readOnly /></div>
-                            <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Date</label><input type="text" name="date" value={formData.date} onChange={handleChange} className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:border-brand-500 outline-none" /></div>
+                            <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">วันที่ลงทะเบียน (Registration Date)</label><input type="text" name="date" value={formData.date} onChange={handleChange} placeholder="YYYY-MM-DD" className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:border-brand-500 outline-none" /></div>
                             
                             <div className="col-span-2 pt-2 border-t border-slate-200"><span className="text-xs font-bold text-brand-600 uppercase tracking-wider">ข้อมูลผู้ส่ง (Shipper)</span></div>
                             <div><label className="text-xs text-slate-500 block mb-1">Name</label><input type="text" name="shipper" value={formData.shipper} onChange={handleChange} className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:border-brand-500 outline-none" /></div>
@@ -1292,17 +1339,30 @@
 
             const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } = window.Recharts || {};
 
-            // Global date-range filter. Returns the SAME object references (not copies) so that
-            // components can still resolve an item's true index in the original `data` array
-            // via indexOf — needed for editing/deleting to keep working correctly while filtered.
+            // Global date-range filter + chronological sort. Registration date is the foundation the
+            // whole app is organized around, so every downstream list/table/report (Case Data, Origin/
+            // Dest Intel reports, etc.) inherits newest-first ordering from here rather than each
+            // component re-sorting independently. Still returns the SAME object references (not
+            // copies) so components can resolve an item's true index in the original `data` array via
+            // indexOf — needed for editing/deleting to keep working correctly while filtered/sorted.
             const filteredData = useMemo(() => {
-                if (!dateRange.start && !dateRange.end) return data || [];
-                return (data || []).filter(d => {
-                    const dt = (d.date || '').toString().split(' ')[0];
-                    if (!dt) return false;
-                    if (dateRange.start && dt < dateRange.start) return false;
-                    if (dateRange.end && dt > dateRange.end) return false;
-                    return true;
+                let result = data || [];
+                if (dateRange.start || dateRange.end) {
+                    result = result.filter(d => {
+                        const dt = (d.date || '').toString().split(' ')[0];
+                        if (!dt) return false;
+                        if (dateRange.start && dt < dateRange.start) return false;
+                        if (dateRange.end && dt > dateRange.end) return false;
+                        return true;
+                    });
+                }
+                return [...result].sort((a, b) => {
+                    const da = (a.date || '').toString().split(' ')[0];
+                    const db = (b.date || '').toString().split(' ')[0];
+                    if (!da && !db) return 0;
+                    if (!da) return 1;   // cases with no date sink to the bottom, not the top
+                    if (!db) return -1;
+                    return db.localeCompare(da); // descending — newest registration first
                 });
             }, [data, dateRange]);
 
@@ -1643,12 +1703,7 @@
             // courier-export column names) into our internal case shape, then merges (upsert by HWB).
             const processRows = (rawRows, fileName) => {
                 const newDocs = (rawRows || []).map(row => {
-                    let dateVal = row['EDD'] || row['Date'] || row['Shipment Date'];
-                    if (!dateVal) {
-                         const months = ['2025-10-15', '2025-11-15', '2025-12-15', '2026-01-15'];
-                         const idx = (row['HWB No'] || Math.random()).toString().charCodeAt(0) % 4;
-                         dateVal = months[idx];
-                    }
+                    const dateVal = getRegistrationDate(row);
                     const w = getWeight(row);
                     const [oLat, oLng] = lookupProvinceCoords(row['Shpr City'] || row['Shpr Province']);
                     const [dLat, dLng] = lookupCountryCoords(row['Dest Ctry']);
@@ -1708,7 +1763,7 @@
                 const reader = new FileReader();
                 reader.onload = (evt) => {
                     try {
-                        const wb = XLSX.read(evt.target.result, { type: 'array' });
+                        const wb = XLSX.read(evt.target.result, { type: 'array', cellDates: true });
                         const firstSheet = wb.Sheets[wb.SheetNames[0]];
                         const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
                         processRows(rows, file.name);
