@@ -136,6 +136,7 @@
         ];
 
         // --- Dictionaries ---
+        const THAI_MONTHS_ABBR = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
         const PROVINCE_COORDS = { 'BANGKOK': [13.7563, 100.5018], 'SAMUTPRAKARN': [13.5991, 100.5968], 'SAMUT PRAKAN': [13.5991, 100.5968], 'SURAT THANI': [9.1386, 99.3304], 'SURATTHANI': [9.1386, 99.3304], 'PATHUMTHANI': [14.0208, 100.5250], 'PATHUM THANI': [14.0208, 100.5250], 'CHIANG MAI': [18.7883, 98.9853], 'NONTHABURI': [13.8591, 100.5217], 'PHUKET': [7.8804, 98.3923], 'CHONBURI': [13.3611, 100.9847], 'UDON THANI': [17.415, 102.786] };
         const COUNTRY_COORDS = { 'GB': [54.0000, -2.0000], 'JP': [36.2048, 138.2529], 'BE': [50.5039, 4.4699], 'MU': [-20.3484, 57.5522], 'DE': [51.1657, 10.4515], 'US': [37.0902, -95.7129], 'AU': [-25.2744, 133.7751], 'FR': [46.2276, 2.2137], 'NL': [52.1326, 5.2913], 'KR': [35.9078, 127.7669] };
 
@@ -235,16 +236,46 @@
             );
         };
 
+        // Known column-name variants used by different courier CSV exports (DHL, Kerry, Flash, EMS, ฯลฯ)
+        const WEIGHT_COLUMN_NAMES = [
+            'Weight', 'Shp Weight', 'Weight (KG)', 'Weight(KG)', 'Weight (Kg)', 'Gross Weight',
+            'GROSS WEIGHT', 'Net Weight', 'NET WEIGHT', 'Shipment Weight', 'Item Weight',
+            'Chargeable Weight', 'น้ำหนัก', 'น้ำหนัก (Kg)', 'น้ำหนักรวม'
+        ];
+
+        // Returns { weight, needsReview, source } — needsReview flags rows where we had to guess,
+        // so a human can double-check before the number is trusted in any total.
         const getWeight = (row) => {
-            // Priority: Index 7 (Column H) -> 'Weight' -> 'Shp Weight'
+            // 1. Try known column names first (most reliable — order-independent)
+            for (const colName of WEIGHT_COLUMN_NAMES) {
+                if (row[colName] !== undefined && row[colName] !== '' && !isNaN(parseFloat(row[colName]))) {
+                    return { weight: parseFloat(row[colName]), needsReview: false, source: colName };
+                }
+            }
+            // 2. Fallback: scan every column for one that looks numeric AND has a weight-ish header
+            const keys = Object.keys(row);
+            for (const k of keys) {
+                const kLower = k.toLowerCase();
+                if ((kLower.includes('weight') || kLower.includes('น้ำหนัก') || kLower.includes('kg')) && !isNaN(parseFloat(row[k])) && row[k] !== '') {
+                    return { weight: parseFloat(row[k]), needsReview: false, source: k };
+                }
+            }
+            // 3. Last resort: positional guess at column index 7 — UNRELIABLE, always flagged for manual review
             const values = Object.values(row);
             if (values.length > 7) {
                 const val = parseFloat(values[7]);
-                if (!isNaN(val)) return val;
+                if (!isNaN(val)) return { weight: val, needsReview: true, source: 'column index 7 (guessed)' };
             }
-            if (row['Weight'] && !isNaN(parseFloat(row['Weight']))) return parseFloat(row['Weight']);
-            if (row['Shp Weight'] && !isNaN(parseFloat(row['Shp Weight']))) return parseFloat(row['Shp Weight']);
-            return 0;
+            return { weight: 0, needsReview: true, source: 'not found' };
+        };
+
+        // PIN is stored as a SHA-256 hash rather than plaintext so it isn't visible at a glance via
+        // view-source. Note: this is still a client-side-only gate, not real access control — anyone
+        // with dev tools can bypass it. For genuinely sensitive data, a server-side login is needed.
+        const PIN_HASH = '17b1eb8cbf7c69856b6f9b29670a7aeb141d9329c9915b23e89c98d66d764f48';
+        const sha256Hex = async (text) => {
+            const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
         };
 
         const openGoogleMaps = (lat, lng, query) => {
@@ -255,10 +286,11 @@
             window.open(url, '_blank');
         };
 
-        const CaseDataTable = ({ data, onEdit }) => {
+        const CaseDataTable = ({ data, onEdit, onDelete }) => {
             const [search, setSearch] = useState('');
             const [originCitySearch, setOriginCitySearch] = useState('');
             const [destCitySearch, setDestCitySearch] = useState('');
+            const [reviewOnly, setReviewOnly] = useState(false);
 
             const filteredData = (data || []).filter(item => {
                 const s = (search || '').toLowerCase();
@@ -268,13 +300,14 @@
                     (item.receiver || '').toLowerCase().includes(s);
                 const originMatch = (item.shipperCity || '').toLowerCase().includes((originCitySearch || '').toLowerCase());
                 const destMatch = (item.receiverCity || '').toLowerCase().includes((destCitySearch || '').toLowerCase());
-                return globalMatch && originMatch && destMatch;
+                const reviewMatch = !reviewOnly || item.needsReview;
+                return globalMatch && originMatch && destMatch && reviewMatch;
             });
 
             return (
                 <div className="bg-white rounded-xl shadow-soft border border-slate-200 overflow-hidden">
                     <div className="p-5 border-b border-slate-200 bg-slate-50">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                             <div className="relative">
                                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><Icons.Search/></span>
                                 <input type="text" placeholder="ค้นหา HWB, ผู้ส่ง, ผู้รับ..." className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none transition bg-white" value={search} onChange={e => setSearch(e.target.value)} />
@@ -282,12 +315,16 @@
                             <input type="text" placeholder="กรองเมืองต้นทาง..." className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none transition bg-white" value={originCitySearch} onChange={e => setOriginCitySearch(e.target.value)} />
                             <input type="text" placeholder="กรองเมืองปลายทาง..." className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none transition bg-white" value={destCitySearch} onChange={e => setDestCitySearch(e.target.value)} />
                         </div>
+                        <label className="inline-flex items-center text-xs font-bold text-rose-600 cursor-pointer select-none">
+                            <input type="checkbox" checked={reviewOnly} onChange={e => setReviewOnly(e.target.checked)} className="mr-2 accent-rose-600" />
+                            แสดงเฉพาะเคสที่น้ำหนักต้องตรวจสอบ ({(data || []).filter(d => d.needsReview).length})
+                        </label>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead className="bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    <th className="custom-table th w-16 text-center">แก้ไข</th>
+                                    <th className="custom-table th w-24 text-center">จัดการ</th>
                                     <th className="custom-table th">HWB / วันที่</th>
                                     <th className="custom-table th">ผู้ส่ง (Shipper)</th>
                                     <th className="custom-table th">ผู้รับ (Receiver)</th>
@@ -297,9 +334,12 @@
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {filteredData.map((row, idx) => (
-                                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                    <tr key={idx} className={`hover:bg-slate-50 transition-colors ${row.needsReview ? 'bg-rose-50/40' : ''}`}>
                                         <td className="custom-table td text-center">
-                                            <button onClick={() => onEdit(data.indexOf(row))} className="text-brand-600 hover:text-brand-800 hover:bg-brand-50 p-1.5 rounded-md transition"><Icons.Edit /></button>
+                                            <div className="flex justify-center gap-1">
+                                                <button onClick={() => onEdit(data.indexOf(row))} className="text-brand-600 hover:text-brand-800 hover:bg-brand-50 p-1.5 rounded-md transition" title="แก้ไข"><Icons.Edit /></button>
+                                                <button onClick={() => { if (window.confirm(`ยืนยันลบเคส HWB ${row.hwb}?`)) onDelete(data.indexOf(row)); }} className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 rounded-md transition" title="ลบ"><Icons.Close /></button>
+                                            </div>
                                         </td>
                                         <td className="custom-table td">
                                             <div className="font-mono font-bold text-brand-900">{row.hwb}</div>
@@ -317,6 +357,7 @@
                                             <span className="inline-block px-2 py-0.5 rounded-md text-sm font-bold bg-rose-50 text-rose-600 border border-rose-100">
                                                 {parseFloat(row.weight || 0).toFixed(2)}
                                             </span>
+                                            {row.needsReview && <div className="text-[0.65rem] font-bold text-rose-500 mt-1" title={row.weightSource || ''}>⚠ ตรวจสอบน้ำหนัก</div>}
                                         </td>
                                         <td className="custom-table td text-center">
                                             <div className="flex justify-center gap-2">
@@ -465,6 +506,7 @@
             const [selectedProvince, setSelectedProvince] = useState('ALL');
             const [selectedCountry, setSelectedCountry] = useState('ALL');
             const [editingIndex, setEditingIndex] = useState(null);
+            const [uploadSummary, setUploadSummary] = useState(null);
             const contentRef = useRef(null);
 
             const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } = window.Recharts || {};
@@ -474,12 +516,22 @@
                 const totalWeight = (data || []).reduce((acc, curr) => acc + parseFloat(curr.weight || 0), 0);
                 const groupBy = (keyFn) => (data || []).reduce((acc, curr) => { const k = keyFn(curr); if (!acc[k]) acc[k] = { name: k, count: 0, weight: 0 }; acc[k].count += 1; acc[k].weight += parseFloat(curr.weight || 0); return acc; }, {});
                 
-                // 1. Monthly (Oct - Jan) - Summing Weights
-                const monthMap = { '2025-10': 'ต.ค. 68', '2025-11': 'พ.ย. 68', '2025-12': 'ธ.ค. 68', '2026-01': 'ม.ค. 69' };
+                // 1. Monthly — range is derived dynamically from the data's own date span,
+                // so it keeps working correctly as new months/years are added (previously hardcoded to Oct-Jan only).
                 const byMonthObj = groupBy(curr => curr.date ? curr.date.substring(0, 7) : 'Unknown');
-                const orderedMonths = ['2025-10', '2025-11', '2025-12', '2026-01'];
+                const validMonthKeys = Object.keys(byMonthObj).filter(k => /^\d{4}-\d{2}$/.test(k)).sort();
+                let orderedMonths = [];
+                if (validMonthKeys.length > 0) {
+                    let [y, m] = validMonthKeys[0].split('-').map(Number);
+                    const [ey, em] = validMonthKeys[validMonthKeys.length - 1].split('-').map(Number);
+                    while (y < ey || (y === ey && m <= em)) {
+                        orderedMonths.push(`${y}-${String(m).padStart(2, '0')}`);
+                        m++; if (m > 12) { m = 1; y++; }
+                    }
+                }
+                const monthLabel = (key) => { const [y, m] = key.split('-').map(Number); return `${THAI_MONTHS_ABBR[m - 1]} ${String(y + 543).slice(-2)}`; };
                 const chartData = orderedMonths.map(key => ({
-                    name: monthMap[key] || key,
+                    name: monthLabel(key),
                     weight: byMonthObj[key] ? byMonthObj[key].weight : 0,
                     count: byMonthObj[key] ? byMonthObj[key].count : 0
                 }));
@@ -499,7 +551,8 @@
                 const byTypeObj = groupBy(curr => { const desc = (curr.desc || '').toLowerCase(); if (desc.includes('tea')||desc.includes('food')) return 'Tea/Food'; if (desc.includes('cosmetic')||desc.includes('cream')) return 'Cosmetics'; if (desc.includes('toy')||desc.includes('gift')) return 'Toys/Gifts'; return 'Others'; });
                 const byTypeData = Object.keys(byTypeObj).map(k => ({ name: k, value: byTypeObj[k].count }));
 
-                return { totalShipments, totalWeight: totalWeight.toFixed(2), chartData, topDestData, topOriginData, provinceMapData, countryMapData, byTypeData, provincesList: ['ALL', ...Object.keys(byProvinceObj).sort()], countriesList: ['ALL', ...Object.keys(byCountryObj).sort()], topCountryCode: topDestData[0]?.name || '-' };
+                const needsReviewCount = (data || []).filter(d => d.needsReview).length;
+                return { totalShipments, totalWeight: totalWeight.toFixed(2), chartData, topDestData, topOriginData, provinceMapData, countryMapData, byTypeData, provincesList: ['ALL', ...Object.keys(byProvinceObj).sort()], countriesList: ['ALL', ...Object.keys(byCountryObj).sort()], topCountryCode: topDestData[0]?.name || '-', needsReviewCount };
             }, [data]);
 
             const originReportData = useMemo(() => {
@@ -528,10 +581,10 @@
                                      const idx = (row['HWB No'] || Math.random()).toString().charCodeAt(0) % 4;
                                      dateVal = months[idx];
                                 }
-                                
+                                const w = getWeight(row);
                                 return {
                                     hwb: row['HWB No'], origin: row['Orig Ctry']||'TH', dest: row['Dest Ctry'],
-                                    weight: getWeight(row), desc: row['Description'],
+                                    weight: w.weight, needsReview: w.needsReview, weightSource: w.source, desc: row['Description'],
                                     shipperCity: row['Shpr City']||row['Shpr Province']||'Unknown',
                                     shipper: row['Shipper Name']||row['Shipper']||'Unknown',
                                     shipperAddr: [row['Shpr Addr 1'], row['Shpr Addr 2'], row['Shpr City']].filter(Boolean).join(', '),
@@ -541,10 +594,81 @@
                                     date: dateVal
                                 };
                             }).filter(r => r.hwb);
-                            setData(newDocs); setFileStatus({ loaded: true });
+
+                            // MERGE (upsert by HWB) instead of replacing the whole dataset.
+                            // This is the fix for "รวมน้ำหนักไม่ได้": every previous upload used to be wiped out here.
+                            setData(prevData => {
+                                const merged = [...prevData];
+                                const indexByHwb = new Map(merged.map((r, i) => [String(r.hwb).trim(), i]));
+                                let added = 0, updated = 0;
+                                newDocs.forEach(doc => {
+                                    const key = String(doc.hwb).trim();
+                                    if (indexByHwb.has(key)) {
+                                        // Same HWB already in the system — update the existing case instead of
+                                        // adding it again (prevents double-counting its weight in any total).
+                                        merged[indexByHwb.get(key)] = { ...merged[indexByHwb.get(key)], ...doc };
+                                        updated++;
+                                    } else {
+                                        merged.push(doc);
+                                        indexByHwb.set(key, merged.length - 1);
+                                        added++;
+                                    }
+                                });
+                                const flagged = newDocs.filter(d => d.needsReview).length;
+                                setUploadSummary({ added, updated, total: newDocs.length, flagged, fileName: file.name });
+                                return merged;
+                            });
+                            setFileStatus({ loaded: true });
+                            e.target.value = ''; // allow re-selecting the same file later
                         }
                     });
                 }
+            };
+
+            const clearAllData = () => {
+                if (window.confirm('ยืนยันลบข้อมูลทั้งหมดในระบบ? การกระทำนี้ไม่สามารถย้อนกลับได้ (แนะนำให้ Export JSON สำรองไว้ก่อน)')) {
+                    setData([]);
+                    setFileStatus({ loaded: false });
+                    setUploadSummary(null);
+                }
+            };
+
+            const exportJSON = () => {
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const ts = new Date().toISOString().slice(0,10);
+                a.href = url; a.download = `CIU_backup_${ts}.json`; a.click();
+                URL.revokeObjectURL(url);
+            };
+
+            const exportCSV = () => {
+                const csv = Papa.unparse(data || []);
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const ts = new Date().toISOString().slice(0,10);
+                a.href = url; a.download = `CIU_case_data_${ts}.csv`; a.click();
+                URL.revokeObjectURL(url);
+            };
+
+            const importJSONBackup = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const restored = JSON.parse(evt.target.result);
+                        if (!Array.isArray(restored)) throw new Error('Invalid backup format');
+                        setData(restored);
+                        setFileStatus({ loaded: true });
+                        setUploadSummary({ added: restored.length, updated: 0, total: restored.length, flagged: restored.filter(d => d.needsReview).length, fileName: file.name, isRestore: true });
+                    } catch (err) {
+                        alert('ไม่สามารถโหลดไฟล์สำรองนี้ได้ กรุณาตรวจสอบว่าเป็นไฟล์ JSON ที่ Export จากระบบนี้');
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = '';
             };
 
             const exportToPDF = () => {
@@ -568,7 +692,7 @@
                             <h2 className="text-2xl font-extrabold text-brand-900 text-center">Secure Access</h2>
                             <p className="text-xs text-slate-500 mt-2 uppercase tracking-widest font-semibold">Cannabis Smuggling Data System</p>
                         </div>
-                        <form onSubmit={(e) => { e.preventDefault(); const p = e.target.password.value; if(p==='24689') setIsLoggedIn(true); else alert('Access Denied'); }} className="space-y-6">
+                        <form onSubmit={async (e) => { e.preventDefault(); const p = e.target.password.value; const hash = await sha256Hex(p); if (hash === PIN_HASH) setIsLoggedIn(true); else alert('Access Denied'); }} className="space-y-6">
                             <div className="relative"><span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><Icons.Lock/></span><input type="password" name="password" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none transition text-slate-900" placeholder="Enter PIN Code" /></div>
                             <button className="w-full bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-brand-500/30 transition-all transform hover:-translate-y-0.5">Authenticate</button>
                         </form>
@@ -587,7 +711,7 @@
                                     <div className="p-2.5 bg-white/10 rounded-xl backdrop-blur-sm border border-white/10 shadow-sm"><Icons.Shield /></div>
                                     <div>
                                         <h1 className="text-xl font-bold leading-tight tracking-tight text-white">ระบบข้อมูลการลักลอบส่งออกช่อดอกกัญชา <span className="opacity-90 font-semibold text-lg block mt-0.5">จากจังหวัดสมุทรปราการ ผ่าน ขนส่งเอกชน</span></h1>
-                                        <p className="text-xs text-white/80 mt-1 font-medium">พัฒนาโดย ภก.จีรภัทร พลายงาม | <span className="font-bold text-brand-100">Version Professional Blue (28 ม.ค. 2026)</span></p>
+                                        <p className="text-xs text-white/80 mt-1 font-medium">พัฒนาโดย ภก.จีรภัทร พลายงาม | <span className="font-bold text-brand-100">Version Professional Blue v2.0 (8 ก.ค. 2026) — Data Integrity Update</span></p>
                                     </div>
                                 </div>
                                 <div className="flex gap-3">
@@ -606,17 +730,43 @@
                         </div>
                     </header>
                     <main className="container mx-auto p-8 flex-1" ref={contentRef}>
-                        {!fileStatus.loaded && <div className="mb-8 p-4 bg-white border border-slate-200 rounded-xl shadow-sm flex justify-between items-center"><div className="flex items-center text-slate-700 text-sm"><span className="text-amber-500 mr-2"><Icons.AlertTriangle /></span> <span className="font-medium">System is running with sample data. Upload CSV for real-time analysis.</span></div><label className="cursor-pointer px-5 py-2.5 bg-brand-900 text-white text-xs font-bold uppercase rounded-lg hover:bg-brand-800 transition flex items-center shadow-sm"><Icons.Upload /><span className="ml-2">Upload Data</span><input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} /></label></div>}
+                        <div className="mb-6 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                                <div className="flex items-center text-slate-700 text-sm">
+                                    <span className="text-amber-500 mr-2"><Icons.AlertTriangle /></span>
+                                    <span className="font-medium">{fileStatus.loaded ? `กำลังใช้งานข้อมูลจริง (${data.length} เคส) — อัปโหลดไฟล์ใหม่จะ "รวม" เข้ากับข้อมูลเดิมโดยอัตโนมัติ (ไม่ทับ)` : 'System is running with sample data. Upload CSV for real-time analysis.'}</span>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    <label className="cursor-pointer px-4 py-2 bg-brand-900 text-white text-xs font-bold uppercase rounded-lg hover:bg-brand-800 transition flex items-center shadow-sm"><Icons.Upload /><span className="ml-2">อัปโหลด CSV (รวมข้อมูล)</span><input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} /></label>
+                                    <label className="cursor-pointer px-4 py-2 bg-white text-slate-700 border border-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-slate-50 transition flex items-center shadow-sm"><span className="mr-2">📂</span>โหลดไฟล์สำรอง (JSON)<input type="file" accept=".json" className="hidden" onChange={importJSONBackup} /></label>
+                                    <button onClick={exportJSON} className="px-4 py-2 bg-white text-slate-700 border border-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-slate-50 transition flex items-center shadow-sm"><span className="mr-2">💾</span>สำรองข้อมูล (JSON)</button>
+                                    <button onClick={exportCSV} className="px-4 py-2 bg-white text-slate-700 border border-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-slate-50 transition flex items-center shadow-sm"><span className="mr-2">📄</span>Export CSV</button>
+                                    <button onClick={clearAllData} className="px-4 py-2 bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold uppercase rounded-lg hover:bg-rose-100 transition flex items-center shadow-sm">ล้างข้อมูลทั้งหมด</button>
+                                </div>
+                            </div>
+                            {uploadSummary && (
+                                <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 flex justify-between items-center">
+                                    <span className="font-medium">
+                                        {uploadSummary.isRestore
+                                            ? `โหลดไฟล์สำรอง "${uploadSummary.fileName}" สำเร็จ — คืนค่าข้อมูล ${uploadSummary.total} เคส`
+                                            : `นำเข้า "${uploadSummary.fileName}" สำเร็จ — เพิ่มใหม่ ${uploadSummary.added} เคส, อัปเดตเคสซ้ำ (HWB เดิม) ${uploadSummary.updated} เคส`}
+                                        {uploadSummary.flagged > 0 && <span className="text-rose-600 font-bold"> · มี {uploadSummary.flagged} เคสที่ดึงน้ำหนักไม่ชัดเจน ควรตรวจสอบในแท็บ "จัดการข้อมูลรายเคส"</span>}
+                                    </span>
+                                    <button onClick={() => setUploadSummary(null)} className="text-emerald-600 hover:text-emerald-800 ml-3"><Icons.Close/></button>
+                                </div>
+                            )}
+                        </div>
                         
                         {activeTab === 'dashboard' && window.Recharts && (
                             <div className="space-y-10 animate-fade-in">
                                 <InfographicBanner />
                                 <SectionHeader number="01" title="Key Performance Indicators (ตัวชี้วัดสำคัญ)" />
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                                     <KPICard title="Total Seizures" value={stats.totalShipments} unit="Cases Detected" icon={<Icons.Search />} color="indigo" />
                                     <KPICard title="Total Weight" value={stats.totalWeight} unit="Kilograms (Kg)" icon={<Icons.TrendingUp />} color="emerald" />
                                     <KPICard title="High Risk Dest" value={stats.topCountryCode} unit="Country Code" icon={<Icons.AlertTriangle />} color="rose" />
                                     <KPICard title="Top Concealment" value="Tea / Food" unit="Declared Item" icon={<Icons.FileText />} color="amber" />
+                                    <KPICard title="Needs Review" value={stats.needsReviewCount} unit="น้ำหนักไม่ชัดเจน ควรตรวจสอบ" icon={<Icons.AlertTriangle />} color={stats.needsReviewCount > 0 ? "rose" : "indigo"} />
                                 </div>
                                 <SectionHeader number="02" title="Analysis: Weight & Trends" />
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -652,7 +802,7 @@
                         )}
 
                         {activeTab === 'case_data' && (
-                            <div className="space-y-6 animate-fade-in"><SectionHeader number="02" title="Case Data Management" /><CaseDataTable data={data} onEdit={setEditingIndex} /></div>
+                            <div className="space-y-6 animate-fade-in"><SectionHeader number="02" title="Case Data Management" /><CaseDataTable data={data} onEdit={setEditingIndex} onDelete={(idx) => { const newData = [...data]; newData.splice(idx, 1); setData(newData); }} /></div>
                         )}
 
                         {activeTab === 'origin_report' && (
