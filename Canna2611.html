@@ -454,53 +454,119 @@
             </div>
         );
 
-        const TopEntityTable = ({ title, subtitle, rows, accent, role }) => {
+        const TopEntityTable = ({ title, subtitle, entities, accent, role }) => {
+            const [sortMode, setSortMode] = useState('weight'); // 'weight' | 'count'
+            const [expanded, setExpanded] = useState(new Set());
+            const toggleExpand = (name) => setExpanded(prev => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n; });
+
             const accentMap = {
                 rose: { border: 'border-rose-500', badge: 'bg-rose-50 text-rose-600 border-rose-100', rank: 'bg-rose-600' },
                 brand: { border: 'border-brand-600', badge: 'bg-brand-50 text-brand-600 border-brand-100', rank: 'bg-brand-600' },
             };
             const theme = accentMap[accent] || accentMap.brand;
+
+            const rows = [...(entities || [])]
+                .sort((a, b) => sortMode === 'weight' ? (b.weight - a.weight) : (b.count - a.count))
+                .slice(0, 20);
+
             return (
                 <div className="bg-white p-6 rounded-xl shadow-soft border border-slate-200">
-                    <h3 className={`text-sm font-bold text-brand-800 mb-1 uppercase tracking-wider pl-3 border-l-4 ${theme.border}`}>{title}</h3>
-                    <p className="text-xs text-slate-400 pl-3 mb-4">{subtitle}</p>
-                    <div className="overflow-x-auto max-h-[32rem] overflow-y-auto rounded-lg border border-slate-100">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                        <div>
+                            <h3 className={`text-sm font-bold text-brand-800 uppercase tracking-wider pl-3 border-l-4 ${theme.border}`}>{title}</h3>
+                            <p className="text-xs text-slate-400 pl-3 mt-1">{subtitle}</p>
+                        </div>
+                        <div className="flex bg-slate-100 rounded-lg p-1 text-xs font-bold shrink-0">
+                            <button onClick={() => setSortMode('weight')} className={`px-3 py-1.5 rounded-md transition ${sortMode === 'weight' ? 'bg-white shadow-sm text-brand-700' : 'text-slate-500 hover:text-slate-700'}`}>เรียงตามน้ำหนัก</button>
+                            <button onClick={() => setSortMode('count')} className={`px-3 py-1.5 rounded-md transition ${sortMode === 'count' ? 'bg-white shadow-sm text-brand-700' : 'text-slate-500 hover:text-slate-700'}`}>เรียงตามจำนวนเคส</button>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto max-h-[36rem] overflow-y-auto rounded-lg border border-slate-100">
                         <table className="w-full text-left">
-                            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                                 <tr>
                                     <th className="custom-table th w-10 text-center">#</th>
                                     <th className="custom-table th">{role === 'sender' ? 'ผู้ส่ง (Shipper)' : 'ผู้รับ (Receiver)'}</th>
                                     <th className="custom-table th text-center">เคส</th>
                                     <th className="custom-table th text-right">น้ำหนักรวม (Kg)</th>
-                                    <th className="custom-table th">ที่อยู่ล่าสุด</th>
+                                    <th className="custom-table th">ที่อยู่ล่าสุด (คลิกเพื่อดูพิกัด)</th>
                                     <th className="custom-table th text-center">พิกัด</th>
+                                    <th className="custom-table th w-10 text-center"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {(rows || []).map((r, i) => (
-                                    <tr key={r.name + i} className="hover:bg-slate-50">
-                                        <td className="custom-table td text-center">
-                                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-bold ${i < 3 ? theme.rank : 'bg-slate-300'}`}>{i + 1}</span>
-                                        </td>
-                                        <td className="custom-table td font-medium text-slate-700">
-                                            {r.name}
-                                            <div className="text-xs text-slate-400">{r.city}</div>
-                                        </td>
-                                        <td className="custom-table td text-center text-slate-600">{r.count}</td>
-                                        <td className="custom-table td text-right">
-                                            <span className={`inline-block px-2 py-0.5 rounded-md text-sm font-bold border ${theme.badge}`}>{r.weight.toFixed(2)}</span>
-                                        </td>
-                                        <td className="custom-table td text-xs text-slate-500 max-w-[14rem] truncate" title={r.addr}>{r.addr || '-'}</td>
-                                        <td className="custom-table td text-center">
-                                            {r.lat && r.lng ? (
-                                                <button onClick={() => openGoogleMaps(r.lat, r.lng, r.addr || r.city)} className="flex items-center px-2 py-1 mx-auto bg-white text-slate-600 rounded text-xs font-bold hover:bg-slate-100 transition border border-slate-200" title="เปิดพิกัดใน Google Maps">
-                                                    <span className="mr-1 text-brand-500"><Icons.MapPin/></span> ดูพิกัด
-                                                </button>
-                                            ) : <span className="text-xs text-slate-300 italic">ไม่มีพิกัด</span>}
-                                        </td>
-                                    </tr>
+                                {rows.map((r, i) => (
+                                    <React.Fragment key={r.name + i}>
+                                        <tr className="hover:bg-slate-50">
+                                            <td className="custom-table td text-center">
+                                                <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-bold ${i < 3 ? theme.rank : 'bg-slate-300'}`}>{i + 1}</span>
+                                            </td>
+                                            <td className="custom-table td font-medium text-slate-700">
+                                                {r.name}
+                                                <div className="text-xs text-slate-400">{r.city}</div>
+                                            </td>
+                                            <td className="custom-table td text-center text-slate-600">{r.count}</td>
+                                            <td className="custom-table td text-right">
+                                                <span className={`inline-block px-2 py-0.5 rounded-md text-sm font-bold border ${theme.badge}`}>{r.weight.toFixed(2)}</span>
+                                            </td>
+                                            <td className="custom-table td text-xs text-slate-500 max-w-[16rem]" title={r.addr}>
+                                                {r.lat && r.lng ? (
+                                                    <button onClick={() => openGoogleMaps(r.lat, r.lng, r.addr || r.city)} className="text-left hover:text-brand-600 hover:underline transition">{r.addr || '-'}</button>
+                                                ) : (r.addr || '-')}
+                                            </td>
+                                            <td className="custom-table td text-center">
+                                                {r.lat && r.lng ? (
+                                                    <button onClick={() => openGoogleMaps(r.lat, r.lng, r.addr || r.city)} className="flex items-center px-2 py-1 mx-auto bg-white text-slate-600 rounded text-xs font-bold hover:bg-slate-100 transition border border-slate-200" title="เปิดพิกัดใน Google Maps">
+                                                        <span className="mr-1 text-brand-500"><Icons.MapPin/></span> ดูพิกัด
+                                                    </button>
+                                                ) : <span className="text-xs text-slate-300 italic">ไม่มีพิกัด</span>}
+                                            </td>
+                                            <td className="custom-table td text-center">
+                                                {r.cases.length > 1 && (
+                                                    <button onClick={() => toggleExpand(r.name)} className="text-slate-400 hover:text-brand-600 transition text-xs" title="ดูที่อยู่ทั้งหมดของบุคคลนี้ (ทุกเคส)">
+                                                        {expanded.has(r.name) ? '▲' : '▼'}
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                        {expanded.has(r.name) && (
+                                            <tr>
+                                                <td colSpan="7" className="bg-slate-50 px-4 py-3">
+                                                    <div className="text-xs font-bold text-slate-500 uppercase mb-2 tracking-wider">ที่อยู่ทั้งหมดที่พบของ "{r.name}" ({r.cases.length} เคส)</div>
+                                                    <div className="overflow-x-auto">
+                                                        <table className="w-full text-xs">
+                                                            <thead>
+                                                                <tr className="text-slate-400 uppercase text-[0.65rem] tracking-wide">
+                                                                    <th className="text-left pb-1.5 pr-3">HWB</th>
+                                                                    <th className="text-left pb-1.5 pr-3">วันที่</th>
+                                                                    <th className="text-right pb-1.5 pr-3">น้ำหนัก</th>
+                                                                    <th className="text-left pb-1.5 pr-3">ที่อยู่โดยละเอียด</th>
+                                                                    <th className="text-center pb-1.5">พิกัด</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-slate-200">
+                                                                {r.cases.map((c, ci) => (
+                                                                    <tr key={ci}>
+                                                                        <td className="py-1.5 pr-3 font-mono font-bold text-brand-800 whitespace-nowrap">{c.hwb}</td>
+                                                                        <td className="py-1.5 pr-3 text-slate-500 whitespace-nowrap">{c.date ? c.date.split(' ')[0] : '-'}</td>
+                                                                        <td className="py-1.5 pr-3 text-right font-bold text-rose-600 whitespace-nowrap">{c.weight.toFixed(2)} Kg</td>
+                                                                        <td className="py-1.5 pr-3 text-slate-600">{c.addr}</td>
+                                                                        <td className="py-1.5 text-center">
+                                                                            {c.lat && c.lng ? (
+                                                                                <button onClick={() => openGoogleMaps(c.lat, c.lng, c.addr)} className="text-brand-600 hover:text-brand-800 hover:underline font-bold whitespace-nowrap">ดูพิกัด</button>
+                                                                            ) : <span className="text-slate-300 italic">-</span>}
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
                                 ))}
-                                {(!rows || rows.length === 0) && <tr><td colSpan="6" className="px-6 py-12 text-center text-slate-400 italic">ไม่พบข้อมูล</td></tr>}
+                                {rows.length === 0 && <tr><td colSpan="7" className="px-6 py-12 text-center text-slate-400 italic">ไม่พบข้อมูล</td></tr>}
                             </tbody>
                         </table>
                     </div>
@@ -678,35 +744,43 @@
                 const byTypeObj = groupBy(curr => { const desc = (curr.desc || '').toLowerCase(); if (desc.includes('tea')||desc.includes('food')) return 'Tea/Food'; if (desc.includes('cosmetic')||desc.includes('cream')) return 'Cosmetics'; if (desc.includes('toy')||desc.includes('gift')) return 'Toys/Gifts'; return 'Others'; });
                 const byTypeData = Object.keys(byTypeObj).map(k => ({ name: k, value: byTypeObj[k].count }));
 
-                // Top 20 Senders / Receivers — grouped by individual name (not just city/country),
-                // carrying total seized weight, case count, and the most recent known address + GPS.
+                // Senders / Receivers — grouped by individual name (not just city/country), carrying
+                // total seized weight, case count, and the FULL history of every address+GPS used by
+                // that person/entity (not just the latest) so the UI can show/expand full detail.
                 const buildEntityRanking = (nameFn, addrFn, cityFn, latFn, lngFn) => {
                     const obj = (data || []).reduce((acc, curr) => {
                         const key = (nameFn(curr) || 'Unknown').trim() || 'Unknown';
-                        if (!acc[key]) acc[key] = { name: key, count: 0, weight: 0, addr: '-', city: '-', lat: null, lng: null, lastDate: '' };
+                        if (!acc[key]) acc[key] = { name: key, count: 0, weight: 0, addr: '-', city: '-', lat: null, lng: null, lastDate: '', cases: [] };
+                        const d = curr.date || '';
+                        const caseAddr = addrFn(curr) || cityFn(curr) || '-';
+                        const caseCity = cityFn(curr) || '-';
+                        const caseLat = latFn(curr) ?? null;
+                        const caseLng = lngFn(curr) ?? null;
                         acc[key].count += 1;
                         acc[key].weight += parseFloat(curr.weight || 0);
-                        const d = curr.date || '';
+                        acc[key].cases.push({ hwb: curr.hwb, date: d, weight: parseFloat(curr.weight || 0), addr: caseAddr, city: caseCity, lat: caseLat, lng: caseLng });
                         if (d >= acc[key].lastDate) {
-                            acc[key].addr = addrFn(curr) || cityFn(curr) || acc[key].addr;
-                            acc[key].city = cityFn(curr) || acc[key].city;
-                            acc[key].lat = latFn(curr) ?? acc[key].lat;
-                            acc[key].lng = lngFn(curr) ?? acc[key].lng;
+                            acc[key].addr = caseAddr;
+                            acc[key].city = caseCity;
+                            acc[key].lat = caseLat ?? acc[key].lat;
+                            acc[key].lng = caseLng ?? acc[key].lng;
                             acc[key].lastDate = d;
                         }
                         return acc;
                     }, {});
-                    return Object.values(obj).sort((a, b) => b.weight - a.weight).slice(0, 20);
+                    const list = Object.values(obj);
+                    list.forEach(e => e.cases.sort((a, b) => (b.date || '').localeCompare(a.date || '')));
+                    return list; // full list — sorting/top-20 slicing happens in the UI so it can switch modes live
                 };
-                const topSendersByWeight = buildEntityRanking(
+                const allSenders = buildEntityRanking(
                     c => c.shipper, c => c.shipperAddr, c => c.shipperCity, c => c.originLat, c => c.originLng
                 );
-                const topReceiversByWeight = buildEntityRanking(
+                const allReceivers = buildEntityRanking(
                     c => c.receiver, c => c.receiverAddr, c => c.receiverCity, c => c.destLat, c => c.destLng
                 );
 
                 const needsReviewCount = (data || []).filter(d => d.needsReview).length;
-                return { totalShipments, totalWeight: totalWeight.toFixed(2), chartData, topDestData, topOriginData, provinceMapData, countryMapData, byTypeData, topSendersByWeight, topReceiversByWeight, provincesList: ['ALL', ...Object.keys(byProvinceObj).sort()], countriesList: ['ALL', ...Object.keys(byCountryObj).sort()], topCountryCode: topDestData[0]?.name || '-', needsReviewCount };
+                return { totalShipments, totalWeight: totalWeight.toFixed(2), chartData, topDestData, topOriginData, provinceMapData, countryMapData, byTypeData, allSenders, allReceivers, provincesList: ['ALL', ...Object.keys(byProvinceObj).sort()], countriesList: ['ALL', ...Object.keys(byCountryObj).sort()], topCountryCode: topDestData[0]?.name || '-', needsReviewCount };
             }, [data]);
 
             const originReportData = useMemo(() => {
@@ -965,19 +1039,19 @@
                                     <div className="bg-white p-6 rounded-xl shadow-soft border border-slate-200"><h3 className="text-sm font-bold text-brand-800 mb-4 uppercase tracking-wider pl-3 border-l-4 border-amber-500">Top 10 Destinations</h3><div className="h-96"><ResponsiveContainer><BarChart data={stats.topDestData} layout="vertical"><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={true} vertical={false} /><XAxis type="number" stroke="#64748b" fontSize={11} axisLine={false} tickLine={false} /><YAxis dataKey="name" type="category" width={40} stroke="#64748b" fontSize={12} axisLine={false} tickLine={false} /><Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{backgroundColor:'#fff', border:'1px solid #e2e8f0', borderRadius:'8px'}} /><Bar dataKey="count" fill="#f59e0b" radius={[0,4,4,0]} barSize={20} /></BarChart></ResponsiveContainer></div></div>
                                     <div className="bg-white p-6 rounded-xl shadow-soft border border-slate-200"><h3 className="text-sm font-bold text-brand-800 mb-4 uppercase tracking-wider pl-3 border-l-4 border-rose-500">Top 10 Origins</h3><div className="h-96"><ResponsiveContainer><BarChart data={stats.topOriginData} layout="vertical"><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={true} vertical={false} /><XAxis type="number" stroke="#64748b" fontSize={11} axisLine={false} tickLine={false} /><YAxis dataKey="name" type="category" width={80} stroke="#64748b" fontSize={11} axisLine={false} tickLine={false} /><Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{backgroundColor:'#fff', border:'1px solid #e2e8f0', borderRadius:'8px'}} /><Bar dataKey="count" fill="#f43f5e" radius={[0,4,4,0]} barSize={20} /></BarChart></ResponsiveContainer></div></div>
                                 </div>
-                                <SectionHeader number="04" title="Top 20 ผู้ต้องสงสัยรายบุคคล (By Total Weight)" />
+                                <SectionHeader number="04" title="Top 20 ผู้ต้องสงสัยรายบุคคล (เลือกเรียงตามน้ำหนัก/จำนวนเคสได้)" />
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                     <TopEntityTable
                                         title="Top 20 ผู้ส่ง (Senders)"
-                                        subtitle="เรียงตามน้ำหนักช่อดอกกัญชาที่ยึดได้รวมทุกเคส"
-                                        rows={stats.topSendersByWeight}
+                                        subtitle="คลิกที่อยู่หรือปุ่มดูพิกัดเพื่อเปิด Google Maps ทันที · กด ▼ เพื่อดูที่อยู่ทุกเคสของบุคคลนี้"
+                                        entities={stats.allSenders}
                                         accent="rose"
                                         role="sender"
                                     />
                                     <TopEntityTable
                                         title="Top 20 ผู้รับ (Receivers)"
-                                        subtitle="เรียงตามน้ำหนักช่อดอกกัญชาที่ยึดได้รวมทุกเคส"
-                                        rows={stats.topReceiversByWeight}
+                                        subtitle="คลิกที่อยู่หรือปุ่มดูพิกัดเพื่อเปิด Google Maps ทันที · กด ▼ เพื่อดูที่อยู่ทุกเคสของบุคคลนี้"
+                                        entities={stats.allReceivers}
                                         accent="brand"
                                         role="receiver"
                                     />
