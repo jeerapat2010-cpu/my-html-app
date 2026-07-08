@@ -55,16 +55,17 @@
         }
     </script>
     
-    <!-- React & Libraries -->
-    <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
-    <script src="https://unpkg.com/react-is@18.2.0/umd/react-is.production.min.js"></script>
+    <!-- React & Libraries (served from cdnjs.cloudflare.com — the CDN allowed by the artifact preview sandbox; unpkg.com is blocked there, which is why the preview was blank) -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-is/18.2.0/umd/react-is.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.20/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
@@ -80,11 +81,7 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
         
-        .nav-btn-base { transition: all 0.2s; white-space: nowrap; }
-        .nav-btn-active { background-color: #4f46e5; color: white; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2); }
-        .nav-btn-inactive { color: #475569; background-color: #f1f5f9; border: 1px solid #e2e8f0; }
-        .nav-btn-inactive:hover { background-color: #e2e8f0; color: #1e293b; }
-
+        
         /* Professional Gradient */
         .header-gradient { background: linear-gradient(135deg, #312e81 0%, #4f46e5 100%); }
         .banner-gradient { background: linear-gradient(to right, #3730a3, #4f46e5); }
@@ -140,6 +137,21 @@
         const PROVINCE_COORDS = { 'BANGKOK': [13.7563, 100.5018], 'SAMUTPRAKARN': [13.5991, 100.5968], 'SAMUT PRAKAN': [13.5991, 100.5968], 'SURAT THANI': [9.1386, 99.3304], 'SURATTHANI': [9.1386, 99.3304], 'PATHUMTHANI': [14.0208, 100.5250], 'PATHUM THANI': [14.0208, 100.5250], 'CHIANG MAI': [18.7883, 98.9853], 'NONTHABURI': [13.8591, 100.5217], 'PHUKET': [7.8804, 98.3923], 'CHONBURI': [13.3611, 100.9847], 'UDON THANI': [17.415, 102.786] };
         const COUNTRY_COORDS = { 'GB': [54.0000, -2.0000], 'JP': [36.2048, 138.2529], 'BE': [50.5039, 4.4699], 'MU': [-20.3484, 57.5522], 'DE': [51.1657, 10.4515], 'US': [37.0902, -95.7129], 'AU': [-25.2744, 133.7751], 'FR': [46.2276, 2.2137], 'NL': [52.1326, 5.2913], 'KR': [35.9078, 127.7669] };
 
+        // Best-effort GPS lookup for rows coming from CSV upload (which don't carry lat/lng directly),
+        // so the map, Top 20, and crime-analytics features still work on real uploaded data.
+        const lookupProvinceCoords = (cityStr) => {
+            if (!cityStr) return [null, null];
+            const key = cityStr.toString().trim().toUpperCase();
+            if (PROVINCE_COORDS[key]) return PROVINCE_COORDS[key];
+            const match = Object.keys(PROVINCE_COORDS).find(k => key.includes(k) || k.includes(key));
+            return match ? PROVINCE_COORDS[match] : [null, null];
+        };
+        const lookupCountryCoords = (countryCode) => {
+            if (!countryCode) return [null, null];
+            const key = countryCode.toString().trim().toUpperCase();
+            return COUNTRY_COORDS[key] || [null, null];
+        };
+
         // --- Icons ---
         const Icons = {
             // New Cannabis Leaf Icon
@@ -158,6 +170,8 @@
             Edit: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
             Database: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>,
             Save: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>,
+            Calendar: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
+            Menu: () => <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>,
             Close: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>,
             Pin: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
             MapPin: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
@@ -170,6 +184,65 @@
                 <h2 className="text-xl font-bold text-brand-900 uppercase tracking-tight">{title}</h2>
             </div>
         );
+
+        const ActionNeededCard = ({ needsReviewCount, watchlistMatchCount, qualityIssueCount, onNavigate }) => {
+            const items = [
+                { label: 'น้ำหนักต้องตรวจสอบ', count: needsReviewCount, tab: 'fix_weight' },
+                { label: 'ตรงกับบัญชีเฝ้าระวัง', count: watchlistMatchCount, tab: 'watchlist' },
+                { label: 'ข้อมูลไม่ครบถ้วน (ชื่อ/ที่อยู่/วันที่)', count: qualityIssueCount, tab: 'fix_weight' },
+            ].filter(i => i.count > 0);
+
+            if (items.length === 0) {
+                return (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 flex items-center gap-4">
+                        <span className="text-emerald-500 text-3xl leading-none">✓</span>
+                        <div>
+                            <div className="font-bold text-emerald-800">ไม่มีรายการที่ต้องดำเนินการ</div>
+                            <div className="text-xs text-emerald-600 mt-0.5">ข้อมูลในช่วงเวลานี้ครบถ้วนและตรวจสอบแล้ว</div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="bg-white rounded-xl shadow-soft border border-rose-200 overflow-hidden">
+                    <div className="bg-rose-50 px-6 py-3 border-b border-rose-200">
+                        <h3 className="text-sm font-bold text-rose-700 flex items-center gap-2"><Icons.AlertTriangle /> สิ่งที่ต้องดำเนินการ</h3>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                        {items.map((it, i) => (
+                            <button key={i} onClick={() => onNavigate(it.tab)} className="w-full flex justify-between items-center px-6 py-3 hover:bg-slate-50 transition text-left">
+                                <span className="text-sm text-slate-700">{it.label}</span>
+                                <span className="flex items-center gap-2 shrink-0">
+                                    <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-xs font-bold">{it.count} เคส</span>
+                                    <span className="text-slate-300">→</span>
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const ExecutiveSummaryCard = ({ summary }) => {
+            const [copied, setCopied] = useState(false);
+            const handleCopy = () => {
+                navigator.clipboard.writeText(summary).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+            };
+            return (
+                <div className="bg-white rounded-xl shadow-soft border border-slate-200 overflow-hidden">
+                    <div className="px-6 py-3 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                        <h3 className="text-sm font-bold text-brand-800 flex items-center gap-2"><Icons.FileText /> สรุปผู้บริหาร (Executive Summary)</h3>
+                        <button onClick={handleCopy} className={`text-xs font-bold px-3 py-1.5 rounded-lg transition ${copied ? 'bg-emerald-100 text-emerald-700' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-100'}`}>
+                            {copied ? '✓ คัดลอกแล้ว' : '📋 คัดลอกข้อความ'}
+                        </button>
+                    </div>
+                    <div className="p-6">
+                        <p className="text-sm text-slate-700 leading-relaxed">{summary}</p>
+                    </div>
+                </div>
+            );
+        };
 
         const InfographicBanner = () => (
             <div className="w-full banner-gradient rounded-2xl shadow-lg p-6 mb-8 text-white relative overflow-hidden">
@@ -203,18 +276,35 @@
             </div>
         );
 
-        const NavButton = ({ label, active, onClick, icon, badge }) => {
-            const activeClass = "nav-btn-active";
-            const inactiveClass = "nav-btn-inactive";
-            return (
-                <button onClick={onClick} className={`flex items-center px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${active ? activeClass : inactiveClass}`}>
-                    <span className="mr-2.5">{icon}</span>{label}
-                    {badge > 0 && <span className="ml-2 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full bg-rose-500 text-white text-[0.65rem] font-bold">{badge}</span>}
-                </button>
-            );
+        const NavButton = ({ label, active, onClick, icon, badge }) => (
+            <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 relative group ${active ? 'bg-white/10 text-white font-bold' : 'text-indigo-100/70 font-medium hover:bg-white/5 hover:text-white'}`}>
+                {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] bg-amber-400 rounded-full"></span>}
+                <span className={`shrink-0 transition-colors ${active ? 'text-amber-400' : 'text-indigo-300/50 group-hover:text-indigo-200'}`}>{icon}</span>
+                <span className="flex-1 text-left truncate">{label}</span>
+                {badge > 0 && <span className="shrink-0 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full bg-rose-500 text-white text-[0.65rem] font-bold">{badge}</span>}
+            </button>
+        );
+
+        const NavGroup = ({ title, children }) => (
+            <div className="mb-1">
+                <div className="px-3 pt-4 pb-1.5 text-[0.65rem] font-bold text-indigo-300/40 uppercase tracking-widest">{title}</div>
+                <div className="space-y-0.5">{children}</div>
+            </div>
+        );
+
+        const PAGE_TITLES = {
+            dashboard: 'ภาพรวม (Overview)',
+            case_data: 'จัดการข้อมูลรายเคส',
+            fix_weight: 'คุณภาพข้อมูล & น้ำหนัก',
+            origin_report: 'รายงานต้นทาง (Origin Intel)',
+            origin: 'แผนที่ต้นทาง (Origin Map)',
+            dest_report: 'รายงานปลายทาง (Dest Intel)',
+            dest: 'แผนที่ปลายทาง (Dest Map)',
+            crime: 'วิเคราะห์เชิงอาชญวิทยา (Crime Analytics)',
+            watchlist: 'บัญชีเฝ้าระวัง (Watchlist)',
         };
 
-        const KPICard = ({ title, value, unit, icon, color }) => {
+        const KPICard = ({ title, value, unit, icon, color, trend }) => {
             // Professional Themes for KPIs
             const themes = {
                 indigo: { border: 'border-l-4 border-brand-600', iconBg: 'bg-brand-50 text-brand-600' },
@@ -224,7 +314,7 @@
             };
             const theme = themes[color] || themes.indigo;
             return (
-                <div className={`bg-white p-6 rounded-xl shadow-soft ${theme.border} flex flex-col justify-between hover:shadow-card transition-all border border-slate-100`}>
+                <div className={`bg-white p-6 rounded-xl shadow-soft ${theme.border} flex flex-col justify-between hover:shadow-card hover:-translate-y-0.5 transition-all border border-slate-100`}>
                     <div className="flex justify-between items-start mb-3">
                         <div>
                             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{title}</p>
@@ -232,7 +322,14 @@
                         </div>
                         <div className={`p-3 rounded-xl ${theme.iconBg} shadow-sm`}>{icon}</div>
                     </div>
-                    <p className="text-xs font-medium text-slate-500">{unit}</p>
+                    <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-slate-500">{unit}</p>
+                        {trend != null && (
+                            <span className={`text-xs font-bold flex items-center gap-0.5 ${trend > 0 ? 'text-amber-600' : trend < 0 ? 'text-slate-500' : 'text-slate-400'}`} title="เทียบกับช่วงเวลาก่อนหน้าที่มีความยาวเท่ากัน">
+                                {trend > 0 ? '▲' : trend < 0 ? '▼' : '–'} {Math.abs(trend).toFixed(0)}%
+                            </span>
+                        )}
+                    </div>
                 </div>
             );
         };
@@ -287,11 +384,24 @@
             window.open(url, '_blank');
         };
 
-        const CaseDataTable = ({ data, onEdit, onDelete }) => {
+        // Checks a case against the persistent watchlist (name/address substring match, case-insensitive).
+        // Returns the list of matching watchlist entries (empty array if none).
+        const getWatchlistMatches = (row, watchlist) => {
+            if (!watchlist || watchlist.length === 0) return [];
+            const fields = [row.shipper, row.receiver, row.shipperAddr, row.receiverAddr].map(f => (f || '').toLowerCase());
+            return watchlist.filter(w => {
+                const val = (w.value || '').trim().toLowerCase();
+                if (!val) return false;
+                return fields.some(f => f.includes(val));
+            });
+        };
+
+        const CaseDataTable = ({ data, allData, onEdit, onDelete, onUpdateStatus, onGenerateDossier }) => {
             const [search, setSearch] = useState('');
             const [originCitySearch, setOriginCitySearch] = useState('');
             const [destCitySearch, setDestCitySearch] = useState('');
             const [reviewOnly, setReviewOnly] = useState(false);
+            const [statusFilter, setStatusFilter] = useState('ALL');
 
             const filteredData = (data || []).filter(item => {
                 const s = (search || '').toLowerCase();
@@ -302,19 +412,24 @@
                 const originMatch = (item.shipperCity || '').toLowerCase().includes((originCitySearch || '').toLowerCase());
                 const destMatch = (item.receiverCity || '').toLowerCase().includes((destCitySearch || '').toLowerCase());
                 const reviewMatch = !reviewOnly || item.needsReview;
-                return globalMatch && originMatch && destMatch && reviewMatch;
+                const statusMatch = statusFilter === 'ALL' || (item.status || 'รอตรวจสอบ') === statusFilter;
+                return globalMatch && originMatch && destMatch && reviewMatch && statusMatch;
             });
 
             return (
                 <div className="bg-white rounded-xl shadow-soft border border-slate-200 overflow-hidden">
                     <div className="p-5 border-b border-slate-200 bg-slate-50">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
                             <div className="relative">
                                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><Icons.Search/></span>
                                 <input type="text" placeholder="ค้นหา HWB, ผู้ส่ง, ผู้รับ..." className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none transition bg-white" value={search} onChange={e => setSearch(e.target.value)} />
                             </div>
                             <input type="text" placeholder="กรองเมืองต้นทาง..." className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none transition bg-white" value={originCitySearch} onChange={e => setOriginCitySearch(e.target.value)} />
                             <input type="text" placeholder="กรองเมืองปลายทาง..." className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none transition bg-white" value={destCitySearch} onChange={e => setDestCitySearch(e.target.value)} />
+                            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none transition bg-white">
+                                <option value="ALL">ทุกสถานะ</option>
+                                {CASE_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
                         </div>
                         <label className="inline-flex items-center text-xs font-bold text-rose-600 cursor-pointer select-none">
                             <input type="checkbox" checked={reviewOnly} onChange={e => setReviewOnly(e.target.checked)} className="mr-2 accent-rose-600" />
@@ -325,12 +440,13 @@
                         <table className="w-full text-left">
                             <thead className="bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    <th className="custom-table th w-24 text-center">จัดการ</th>
+                                    <th className="custom-table th w-28 text-center">จัดการ</th>
                                     <th className="custom-table th">HWB / วันที่</th>
                                     <th className="custom-table th">ผู้ส่ง (Shipper)</th>
                                     <th className="custom-table th">ผู้รับ (Receiver)</th>
                                     <th className="custom-table th text-right">น้ำหนัก (Kg)</th>
                                     <th className="custom-table th text-center">ตำแหน่ง (Location)</th>
+                                    <th className="custom-table th">สถานะ</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -338,8 +454,9 @@
                                     <tr key={idx} className={`hover:bg-slate-50 transition-colors ${row.needsReview ? 'bg-rose-50/40' : ''}`}>
                                         <td className="custom-table td text-center">
                                             <div className="flex justify-center gap-1">
-                                                <button onClick={() => onEdit(data.indexOf(row))} className="text-brand-600 hover:text-brand-800 hover:bg-brand-50 p-1.5 rounded-md transition" title="แก้ไข"><Icons.Edit /></button>
-                                                <button onClick={() => { if (window.confirm(`ยืนยันลบเคส HWB ${row.hwb}?`)) onDelete(data.indexOf(row)); }} className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 rounded-md transition" title="ลบ"><Icons.Close /></button>
+                                                <button onClick={() => onEdit(allData.indexOf(row))} className="text-brand-600 hover:text-brand-800 hover:bg-brand-50 p-1.5 rounded-md transition" title="แก้ไข"><Icons.Edit /></button>
+                                                {onGenerateDossier && <button onClick={() => onGenerateDossier(row)} className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 p-1.5 rounded-md transition" title="พิมพ์ใบสรุปเคส (PDF)"><Icons.FileText /></button>}
+                                                <button onClick={() => { if (window.confirm(`ยืนยันลบเคส HWB ${row.hwb}?`)) onDelete(allData.indexOf(row)); }} className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 rounded-md transition" title="ลบ"><Icons.Close /></button>
                                             </div>
                                         </td>
                                         <td className="custom-table td">
@@ -370,9 +487,19 @@
                                                 </button>
                                             </div>
                                         </td>
+                                        <td className="custom-table td">
+                                            <select
+                                                value={row.status || 'รอตรวจสอบ'}
+                                                onChange={e => onUpdateStatus(allData.indexOf(row), e.target.value)}
+                                                className={`text-xs font-bold rounded-lg border px-2 py-1.5 outline-none cursor-pointer ${CASE_STATUS_COLORS[row.status || 'รอตรวจสอบ']}`}
+                                            >
+                                                {CASE_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                                            </select>
+                                            {row.note && <div className="text-[0.65rem] text-slate-400 mt-1 max-w-[9rem] truncate" title={row.note}>📝 {row.note}</div>}
+                                        </td>
                                     </tr>
                                 ))}
-                                {filteredData.length === 0 && <tr><td colSpan="6" className="px-6 py-12 text-center text-slate-400 italic">ไม่พบข้อมูลที่ค้นหา</td></tr>}
+                                {filteredData.length === 0 && <tr><td colSpan="7" className="px-6 py-12 text-center text-slate-400 italic">ไม่พบข้อมูลที่ค้นหา</td></tr>}
                             </tbody>
                         </table>
                     </div>
@@ -380,8 +507,16 @@
             );
         };
 
-        const EditModal = ({ item, onSave, onClose }) => {
-            const [formData, setFormData] = useState({ ...item });
+        const CASE_STATUS_OPTIONS = ['รอตรวจสอบ', 'อยู่ระหว่างสอบสวน', 'ส่งดำเนินคดี', 'ปิดเคส'];
+        const CASE_STATUS_COLORS = {
+            'รอตรวจสอบ': 'bg-slate-100 text-slate-600 border-slate-300',
+            'อยู่ระหว่างสอบสวน': 'bg-amber-100 text-amber-700 border-amber-300',
+            'ส่งดำเนินคดี': 'bg-rose-100 text-rose-700 border-rose-300',
+            'ปิดเคส': 'bg-emerald-100 text-emerald-700 border-emerald-300',
+        };
+
+        const EditModal = ({ item, onSave, onClose, onGenerateDossier }) => {
+            const [formData, setFormData] = useState({ status: 'รอตรวจสอบ', note: '', ...item });
             const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
             return (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
@@ -407,10 +542,21 @@
                             <div className="col-span-2 pt-2 border-t border-slate-200"><span className="text-xs font-bold text-brand-600 uppercase tracking-wider">รายละเอียดสินค้า (Cargo)</span></div>
                             <div><label className="text-xs text-slate-500 block mb-1">Description</label><input type="text" name="desc" value={formData.desc} onChange={handleChange} className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:border-brand-500 outline-none" /></div>
                             <div><label className="text-xs font-bold text-rose-600 block mb-1">Weight (Kg)</label><input type="number" step="0.01" name="weight" value={formData.weight} onChange={handleChange} className="w-full p-2 bg-white border border-rose-300 text-rose-700 font-bold rounded text-sm focus:border-rose-500 outline-none" /></div>
+
+                            <div className="col-span-2 pt-2 border-t border-slate-200"><span className="text-xs font-bold text-brand-600 uppercase tracking-wider">สถานะ & หมายเหตุเจ้าหน้าที่ (Status & Notes)</span></div>
+                            <div><label className="text-xs text-slate-500 block mb-1">สถานะเคส</label>
+                                <select name="status" value={formData.status || 'รอตรวจสอบ'} onChange={handleChange} className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:border-brand-500 outline-none">
+                                    {CASE_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                            </div>
+                            <div className="col-span-2"><label className="text-xs text-slate-500 block mb-1">หมายเหตุ</label><textarea name="note" value={formData.note || ''} onChange={handleChange} rows="2" placeholder="เช่น ประสานตำรวจแล้ว, รอผลตรวจแล็บ..." className="w-full p-2 bg-white border border-slate-300 rounded text-sm focus:border-brand-500 outline-none resize-none"></textarea></div>
                         </div>
-                        <div className="bg-slate-50 px-6 py-4 flex justify-end gap-3 border-t border-slate-100">
-                            <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition">ยกเลิก (Cancel)</button>
-                            <button onClick={() => onSave(formData)} className="px-6 py-2 text-sm font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-soft transition">บันทึก (Save)</button>
+                        <div className="bg-slate-50 px-6 py-4 flex justify-between items-center gap-3 border-t border-slate-100">
+                            {onGenerateDossier && <button onClick={() => onGenerateDossier(formData)} className="px-4 py-2 text-sm font-bold text-brand-700 bg-white border border-brand-300 hover:bg-brand-50 rounded-lg transition flex items-center gap-2"><Icons.FileText/> พิมพ์ใบสรุปเคส (PDF)</button>}
+                            <div className="flex gap-3 ml-auto">
+                                <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition">ยกเลิก (Cancel)</button>
+                                <button onClick={() => onSave(formData)} className="px-6 py-2 text-sm font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-soft transition">บันทึก (Save)</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -574,12 +720,128 @@
             );
         };
 
-        const MissingWeightPage = ({ data, onUpdateWeight, onOpenFull }) => {
+        const WatchlistPage = ({ data, watchlist, onAdd, onRemove, onOpenFull, allData }) => {
+            const [inputValue, setInputValue] = useState('');
+            const [inputNote, setInputNote] = useState('');
+
+            const handleAdd = () => {
+                if (!inputValue.trim()) return;
+                onAdd(inputValue, 'name', inputNote);
+                setInputValue(''); setInputNote('');
+            };
+
+            const matchedCases = (data || [])
+                .map((item, idx) => ({ item, idx, matches: getWatchlistMatches(item, watchlist) }))
+                .filter(x => x.matches.length > 0);
+
+            return (
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-xl shadow-soft border border-slate-200">
+                        <h3 className="text-sm font-bold text-brand-800 uppercase tracking-wider pl-3 border-l-4 border-rose-500 mb-1">เพิ่มรายชื่อ/ที่อยู่เฝ้าระวัง</h3>
+                        <p className="text-xs text-slate-400 pl-3 mb-4">ระบบจะตรวจสอบทุกเคส (ทั้งชื่อผู้ส่ง/ผู้รับ และที่อยู่) แบบ substring — พิมพ์บางส่วนของชื่อ/ที่อยู่ก็จับคู่ได้ ไม่ต้องพิมพ์เป๊ะ 100%</p>
+                        <div className="flex flex-col md:flex-row gap-3">
+                            <input type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} placeholder="ชื่อ หรือ ที่อยู่ ที่ต้องการเฝ้าระวัง..." className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none transition bg-white" onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }} />
+                            <input type="text" value={inputNote} onChange={e => setInputNote(e.target.value)} placeholder="หมายเหตุ (ไม่บังคับ)..." className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none transition bg-white" onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }} />
+                            <button onClick={handleAdd} className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-lg transition shrink-0">+ เพิ่มเฝ้าระวัง</button>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-xl shadow-soft border border-slate-200">
+                        <h3 className="text-sm font-bold text-brand-800 uppercase tracking-wider pl-3 border-l-4 border-brand-600 mb-4">รายการเฝ้าระวังปัจจุบัน ({(watchlist || []).length})</h3>
+                        {(!watchlist || watchlist.length === 0) ? (
+                            <p className="text-sm text-slate-400 italic py-4 text-center">ยังไม่มีรายชื่อในบัญชีเฝ้าระวัง</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {watchlist.map(w => {
+                                    const hitCount = (data || []).filter(d => getWatchlistMatches(d, [w]).length > 0).length;
+                                    return (
+                                        <div key={w.id} className="flex justify-between items-center bg-slate-50 border border-slate-200 rounded-lg px-4 py-3">
+                                            <div>
+                                                <span className="font-bold text-slate-700 text-sm">{w.value}</span>
+                                                {w.note && <span className="text-xs text-slate-400 ml-2">— {w.note}</span>}
+                                                <div className="text-[0.65rem] text-slate-400 mt-0.5">เพิ่มเมื่อ {w.addedDate}</div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className={`text-xs font-bold px-2 py-1 rounded-lg ${hitCount > 0 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-400'}`}>{hitCount} เคสตรงกัน</span>
+                                                <button onClick={() => onRemove(w.id)} className="text-slate-400 hover:text-rose-600 transition"><Icons.Close /></button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="bg-white p-6 rounded-xl shadow-soft border border-slate-200">
+                        <h3 className="text-sm font-bold text-brand-800 uppercase tracking-wider pl-3 border-l-4 border-amber-500 mb-1">เคสที่ตรงกับบัญชีเฝ้าระวัง ({matchedCases.length})</h3>
+                        <p className="text-xs text-slate-400 pl-3 mb-4">ในช่วงเวลาที่กำลังดูอยู่ตอนนี้</p>
+                        {matchedCases.length === 0 ? (
+                            <p className="text-sm text-emerald-600 italic py-6 text-center font-medium">✓ ไม่พบเคสที่ตรงกับบัญชีเฝ้าระวังในช่วงข้อมูลนี้</p>
+                        ) : (
+                            <div className="overflow-x-auto max-h-[28rem] overflow-y-auto rounded-lg border border-slate-100">
+                                <table className="w-full text-left">
+                                    <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                                        <tr><th className="custom-table th">HWB / วันที่</th><th className="custom-table th">ผู้ส่ง</th><th className="custom-table th">ผู้รับ</th><th className="custom-table th text-right">น้ำหนัก</th><th className="custom-table th">ตรงกับ</th><th className="custom-table th w-16 text-center">แก้ไข</th></tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {matchedCases.map(({ item, matches }, i) => (
+                                            <tr key={i} className="hover:bg-rose-50/40 bg-rose-50/20">
+                                                <td className="custom-table td"><div className="font-mono font-bold text-brand-900">{item.hwb}</div><div className="text-xs text-slate-500">{item.date ? item.date.split(' ')[0] : '-'}</div></td>
+                                                <td className="custom-table td text-slate-700">{item.shipper}</td>
+                                                <td className="custom-table td text-slate-700">{item.receiver}</td>
+                                                <td className="custom-table td text-right font-bold text-rose-600">{parseFloat(item.weight || 0).toFixed(2)} Kg</td>
+                                                <td className="custom-table td"><div className="flex flex-wrap gap-1">{matches.map((m, mi) => <span key={mi} className="text-[0.65rem] px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded font-bold">{m.value}</span>)}</div></td>
+                                                <td className="custom-table td text-center"><button onClick={() => onOpenFull(allData.indexOf(item))} className="text-brand-600 hover:text-brand-800"><Icons.Edit /></button></td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const DataQualityPanel = ({ quality }) => {
+            const scoreColor = quality.qualityScore >= 90 ? 'text-emerald-600' : quality.qualityScore >= 70 ? 'text-amber-600' : 'text-rose-600';
+            const items = [
+                { label: 'ชื่อผู้ส่งไม่ระบุ', value: quality.missingShipper },
+                { label: 'ชื่อผู้รับไม่ระบุ', value: quality.missingReceiver },
+                { label: 'ที่อยู่ผู้ส่งไม่ระบุ', value: quality.missingShipperAddr },
+                { label: 'ที่อยู่ผู้รับไม่ระบุ', value: quality.missingReceiverAddr },
+                { label: 'วันที่ไม่ระบุ', value: quality.missingDate },
+            ];
+            return (
+                <div className="bg-white p-6 rounded-xl shadow-soft border border-slate-200">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                        <div>
+                            <h3 className="text-sm font-bold text-brand-800 uppercase tracking-wider pl-3 border-l-4 border-brand-600">คุณภาพข้อมูลโดยรวม (Data Quality)</h3>
+                            <p className="text-xs text-slate-400 pl-3 mt-1">ตรวจสอบว่าแต่ละเคสมีข้อมูลครบตามช่องสำคัญหรือไม่ (นอกเหนือจากน้ำหนัก)</p>
+                        </div>
+                        <div className="text-center shrink-0">
+                            <div className={`text-3xl font-extrabold ${scoreColor}`}>{quality.qualityScore}%</div>
+                            <div className="text-xs text-slate-400">ข้อมูลครบถ้วน ({quality.cleanCount}/{quality.total} เคส)</div>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        {items.map((it, i) => (
+                            <div key={i} className={`rounded-lg border px-3 py-3 text-center ${it.value > 0 ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
+                                <div className={`text-xl font-extrabold ${it.value > 0 ? 'text-amber-600' : 'text-slate-400'}`}>{it.value}</div>
+                                <div className="text-[0.7rem] text-slate-500 mt-1">{it.label}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const MissingWeightPage = ({ data, allData, onUpdateWeight, onOpenFull }) => {
             const [sortDir, setSortDir] = useState('asc');
 
             const missing = (data || [])
-                .map((item, idx) => ({ ...item, _idx: idx }))
                 .filter(item => !item.weight || parseFloat(item.weight) === 0)
+                .map(item => ({ ...item, _idx: allData.indexOf(item) }))
                 .sort((a, b) => {
                     const da = a.date || '';
                     const db = b.date || '';
@@ -646,6 +908,279 @@
             );
         };
 
+        const RiskBadge = ({ score }) => {
+            const tier = score >= 70 ? { label: 'สูง', cls: 'bg-rose-100 text-rose-700 border-rose-300' }
+                       : score >= 40 ? { label: 'ปานกลาง', cls: 'bg-amber-100 text-amber-700 border-amber-300' }
+                       : { label: 'ต่ำ', cls: 'bg-slate-100 text-slate-600 border-slate-300' };
+            return (
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${tier.cls}`}>
+                    <span className="text-sm">{score}</span><span className="opacity-70">/100 · {tier.label}</span>
+                </span>
+            );
+        };
+
+        const NetworkGraphPanel = ({ analytics }) => {
+            const { topSenderNodes, topReceiverNodes, networkEdges, hubSenders, hubReceivers } = analytics;
+            const width = 800, height = Math.max(420, Math.max(topSenderNodes.length, topReceiverNodes.length) * 34 + 60);
+            const leftX = 130, rightX = width - 130;
+            const yFor = (i, n) => 40 + (n <= 1 ? (height - 80) / 2 : i * (height - 80) / (n - 1));
+            const senderIndex = {}; topSenderNodes.forEach((s, i) => senderIndex[s.name] = i);
+            const receiverIndex = {}; topReceiverNodes.forEach((r, i) => receiverIndex[r.name] = i);
+            const maxEdgeWeight = Math.max(1, ...networkEdges.map(e => e.weight));
+            const maxNodeWeight = Math.max(1, ...topSenderNodes.map(s => s.weight), ...topReceiverNodes.map(r => r.weight));
+
+            return (
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-xl shadow-soft border border-slate-200">
+                        <h3 className="text-sm font-bold text-brand-800 uppercase tracking-wider pl-3 border-l-4 border-brand-600 mb-1">Network Graph: ผู้ส่ง ↔ ผู้รับ</h3>
+                        <p className="text-xs text-slate-400 pl-3 mb-4">แสดง Top 15 ผู้ส่ง/ผู้รับ ตามน้ำหนักรวม · เส้นหนา = น้ำหนักสูง · วงกลมใหญ่ = น้ำหนักสะสมสูง</p>
+                        <div className="overflow-x-auto">
+                            <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ minWidth: '600px', height: `${height}px` }}>
+                                {networkEdges.map((e, i) => {
+                                    const y1 = yFor(senderIndex[e.sender], topSenderNodes.length);
+                                    const y2 = yFor(receiverIndex[e.receiver], topReceiverNodes.length);
+                                    const sw = 0.75 + 4 * (e.weight / maxEdgeWeight);
+                                    return <path key={i} d={`M ${leftX + 14} ${y1} C ${width / 2} ${y1}, ${width / 2} ${y2}, ${rightX - 14} ${y2}`} fill="none" stroke="#818cf8" strokeOpacity="0.35" strokeWidth={sw}>
+                                        <title>{e.sender} → {e.receiver}: {e.weight.toFixed(2)} Kg ({e.count} เคส)</title>
+                                    </path>;
+                                })}
+                                {topSenderNodes.map((s, i) => {
+                                    const y = yFor(i, topSenderNodes.length);
+                                    const r = 5 + 8 * (s.weight / maxNodeWeight);
+                                    const isHub = s.reach > 1;
+                                    return (
+                                        <g key={'s' + i}>
+                                            <circle cx={leftX} cy={y} r={r} fill={isHub ? '#e11d48' : '#4f46e5'} stroke="#fff" strokeWidth="1.5"><title>{s.name}: {s.weight.toFixed(2)} Kg, {s.count} เคส, เชื่อม {s.reach} ผู้รับ</title></circle>
+                                            <text x={leftX - r - 8} y={y + 4} textAnchor="end" fontSize="11" fill="#334155" className="font-medium">{s.name.length > 18 ? s.name.slice(0, 18) + '…' : s.name}</text>
+                                        </g>
+                                    );
+                                })}
+                                {topReceiverNodes.map((rNode, i) => {
+                                    const y = yFor(i, topReceiverNodes.length);
+                                    const r = 5 + 8 * (rNode.weight / maxNodeWeight);
+                                    const isHub = rNode.reach > 1;
+                                    return (
+                                        <g key={'r' + i}>
+                                            <circle cx={rightX} cy={y} r={r} fill={isHub ? '#e11d48' : '#059669'} stroke="#fff" strokeWidth="1.5"><title>{rNode.name}: {rNode.weight.toFixed(2)} Kg, {rNode.count} เคส, เชื่อม {rNode.reach} ผู้ส่ง</title></circle>
+                                            <text x={rightX + r + 8} y={y + 4} textAnchor="start" fontSize="11" fill="#334155" className="font-medium">{rNode.name.length > 18 ? rNode.name.slice(0, 18) + '…' : rNode.name}</text>
+                                        </g>
+                                    );
+                                })}
+                                <text x={leftX} y="20" textAnchor="middle" fontSize="12" fill="#818cf8" className="font-bold uppercase">ผู้ส่ง</text>
+                                <text x={rightX} y="20" textAnchor="middle" fontSize="12" fill="#10b981" className="font-bold uppercase">ผู้รับ</text>
+                            </svg>
+                        </div>
+                        <div className="flex items-center gap-4 mt-3 text-xs text-slate-500">
+                            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-rose-600 inline-block"></span>ตัวกลาง/นายหน้า (เชื่อมมากกว่า 1 ราย)</span>
+                            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-brand-600 inline-block"></span>ผู้ส่งทั่วไป</span>
+                            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-emerald-600 inline-block"></span>ผู้รับทั่วไป</span>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white p-5 rounded-xl shadow-soft border border-slate-200">
+                            <h4 className="text-xs font-bold text-rose-600 uppercase tracking-wider mb-3">🎯 ผู้ส่งที่น่าจะเป็นตัวกลาง (เชื่อมผู้รับหลายราย)</h4>
+                            {hubSenders.length === 0 && <p className="text-xs text-slate-400 italic">ไม่พบผู้ส่งที่เชื่อมกับผู้รับมากกว่า 1 ราย</p>}
+                            <div className="space-y-2">
+                                {hubSenders.slice(0, 10).map((s, i) => (
+                                    <div key={i} className="flex justify-between items-center text-xs bg-rose-50/60 rounded-lg px-3 py-2">
+                                        <span className="font-medium text-slate-700">{s.name}</span>
+                                        <span className="text-rose-600 font-bold">เชื่อม {s.reach} ผู้รับ · {s.weight.toFixed(1)} Kg</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="bg-white p-5 rounded-xl shadow-soft border border-slate-200">
+                            <h4 className="text-xs font-bold text-rose-600 uppercase tracking-wider mb-3">🎯 ผู้รับที่น่าจะเป็นตัวกลาง (รับจากผู้ส่งหลายราย)</h4>
+                            {hubReceivers.length === 0 && <p className="text-xs text-slate-400 italic">ไม่พบผู้รับที่รับจากผู้ส่งมากกว่า 1 ราย</p>}
+                            <div className="space-y-2">
+                                {hubReceivers.slice(0, 10).map((r, i) => (
+                                    <div key={i} className="flex justify-between items-center text-xs bg-rose-50/60 rounded-lg px-3 py-2">
+                                        <span className="font-medium text-slate-700">{r.name}</span>
+                                        <span className="text-rose-600 font-bold">เชื่อม {r.reach} ผู้ส่ง · {r.weight.toFixed(1)} Kg</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const AliasGroupTable = ({ title, groups }) => {
+            const [expanded, setExpanded] = useState(new Set());
+            const toggle = (k) => setExpanded(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
+            return (
+                <div className="bg-white p-6 rounded-xl shadow-soft border border-slate-200">
+                    <h3 className="text-sm font-bold text-brand-800 uppercase tracking-wider pl-3 border-l-4 border-amber-500 mb-1">{title}</h3>
+                    <p className="text-xs text-slate-400 pl-3 mb-4">ที่อยู่/พิกัดเดียวกัน แต่พบชื่อผู้ส่ง-ผู้รับมากกว่า 1 ชื่อ — อาจเป็นบุคคล/เครือข่ายเดียวกันที่สลับชื่อ</p>
+                    {(!groups || groups.length === 0) ? (
+                        <p className="text-sm text-emerald-600 italic font-medium py-6 text-center">✓ ไม่พบรูปแบบที่อยู่ซ้ำ/นามแฝงในข้อมูลปัจจุบัน</p>
+                    ) : (
+                        <div className="space-y-2 max-h-[28rem] overflow-y-auto">
+                            {groups.map((g, i) => (
+                                <div key={i} className="border border-amber-200 bg-amber-50/50 rounded-lg overflow-hidden">
+                                    <button onClick={() => toggle(g.key)} className="w-full flex justify-between items-center px-4 py-3 text-left hover:bg-amber-50 transition">
+                                        <div>
+                                            <div className="text-sm font-bold text-slate-700">{g.addr}</div>
+                                            <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                                {g.names.map((n, ni) => <span key={ni} className="px-2 py-0.5 bg-white border border-amber-300 rounded-md text-[0.7rem] font-bold text-amber-700">{n}</span>)}
+                                            </div>
+                                        </div>
+                                        <div className="text-right shrink-0 ml-3">
+                                            <div className="text-sm font-bold text-rose-600">{g.weight.toFixed(2)} Kg</div>
+                                            <div className="text-xs text-slate-400">{g.count} เคส · {expanded.has(g.key) ? '▲' : '▼'}</div>
+                                        </div>
+                                    </button>
+                                    {expanded.has(g.key) && (
+                                        <div className="px-4 pb-3 bg-white border-t border-amber-100">
+                                            <table className="w-full text-xs mt-2">
+                                                <thead><tr className="text-slate-400 uppercase text-[0.65rem]"><th className="text-left pb-1">HWB</th><th className="text-left pb-1">ชื่อที่ใช้</th><th className="text-left pb-1">วันที่</th><th className="text-right pb-1">น้ำหนัก</th></tr></thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {g.cases.map((c, ci) => (
+                                                        <tr key={ci}><td className="py-1 font-mono font-bold text-brand-800">{c.hwb}</td><td className="py-1">{c.name}</td><td className="py-1 text-slate-500">{c.date ? c.date.split(' ')[0] : '-'}</td><td className="py-1 text-right font-bold text-rose-600">{c.weight.toFixed(2)} Kg</td></tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                            {g.lat && g.lng && <button onClick={() => openGoogleMaps(g.lat, g.lng, g.addr)} className="mt-2 text-xs font-bold text-brand-600 hover:underline">📍 ดูพิกัดที่อยู่นี้</button>}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const RiskScoreTable = ({ title, rows, role }) => (
+            <div className="bg-white p-6 rounded-xl shadow-soft border border-slate-200">
+                <h3 className="text-sm font-bold text-brand-800 uppercase tracking-wider pl-3 border-l-4 border-rose-500 mb-1">{title}</h3>
+                <p className="text-xs text-slate-400 pl-3 mb-4">คะแนน = 40% น้ำหนัก + 25% ความถี่ + 20% ที่อยู่ซ้ำ/นามแฝง + 15% ปลายทางเสี่ยงสูง</p>
+                <div className="overflow-x-auto max-h-[30rem] overflow-y-auto rounded-lg border border-slate-100">
+                    <table className="w-full text-left">
+                        <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                            <tr><th className="custom-table th w-10 text-center">#</th><th className="custom-table th">{role === 'sender' ? 'ผู้ส่ง' : 'ผู้รับ'}</th><th className="custom-table th text-center">คะแนนความเสี่ยง</th><th className="custom-table th">เหตุผล</th><th className="custom-table th text-right">น้ำหนัก / เคส</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {rows.slice(0, 20).map((r, i) => (
+                                <tr key={i} className="hover:bg-slate-50">
+                                    <td className="custom-table td text-center text-slate-400 font-bold">{i + 1}</td>
+                                    <td className="custom-table td font-medium text-slate-700">{r.name}</td>
+                                    <td className="custom-table td text-center"><RiskBadge score={r.score} /></td>
+                                    <td className="custom-table td"><div className="flex flex-wrap gap-1">{r.reasons.length ? r.reasons.map((rs, ri) => <span key={ri} className="text-[0.65rem] px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded font-bold">{rs}</span>) : <span className="text-xs text-slate-300 italic">-</span>}</div></td>
+                                    <td className="custom-table td text-right text-xs text-slate-500 whitespace-nowrap">{r.weight.toFixed(2)} Kg / {r.count} เคส</td>
+                                </tr>
+                            ))}
+                            {rows.length === 0 && <tr><td colSpan="5" className="px-6 py-12 text-center text-slate-400 italic">ไม่พบข้อมูล</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+
+        const PatternTable = ({ title, rows, role }) => (
+            <div className="bg-white p-6 rounded-xl shadow-soft border border-slate-200">
+                <h3 className="text-sm font-bold text-brand-800 uppercase tracking-wider pl-3 border-l-4 border-brand-600 mb-1">{title}</h3>
+                <p className="text-xs text-slate-400 pl-3 mb-4">ตรวจจับการแบ่งส่งซอยถี่ (Structuring) และการส่งเป็นรอบสม่ำเสมอ</p>
+                {rows.length === 0 ? (
+                    <p className="text-sm text-slate-400 italic py-6 text-center">ไม่พบรูปแบบเวลาที่ผิดปกติของ{role === 'sender' ? 'ผู้ส่ง' : 'ผู้รับ'}ในข้อมูลปัจจุบัน</p>
+                ) : (
+                    <div className="overflow-x-auto max-h-[28rem] overflow-y-auto rounded-lg border border-slate-100">
+                        <table className="w-full text-left">
+                            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                                <tr><th className="custom-table th">{role === 'sender' ? 'ผู้ส่ง' : 'ผู้รับ'}</th><th className="custom-table th text-center">เคส</th><th className="custom-table th">ช่วงห่างเฉลี่ย</th><th className="custom-table th">รูปแบบที่พบ</th><th className="custom-table th">ช่วงเวลา</th></tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {rows.map((r, i) => (
+                                    <tr key={i} className="hover:bg-slate-50">
+                                        <td className="custom-table td font-medium text-slate-700">{r.name}</td>
+                                        <td className="custom-table td text-center text-slate-600">{r.count}</td>
+                                        <td className="custom-table td text-slate-500">{r.avgGapDays != null ? `~${r.avgGapDays} วัน` : '-'}</td>
+                                        <td className="custom-table td">
+                                            <div className="flex flex-wrap gap-1">
+                                                {r.hasBurst && <span className="text-[0.65rem] px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded font-bold">🚩 แบ่งส่งซอยถี่ (Structuring)</span>}
+                                                {r.isRegular && <span className="text-[0.65rem] px-1.5 py-0.5 bg-brand-100 text-brand-700 rounded font-bold">🔁 ส่งเป็นรอบสม่ำเสมอ</span>}
+                                            </div>
+                                        </td>
+                                        <td className="custom-table td text-xs text-slate-400 whitespace-nowrap">{r.firstDate} → {r.lastDate}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+        );
+
+        const CorridorTable = ({ corridors }) => (
+            <div className="bg-white p-6 rounded-xl shadow-soft border border-slate-200">
+                <h3 className="text-sm font-bold text-brand-800 uppercase tracking-wider pl-3 border-l-4 border-emerald-600 mb-1">Corridor Risk: เส้นทางต้นทาง → ปลายทาง</h3>
+                <p className="text-xs text-slate-400 pl-3 mb-4">รวมตามคู่ (จังหวัดต้นทาง → ประเทศปลายทาง) เรียงตามน้ำหนักสะสม</p>
+                <div className="overflow-x-auto max-h-[30rem] overflow-y-auto rounded-lg border border-slate-100">
+                    <table className="w-full text-left">
+                        <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                            <tr><th className="custom-table th w-10 text-center">#</th><th className="custom-table th">เส้นทาง</th><th className="custom-table th text-center">เคส</th><th className="custom-table th text-right">น้ำหนักรวม</th><th className="custom-table th text-right">สัดส่วน</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {corridors.slice(0, 25).map((c, i) => (
+                                <tr key={i} className="hover:bg-slate-50">
+                                    <td className="custom-table td text-center text-slate-400 font-bold">{i + 1}</td>
+                                    <td className="custom-table td font-medium text-slate-700">
+                                        {c.origin} <span className="text-slate-300 mx-1">→</span> {c.dest}
+                                        {c.share >= 5 && <span className="ml-2 text-[0.65rem] px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded font-bold">เส้นทางเสี่ยงสูง</span>}
+                                    </td>
+                                    <td className="custom-table td text-center text-slate-600">{c.count}</td>
+                                    <td className="custom-table td text-right font-bold text-rose-600">{c.weight.toFixed(2)} Kg</td>
+                                    <td className="custom-table td text-right text-slate-500">{c.share.toFixed(1)}%</td>
+                                </tr>
+                            ))}
+                            {corridors.length === 0 && <tr><td colSpan="5" className="px-6 py-12 text-center text-slate-400 italic">ไม่พบข้อมูล</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+
+        const CrimeAnalyticsPage = ({ analytics }) => {
+            const [subTab, setSubTab] = useState('network');
+            const subTabs = [
+                { id: 'network', label: '🕸️ Network Graph' },
+                { id: 'alias', label: '🔗 ที่อยู่ซ้ำ/นามแฝง' },
+                { id: 'risk', label: '📊 Risk Score' },
+                { id: 'pattern', label: '📈 Pattern (Burst)' },
+                { id: 'corridor', label: '🗺️ Corridor Risk' },
+            ];
+            return (
+                <div className="space-y-6">
+                    <div className="flex flex-wrap gap-2 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
+                        {subTabs.map(t => (
+                            <button key={t.id} onClick={() => setSubTab(t.id)} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${subTab === t.id ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}>{t.label}</button>
+                        ))}
+                    </div>
+                    {subTab === 'network' && <NetworkGraphPanel analytics={analytics} />}
+                    {subTab === 'alias' && (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <AliasGroupTable title="ที่อยู่ผู้ส่งที่มีหลายชื่อ" groups={analytics.senderAliasGroups} />
+                            <AliasGroupTable title="ที่อยู่ผู้รับที่มีหลายชื่อ" groups={analytics.receiverAliasGroups} />
+                        </div>
+                    )}
+                    {subTab === 'risk' && (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <RiskScoreTable title="Risk Score: ผู้ส่ง" rows={analytics.riskSenders} role="sender" />
+                            <RiskScoreTable title="Risk Score: ผู้รับ" rows={analytics.riskReceivers} role="receiver" />
+                        </div>
+                    )}
+                    {subTab === 'pattern' && (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <PatternTable title="Pattern: ผู้ส่ง" rows={analytics.patternSenders} role="sender" />
+                            <PatternTable title="Pattern: ผู้รับ" rows={analytics.patternReceivers} role="receiver" />
+                        </div>
+                    )}
+                    {subTab === 'corridor' && <CorridorTable corridors={analytics.corridors} />}
+                </div>
+            );
+        };
+
         const LeafletMap = ({ center, zoom, markers, color }) => {
             const mapRef = useRef(null);
             const mapInstanceRef = useRef(null);
@@ -700,11 +1235,90 @@
             const [selectedCountry, setSelectedCountry] = useState('ALL');
             const [editingIndex, setEditingIndex] = useState(null);
             const [uploadSummary, setUploadSummary] = useState(null);
+            const [dateRange, setDateRange] = useState({ start: '', end: '' });
+            const [watchlist, setWatchlist] = useState([]);
+            const [globalSearch, setGlobalSearch] = useState('');
+            const [sidebarOpen, setSidebarOpen] = useState(false);
+            const [isDirty, setIsDirty] = useState(false);
+            const isFirstRender = useRef(true);
             const contentRef = useRef(null);
+
+            // Track unsaved changes (skip the very first render, which is just initial mock/empty state)
+            useEffect(() => {
+                if (isFirstRender.current) { isFirstRender.current = false; return; }
+                setIsDirty(true);
+            }, [data]);
+
+            // Warn before closing/refreshing the tab if there's unsaved work — everything lives only
+            // in browser memory, so a closed tab with no JSON backup means the data is gone for good.
+            useEffect(() => {
+                const handler = (e) => {
+                    if (!isDirty) return;
+                    e.preventDefault();
+                    e.returnValue = '';
+                    return '';
+                };
+                window.addEventListener('beforeunload', handler);
+                return () => window.removeEventListener('beforeunload', handler);
+            }, [isDirty]);
+
+            const addToWatchlist = (value, type = 'name', note = '') => {
+                const trimmed = (value || '').trim();
+                if (!trimmed) return;
+                setWatchlist(prev => {
+                    if (prev.some(w => w.value.toLowerCase() === trimmed.toLowerCase())) return prev; // no duplicates
+                    return [...prev, { id: Date.now() + Math.random(), value: trimmed, type, note, addedDate: new Date().toISOString().slice(0, 10) }];
+                });
+            };
+            const removeFromWatchlist = (id) => setWatchlist(prev => prev.filter(w => w.id !== id));
+
+            const watchlistMatchCount = useMemo(() => (data || []).filter(d => getWatchlistMatches(d, watchlist).length > 0).length, [data, watchlist]);
+            const watchlistMatchCountFiltered = useMemo(() => (filteredData || []).filter(d => getWatchlistMatches(d, watchlist).length > 0).length, [filteredData, watchlist]);
+
+            const globalSearchResults = useMemo(() => {
+                const q = globalSearch.trim().toLowerCase();
+                if (!q) return [];
+                return (data || [])
+                    .map((item, idx) => ({ item, idx }))
+                    .filter(({ item }) =>
+                        (item.hwb || '').toLowerCase().includes(q) ||
+                        (item.shipper || '').toLowerCase().includes(q) ||
+                        (item.receiver || '').toLowerCase().includes(q) ||
+                        (item.shipperAddr || '').toLowerCase().includes(q) ||
+                        (item.receiverAddr || '').toLowerCase().includes(q)
+                    )
+                    .slice(0, 8);
+            }, [data, globalSearch]);
 
             const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } = window.Recharts || {};
 
+            // Global date-range filter. Returns the SAME object references (not copies) so that
+            // components can still resolve an item's true index in the original `data` array
+            // via indexOf — needed for editing/deleting to keep working correctly while filtered.
+            const filteredData = useMemo(() => {
+                if (!dateRange.start && !dateRange.end) return data || [];
+                return (data || []).filter(d => {
+                    const dt = (d.date || '').toString().split(' ')[0];
+                    if (!dt) return false;
+                    if (dateRange.start && dt < dateRange.start) return false;
+                    if (dateRange.end && dt > dateRange.end) return false;
+                    return true;
+                });
+            }, [data, dateRange]);
+
+            const applyRecentPreset = (days) => {
+                const validDates = (data || []).map(d => (d.date || '').toString().split(' ')[0]).filter(Boolean).sort();
+                const maxDateStr = validDates[validDates.length - 1];
+                if (!maxDateStr) return;
+                const end = new Date(maxDateStr);
+                const start = new Date(end);
+                start.setDate(end.getDate() - days + 1);
+                const fmt = (d) => d.toISOString().slice(0, 10);
+                setDateRange({ start: fmt(start), end: fmt(end) });
+            };
+
             const stats = useMemo(() => {
+                const data = filteredData;
                 const totalShipments = (data || []).length;
                 const totalWeight = (data || []).reduce((acc, curr) => acc + parseFloat(curr.weight || 0), 0);
                 const groupBy = (keyFn) => (data || []).reduce((acc, curr) => { const k = keyFn(curr); if (!acc[k]) acc[k] = { name: k, count: 0, weight: 0 }; acc[k].count += 1; acc[k].weight += parseFloat(curr.weight || 0); return acc; }, {});
@@ -781,19 +1395,230 @@
 
                 const needsReviewCount = (data || []).filter(d => d.needsReview).length;
                 return { totalShipments, totalWeight: totalWeight.toFixed(2), chartData, topDestData, topOriginData, provinceMapData, countryMapData, byTypeData, allSenders, allReceivers, provincesList: ['ALL', ...Object.keys(byProvinceObj).sort()], countriesList: ['ALL', ...Object.keys(byCountryObj).sort()], topCountryCode: topDestData[0]?.name || '-', needsReviewCount };
-            }, [data]);
+            }, [filteredData]);
+
+            // ===================== CRIME ANALYTICS =====================
+            // Network graph, alias/same-address detection, risk scoring, burst/regularity
+            // patterns, and origin→destination corridor risk — all derived from the current
+            // date-filtered view.
+            const crimeAnalytics = useMemo(() => {
+                const list = filteredData;
+
+                // -- Corridor totals + "high risk destination" set (data-driven: top ~30% of
+                //    destination countries by cumulative seized weight are treated as high-risk) --
+                const corridorMap = {};
+                const countryWeightTotals = {};
+                list.forEach(c => {
+                    const o = (c.shipperCity || 'Unknown').trim().toUpperCase() || 'UNKNOWN';
+                    const d = (c.dest || 'Unknown').trim().toUpperCase() || 'UNKNOWN';
+                    const w = parseFloat(c.weight || 0);
+                    const key = o + ' → ' + d;
+                    if (!corridorMap[key]) corridorMap[key] = { origin: o, dest: d, weight: 0, count: 0 };
+                    corridorMap[key].weight += w; corridorMap[key].count += 1;
+                    if (d) countryWeightTotals[d] = (countryWeightTotals[d] || 0) + w;
+                });
+                const grandTotalWeight = list.reduce((s, c) => s + parseFloat(c.weight || 0), 0) || 1;
+                const corridors = Object.values(corridorMap).map(x => ({ ...x, share: (x.weight / grandTotalWeight) * 100 })).sort((a, b) => b.weight - a.weight);
+                const sortedCountryTotals = Object.entries(countryWeightTotals).sort((a, b) => b[1] - a[1]);
+                const highRiskCountrySet = new Set(sortedCountryTotals.slice(0, Math.max(1, Math.ceil(sortedCountryTotals.length * 0.3))).map(x => x[0]));
+
+                // -- Single pass: build sender/receiver network + collect dates/dest-country sets --
+                const edgeMap = {}, senderTotals = {}, receiverTotals = {};
+                list.forEach(c => {
+                    const s = (c.shipper || 'Unknown').trim() || 'Unknown';
+                    const r = (c.receiver || 'Unknown').trim() || 'Unknown';
+                    const w = parseFloat(c.weight || 0);
+                    const destCode = (c.dest || '').toUpperCase();
+                    const dateStr = c.date || '';
+
+                    const ekey = s + '|||' + r;
+                    if (!edgeMap[ekey]) edgeMap[ekey] = { sender: s, receiver: r, weight: 0, count: 0 };
+                    edgeMap[ekey].weight += w; edgeMap[ekey].count += 1;
+
+                    if (!senderTotals[s]) senderTotals[s] = { name: s, weight: 0, count: 0, receivers: new Set(), destSet: new Set(), dates: [] };
+                    senderTotals[s].weight += w; senderTotals[s].count += 1;
+                    senderTotals[s].receivers.add(r); senderTotals[s].destSet.add(destCode); senderTotals[s].dates.push(dateStr);
+
+                    if (!receiverTotals[r]) receiverTotals[r] = { name: r, weight: 0, count: 0, senders: new Set(), destSet: new Set(), dates: [] };
+                    receiverTotals[r].weight += w; receiverTotals[r].count += 1;
+                    receiverTotals[r].senders.add(s); receiverTotals[r].destSet.add(destCode); receiverTotals[r].dates.push(dateStr);
+                });
+                const edges = Object.values(edgeMap);
+                const senderNodes = Object.values(senderTotals).map(s => ({ ...s, reach: s.receivers.size }));
+                const receiverNodes = Object.values(receiverTotals).map(r => ({ ...r, reach: r.senders.size }));
+                const hubSenders = senderNodes.filter(s => s.reach > 1).sort((a, b) => b.reach - a.reach || b.weight - a.weight);
+                const hubReceivers = receiverNodes.filter(r => r.reach > 1).sort((a, b) => b.reach - a.reach || b.weight - a.weight);
+                const topSenderNodes = [...senderNodes].sort((a, b) => b.weight - a.weight).slice(0, 15);
+                const topReceiverNodes = [...receiverNodes].sort((a, b) => b.weight - a.weight).slice(0, 15);
+                const topSenderNameSet = new Set(topSenderNodes.map(s => s.name));
+                const topReceiverNameSet = new Set(topReceiverNodes.map(r => r.name));
+                const networkEdges = edges.filter(e => topSenderNameSet.has(e.sender) && topReceiverNameSet.has(e.receiver));
+
+                // -- Alias / same-address-different-name detection (keyed by GPS when available, else address text) --
+                const buildAliasGroups = (nameFn, addrFn, latFn, lngFn) => {
+                    const groups = {};
+                    list.forEach(c => {
+                        const lat = latFn(c), lng = lngFn(c);
+                        const addr = (addrFn(c) || '').trim();
+                        const key = (lat != null && lng != null) ? `${lat.toFixed(3)},${lng.toFixed(3)}` : addr.toUpperCase();
+                        if (!key) return;
+                        if (!groups[key]) groups[key] = { key, addr: addr || '-', lat, lng, names: new Set(), cases: [] };
+                        const nm = (nameFn(c) || 'Unknown').trim() || 'Unknown';
+                        groups[key].names.add(nm);
+                        groups[key].cases.push({ hwb: c.hwb, name: nm, date: c.date || '', weight: parseFloat(c.weight || 0) });
+                    });
+                    return Object.values(groups)
+                        .filter(g => g.names.size > 1)
+                        .map(g => ({ ...g, names: Array.from(g.names), count: g.cases.length, weight: g.cases.reduce((s, x) => s + x.weight, 0) }))
+                        .sort((a, b) => b.names.length - a.names.length || b.weight - a.weight);
+                };
+                const senderAliasGroups = buildAliasGroups(c => c.shipper, c => c.shipperAddr, c => c.originLat, c => c.originLng);
+                const receiverAliasGroups = buildAliasGroups(c => c.receiver, c => c.receiverAddr, c => c.destLat, c => c.destLng);
+                const aliasFlaggedSenderNames = new Set(senderAliasGroups.flatMap(g => g.names));
+                const aliasFlaggedReceiverNames = new Set(receiverAliasGroups.flatMap(g => g.names));
+
+                // -- Risk scoring: 40% weight-share + 25% frequency-share + 20% alias flag + 15% high-risk destination --
+                const maxSenderWeight = Math.max(1, ...senderNodes.map(s => s.weight));
+                const maxSenderCount = Math.max(1, ...senderNodes.map(s => s.count));
+                const maxReceiverWeight = Math.max(1, ...receiverNodes.map(r => r.weight));
+                const maxReceiverCount = Math.max(1, ...receiverNodes.map(r => r.count));
+                const scoreEntity = (node, isAlias, isHighRiskDest, maxW, maxC) => {
+                    const wScore = 40 * (node.weight / maxW);
+                    const cScore = 25 * (node.count / maxC);
+                    const aScore = isAlias ? 20 : 0;
+                    const dScore = isHighRiskDest ? 15 : 0;
+                    const reasons = [];
+                    if (wScore >= 20) reasons.push('น้ำหนักสะสมสูง');
+                    if (cScore >= 12) reasons.push('ส่งถี่/หลายเคส');
+                    if (isAlias) reasons.push('ที่อยู่ซ้ำ/นามแฝง');
+                    if (isHighRiskDest) reasons.push('ปลายทางกลุ่มเสี่ยงสูง');
+                    return { score: Math.min(100, Math.round(wScore + cScore + aScore + dScore)), reasons };
+                };
+                const riskSenders = senderNodes.map(s => {
+                    const isAlias = aliasFlaggedSenderNames.has(s.name);
+                    const isHighRiskDest = [...s.destSet].some(d => highRiskCountrySet.has(d));
+                    const { score, reasons } = scoreEntity(s, isAlias, isHighRiskDest, maxSenderWeight, maxSenderCount);
+                    return { name: s.name, weight: s.weight, count: s.count, reach: s.reach, score, reasons };
+                }).sort((a, b) => b.score - a.score);
+                const riskReceivers = receiverNodes.map(r => {
+                    const isAlias = aliasFlaggedReceiverNames.has(r.name);
+                    const isHighRiskDest = [...r.destSet].some(d => highRiskCountrySet.has(d));
+                    const { score, reasons } = scoreEntity(r, isAlias, isHighRiskDest, maxReceiverWeight, maxReceiverCount);
+                    return { name: r.name, weight: r.weight, count: r.count, reach: r.reach, score, reasons };
+                }).sort((a, b) => b.score - a.score);
+
+                // -- Burst / regular-cycle pattern detection (entities with 2+ cases) --
+                const analyzePattern = (entity) => {
+                    const sortedDates = [...entity.dates].filter(Boolean).sort();
+                    if (sortedDates.length < 2) return { hasBurst: false, isRegular: false, avgGapDays: null };
+                    const gaps = [];
+                    for (let i = 1; i < sortedDates.length; i++) {
+                        const diffDays = Math.round((new Date(sortedDates[i]) - new Date(sortedDates[i - 1])) / 86400000);
+                        gaps.push(diffDays);
+                    }
+                    const avgGap = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+                    const variance = gaps.reduce((a, b) => a + Math.pow(b - avgGap, 2), 0) / gaps.length;
+                    const stdDev = Math.sqrt(variance);
+                    const hasBurst = gaps.some(g => g <= 2);
+                    const isRegular = avgGap >= 3 && (stdDev / (avgGap || 1)) < 0.35;
+                    return { hasBurst, isRegular, avgGapDays: Math.round(avgGap * 10) / 10, firstDate: sortedDates[0], lastDate: sortedDates[sortedDates.length - 1] };
+                };
+                const patternSenders = senderNodes.filter(s => s.count >= 2)
+                    .map(s => ({ name: s.name, count: s.count, weight: s.weight, ...analyzePattern(s) }))
+                    .filter(s => s.hasBurst || s.isRegular)
+                    .sort((a, b) => (b.hasBurst - a.hasBurst) || (b.weight - a.weight));
+                const patternReceivers = receiverNodes.filter(r => r.count >= 2)
+                    .map(r => ({ name: r.name, count: r.count, weight: r.weight, ...analyzePattern(r) }))
+                    .filter(r => r.hasBurst || r.isRegular)
+                    .sort((a, b) => (b.hasBurst - a.hasBurst) || (b.weight - a.weight));
+
+                return {
+                    networkEdges, topSenderNodes, topReceiverNodes, hubSenders, hubReceivers,
+                    senderAliasGroups, receiverAliasGroups,
+                    riskSenders, riskReceivers,
+                    patternSenders, patternReceivers,
+                    corridors, highRiskCountries: Array.from(highRiskCountrySet)
+                };
+            }, [filteredData]);
 
             const originReportData = useMemo(() => {
-                const filtered = selectedProvince === 'ALL' ? data : (data || []).filter(d => { let c = (d.shipperCity||'').toUpperCase(); if(c.includes('BANGKOK')) c='BANGKOK'; if(c.includes('SAMUT')) c='SAMUTPRAKARN'; return c === selectedProvince; });
+                const filtered = selectedProvince === 'ALL' ? filteredData : (filteredData || []).filter(d => { let c = (d.shipperCity||'').toUpperCase(); if(c.includes('BANGKOK')) c='BANGKOK'; if(c.includes('SAMUT')) c='SAMUTPRAKARN'; return c === selectedProvince; });
                 return { data: filtered, count: filtered.length, weight: filtered.reduce((acc, c) => acc + parseFloat(c.weight||0), 0).toFixed(2) };
-            }, [data, selectedProvince]);
+            }, [filteredData, selectedProvince]);
 
             const destReportData = useMemo(() => {
-                const filtered = selectedCountry === 'ALL' ? data : (data || []).filter(d => d.dest === selectedCountry);
+                const filtered = selectedCountry === 'ALL' ? filteredData : (filteredData || []).filter(d => d.dest === selectedCountry);
                 return { data: filtered, count: filtered.length, weight: filtered.reduce((acc, c) => acc + parseFloat(c.weight||0), 0).toFixed(2) };
-            }, [data, selectedCountry]);
+            }, [filteredData, selectedCountry]);
 
-            const missingWeightCount = useMemo(() => (data || []).filter(d => !d.weight || parseFloat(d.weight) === 0).length, [data]);
+            const missingWeightCount = useMemo(() => (filteredData || []).filter(d => !d.weight || parseFloat(d.weight) === 0).length, [filteredData]);
+
+            const dataQuality = useMemo(() => {
+                const list = filteredData || [];
+                const total = list.length;
+                let missingShipper = 0, missingReceiver = 0, missingShipperAddr = 0, missingReceiverAddr = 0, missingDate = 0, cleanCount = 0, nonWeightIssueCount = 0;
+                list.forEach(d => {
+                    let issues = 0, nonWeightIssues = 0;
+                    if (!d.shipper || d.shipper === 'Unknown') { missingShipper++; issues++; nonWeightIssues++; }
+                    if (!d.receiver || d.receiver === 'Unknown') { missingReceiver++; issues++; nonWeightIssues++; }
+                    if (!d.shipperAddr || d.shipperAddr.trim() === '') { missingShipperAddr++; issues++; nonWeightIssues++; }
+                    if (!d.receiverAddr || d.receiverAddr.trim() === '') { missingReceiverAddr++; issues++; nonWeightIssues++; }
+                    if (!d.date) { missingDate++; issues++; nonWeightIssues++; }
+                    if (!d.weight || parseFloat(d.weight) === 0) { issues++; }
+                    if (issues === 0) cleanCount++;
+                    if (nonWeightIssues > 0) nonWeightIssueCount++;
+                });
+                const qualityScore = total > 0 ? Math.round((cleanCount / total) * 100) : 100;
+                return { total, missingShipper, missingReceiver, missingShipperAddr, missingReceiverAddr, missingDate, cleanCount, qualityScore, nonWeightIssueCount };
+            }, [filteredData]);
+
+            // Period-over-period comparison: only meaningful when a specific date range is selected —
+            // compares against the immediately preceding period of equal length.
+            const comparisonStats = useMemo(() => {
+                if (!dateRange.start || !dateRange.end) return null;
+                const start = new Date(dateRange.start);
+                const end = new Date(dateRange.end);
+                if (isNaN(start) || isNaN(end) || end < start) return null;
+                const rangeDays = Math.round((end - start) / 86400000) + 1;
+                const prevEnd = new Date(start); prevEnd.setDate(start.getDate() - 1);
+                const prevStart = new Date(prevEnd); prevStart.setDate(prevEnd.getDate() - rangeDays + 1);
+                const fmt = (d) => d.toISOString().slice(0, 10);
+                const prevStartStr = fmt(prevStart), prevEndStr = fmt(prevEnd);
+                const prevData = (data || []).filter(d => {
+                    const dt = (d.date || '').toString().split(' ')[0];
+                    return dt && dt >= prevStartStr && dt <= prevEndStr;
+                });
+                const prevWeight = prevData.reduce((a, c) => a + parseFloat(c.weight || 0), 0);
+                const prevCount = prevData.length;
+                const curWeight = parseFloat(stats.totalWeight);
+                const weightChange = prevWeight > 0 ? ((curWeight - prevWeight) / prevWeight * 100) : null;
+                const countChange = prevCount > 0 ? ((stats.totalShipments - prevCount) / prevCount * 100) : null;
+                return { prevWeight, prevCount, weightChange, countChange, prevStartStr, prevEndStr };
+            }, [data, dateRange, stats.totalWeight, stats.totalShipments]);
+
+            const executiveSummary = useMemo(() => {
+                const periodLabel = (dateRange.start || dateRange.end)
+                    ? `ช่วงวันที่ ${dateRange.start || '(ไม่ระบุ)'} ถึง ${dateRange.end || '(ไม่ระบุ)'}`
+                    : 'ข้อมูลทั้งหมดในระบบ ณ ปัจจุบัน';
+                const topOrigin = stats.topOriginData && stats.topOriginData[0] ? stats.topOriginData[0].name : null;
+                const topDest = stats.topCountryCode && stats.topCountryCode !== '-' ? stats.topCountryCode : null;
+                const topCorridor = crimeAnalytics.corridors && crimeAnalytics.corridors[0];
+                const topRiskSender = crimeAnalytics.riskSenders && crimeAnalytics.riskSenders[0];
+
+                let text = `สรุปสถานการณ์การลักลอบส่งออกช่อดอกกัญชาผ่านขนส่งเอกชน จังหวัดสมุทรปราการ สำหรับ${periodLabel} พบการตรวจยึดทั้งหมด ${stats.totalShipments} เคส น้ำหนักรวม ${stats.totalWeight} กิโลกรัม`;
+                if (comparisonStats && comparisonStats.weightChange != null && Math.abs(comparisonStats.weightChange) >= 1) {
+                    const dir = comparisonStats.weightChange > 0 ? 'เพิ่มขึ้น' : 'ลดลง';
+                    text += ` ${dir} ${Math.abs(comparisonStats.weightChange).toFixed(0)}% เมื่อเทียบกับช่วงเวลาก่อนหน้าที่มีความยาวเท่ากัน`;
+                }
+                text += '. ';
+                if (topOrigin) text += `พื้นที่ต้นทางที่พบมากที่สุดคือ ${topOrigin} `;
+                if (topDest) text += `และปลายทางที่พบมากที่สุดคือรหัสประเทศ ${topDest}. `;
+                if (topCorridor) text += `เส้นทางที่มีความเสี่ยงสูงสุดคือ ${topCorridor.origin} → ${topCorridor.dest} คิดเป็นสัดส่วน ${topCorridor.share.toFixed(1)}% ของน้ำหนักรวมทั้งหมด. `;
+                if (topRiskSender) text += `ผู้ส่งที่มีคะแนนความเสี่ยงสูงสุดคือ "${topRiskSender.name}" (คะแนนความเสี่ยง ${topRiskSender.score}/100). `;
+                if (stats.needsReviewCount > 0) text += `มีเคสที่น้ำหนักยังไม่ชัดเจนต้องตรวจสอบเพิ่มเติม ${stats.needsReviewCount} เคส. `;
+                if (watchlistMatchCountFiltered > 0) text += `พบเคสที่ตรงกับบัญชีเฝ้าระวัง ${watchlistMatchCountFiltered} เคส ควรติดตามอย่างใกล้ชิด. `;
+                return text.trim();
+            }, [stats, crimeAnalytics, comparisonStats, dateRange, watchlistMatchCountFiltered]);
 
             const updateWeight = (idx, newWeightStr) => {
                 const val = parseFloat(newWeightStr);
@@ -805,64 +1630,94 @@
                 });
             };
 
+            const updateStatus = (idx, newStatus) => {
+                if (idx < 0) return;
+                setData(prevData => {
+                    const newData = [...prevData];
+                    newData[idx] = { ...newData[idx], status: newStatus };
+                    return newData;
+                });
+            };
+
+            // Shared by both CSV and Excel upload: maps raw parsed rows (array of plain objects with
+            // courier-export column names) into our internal case shape, then merges (upsert by HWB).
+            const processRows = (rawRows, fileName) => {
+                const newDocs = (rawRows || []).map(row => {
+                    let dateVal = row['EDD'] || row['Date'] || row['Shipment Date'];
+                    if (!dateVal) {
+                         const months = ['2025-10-15', '2025-11-15', '2025-12-15', '2026-01-15'];
+                         const idx = (row['HWB No'] || Math.random()).toString().charCodeAt(0) % 4;
+                         dateVal = months[idx];
+                    }
+                    const w = getWeight(row);
+                    const [oLat, oLng] = lookupProvinceCoords(row['Shpr City'] || row['Shpr Province']);
+                    const [dLat, dLng] = lookupCountryCoords(row['Dest Ctry']);
+                    return {
+                        hwb: row['HWB No'], origin: row['Orig Ctry']||'TH', dest: row['Dest Ctry'],
+                        weight: w.weight, needsReview: w.needsReview, weightSource: w.source, desc: row['Description'],
+                        shipperCity: row['Shpr City']||row['Shpr Province']||'Unknown',
+                        shipper: row['Shipper Name']||row['Shipper']||'Unknown',
+                        shipperAddr: [row['Shpr Addr 1'], row['Shpr Addr 2'], row['Shpr City']].filter(Boolean).join(', '),
+                        receiver: row['Receiver Name']||'Unknown',
+                        receiverCity: row['Rcvr City']||'Unknown',
+                        receiverAddr: [row['Rcvr Addr 1'], row['Rcvr Addr 2'], row['Rcvr City']].filter(Boolean).join(', '),
+                        date: dateVal,
+                        originLat: oLat, originLng: oLng, destLat: dLat, destLng: dLng
+                    };
+                }).filter(r => r.hwb);
+
+                // MERGE (upsert by HWB) instead of replacing the whole dataset.
+                setData(prevData => {
+                    const merged = [...prevData];
+                    const indexByHwb = new Map(merged.map((r, i) => [String(r.hwb).trim(), i]));
+                    let added = 0, updated = 0;
+                    newDocs.forEach(doc => {
+                        const key = String(doc.hwb).trim();
+                        if (indexByHwb.has(key)) {
+                            merged[indexByHwb.get(key)] = { ...merged[indexByHwb.get(key)], ...doc };
+                            updated++;
+                        } else {
+                            merged.push(doc);
+                            indexByHwb.set(key, merged.length - 1);
+                            added++;
+                        }
+                    });
+                    const flagged = newDocs.filter(d => d.needsReview).length;
+                    setUploadSummary({ added, updated, total: newDocs.length, flagged, fileName });
+                    return merged;
+                });
+                setFileStatus({ loaded: true });
+            };
+
             const handleFileUpload = (e) => {
                 const file = e.target.files[0];
                 if (file) {
                     Papa.parse(file, {
                         header: true, skipEmptyLines: true,
                         complete: (results) => {
-                            const newDocs = (results.data || []).map(row => {
-                                // AUTO DISTRIBUTE LOGIC: If no date, spread to Oct-Jan
-                                let dateVal = row['EDD'] || row['Date'] || row['Shipment Date'];
-                                if (!dateVal) {
-                                     // Simulation: Spread evenly
-                                     const months = ['2025-10-15', '2025-11-15', '2025-12-15', '2026-01-15'];
-                                     // Use a hash of HWB or random to pick a month, ensuring consistency
-                                     const idx = (row['HWB No'] || Math.random()).toString().charCodeAt(0) % 4;
-                                     dateVal = months[idx];
-                                }
-                                const w = getWeight(row);
-                                return {
-                                    hwb: row['HWB No'], origin: row['Orig Ctry']||'TH', dest: row['Dest Ctry'],
-                                    weight: w.weight, needsReview: w.needsReview, weightSource: w.source, desc: row['Description'],
-                                    shipperCity: row['Shpr City']||row['Shpr Province']||'Unknown',
-                                    shipper: row['Shipper Name']||row['Shipper']||'Unknown',
-                                    shipperAddr: [row['Shpr Addr 1'], row['Shpr Addr 2'], row['Shpr City']].filter(Boolean).join(', '),
-                                    receiver: row['Receiver Name']||'Unknown',
-                                    receiverCity: row['Rcvr City']||'Unknown',
-                                    receiverAddr: [row['Rcvr Addr 1'], row['Rcvr Addr 2'], row['Rcvr City']].filter(Boolean).join(', '),
-                                    date: dateVal
-                                };
-                            }).filter(r => r.hwb);
-
-                            // MERGE (upsert by HWB) instead of replacing the whole dataset.
-                            // This is the fix for "รวมน้ำหนักไม่ได้": every previous upload used to be wiped out here.
-                            setData(prevData => {
-                                const merged = [...prevData];
-                                const indexByHwb = new Map(merged.map((r, i) => [String(r.hwb).trim(), i]));
-                                let added = 0, updated = 0;
-                                newDocs.forEach(doc => {
-                                    const key = String(doc.hwb).trim();
-                                    if (indexByHwb.has(key)) {
-                                        // Same HWB already in the system — update the existing case instead of
-                                        // adding it again (prevents double-counting its weight in any total).
-                                        merged[indexByHwb.get(key)] = { ...merged[indexByHwb.get(key)], ...doc };
-                                        updated++;
-                                    } else {
-                                        merged.push(doc);
-                                        indexByHwb.set(key, merged.length - 1);
-                                        added++;
-                                    }
-                                });
-                                const flagged = newDocs.filter(d => d.needsReview).length;
-                                setUploadSummary({ added, updated, total: newDocs.length, flagged, fileName: file.name });
-                                return merged;
-                            });
-                            setFileStatus({ loaded: true });
+                            processRows(results.data, file.name);
                             e.target.value = ''; // allow re-selecting the same file later
                         }
                     });
                 }
+            };
+
+            const handleExcelUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const wb = XLSX.read(evt.target.result, { type: 'array' });
+                        const firstSheet = wb.Sheets[wb.SheetNames[0]];
+                        const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+                        processRows(rows, file.name);
+                    } catch (err) {
+                        alert('ไม่สามารถอ่านไฟล์ Excel นี้ได้ กรุณาตรวจสอบว่าเป็นไฟล์ .xlsx/.xls ที่ถูกต้อง');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+                e.target.value = '';
             };
 
             const clearAllData = () => {
@@ -874,21 +1729,24 @@
             };
 
             const exportJSON = () => {
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const backup = { version: 2, cases: data, watchlist };
+                const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 const ts = new Date().toISOString().slice(0,10);
                 a.href = url; a.download = `CIU_backup_${ts}.json`; a.click();
                 URL.revokeObjectURL(url);
+                setIsDirty(false);
             };
 
             const exportCSV = () => {
-                const csv = Papa.unparse(data || []);
+                const csv = Papa.unparse(filteredData || []);
                 const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 const ts = new Date().toISOString().slice(0,10);
-                a.href = url; a.download = `CIU_case_data_${ts}.csv`; a.click();
+                const rangeLabel = (dateRange.start || dateRange.end) ? `_${dateRange.start || 'start'}_to_${dateRange.end || 'end'}` : '';
+                a.href = url; a.download = `CIU_case_data${rangeLabel}_${ts}.csv`; a.click();
                 URL.revokeObjectURL(url);
             };
 
@@ -898,17 +1756,99 @@
                 const reader = new FileReader();
                 reader.onload = (evt) => {
                     try {
-                        const restored = JSON.parse(evt.target.result);
-                        if (!Array.isArray(restored)) throw new Error('Invalid backup format');
-                        setData(restored);
+                        const parsed = JSON.parse(evt.target.result);
+                        // Accept both the new bundled format ({ cases, watchlist }) and older
+                        // plain-array backups exported before the watchlist feature existed.
+                        const restoredCases = Array.isArray(parsed) ? parsed : parsed.cases;
+                        const restoredWatchlist = Array.isArray(parsed) ? [] : (parsed.watchlist || []);
+                        if (!Array.isArray(restoredCases)) throw new Error('Invalid backup format');
+                        setData(restoredCases);
+                        setWatchlist(restoredWatchlist);
                         setFileStatus({ loaded: true });
-                        setUploadSummary({ added: restored.length, updated: 0, total: restored.length, flagged: restored.filter(d => d.needsReview).length, fileName: file.name, isRestore: true });
+                        setUploadSummary({ added: restoredCases.length, updated: 0, total: restoredCases.length, flagged: restoredCases.filter(d => d.needsReview).length, fileName: file.name, isRestore: true });
+                        setIsDirty(false);
                     } catch (err) {
                         alert('ไม่สามารถโหลดไฟล์สำรองนี้ได้ กรุณาตรวจสอบว่าเป็นไฟล์ JSON ที่ Export จากระบบนี้');
                     }
                 };
                 reader.readAsText(file);
                 e.target.value = '';
+            };
+
+            const generateCaseDossier = (caseItem) => {
+                const container = document.createElement('div');
+                container.style.position = 'fixed';
+                container.style.top = '-9999px';
+                container.style.left = '-9999px';
+                container.style.width = '794px';
+                container.style.background = '#fff';
+                container.style.fontFamily = "'Sarabun', sans-serif";
+                container.style.padding = '48px';
+                container.style.color = '#1e293b';
+                const statusColor = { 'รอตรวจสอบ': '#64748b', 'อยู่ระหว่างสอบสวน': '#d97706', 'ส่งดำเนินคดี': '#e11d48', 'ปิดเคส': '#059669' }[caseItem.status || 'รอตรวจสอบ'] || '#64748b';
+                container.innerHTML = `
+                    <div style="border-bottom:3px solid #4f46e5; padding-bottom:16px; margin-bottom:24px; display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div>
+                            <div style="font-size:12px; color:#64748b; font-weight:600; letter-spacing:0.05em;">CANNABIS INTERDICTION UNIT (C.I.U.)</div>
+                            <div style="font-size:20px; font-weight:800; color:#312e81; margin-top:4px;">ใบสรุปข้อมูลเคสตรวจยึด</div>
+                            <div style="font-size:12px; color:#94a3b8; margin-top:2px;">สำนักงานสาธารณสุขจังหวัดสมุทรปราการ</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:11px; color:#94a3b8;">เลขที่เอกสาร</div>
+                            <div style="font-size:16px; font-weight:800; color:#4f46e5; font-family:monospace;">${caseItem.hwb || '-'}</div>
+                            <div style="display:inline-block; margin-top:6px; padding:4px 10px; border-radius:8px; font-size:11px; font-weight:700; color:#fff; background:${statusColor};">${caseItem.status || 'รอตรวจสอบ'}</div>
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:20px;">
+                        <div style="border:1px solid #e2e8f0; border-radius:12px; padding:16px;">
+                            <div style="font-size:11px; font-weight:700; color:#4f46e5; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px; border-left:3px solid #4f46e5; padding-left:8px;">ข้อมูลผู้ส่ง (Shipper)</div>
+                            <div style="font-size:14px; font-weight:700;">${caseItem.shipper || 'Unknown'}</div>
+                            <div style="font-size:12px; color:#64748b; margin-top:4px;">${caseItem.shipperAddr || '-'}</div>
+                            <div style="font-size:12px; color:#64748b;">${caseItem.shipperCity || '-'}</div>
+                            ${caseItem.originLat && caseItem.originLng ? `<div style="font-size:11px; color:#94a3b8; margin-top:6px; font-family:monospace;">GPS: ${caseItem.originLat}, ${caseItem.originLng}</div>` : ''}
+                        </div>
+                        <div style="border:1px solid #e2e8f0; border-radius:12px; padding:16px;">
+                            <div style="font-size:11px; font-weight:700; color:#059669; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px; border-left:3px solid #059669; padding-left:8px;">ข้อมูลผู้รับ (Receiver)</div>
+                            <div style="font-size:14px; font-weight:700;">${caseItem.receiver || 'Unknown'}</div>
+                            <div style="font-size:12px; color:#64748b; margin-top:4px;">${caseItem.receiverAddr || '-'}</div>
+                            <div style="font-size:12px; color:#64748b;">${caseItem.receiverCity || '-'} (${caseItem.dest || '-'})</div>
+                            ${caseItem.destLat && caseItem.destLng ? `<div style="font-size:11px; color:#94a3b8; margin-top:6px; font-family:monospace;">GPS: ${caseItem.destLat}, ${caseItem.destLng}</div>` : ''}
+                        </div>
+                    </div>
+                    <div style="border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:20px;">
+                        <div style="font-size:11px; font-weight:700; color:#334155; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px;">รายละเอียดสินค้า & น้ำหนัก</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div style="font-size:13px; color:#334155;">${caseItem.desc || '-'}</div>
+                            <div style="font-size:24px; font-weight:800; color:#e11d48;">${parseFloat(caseItem.weight || 0).toFixed(2)} <span style="font-size:14px;">Kg</span></div>
+                        </div>
+                        <div style="font-size:11px; color:#94a3b8; margin-top:6px;">วันที่: ${caseItem.date || '-'}</div>
+                        ${caseItem.needsReview ? `<div style="margin-top:8px; font-size:11px; font-weight:700; color:#e11d48;">⚠ น้ำหนักนี้ดึงมาแบบไม่แน่ชัด ควรตรวจสอบซ้ำ</div>` : ''}
+                    </div>
+                    ${caseItem.note ? `<div style="border:1px solid #fde68a; background:#fffbeb; border-radius:12px; padding:16px; margin-bottom:20px;">
+                        <div style="font-size:11px; font-weight:700; color:#d97706; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;">หมายเหตุเจ้าหน้าที่</div>
+                        <div style="font-size:13px; color:#334155; white-space:pre-wrap;">${caseItem.note}</div>
+                    </div>` : ''}
+                    <div style="display:flex; justify-content:space-between; margin-top:48px; padding-top:16px; border-top:1px solid #e2e8f0;">
+                        <div style="font-size:11px; color:#94a3b8;">
+                            จัดทำโดยระบบ C.I.U. Samut Prakan<br/>
+                            วันที่พิมพ์เอกสาร: ${new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}
+                        </div>
+                        <div style="text-align:center;">
+                            <div style="width:200px; border-bottom:1px solid #94a3b8; margin-bottom:6px;"></div>
+                            <div style="font-size:11px; color:#94a3b8;">ผู้บันทึกข้อมูล / Recording Officer</div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(container);
+                html2canvas(container, { useCORS: true, scale: 2 }).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdf = new jsPDF('p', 'mm', 'a4');
+                    const imgWidth = 190;
+                    const imgHeight = canvas.height * imgWidth / canvas.width;
+                    pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+                    pdf.save(`CaseDossier_${caseItem.hwb || 'case'}.pdf`);
+                    document.body.removeChild(container);
+                });
             };
 
             const exportToPDF = () => {
@@ -941,36 +1881,82 @@
             );
 
             return (
-                <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
-                    {editingIndex !== null && <EditModal item={data[editingIndex]} onSave={(updated) => { const newData = [...data]; newData[editingIndex] = updated; setData(newData); setEditingIndex(null); }} onClose={() => setEditingIndex(null)} />}
-                    
-                    <header className="header-gradient text-white sticky top-0 z-50 shadow-lg">
-                        <div className="container mx-auto px-6 py-4">
-                            <div className="flex flex-col lg:flex-row justify-between items-center mb-4">
-                                <div className="flex items-center gap-4 mb-4 lg:mb-0">
-                                    <div className="p-2.5 bg-white/10 rounded-xl backdrop-blur-sm border border-white/10 shadow-sm"><Icons.Shield /></div>
-                                    <div>
-                                        <h1 className="text-xl font-bold leading-tight tracking-tight text-white">ระบบข้อมูลการลักลอบส่งออกช่อดอกกัญชา <span className="opacity-90 font-semibold text-lg block mt-0.5">จากจังหวัดสมุทรปราการ ผ่าน ขนส่งเอกชน</span></h1>
-                                        <p className="text-xs text-white/80 mt-1 font-medium">พัฒนาโดย ภก.จีรภัทร พลายงาม | <span className="font-bold text-brand-100">Version Professional Blue v2.0 (8 ก.ค. 2026) — Data Integrity Update</span></p>
+                <div className="min-h-screen flex bg-slate-50 font-sans">
+                    {editingIndex !== null && <EditModal item={data[editingIndex]} onSave={(updated) => { const newData = [...data]; newData[editingIndex] = updated; setData(newData); setEditingIndex(null); }} onClose={() => setEditingIndex(null)} onGenerateDossier={generateCaseDossier} />}
+
+                    {sidebarOpen && <div className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)}></div>}
+
+                    <aside className={`fixed lg:sticky top-0 left-0 h-screen w-72 z-50 header-gradient flex flex-col shrink-0 transition-transform duration-300 ease-out shadow-2xl lg:shadow-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+                        <div className="p-5 flex items-center gap-3 border-b border-white/10">
+                            <div className="p-2 bg-white/10 rounded-xl backdrop-blur-sm border border-white/10 shadow-sm shrink-0"><Icons.Shield /></div>
+                            <div className="min-w-0">
+                                <h1 className="text-sm font-bold leading-tight text-white truncate">ระบบข้อมูลลักลอบส่งออกกัญชา</h1>
+                                <p className="text-[0.65rem] text-white/60 truncate mt-0.5">C.I.U. สมุทรปราการ</p>
+                            </div>
+                            <button onClick={() => setSidebarOpen(false)} className="ml-auto lg:hidden text-white/70 hover:text-white transition"><Icons.Close /></button>
+                        </div>
+                        <nav className="flex-1 overflow-y-auto px-3 py-2">
+                            <NavGroup title="ภาพรวม">
+                                <NavButton label="แดชบอร์ดภาพรวม" active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }} icon={<Icons.BarChart />} />
+                            </NavGroup>
+                            <NavGroup title="จัดการข้อมูล">
+                                <NavButton label="ข้อมูลรายเคส" active={activeTab === 'case_data'} onClick={() => { setActiveTab('case_data'); setSidebarOpen(false); }} icon={<Icons.Database />} />
+                                <NavButton label="คุณภาพข้อมูล & น้ำหนัก" active={activeTab === 'fix_weight'} onClick={() => { setActiveTab('fix_weight'); setSidebarOpen(false); }} icon={<Icons.AlertTriangle />} badge={missingWeightCount} />
+                            </NavGroup>
+                            <NavGroup title="รายงานเชิงพื้นที่">
+                                <NavButton label="รายงานต้นทาง" active={activeTab === 'origin_report'} onClick={() => { setActiveTab('origin_report'); setSidebarOpen(false); }} icon={<Icons.FileText />} />
+                                <NavButton label="แผนที่ต้นทาง" active={activeTab === 'origin'} onClick={() => { setActiveTab('origin'); setSidebarOpen(false); }} icon={<Icons.Map />} />
+                                <NavButton label="รายงานปลายทาง" active={activeTab === 'dest_report'} onClick={() => { setActiveTab('dest_report'); setSidebarOpen(false); }} icon={<Icons.Globe />} />
+                                <NavButton label="แผนที่ปลายทาง" active={activeTab === 'dest'} onClick={() => { setActiveTab('dest'); setSidebarOpen(false); }} icon={<Icons.Map />} />
+                            </NavGroup>
+                            <NavGroup title="วิเคราะห์เชิงลึก">
+                                <NavButton label="วิเคราะห์เชิงอาชญวิทยา" active={activeTab === 'crime'} onClick={() => { setActiveTab('crime'); setSidebarOpen(false); }} icon={<Icons.Search />} />
+                                <NavButton label="บัญชีเฝ้าระวัง" active={activeTab === 'watchlist'} onClick={() => { setActiveTab('watchlist'); setSidebarOpen(false); }} icon={<Icons.AlertTriangle />} badge={watchlistMatchCount} />
+                            </NavGroup>
+                        </nav>
+                        <div className="p-4 border-t border-white/10">
+                            <p className="text-[0.65rem] text-white/50 leading-relaxed mb-3">พัฒนาโดย ภก.จีรภัทร พลายงาม<br />Version Professional Blue v2.0 (8 ก.ค. 2026)</p>
+                            <button onClick={() => setIsLoggedIn(false)} className="w-full px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold text-white transition">Logout</button>
+                        </div>
+                    </aside>
+
+                    <div className="flex-1 flex flex-col min-w-0">
+                        <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+                            <div className="px-6 py-4 flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-slate-500 hover:text-slate-700 transition shrink-0"><Icons.Menu /></button>
+                                    <div className="min-w-0">
+                                        <h2 className="text-lg font-bold text-brand-900 truncate">{PAGE_TITLES[activeTab] || 'ภาพรวม'}</h2>
+                                        <p className="text-xs text-slate-400 truncate hidden sm:block">จากจังหวัดสมุทรปราการ ผ่าน ขนส่งเอกชน</p>
                                     </div>
                                 </div>
-                                <div className="flex gap-3">
-                                    <button onClick={exportToPDF} className="flex items-center px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-semibold backdrop-blur-sm border border-white/10 transition"><span className="mr-2"><Icons.Download/></span> Export Report</button>
-                                    <button onClick={() => setIsLoggedIn(false)} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-semibold shadow-sm transition">Logout</button>
+                                <div className="relative flex-1 max-w-md hidden md:block">
+                                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><Icons.Search /></span>
+                                    <input
+                                        type="text" value={globalSearch} onChange={e => setGlobalSearch(e.target.value)}
+                                        placeholder="ค้นหา HWB, ชื่อ, ที่อยู่ จากทุกเคส..."
+                                        className="w-full pl-10 pr-4 py-2 border border-slate-200 bg-slate-50 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:bg-white outline-none transition"
+                                    />
+                                    {globalSearch.trim() && (
+                                        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-lg shadow-floating overflow-hidden z-40 max-h-80 overflow-y-auto">
+                                            {globalSearchResults.length === 0 ? (
+                                                <div className="px-4 py-3 text-sm text-slate-400 italic">ไม่พบเคสที่ตรงกับ "{globalSearch}"</div>
+                                            ) : globalSearchResults.map(({ item, idx }) => (
+                                                <button key={idx} onClick={() => { setEditingIndex(idx); setGlobalSearch(''); }} className="w-full text-left px-4 py-2.5 hover:bg-brand-50 transition border-b border-slate-100 last:border-0">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="font-mono font-bold text-brand-900 text-sm">{item.hwb}</span>
+                                                        <span className="text-xs font-bold text-rose-600">{parseFloat(item.weight || 0).toFixed(2)} Kg</span>
+                                                    </div>
+                                                    <div className="text-xs text-slate-500 truncate">{item.shipper} → {item.receiver}</div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
+                                <button onClick={exportToPDF} className="shrink-0 flex items-center px-4 py-2 bg-brand-50 hover:bg-brand-100 text-brand-700 rounded-lg text-sm font-semibold transition"><Icons.Download /><span className="ml-2 hidden sm:inline">Export Report</span></button>
                             </div>
-                            <nav className="flex flex-wrap gap-2">
-                                <NavButton label="1. ภาพรวม (Overview)" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<Icons.BarChart />} />
-                                <NavButton label="2. จัดการข้อมูลรายเคส (Case Data)" active={activeTab === 'case_data'} onClick={() => setActiveTab('case_data')} icon={<Icons.Database />} />
-                                <NavButton label="3. รายงานต้นทาง (Origin Intel)" active={activeTab === 'origin_report'} onClick={() => setActiveTab('origin_report')} icon={<Icons.FileText />} />
-                                <NavButton label="4. แผนที่ต้นทาง (Origin Map)" active={activeTab === 'origin'} onClick={() => setActiveTab('origin')} icon={<Icons.Map />} />
-                                <NavButton label="5. รายงานปลายทาง (Dest Intel)" active={activeTab === 'dest_report'} onClick={() => setActiveTab('dest_report')} icon={<Icons.Globe />} />
-                                <NavButton label="6. แผนที่ปลายทาง (Dest Map)" active={activeTab === 'dest'} onClick={() => setActiveTab('dest')} icon={<Icons.Map />} />
-                                <NavButton label="7. แก้ไขน้ำหนัก (Fix Weight)" active={activeTab === 'fix_weight'} onClick={() => setActiveTab('fix_weight')} icon={<Icons.AlertTriangle />} badge={missingWeightCount} />
-                            </nav>
-                        </div>
-                    </header>
-                    <main className="container mx-auto p-8 flex-1" ref={contentRef}>
+                        </header>
+                        <main className="p-6 lg:p-8 flex-1 max-w-[1600px] w-full mx-auto" ref={contentRef}>
                         <div className="mb-6 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
                             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                                 <div className="flex items-center text-slate-700 text-sm">
@@ -979,8 +1965,12 @@
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     <label className="cursor-pointer px-4 py-2 bg-brand-900 text-white text-xs font-bold uppercase rounded-lg hover:bg-brand-800 transition flex items-center shadow-sm"><Icons.Upload /><span className="ml-2">อัปโหลด CSV (รวมข้อมูล)</span><input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} /></label>
+                                    <label className="cursor-pointer px-4 py-2 bg-emerald-700 text-white text-xs font-bold uppercase rounded-lg hover:bg-emerald-800 transition flex items-center shadow-sm"><Icons.Upload /><span className="ml-2">อัปโหลด Excel (.xlsx)</span><input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleExcelUpload} /></label>
                                     <label className="cursor-pointer px-4 py-2 bg-white text-slate-700 border border-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-slate-50 transition flex items-center shadow-sm"><span className="mr-2">📂</span>โหลดไฟล์สำรอง (JSON)<input type="file" accept=".json" className="hidden" onChange={importJSONBackup} /></label>
-                                    <button onClick={exportJSON} className="px-4 py-2 bg-white text-slate-700 border border-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-slate-50 transition flex items-center shadow-sm"><span className="mr-2">💾</span>สำรองข้อมูล (JSON)</button>
+                                    <button onClick={exportJSON} className={`relative px-4 py-2 bg-white text-slate-700 border text-xs font-bold uppercase rounded-lg hover:bg-slate-50 transition flex items-center shadow-sm ${isDirty ? 'border-rose-400' : 'border-slate-300'}`}>
+                                        <span className="mr-2">💾</span>สำรองข้อมูล (JSON)
+                                        {isDirty && <span className="absolute -top-1.5 -right-1.5 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span></span>}
+                                    </button>
                                     <button onClick={exportCSV} className="px-4 py-2 bg-white text-slate-700 border border-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-slate-50 transition flex items-center shadow-sm"><span className="mr-2">📄</span>Export CSV</button>
                                     <button onClick={clearAllData} className="px-4 py-2 bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold uppercase rounded-lg hover:bg-rose-100 transition flex items-center shadow-sm">ล้างข้อมูลทั้งหมด</button>
                                 </div>
@@ -997,14 +1987,52 @@
                                 </div>
                             )}
                         </div>
-                        
+
+                        <div className="mb-6 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <span className="text-brand-600 shrink-0"><Icons.Calendar /></span>
+                                    <span className="text-sm font-bold text-slate-700 shrink-0">ช่วงเวลาข้อมูล:</span>
+                                    <div className="flex items-center gap-2">
+                                        <input type="date" value={dateRange.start} onChange={e => setDateRange(r => ({ ...r, start: e.target.value }))} className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none transition bg-white" />
+                                        <span className="text-slate-400 text-sm">ถึง</span>
+                                        <input type="date" value={dateRange.end} onChange={e => setDateRange(r => ({ ...r, end: e.target.value }))} className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none transition bg-white" />
+                                    </div>
+                                    {(dateRange.start || dateRange.end) && (
+                                        <button onClick={() => setDateRange({ start: '', end: '' })} className="text-xs font-bold text-rose-600 hover:text-rose-800 transition flex items-center gap-1">
+                                            <Icons.Close /> ล้างตัวกรอง
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="flex flex-wrap gap-2 items-center">
+                                    <button onClick={() => applyRecentPreset(7)} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition">7 วันล่าสุด</button>
+                                    <button onClick={() => applyRecentPreset(30)} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition">30 วันล่าสุด</button>
+                                    <button onClick={() => setDateRange({ start: '', end: '' })} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition">ทั้งหมด</button>
+                                </div>
+                            </div>
+                            {(dateRange.start || dateRange.end) && (
+                                <div className="mt-3 text-xs text-brand-700 bg-brand-50 border border-brand-100 rounded-lg px-3 py-2 font-medium">
+                                    กำลังแสดงผล {filteredData.length} จาก {data.length} เคสทั้งหมด (ตามช่วงวันที่ที่เลือก) — ทุกแท็บและกราฟจะคำนวณจากข้อมูลชุดนี้
+                                </div>
+                            )}
+                        </div>
+
                         {activeTab === 'dashboard' && window.Recharts && (
                             <div className="space-y-10 animate-fade-in">
                                 <InfographicBanner />
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <ActionNeededCard
+                                        needsReviewCount={stats.needsReviewCount}
+                                        watchlistMatchCount={watchlistMatchCountFiltered}
+                                        qualityIssueCount={dataQuality.nonWeightIssueCount}
+                                        onNavigate={setActiveTab}
+                                    />
+                                    <ExecutiveSummaryCard summary={executiveSummary} />
+                                </div>
                                 <SectionHeader number="01" title="Key Performance Indicators (ตัวชี้วัดสำคัญ)" />
                                 <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-                                    <KPICard title="Total Seizures" value={stats.totalShipments} unit="Cases Detected" icon={<Icons.Search />} color="indigo" />
-                                    <KPICard title="Total Weight" value={stats.totalWeight} unit="Kilograms (Kg)" icon={<Icons.TrendingUp />} color="emerald" />
+                                    <KPICard title="Total Seizures" value={stats.totalShipments} unit="Cases Detected" icon={<Icons.Search />} color="indigo" trend={comparisonStats ? comparisonStats.countChange : null} />
+                                    <KPICard title="Total Weight" value={stats.totalWeight} unit="Kilograms (Kg)" icon={<Icons.TrendingUp />} color="emerald" trend={comparisonStats ? comparisonStats.weightChange : null} />
                                     <KPICard title="High Risk Dest" value={stats.topCountryCode} unit="Country Code" icon={<Icons.AlertTriangle />} color="rose" />
                                     <KPICard title="Top Concealment" value="Tea / Food" unit="Declared Item" icon={<Icons.FileText />} color="amber" />
                                     <KPICard title="Needs Review" value={stats.needsReviewCount} unit="น้ำหนักไม่ชัดเจน ควรตรวจสอบ" icon={<Icons.AlertTriangle />} color={stats.needsReviewCount > 0 ? "rose" : "indigo"} />
@@ -1060,7 +2088,7 @@
                         )}
 
                         {activeTab === 'case_data' && (
-                            <div className="space-y-6 animate-fade-in"><SectionHeader number="02" title="Case Data Management" /><CaseDataTable data={data} onEdit={setEditingIndex} onDelete={(idx) => { const newData = [...data]; newData.splice(idx, 1); setData(newData); }} /></div>
+                            <div className="space-y-6 animate-fade-in"><SectionHeader number="02" title="Case Data Management" /><CaseDataTable data={filteredData} allData={data} onEdit={setEditingIndex} onDelete={(idx) => { const newData = [...data]; newData.splice(idx, 1); setData(newData); }} onUpdateStatus={updateStatus} onGenerateDossier={generateCaseDossier} /></div>
                         )}
 
                         {activeTab === 'origin_report' && (
@@ -1095,12 +2123,28 @@
 
                         {activeTab === 'fix_weight' && (
                             <div className="space-y-6 animate-fade-in">
-                                <SectionHeader number="07" title="Fix Weight: เคสที่ยังไม่มีน้ำหนัก" />
-                                <MissingWeightPage data={data} onUpdateWeight={updateWeight} onOpenFull={setEditingIndex} />
+                                <SectionHeader number="07" title="คุณภาพข้อมูล & Fix Weight" />
+                                <DataQualityPanel quality={dataQuality} />
+                                <MissingWeightPage data={filteredData} allData={data} onUpdateWeight={updateWeight} onOpenFull={setEditingIndex} />
+                            </div>
+                        )}
+
+                        {activeTab === 'crime' && (
+                            <div className="space-y-6 animate-fade-in">
+                                <SectionHeader number="08" title="วิเคราะห์เชิงอาชญวิทยา (Crime Analytics)" />
+                                <CrimeAnalyticsPage analytics={crimeAnalytics} />
+                            </div>
+                        )}
+
+                        {activeTab === 'watchlist' && (
+                            <div className="space-y-6 animate-fade-in">
+                                <SectionHeader number="09" title="บัญชีเฝ้าระวัง (Watchlist)" />
+                                <WatchlistPage data={filteredData} allData={data} watchlist={watchlist} onAdd={addToWatchlist} onRemove={removeFromWatchlist} onOpenFull={setEditingIndex} />
                             </div>
                         )}
                     </main>
                     <footer className="bg-white border-t border-slate-200 text-slate-500 text-center py-8 text-xs"><p className="font-semibold text-slate-700 mb-1">&copy; 2026 Cannabis Interdiction Unit (C.I.U.) Samut Prakan</p><p>System Developed by Pharm. Jeerapat Plaingam</p></footer>
+                    </div>
                 </div>
             );
         };
