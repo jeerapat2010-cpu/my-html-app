@@ -134,8 +134,23 @@
 
         // --- Dictionaries ---
         const THAI_MONTHS_ABBR = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-        const PROVINCE_COORDS = { 'BANGKOK': [13.7563, 100.5018], 'SAMUTPRAKARN': [13.5991, 100.5968], 'SAMUT PRAKAN': [13.5991, 100.5968], 'SURAT THANI': [9.1386, 99.3304], 'SURATTHANI': [9.1386, 99.3304], 'PATHUMTHANI': [14.0208, 100.5250], 'PATHUM THANI': [14.0208, 100.5250], 'CHIANG MAI': [18.7883, 98.9853], 'NONTHABURI': [13.8591, 100.5217], 'PHUKET': [7.8804, 98.3923], 'CHONBURI': [13.3611, 100.9847], 'UDON THANI': [17.415, 102.786] };
+        const PROVINCE_COORDS = {
+            'BANGKOK': [13.7563, 100.5018], 'SAMUTPRAKARN': [13.5991, 100.5968], 'SAMUT PRAKAN': [13.5991, 100.5968],
+            'SURAT THANI': [9.1386, 99.3304], 'SURATTHANI': [9.1386, 99.3304], 'PATHUMTHANI': [14.0208, 100.5250],
+            'PATHUM THANI': [14.0208, 100.5250], 'CHIANG MAI': [18.7883, 98.9853], 'NONTHABURI': [13.8591, 100.5217],
+            'PHUKET': [7.8804, 98.3923], 'CHONBURI': [13.3611, 100.9847], 'UDON THANI': [17.415, 102.786],
+            // Samut Prakan's 6 districts (อำเภอ) — approximate district-level centers, offline fallback.
+            // For pinpoint accuracy, use the "ค้นหาพิกัดละเอียด" geocoding button instead.
+            'MUEANG SAMUT PRAKAN': [13.599, 100.596], 'เมืองสมุทรปราการ': [13.599, 100.596], 'เมือง สมุทรปราการ': [13.599, 100.596],
+            'BANG PHLI': [13.613, 100.699], 'บางพลี': [13.613, 100.699],
+            'BANG BO': [13.531, 100.913], 'บางบ่อ': [13.531, 100.913],
+            'BANG SAO THONG': [13.570, 100.746], 'บางเสาธง': [13.570, 100.746],
+            'PHRA PRADAENG': [13.666, 100.542], 'พระประแดง': [13.666, 100.542],
+            'PHRA SAMUT CHEDI': [13.602, 100.535], 'พระสมุทรเจดีย์': [13.602, 100.535],
+        };
         const COUNTRY_COORDS = { 'GB': [54.0000, -2.0000], 'JP': [36.2048, 138.2529], 'BE': [50.5039, 4.4699], 'MU': [-20.3484, 57.5522], 'DE': [51.1657, 10.4515], 'US': [37.0902, -95.7129], 'AU': [-25.2744, 133.7751], 'FR': [46.2276, 2.2137], 'NL': [52.1326, 5.2913], 'KR': [35.9078, 127.7669] };
+        // Full country names for geocoding queries — "London, United Kingdom" geocodes far better than "London, GB".
+        const COUNTRY_NAMES = { GB: 'United Kingdom', JP: 'Japan', BE: 'Belgium', MU: 'Mauritius', DE: 'Germany', US: 'United States', AU: 'Australia', FR: 'France', NL: 'Netherlands', KR: 'South Korea' };
 
         // Best-effort GPS lookup for rows coming from CSV upload (which don't carry lat/lng directly),
         // so the map, Top 20, and crime-analytics features still work on real uploaded data.
@@ -150,6 +165,24 @@
             if (!countryCode) return [null, null];
             const key = countryCode.toString().trim().toUpperCase();
             return COUNTRY_COORDS[key] || [null, null];
+        };
+
+        // Live geocoding fallback for district/city-level precision, using OpenStreetMap's free
+        // Nominatim API (no key required). Only called when the person explicitly clicks "ค้นหาพิกัด
+        // ละเอียด" — never automatically on upload — since it needs internet access and must respect
+        // Nominatim's ~1 request/second fair-use rate limit. Returns [null, null] on any failure
+        // (offline, blocked, no match) so callers can fall back to the existing province-level pin.
+        const geocodeQuery = async (query) => {
+            try {
+                const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+                const res = await fetch(url, { headers: { 'Accept-Language': 'th,en' } });
+                if (!res.ok) return [null, null];
+                const results = await res.json();
+                if (results && results[0]) return [parseFloat(results[0].lat), parseFloat(results[0].lon)];
+                return [null, null];
+            } catch (err) {
+                return [null, null];
+            }
         };
 
         // --- Icons ---
@@ -1289,6 +1322,8 @@
             const [isDirty, setIsDirty] = useState(false);
             const isFirstRender = useRef(true);
             const contentRef = useRef(null);
+            const geocodeCacheRef = useRef(new Map());
+            const [geocoding, setGeocoding] = useState({ inProgress: false, done: 0, total: 0 });
 
             // Track unsaved changes (skip the very first render, which is just initial mock/empty state)
             useEffect(() => {
@@ -1514,26 +1549,37 @@
                 const topReceiverNameSet = new Set(topReceiverNodes.map(r => r.name));
                 const networkEdges = edges.filter(e => topSenderNameSet.has(e.sender) && topReceiverNameSet.has(e.receiver));
 
-                // -- Alias / same-address-different-name detection (keyed by GPS when available, else address text) --
-                const buildAliasGroups = (nameFn, addrFn, latFn, lngFn) => {
+                // -- Alias / same-address-different-name detection --
+                // Keyed strictly on the precise street-level address (Shpr/Rcvr Addr 1), normalized for
+                // whitespace/case. GPS is NOT used as the match key: for real uploaded data, lat/lng is
+                // only a city/province-level approximation (see lookupProvinceCoords), so every sender
+                // in the same city would share identical coordinates and falsely look like "the same
+                // address" — that was producing far more matches than actually existed in the data.
+                // Records with no usable address text are excluded rather than grouped by a weaker proxy.
+                const buildAliasGroups = (nameFn, addr1Fn, addrFallbackFn, latFn, lngFn) => {
                     const groups = {};
                     list.forEach(c => {
-                        const lat = latFn(c), lng = lngFn(c);
-                        const addr = (addrFn(c) || '').trim();
-                        const key = (lat != null && lng != null) ? `${lat.toFixed(3)},${lng.toFixed(3)}` : addr.toUpperCase();
-                        if (!key) return;
-                        if (!groups[key]) groups[key] = { key, addr: addr || '-', lat, lng, names: new Set(), cases: [] };
+                        const rawAddr = (addr1Fn(c) || addrFallbackFn(c) || '').toString().trim();
+                        if (!rawAddr) return; // no specific address to compare — skip rather than guess
+                        const key = rawAddr.toUpperCase().replace(/\s+/g, ' ');
+                        const d = c.date || '';
+                        if (!groups[key]) groups[key] = { key, addr: rawAddr, lat: null, lng: null, lastDate: '', names: new Set(), cases: [] };
                         const nm = (nameFn(c) || 'Unknown').trim() || 'Unknown';
                         groups[key].names.add(nm);
-                        groups[key].cases.push({ hwb: c.hwb, name: nm, date: c.date || '', weight: parseFloat(c.weight || 0) });
+                        groups[key].cases.push({ hwb: c.hwb, name: nm, date: d, weight: parseFloat(c.weight || 0) });
+                        if (d >= groups[key].lastDate) {
+                            groups[key].lat = latFn(c) ?? groups[key].lat;
+                            groups[key].lng = lngFn(c) ?? groups[key].lng;
+                            groups[key].lastDate = d;
+                        }
                     });
                     return Object.values(groups)
                         .filter(g => g.names.size > 1)
                         .map(g => ({ ...g, names: Array.from(g.names), count: g.cases.length, weight: g.cases.reduce((s, x) => s + x.weight, 0) }))
                         .sort((a, b) => b.names.length - a.names.length || b.weight - a.weight);
                 };
-                const senderAliasGroups = buildAliasGroups(c => c.shipper, c => c.shipperAddr, c => c.originLat, c => c.originLng);
-                const receiverAliasGroups = buildAliasGroups(c => c.receiver, c => c.receiverAddr, c => c.destLat, c => c.destLng);
+                const senderAliasGroups = buildAliasGroups(c => c.shipper, c => c.shipperAddr1, c => c.shipperAddr, c => c.originLat, c => c.originLng);
+                const receiverAliasGroups = buildAliasGroups(c => c.receiver, c => c.receiverAddr1, c => c.receiverAddr, c => c.destLat, c => c.destLng);
                 const aliasFlaggedSenderNames = new Set(senderAliasGroups.flatMap(g => g.names));
                 const aliasFlaggedReceiverNames = new Set(receiverAliasGroups.flatMap(g => g.names));
 
@@ -1713,9 +1759,11 @@
                         shipperCity: row['Shpr City']||row['Shpr Province']||'Unknown',
                         shipper: row['Shipper Name']||row['Shipper']||'Unknown',
                         shipperAddr: [row['Shpr Addr 1'], row['Shpr Addr 2'], row['Shpr City']].filter(Boolean).join(', '),
+                        shipperAddr1: (row['Shpr Addr 1'] || '').toString().trim(),
                         receiver: row['Receiver Name']||'Unknown',
                         receiverCity: row['Rcvr City']||'Unknown',
                         receiverAddr: [row['Rcvr Addr 1'], row['Rcvr Addr 2'], row['Rcvr City']].filter(Boolean).join(', '),
+                        receiverAddr1: (row['Rcvr Addr 1'] || '').toString().trim(),
                         date: dateVal,
                         originLat: oLat, originLng: oLng, destLat: dLat, destLng: dLng
                     };
@@ -1773,6 +1821,50 @@
                 };
                 reader.readAsArrayBuffer(file);
                 e.target.value = '';
+            };
+
+            const runGeocoding = async () => {
+                if (geocoding.inProgress) return;
+                // Build the set of unique location queries actually present in the current data.
+                const queries = new Map(); // query string -> true
+                (data || []).forEach(item => {
+                    if (item.shipperCity && item.shipperCity !== 'Unknown') {
+                        queries.set(`${item.shipperCity}, Thailand`, true);
+                    }
+                    if (item.receiverCity && item.receiverCity !== 'Unknown') {
+                        const countryName = COUNTRY_NAMES[item.dest] || item.dest || '';
+                        queries.set(`${item.receiverCity}${countryName ? ', ' + countryName : ''}`, true);
+                    }
+                });
+                const toFetch = [...queries.keys()].filter(q => !geocodeCacheRef.current.has(q));
+                if (toFetch.length === 0) {
+                    alert('ไม่มีตำแหน่งใหม่ที่ต้องค้นหาเพิ่ม (พิกัดทั้งหมดถูกค้นหรือแคชไว้แล้วในเซสชันนี้)');
+                    return;
+                }
+                setGeocoding({ inProgress: true, done: 0, total: toFetch.length });
+                for (let i = 0; i < toFetch.length; i++) {
+                    const q = toFetch[i];
+                    const coords = await geocodeQuery(q);
+                    geocodeCacheRef.current.set(q, coords);
+                    setGeocoding(g => ({ ...g, done: i + 1 }));
+                    if (i < toFetch.length - 1) await new Promise(r => setTimeout(r, 1100)); // respect Nominatim's ~1 req/sec fair-use limit
+                }
+                // Apply whatever resolved successfully back into the case data (silently keeps the
+                // existing province-level pin for any query that failed/found nothing).
+                setData(prev => prev.map(item => {
+                    let next = item;
+                    if (item.shipperCity && item.shipperCity !== 'Unknown') {
+                        const c = geocodeCacheRef.current.get(`${item.shipperCity}, Thailand`);
+                        if (c && c[0] != null) next = { ...next, originLat: c[0], originLng: c[1] };
+                    }
+                    if (item.receiverCity && item.receiverCity !== 'Unknown') {
+                        const countryName = COUNTRY_NAMES[item.dest] || item.dest || '';
+                        const c = geocodeCacheRef.current.get(`${item.receiverCity}${countryName ? ', ' + countryName : ''}`);
+                        if (c && c[0] != null) next = { ...next, destLat: c[0], destLng: c[1] };
+                    }
+                    return next;
+                }));
+                setGeocoding({ inProgress: false, done: 0, total: 0 });
             };
 
             const clearAllData = () => {
@@ -2027,9 +2119,18 @@
                                         {isDirty && <span className="absolute -top-1.5 -right-1.5 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span></span>}
                                     </button>
                                     <button onClick={exportCSV} className="px-4 py-2 bg-white text-slate-700 border border-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-slate-50 transition flex items-center shadow-sm"><span className="mr-2">📄</span>Export CSV</button>
+                                    <button onClick={runGeocoding} disabled={geocoding.inProgress} className="px-4 py-2 bg-white text-slate-700 border border-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-slate-50 transition flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <span className="mr-2">🌐</span>{geocoding.inProgress ? `กำลังค้นหา ${geocoding.done}/${geocoding.total}...` : 'ค้นหาพิกัดละเอียด (อำเภอ/เมือง)'}
+                                    </button>
                                     <button onClick={clearAllData} className="px-4 py-2 bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold uppercase rounded-lg hover:bg-rose-100 transition flex items-center shadow-sm">ล้างข้อมูลทั้งหมด</button>
                                 </div>
                             </div>
+                            {geocoding.inProgress && (
+                                <div className="mt-3 p-3 bg-brand-50 border border-brand-100 rounded-lg text-xs text-brand-700 font-medium flex items-center gap-2">
+                                    <span className="inline-block w-3 h-3 border-2 border-brand-400 border-t-transparent rounded-full animate-spin"></span>
+                                    กำลังค้นหาพิกัดละเอียดผ่านอินเทอร์เน็ต ({geocoding.done}/{geocoding.total}) — ต้องใช้เวลาสักครู่เพื่อไม่ให้ยิงคำขอถี่เกินไป กรุณาอย่าปิดหน้านี้
+                                </div>
+                            )}
                             {uploadSummary && (
                                 <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 flex justify-between items-center">
                                     <span className="font-medium">
