@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบวิเคราะห์การบริบาลหลังคลอด | สสจ.สมุทรปราการ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Bai Jamjuree', sans-serif; }
+    body {
+      background: linear-gradient(-45deg, #fff1f2, #fce7f3, #fae8ff, #fff7ed, #fdf2f8);
+      background-size: 400% 400%;
+      animation: gradientBG 16s ease infinite;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    @keyframes gradientBG {0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+    .glass-card {
+      background: rgba(255,255,255,.87);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(244,114,182,.22);
+      border-radius: 1.35rem;
+      box-shadow: 0 10px 35px rgba(190,24,93,.08);
+      transition: transform .3s ease, box-shadow .3s ease;
+    }
+    .glass-card:hover { box-shadow: 0 16px 42px rgba(190,24,93,.13); }
+    .card-hover:hover { transform: translateY(-5px); }
+    .tab-btn {
+      transition: all .3s cubic-bezier(.4,0,.2,1);
+      border: 1px solid #fbcfe8;
+      background: rgba(255,255,255,.93);
+      color:#9d174d;
+    }
+    .tab-btn:hover:not(.active) { background:#fdf2f8; transform:translateY(-2px); color:#be185d; border-color:#f9a8d4; }
+    .tab-btn.active {
+      background: linear-gradient(135deg,#ec4899 0%,#db2777 50%,#c026d3 100%);
+      color:#fff; border-color:transparent;
+      box-shadow:0 6px 18px rgba(219,39,119,.34);
+    }
+    .custom-scrollbar::-webkit-scrollbar {height:10px;width:10px}
+    .custom-scrollbar::-webkit-scrollbar-track {background:#fdf2f8;border-radius:8px}
+    .custom-scrollbar::-webkit-scrollbar-thumb {background:#f9a8d4;border-radius:8px;border:2px solid #fdf2f8}
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {background:#f472b6}
+    .float-heart {position:absolute; opacity:.14; animation:floatHeart 8s ease-in-out infinite}
+    @keyframes floatHeart {0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-18px) rotate(8deg)}}
+    .baby-orbit { animation: babyOrbit 5s ease-in-out infinite; transform-origin:center; }
+    @keyframes babyOrbit {0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-7px) rotate(2deg)}}
+    .pulse-dot {animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}
+    @keyframes pulse {0%,100%{opacity:1}50%{opacity:.45}}
+    .marquee-wrap {
+      position:relative; width:min(980px,96%); margin:1.2rem auto 0; overflow:hidden; border-radius:9999px;
+      padding:.55rem 0; background:linear-gradient(135deg,rgba(255,241,242,.98),rgba(252,231,243,.96),rgba(250,232,255,.98));
+      border:2px solid rgba(244,114,182,.5); box-shadow:0 0 0 4px rgba(249,168,212,.14),0 0 18px rgba(236,72,153,.22),inset 0 0 18px white;
+    }
+    .marquee-track {display:inline-flex;align-items:center;white-space:nowrap;padding-left:100%;animation:run 21s linear infinite}
+    .marquee-text {
+      display:inline-block;padding-right:3rem;font-weight:900;font-size:clamp(.94rem,2vw,1.18rem);
+      color:transparent;background:linear-gradient(90deg,#9d174d,#ec4899,#c026d3,#f472b6,#9d174d);
+      background-size:260% auto;-webkit-background-clip:text;background-clip:text;animation:shimmer 3.4s linear infinite;
+      filter:drop-shadow(0 0 5px rgba(244,114,182,.22));
+    }
+    @keyframes run {0%{transform:translateX(0)}100%{transform:translateX(-100%)}}
+    @keyframes shimmer {0%{background-position:0 center}100%{background-position:260% center}}
+    .soft-grid {
+      background-image: radial-gradient(rgba(244,114,182,.15) 1px, transparent 1px);
+      background-size: 18px 18px;
+    }
+    .mini-badge {display:inline-flex;align-items:center;gap:.35rem;padding:.28rem .65rem;border-radius:9999px;font-size:.72rem;font-weight:800}
+    .table-sticky thead th {position:sticky;top:0;z-index:12}
+    .progress-track {background:#fce7f3;border-radius:9999px;height:8px;overflow:hidden}
+    .progress-fill {height:100%;border-radius:9999px;background:linear-gradient(90deg,#f472b6,#db2777,#c026d3)}
+    @media (prefers-reduced-motion: reduce) {
+      body,.float-heart,.baby-orbit,.marquee-track,.marquee-text{animation:none!important}
+      .marquee-track{padding-left:0;transform:none}
+    }
+    @media print {
+      body{background:#fff!important}
+      .no-print{display:none!important}
+      .glass-card{box-shadow:none!important;break-inside:avoid}
+    }
+  </style>
+</head>
+<body class="p-4 md:p-8 text-slate-800">
+  <div class="max-w-7xl mx-auto space-y-8">
+
+    <header class="glass-card p-7 md:p-10 text-center relative overflow-hidden border-t-4 border-pink-400 soft-grid">
+      <div class="float-heart text-7xl left-6 top-2">💗</div>
+      <div class="float-heart text-6xl right-10 bottom-3" style="animation-delay:1.4s">🌸</div>
+      <div class="absolute -left-16 -top-16 w-52 h-52 rounded-full bg-pink-300/30 blur-3xl"></div>
+      <div class="absolute -right-16 -bottom-16 w-56 h-56 rounded-full bg-fuchsia-300/25 blur-3xl"></div>
+
+      <div class="relative z-10 flex flex-col md:flex-row items-center justify-center gap-5">
+        <div class="baby-orbit w-28 h-28 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-pink-100 via-white to-fuchsia-100 border-4 border-white shadow-xl flex items-center justify-center">
+          <div class="text-6xl md:text-7xl">👩‍🍼</div>
+        </div>
+        <div class="text-center md:text-left">
+          <h1 class="text-3xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-600 via-rose-500 to-fuchsia-600 tracking-tight">
+            ระบบวิเคราะห์การบริบาลหลังคลอด
+          </h1>
+          <p class="text-lg md:text-xl text-pink-900 font-semibold mt-2">Postpartum Care Analytics Dashboard • จังหวัดสมุทรปราการ</p>
+          <p class="text-sm text-rose-700 font-semibold mt-1">แม่สุขภาพดี • ลูกน้อยแข็งแรง • ติดตามทันเวลา • ข้อมูลนำการดูแล 💞</p>
+        </div>
+      </div>
+
+      <div class="relative z-10 mt-5 flex flex-wrap justify-center gap-2">
+        <span class="mini-badge bg-pink-50 text-pink-800 border border-pink-200">🗓️ DATA กรกฎาคม 2569</span>
+        <span class="mini-badge bg-fuchsia-50 text-fuchsia-800 border border-fuchsia-200">🏥 85 หน่วยบริการ</span>
+        <span class="mini-badge bg-rose-50 text-rose-800 border border-rose-200">📍 6 อำเภอ</span>
+        <span class="mini-badge bg-white text-pink-700 border border-pink-100">
+          <span class="relative flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-70"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-pink-500 pulse-dot"></span></span>
+          Interactive Data Ready
+        </span>
+      </div>
+
+      <div class="marquee-wrap relative z-10" aria-label="ข้อมูลการอัปเดต">
+        <div class="marquee-track"><span class="marquee-text">🌸 👶 Dashboard การบริบาลหลังคลอด • วิเคราะห์จาก Excel “จำนวนเคสการรับบริการ บริบาลหลังคลอด กค 69” • ทุกสิทธิและ UC • ระดับจังหวัด อำเภอ และหน่วยบริการ • 💗 👩‍🍼</span></div>
+      </div>
+    </header>
+
+    <section id="kpi-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div class="glass-card card-hover p-5 border-l-4 border-pink-400">
+        <p class="text-xs font-extrabold tracking-wide text-pink-600 uppercase">👩 ผู้รับบริการ</p>
+        <div class="mt-2 flex items-end gap-2"><h3 id="kpi-received" class="text-4xl font-black text-pink-800">0</h3><span class="font-bold text-pink-500 mb-1">คน</span></div>
+        <p id="kpi-received-note" class="text-xs text-slate-500 font-semibold mt-2">—</p>
+      </div>
+      <div class="glass-card card-hover p-5 border-l-4 border-fuchsia-400">
+        <p class="text-xs font-extrabold tracking-wide text-fuchsia-600 uppercase">🍼 พบประวัติคลอด</p>
+        <div class="mt-2 flex items-end gap-2"><h3 id="kpi-history" class="text-4xl font-black text-fuchsia-800">0</h3><span class="font-bold text-fuchsia-500 mb-1">คน</span></div>
+        <p id="kpi-history-note" class="text-xs text-slate-500 font-semibold mt-2">—</p>
+      </div>
+      <div class="glass-card card-hover p-5 border-l-4 border-rose-400">
+        <p class="text-xs font-extrabold tracking-wide text-rose-600 uppercase">💞 จำนวนบริการ</p>
+        <div class="mt-2 flex items-end gap-2"><h3 id="kpi-service" class="text-4xl font-black text-rose-800">0</h3><span class="font-bold text-rose-500 mb-1">ครั้ง</span></div>
+        <p id="kpi-service-note" class="text-xs text-slate-500 font-semibold mt-2">—</p>
+      </div>
+      <div class="glass-card card-hover p-5 border-l-4 border-amber-400">
+        <p class="text-xs font-extrabold tracking-wide text-amber-600 uppercase">⏰ บริการล่าช้า</p>
+        <div class="mt-2 flex items-end gap-2"><h3 id="kpi-late" class="text-4xl font-black text-amber-700">0</h3><span class="font-bold text-amber-500 mb-1">คน</span></div>
+        <p id="kpi-late-note" class="text-xs text-slate-500 font-semibold mt-2">—</p>
+      </div>
+    </section>
+
+    <section class="glass-card p-3 md:p-4 no-print">
+      <div class="flex flex-col xl:flex-row gap-3 items-stretch xl:items-center justify-between">
+        <div class="flex flex-wrap gap-2 justify-center xl:justify-start">
+          <button onclick="switchView('overview')" id="btn-overview" class="tab-btn active px-4 py-2.5 rounded-xl font-bold">ภาพรวมจังหวัด</button>
+          <button onclick="switchView('district')" id="btn-district" class="tab-btn px-4 py-2.5 rounded-xl font-bold">ระดับอำเภอ</button>
+          <button onclick="switchView('hospital')" id="btn-hospital" class="tab-btn px-4 py-2.5 rounded-xl font-bold">ระดับหน่วยบริการ</button>
+          <button onclick="switchView('risk')" id="btn-risk" class="tab-btn px-4 py-2.5 rounded-xl font-bold">เฝ้าระวังความล่าช้า</button>
+        </div>
+        <div class="flex flex-wrap gap-2 justify-center items-center">
+          <label class="text-sm font-extrabold text-pink-800">สิทธิการรักษา</label>
+          <select id="rights-select" onchange="refreshCurrentView()" class="px-4 py-2.5 rounded-xl border border-pink-200 bg-white text-pink-800 font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-300">
+            <option value="all">ทุกสิทธิ</option>
+            <option value="uc">สิทธิ UC</option>
+          </select>
+          <button onclick="window.print()" class="px-4 py-2.5 rounded-xl bg-white border border-pink-200 text-pink-700 font-bold hover:bg-pink-50 transition">🖨️ พิมพ์ / PDF</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="filter-section" class="hidden glass-card p-4 no-print border-l-4 border-pink-400">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+        <div>
+          <label class="block text-xs font-extrabold text-pink-700 mb-1">กรองอำเภอ</label>
+          <select id="district-select" onchange="applyHospitalFilters()" class="w-full px-4 py-2.5 rounded-xl border border-pink-200 bg-white text-pink-800 font-bold">
+            <option value="all">ทุกอำเภอ</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-extrabold text-pink-700 mb-1">ค้นหาหน่วยบริการ</label>
+          <input id="hospital-search" oninput="applyHospitalFilters()" placeholder="พิมพ์ชื่อหรือรหัสหน่วยบริการ..." class="w-full px-4 py-2.5 rounded-xl border border-pink-200 bg-white focus:outline-none focus:ring-2 focus:ring-pink-300">
+        </div>
+        <div class="bg-gradient-to-r from-pink-50 to-fuchsia-50 rounded-xl border border-pink-100 px-4 py-2.5 font-extrabold text-pink-800">
+          แสดง <span id="filtered-count" class="text-2xl text-fuchsia-700">0</span> หน่วยบริการ
+        </div>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="glass-card p-6 overflow-hidden">
+        <h2 id="chart1-title" class="text-xl font-extrabold text-pink-900 mb-4 pb-2 border-b border-pink-100 flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-pink-500"></span>ภาพรวมผู้รับบริการ</h2>
+        <div class="overflow-x-auto custom-scrollbar pb-2"><div id="chart1-wrap" class="relative h-80"><canvas id="chart1"></canvas></div></div>
+      </div>
+      <div class="glass-card p-6 overflow-hidden">
+        <h2 id="chart2-title" class="text-xl font-extrabold text-pink-900 mb-4 pb-2 border-b border-pink-100 flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-fuchsia-500"></span>ภาพรวมการให้บริการ</h2>
+        <div class="overflow-x-auto custom-scrollbar pb-2"><div id="chart2-wrap" class="relative h-80"><canvas id="chart2"></canvas></div></div>
+      </div>
+    </section>
+
+    <section id="overview-insights" class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div class="glass-card p-5 bg-gradient-to-br from-pink-50/90 to-white">
+        <div class="flex items-center justify-between"><h3 class="font-extrabold text-pink-900">🏥 หน่วยบริการที่มีผลงาน</h3><span id="active-unit-count" class="text-3xl font-black text-pink-700">0</span></div>
+        <div class="mt-3 progress-track"><div id="active-progress" class="progress-fill" style="width:0%"></div></div>
+        <p id="active-unit-note" class="text-sm text-slate-600 font-semibold mt-2">—</p>
+      </div>
+      <div class="glass-card p-5 bg-gradient-to-br from-fuchsia-50/90 to-white">
+        <h3 class="font-extrabold text-fuchsia-900">🫶 ความเข้มข้นการดูแล</h3>
+        <div class="mt-2"><span id="intensity-value" class="text-4xl font-black text-fuchsia-700">0.00</span><span class="font-bold text-fuchsia-500 ml-2">ครั้ง/คน</span></div>
+        <p class="text-sm text-slate-600 font-semibold mt-2">จำนวนครั้งบริการเฉลี่ยต่อผู้รับบริการในชุดข้อมูลนี้</p>
+      </div>
+      <div class="glass-card p-5 bg-gradient-to-br from-amber-50/90 to-white">
+        <h3 class="font-extrabold text-amber-900">⏳ เฝ้าระวังเกิน 90 วัน</h3>
+        <div class="mt-2"><span id="over90-value" class="text-4xl font-black text-amber-700">0</span><span class="font-bold text-amber-500 ml-2">คน</span></div>
+        <p class="text-sm text-slate-600 font-semibold mt-2">ข้อมูลเดือนนี้ไม่พบเคสเกิน 90 วันในแถวรวมจังหวัด</p>
+      </div>
+    </section>
+
+    <section class="glass-card p-6 overflow-hidden border-t-4 border-pink-400">
+      <div class="flex flex-col md:flex-row gap-3 justify-between md:items-center mb-4">
+        <h2 id="table-title" class="text-xl font-extrabold text-pink-900 flex items-center gap-2">📋 ตารางข้อมูลรายละเอียด</h2>
+        <span id="table-subtitle" class="text-xs font-bold text-pink-800 bg-pink-50 px-3 py-1.5 rounded-full border border-pink-200">—</span>
+      </div>
+      <div class="overflow-auto custom-scrollbar rounded-xl border border-pink-100 shadow-sm table-sticky" style="max-height:620px">
+        <table class="min-w-full text-sm">
+          <thead id="data-head" class="bg-gradient-to-r from-pink-50 via-rose-50 to-fuchsia-50 shadow-sm"></thead>
+          <tbody id="data-body" class="bg-white divide-y divide-pink-50"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="glass-card p-6 border-l-4 border-fuchsia-500 bg-gradient-to-br from-fuchsia-50/80 via-pink-50/70 to-white relative overflow-hidden">
+      <div class="absolute right-5 top-4 text-7xl opacity-10">👩‍🍼</div>
+      <h2 class="text-2xl font-extrabold text-fuchsia-900 mb-4 relative z-10">🧠 วิเคราะห์เชิงบริหารและข้อเสนอแนะ</h2>
+      <div id="analysis-content" class="relative z-10 bg-white/75 rounded-xl border border-pink-100 p-5 text-slate-700 leading-relaxed space-y-4 shadow-inner"></div>
+    </section>
+
+    <footer class="text-center mt-12 pb-8 text-pink-600 text-sm font-medium">
+      <div class="w-28 h-1 bg-gradient-to-r from-pink-400 via-rose-400 to-fuchsia-400 mx-auto rounded-full mb-4 opacity-70"></div>
+      <p>🌸 Data Analytics & Dashboard Design by <span class="text-pink-800 font-extrabold">ภก.จีรภัทร พลายงาม (กลุ่มงานการแพทย์แผนไทยฯ สสจ.สมุทรปราการ)</span> 👶💗</p>
+      <p class="mt-1 opacity-75">Postpartum Care Dashboard Version 1.0 • DATA กรกฎาคม 2569</p>
+    </footer>
+  </div>
+
+<script>
+const provinceData = {"received_all": 283, "received_uc": 87, "history_all": 107, "history_uc": 56, "service_all": 623, "service_uc": 161, "history_service_all": 219, "history_service_uc": 119, "late_all": 227, "late_uc": 53, "over90_all": 0, "over90_uc": 0, "unit_count": 85, "active_units": 25, "history_rate": 37.80918727915194, "late_rate": 80.21201413427562, "uc_share": 30.742049469964666, "visits_per_person": 2.2014134275618376, "history_service_rate": 35.15248796147672, "late_rate_all": 80.21, "history_rate_all": 37.81, "visits_per_person_all": 2.2, "late_rate_uc": 60.92, "history_rate_uc": 64.37, "visits_per_person_uc": 1.85};
+const dataDistrict = [{"name": "เมืองสมุทรปราการ", "unit_count": 22, "active_units": 9, "received_all": 104, "received_uc": 28, "history_all": 40, "history_uc": 19, "service_all": 256, "service_uc": 54, "history_service_all": 94, "history_service_uc": 42, "late_all": 88, "late_uc": 18, "over90_all": 0, "over90_uc": 0, "history_rate": 38.46153846153847, "late_rate": 84.61538461538461, "uc_share": 26.923076923076923, "visits_per_person": 2.4615384615384617, "history_service_rate": 36.71875, "late_rate_all": 84.62, "history_rate_all": 38.46, "visits_per_person_all": 2.46, "late_rate_uc": 64.29, "history_rate_uc": 67.86, "visits_per_person_uc": 1.93}, {"name": "บางบ่อ", "unit_count": 15, "active_units": 3, "received_all": 36, "received_uc": 20, "history_all": 25, "history_uc": 19, "service_all": 53, "service_uc": 48, "history_service_all": 49, "history_service_uc": 47, "late_all": 23, "late_uc": 10, "over90_all": 0, "over90_uc": 0, "history_rate": 69.44444444444444, "late_rate": 63.888888888888886, "uc_share": 55.55555555555556, "visits_per_person": 1.4722222222222223, "history_service_rate": 92.45283018867924, "late_rate_all": 63.89, "history_rate_all": 69.44, "visits_per_person_all": 1.47, "late_rate_uc": 50.0, "history_rate_uc": 95.0, "visits_per_person_uc": 2.4}, {"name": "บางพลี", "unit_count": 11, "active_units": 3, "received_all": 61, "received_uc": 1, "history_all": 20, "history_uc": 1, "service_all": 174, "service_uc": 4, "history_service_all": 43, "history_service_uc": 4, "late_all": 51, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "history_rate": 32.78688524590164, "late_rate": 83.60655737704919, "uc_share": 1.639344262295082, "visits_per_person": 2.8524590163934427, "history_service_rate": 24.71264367816092, "late_rate_all": 83.61, "history_rate_all": 32.79, "visits_per_person_all": 2.85, "late_rate_uc": 0.0, "history_rate_uc": 100.0, "visits_per_person_uc": 4.0}, {"name": "พระประแดง", "unit_count": 17, "active_units": 3, "received_all": 24, "received_uc": 9, "history_all": 8, "history_uc": 5, "service_all": 8, "service_uc": 5, "history_service_all": 2, "history_service_uc": 2, "late_all": 19, "late_uc": 6, "over90_all": 0, "over90_uc": 0, "history_rate": 33.33333333333333, "late_rate": 79.16666666666666, "uc_share": 37.5, "visits_per_person": 0.3333333333333333, "history_service_rate": 25.0, "late_rate_all": 79.17, "history_rate_all": 33.33, "visits_per_person_all": 0.33, "late_rate_uc": 66.67, "history_rate_uc": 55.56, "visits_per_person_uc": 0.56}, {"name": "พระสมุทรเจดีย์", "unit_count": 11, "active_units": 5, "received_all": 54, "received_uc": 26, "history_all": 11, "history_uc": 9, "service_all": 129, "service_uc": 47, "history_service_all": 28, "history_service_uc": 21, "late_all": 44, "late_uc": 18, "over90_all": 0, "over90_uc": 0, "history_rate": 20.37037037037037, "late_rate": 81.48148148148148, "uc_share": 48.148148148148145, "visits_per_person": 2.388888888888889, "history_service_rate": 21.705426356589147, "late_rate_all": 81.48, "history_rate_all": 20.37, "visits_per_person_all": 2.39, "late_rate_uc": 69.23, "history_rate_uc": 34.62, "visits_per_person_uc": 1.81}, {"name": "บางเสาธง", "unit_count": 9, "active_units": 2, "received_all": 4, "received_uc": 3, "history_all": 3, "history_uc": 3, "service_all": 3, "service_uc": 3, "history_service_all": 3, "history_service_uc": 3, "late_all": 2, "late_uc": 1, "over90_all": 0, "over90_uc": 0, "history_rate": 75.0, "late_rate": 50.0, "uc_share": 75.0, "visits_per_person": 0.75, "history_service_rate": 100.0, "late_rate_all": 50.0, "history_rate_all": 75.0, "visits_per_person_all": 0.75, "late_rate_uc": 33.33, "history_rate_uc": 100.0, "visits_per_person_uc": 1.0}];
+const dataHospital = [{"code": "00933", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลสำโรงเหนือ", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00934", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางเมือง", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00935", "name": "สถานีอนามัยเฉลิมพระเกียรติ 60 พรรษา นวมินทราชินี บ้านคลองบางปิ้ง", "received_all": 6, "received_uc": 2, "history_all": 3, "history_uc": 2, "service_all": 16, "service_uc": 7, "history_service_all": 10, "history_service_uc": 7, "late_all": 4, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 66.67, "late_rate_uc": 0.0, "history_rate_all": 50.0, "history_rate_uc": 100.0, "visits_per_person_all": 2.67, "visits_per_person_uc": 3.5}, {"code": "00936", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางปูใหม่", "received_all": 3, "received_uc": 1, "history_all": 1, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 3, "late_uc": 1, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 100.0, "late_rate_uc": 100.0, "history_rate_all": 33.33, "history_rate_uc": 0.0, "visits_per_person_all": 0.0, "visits_per_person_uc": 0.0}, {"code": "00937", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลแพรกษา", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00938", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางโปรง", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00939", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางปู", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00940", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางด้วน", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00941", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางเมืองใหม่", "received_all": 7, "received_uc": 6, "history_all": 4, "history_uc": 4, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 5, "late_uc": 4, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 71.43, "late_rate_uc": 66.67, "history_rate_all": 57.14, "history_rate_uc": 66.67, "visits_per_person_all": 0.0, "visits_per_person_uc": 0.0}, {"code": "00942", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลเทพารักษ์", "received_all": 6, "received_uc": 2, "history_all": 2, "history_uc": 1, "service_all": 2, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 6, "late_uc": 2, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 100.0, "late_rate_uc": 100.0, "history_rate_all": 33.33, "history_rate_uc": 50.0, "visits_per_person_all": 0.33, "visits_per_person_uc": 0.0}, {"code": "00943", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลท้ายบ้านใหม่", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00944", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลแพรกษาใหม่", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00945", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางบ่อ", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางบ่อ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00946", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านระกาศ หมู่ 3", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางบ่อ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00947", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านระกาศ หมู่ 8", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางบ่อ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00948", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางพลีน้อย หมู่ที่ 3", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางบ่อ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00949", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางพลีน้อย หมู่ที่ 5", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางบ่อ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00950", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางพลีน้อย หมู่ที่ 8", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางบ่อ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00951", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางเพรียง", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางบ่อ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00952", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลคลองด่าน หมู่ที่ 1", "received_all": 3, "received_uc": 3, "history_all": 2, "history_uc": 2, "service_all": 5, "service_uc": 5, "history_service_all": 4, "history_service_uc": 4, "late_all": 1, "late_uc": 1, "over90_all": 0, "over90_uc": 0, "district": "บางบ่อ", "late_rate_all": 33.33, "late_rate_uc": 33.33, "history_rate_all": 66.67, "history_rate_uc": 66.67, "visits_per_person_all": 1.67, "visits_per_person_uc": 1.67}, {"code": "00953", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลคลองด่าน หมู่ที่ 13", "received_all": 5, "received_uc": 3, "history_all": 4, "history_uc": 3, "service_all": 9, "service_uc": 4, "history_service_all": 6, "history_service_uc": 4, "late_all": 4, "late_uc": 2, "over90_all": 0, "over90_uc": 0, "district": "บางบ่อ", "late_rate_all": 80.0, "late_rate_uc": 66.67, "history_rate_all": 80.0, "history_rate_uc": 100.0, "visits_per_person_all": 1.8, "visits_per_person_uc": 1.33}, {"code": "00954", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลคลองสวน", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางบ่อ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00955", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลเปร็ง", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางบ่อ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00956", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลนิยมยาตรา", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางบ่อ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00957", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางแก้ว", "received_all": 1, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 3, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 1, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางพลี", "late_rate_all": 100.0, "late_rate_uc": 0, "history_rate_all": 0.0, "history_rate_uc": 0, "visits_per_person_all": 3.0, "visits_per_person_uc": 0}, {"code": "00958", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลวัดสลุด ตำบลบางแก้ว", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางพลี", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00959", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางปลา", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางพลี", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00960", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลคลองสี่", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางพลี", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00961", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางโฉลง", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางพลี", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00962", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลราชาเทวะ", "received_all": 1, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 2, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 1, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางพลี", "late_rate_all": 100.0, "late_rate_uc": 0, "history_rate_all": 0.0, "history_rate_uc": 0, "visits_per_person_all": 2.0, "visits_per_person_uc": 0}, {"code": "00963", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลหนองปรือ", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางพลี", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00964", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางพึ่ง", "received_all": 1, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 3, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 1, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระประแดง", "late_rate_all": 100.0, "late_rate_uc": 0, "history_rate_all": 0.0, "history_rate_uc": 0, "visits_per_person_all": 3.0, "visits_per_person_uc": 0}, {"code": "00965", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางจาก", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระประแดง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00966", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางครุ", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระประแดง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00967", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางหญ้าแพรก", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระประแดง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00968", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางหัวเสือ", "received_all": 2, "received_uc": 2, "history_all": 1, "history_uc": 1, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 2, "late_uc": 2, "over90_all": 0, "over90_uc": 0, "district": "พระประแดง", "late_rate_all": 100.0, "late_rate_uc": 100.0, "history_rate_all": 50.0, "history_rate_uc": 50.0, "visits_per_person_all": 0.0, "visits_per_person_uc": 0.0}, {"code": "00969", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางยอ", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระประแดง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00970", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางกะเจ้า", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระประแดง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00971", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางน้ำผึ้ง", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระประแดง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00972", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางกระสอบ", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระประแดง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00973", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางกอบัว", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระประแดง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00974", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางกอ", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระประแดง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00975", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลทรงคนอง", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระประแดง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00976", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลสำโรง", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระประแดง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00977", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลสำโรงกลาง", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระประแดง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00978", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลสำโรงใต้", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระประแดง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00979", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านขุนสมุทรไทย", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระสมุทรเจดีย์", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00980", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลนาเกลือ", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระสมุทรเจดีย์", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00981", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านคลองทะเล", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระสมุทรเจดีย์", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00982", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านคลองสวน", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระสมุทรเจดีย์", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00983", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลแหลมฟ้าผ่า", "received_all": 19, "received_uc": 5, "history_all": 3, "history_uc": 1, "service_all": 59, "service_uc": 14, "history_service_all": 10, "history_service_uc": 3, "late_all": 16, "late_uc": 4, "over90_all": 0, "over90_uc": 0, "district": "พระสมุทรเจดีย์", "late_rate_all": 84.21, "late_rate_uc": 80.0, "history_rate_all": 15.79, "history_rate_uc": 20.0, "visits_per_person_all": 3.11, "visits_per_person_uc": 2.8}, {"code": "00984", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านขุนสมุทร", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระสมุทรเจดีย์", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00985", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลในคลองบางปลากด", "received_all": 17, "received_uc": 8, "history_all": 1, "history_uc": 1, "service_all": 50, "service_uc": 19, "history_service_all": 5, "history_service_uc": 5, "late_all": 16, "late_uc": 7, "over90_all": 0, "over90_uc": 0, "district": "พระสมุทรเจดีย์", "late_rate_all": 94.12, "late_rate_uc": 87.5, "history_rate_all": 5.88, "history_rate_uc": 12.5, "visits_per_person_all": 2.94, "visits_per_person_uc": 2.38}, {"code": "00986", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านคู่สร้าง", "received_all": 9, "received_uc": 7, "history_all": 3, "history_uc": 3, "service_all": 8, "service_uc": 6, "history_service_all": 6, "history_service_uc": 6, "late_all": 6, "late_uc": 4, "over90_all": 0, "over90_uc": 0, "district": "พระสมุทรเจดีย์", "late_rate_all": 66.67, "late_rate_uc": 57.14, "history_rate_all": 33.33, "history_rate_uc": 42.86, "visits_per_person_all": 0.89, "visits_per_person_uc": 0.86}, {"code": "00987", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลเมืองใหม่บางพลี", "received_all": 3, "received_uc": 3, "history_all": 3, "history_uc": 3, "service_all": 3, "service_uc": 3, "history_service_all": 3, "history_service_uc": 3, "late_all": 1, "late_uc": 1, "over90_all": 0, "over90_uc": 0, "district": "บางเสาธง", "late_rate_all": 33.33, "late_rate_uc": 33.33, "history_rate_all": 100.0, "history_rate_uc": 100.0, "visits_per_person_all": 1.0, "visits_per_person_uc": 1.0}, {"code": "00988", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลเสาธงกลาง ตำบลบางเสาธง", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางเสาธง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00989", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบางเสาธง", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางเสาธง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00990", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลศรีษะจระเข้น้อย", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางเสาธง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00991", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลศีรษะจรเข้ใหญ่", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางเสาธง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "00992", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลวัดศรีวารีน้อย ตำบลศีรษะจรเข้ใหญ่", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางเสาธง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "10685", "name": "โรงพยาบาลสมุทรปราการ", "received_all": 69, "received_uc": 13, "history_all": 25, "history_uc": 9, "service_all": 199, "service_uc": 40, "history_service_all": 74, "history_service_uc": 31, "late_all": 58, "late_uc": 8, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 84.06, "late_rate_uc": 61.54, "history_rate_all": 36.23, "history_rate_uc": 69.23, "visits_per_person_all": 2.88, "visits_per_person_uc": 3.08}, {"code": "10752", "name": "โรงพยาบาลบางบ่อ", "received_all": 28, "received_uc": 14, "history_all": 19, "history_uc": 14, "service_all": 39, "service_uc": 39, "history_service_all": 39, "history_service_uc": 39, "late_all": 18, "late_uc": 7, "over90_all": 0, "over90_uc": 0, "district": "บางบ่อ", "late_rate_all": 64.29, "late_rate_uc": 50.0, "history_rate_all": 67.86, "history_rate_uc": 100.0, "visits_per_person_all": 1.39, "visits_per_person_uc": 2.79}, {"code": "10753", "name": "โรงพยาบาลบางพลี", "received_all": 59, "received_uc": 1, "history_all": 20, "history_uc": 1, "service_all": 169, "service_uc": 4, "history_service_all": 43, "history_service_uc": 4, "late_all": 49, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางพลี", "late_rate_all": 83.05, "late_rate_uc": 0.0, "history_rate_all": 33.9, "history_rate_uc": 100.0, "visits_per_person_all": 2.86, "visits_per_person_uc": 4.0}, {"code": "10754", "name": "โรงพยาบาลบางจาก", "received_all": 21, "received_uc": 7, "history_all": 7, "history_uc": 4, "service_all": 5, "service_uc": 5, "history_service_all": 2, "history_service_uc": 2, "late_all": 16, "late_uc": 4, "over90_all": 0, "over90_uc": 0, "district": "พระประแดง", "late_rate_all": 76.19, "late_rate_uc": 57.14, "history_rate_all": 33.33, "history_rate_uc": 57.14, "visits_per_person_all": 0.24, "visits_per_person_uc": 0.71}, {"code": "10755", "name": "โรงพยาบาลพระสมุทรเจดีย์สวาทยานนท์", "received_all": 4, "received_uc": 3, "history_all": 3, "history_uc": 3, "service_all": 2, "service_uc": 2, "history_service_all": 2, "history_service_uc": 2, "late_all": 2, "late_uc": 1, "over90_all": 0, "over90_uc": 0, "district": "พระสมุทรเจดีย์", "late_rate_all": 50.0, "late_rate_uc": 33.33, "history_rate_all": 75.0, "history_rate_uc": 100.0, "visits_per_person_all": 0.5, "visits_per_person_uc": 0.67}, {"code": "12251", "name": "โรงพยาบาลยุวประสาทไวทโยปถัมภ์", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "13812", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลท้ายบ้าน", "received_all": 3, "received_uc": 1, "history_all": 2, "history_uc": 0, "service_all": 9, "service_uc": 3, "history_service_all": 6, "history_service_uc": 0, "late_all": 3, "late_uc": 1, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 100.0, "late_rate_uc": 100.0, "history_rate_all": 66.67, "history_rate_uc": 0.0, "visits_per_person_all": 3.0, "visits_per_person_uc": 3.0}, {"code": "15048", "name": "ศูนย์สุขภาพชุมชนเมือง โรงพยาบาลสมุทรปราการ", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "23032", "name": "ศูนย์สุขภาพชุมชนรพ.บางบ่อ", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางบ่อ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "23034", "name": "ศูนย์แพทย์ชุมชนวัดบางพลีใหญ่กลาง", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางพลี", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "23911", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลคลองด่าน หมู่ 7", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางบ่อ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "23944", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลอยู่เจริญ", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระประแดง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "23945", "name": "สถานีอนามัยเฉลิมพระเกียรติ 60 พรรษา นวมินทราชินี สาขาวัดบางปิ้ง", "received_all": 3, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 10, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 3, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 100.0, "late_rate_uc": 0, "history_rate_all": 0.0, "history_rate_uc": 0, "visits_per_person_all": 3.33, "visits_per_person_uc": 0}, {"code": "24027", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลพุทธรักษา", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "24028", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลร่มโพธิ์", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "24029", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบุญศิริ", "received_all": 5, "received_uc": 3, "history_all": 3, "history_uc": 3, "service_all": 12, "service_uc": 4, "history_service_all": 4, "history_service_uc": 4, "late_all": 4, "late_uc": 2, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 80.0, "late_rate_uc": 66.67, "history_rate_all": 60.0, "history_rate_uc": 100.0, "visits_per_person_all": 2.4, "visits_per_person_uc": 1.33}, {"code": "24410", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านคลองนาเกลือน้อย", "received_all": 5, "received_uc": 3, "history_all": 1, "history_uc": 1, "service_all": 10, "service_uc": 6, "history_service_all": 5, "history_service_uc": 5, "late_all": 4, "late_uc": 2, "over90_all": 0, "over90_uc": 0, "district": "พระสมุทรเจดีย์", "late_rate_all": 80.0, "late_rate_uc": 66.67, "history_rate_all": 20.0, "history_rate_uc": 33.33, "visits_per_person_all": 2.0, "visits_per_person_uc": 2.0}, {"code": "24411", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลเจริญราษฎร์", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางเสาธง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "24412", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลกัลปพฤกษ์ ตำบลบางเสาธง", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางเสาธง", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "24559", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลคลองกระออม", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "พระสมุทรเจดีย์", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "24675", "name": "โรงพยาบาลส่งเสริมสุขภาพบัวเกราะ ตำบลราชาเทวะ", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางพลี", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "24702", "name": "โรงพยาบาลส่งเสริมสุขภาพตำบลเทศบาลตำบลสำโรงเหนือ", "received_all": 2, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 8, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 2, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 100.0, "late_rate_uc": 0, "history_rate_all": 0.0, "history_rate_uc": 0, "visits_per_person_all": 4.0, "visits_per_person_uc": 0}, {"code": "28785", "name": "โรงพยาบาลบางเสาธง", "received_all": 1, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 1, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางเสาธง", "late_rate_all": 100.0, "late_rate_uc": 0, "history_rate_all": 0.0, "history_rate_uc": 0, "visits_per_person_all": 0.0, "visits_per_person_uc": 0}, {"code": "28826", "name": "โรงพยาบาลส่งเสริมสุขภาพมังกรทอง", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "เมืองสมุทรปราการ", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}, {"code": "99826", "name": "ศูนย์สุขภาพชุมชน1 รพ.บางพลี", "received_all": 0, "received_uc": 0, "history_all": 0, "history_uc": 0, "service_all": 0, "service_uc": 0, "history_service_all": 0, "history_service_uc": 0, "late_all": 0, "late_uc": 0, "over90_all": 0, "over90_uc": 0, "district": "บางพลี", "late_rate_all": 0, "late_rate_uc": 0, "history_rate_all": 0, "history_rate_uc": 0, "visits_per_person_all": 0, "visits_per_person_uc": 0}];
+
+let currentView = 'overview';
+let chart1Instance = null;
+let chart2Instance = null;
+let currentHospitalData = [...dataHospital];
+
+Chart.defaults.font.family = "'Bai Jamjuree', sans-serif";
+Chart.defaults.color = '#475569';
+Chart.defaults.font.size = 12;
+
+function fmt(n) { return Number(n || 0).toLocaleString('th-TH'); }
+function pct(n) { return `${Number(n || 0).toFixed(2)}%`; }
+function rights() { return document.getElementById('rights-select').value; }
+function suffix() { return rights() === 'uc' ? '_uc' : '_all'; }
+function labelRights() { return rights() === 'uc' ? 'สิทธิ UC' : 'ทุกสิทธิ'; }
+
+function metric(row, base) { return Number(row[base + suffix()] || 0); }
+function rate(row, base) {
+  const key = base + suffix();
+  if (row[key] !== undefined) return Number(row[key] || 0);
+  return 0;
+}
+
+function destroyCharts() {
+  if (chart1Instance) chart1Instance.destroy();
+  if (chart2Instance) chart2Instance.destroy();
+  chart1Instance = null; chart2Instance = null;
+}
+
+function setupDistrictSelect() {
+  const sel = document.getElementById('district-select');
+  if (sel.options.length > 1) return;
+  dataDistrict.forEach(d => {
+    const o = document.createElement('option');
+    o.value = d.name; o.textContent = `อ.${d.name}`; sel.appendChild(o);
+  });
+}
+
+function updateKpis() {
+  const s = suffix();
+  const received = provinceData['received' + s];
+  const history = provinceData['history' + s];
+  const service = provinceData['service' + s];
+  const late = provinceData['late' + s];
+  const over90 = provinceData['over90' + s];
+  const historyRate = received ? history/received*100 : 0;
+  const lateRate = received ? late/received*100 : 0;
+  const intensity = received ? service/received : 0;
+
+  document.getElementById('kpi-received').textContent = fmt(received);
+  document.getElementById('kpi-history').textContent = fmt(history);
+  document.getElementById('kpi-service').textContent = fmt(service);
+  document.getElementById('kpi-late').textContent = fmt(late);
+  document.getElementById('kpi-received-note').textContent = `${labelRights()} • ภาพรวมจังหวัด`;
+  document.getElementById('kpi-history-note').textContent = `คิดเป็น ${historyRate.toFixed(2)}% ของผู้รับบริการ`;
+  document.getElementById('kpi-service-note').textContent = `เฉลี่ย ${intensity.toFixed(2)} ครั้งต่อคน`;
+  document.getElementById('kpi-late-note').textContent = `คิดเป็น ${lateRate.toFixed(2)}% ของผู้รับบริการ`;
+  document.getElementById('intensity-value').textContent = intensity.toFixed(2);
+  document.getElementById('over90-value').textContent = fmt(over90);
+
+  const active = dataHospital.filter(h => metric(h,'received') > 0 || metric(h,'service') > 0).length;
+  const activePct = dataHospital.length ? active/dataHospital.length*100 : 0;
+  document.getElementById('active-unit-count').textContent = active;
+  document.getElementById('active-progress').style.width = `${activePct}%`;
+  document.getElementById('active-unit-note').textContent = `${active} จาก ${dataHospital.length} แห่ง (${activePct.toFixed(1)}%) มีข้อมูลบริการในสิทธิที่เลือก`;
+}
+
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + view).classList.add('active');
+  const filter = document.getElementById('filter-section');
+  if (view === 'hospital' || view === 'risk') {
+    filter.classList.remove('hidden'); setupDistrictSelect();
+  } else {
+    filter.classList.add('hidden');
+  }
+  refreshCurrentView();
+}
+
+function refreshCurrentView() {
+  updateKpis();
+  if (currentView === 'overview') renderOverview();
+  else if (currentView === 'district') renderDistrict();
+  else if (currentView === 'hospital') applyHospitalFilters();
+  else if (currentView === 'risk') applyHospitalFilters();
+}
+
+function chartColors(n) {
+  const palette = ['rgba(236,72,153,.82)','rgba(217,70,239,.78)','rgba(251,113,133,.82)','rgba(244,114,182,.76)','rgba(192,38,211,.72)','rgba(251,146,60,.72)'];
+  return Array.from({length:n}, (_,i)=>palette[i%palette.length]);
+}
+
+function renderOverview() {
+  destroyCharts();
+  const labels = ['ผู้รับบริการ','พบประวัติคลอด','บริการ (ครั้ง)','บริการพบประวัติ (ครั้ง)','บริการล่าช้า','เกิน 90 วัน'];
+  const vals = [
+    metric(provinceData,'received'), metric(provinceData,'history'), metric(provinceData,'service'),
+    metric(provinceData,'history_service'), metric(provinceData,'late'), metric(provinceData,'over90')
+  ];
+  document.getElementById('chart1-title').innerHTML = '<span class="w-3 h-3 rounded-full bg-pink-500"></span> โครงสร้างผลลัพธ์ระดับจังหวัด';
+  document.getElementById('chart2-title').innerHTML = '<span class="w-3 h-3 rounded-full bg-fuchsia-500"></span> เปรียบเทียบรายอำเภอ: ผู้รับบริการและบริการล่าช้า';
+
+  chart1Instance = new Chart(document.getElementById('chart1'), {
+    type:'bar',
+    data:{labels, datasets:[{label:labelRights(), data:vals, backgroundColor:chartColors(vals.length), borderRadius:8}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${fmt(c.parsed.y)} ${c.dataIndex===2||c.dataIndex===3?'ครั้ง':'คน'}`}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>fmt(v)}},x:{ticks:{maxRotation:25,minRotation:0}}}}
+  });
+
+  const dLabels = dataDistrict.map(d=>d.name);
+  chart2Instance = new Chart(document.getElementById('chart2'), {
+    type:'bar',
+    data:{labels:dLabels,datasets:[
+      {label:'ผู้รับบริการ (คน)',data:dataDistrict.map(d=>metric(d,'received')),backgroundColor:'rgba(244,114,182,.80)',borderRadius:7},
+      {label:'บริการล่าช้า (คน)',data:dataDistrict.map(d=>metric(d,'late')),backgroundColor:'rgba(251,146,60,.72)',borderRadius:7}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>fmt(v)}},x:{ticks:{maxRotation:45,minRotation:20}}}}
+  });
+
+  renderOverviewTable();
+  updateAnalysis('overview', dataHospital);
+}
+
+function renderDistrict() {
+  destroyCharts();
+  const labels = dataDistrict.map(d=>d.name);
+  document.getElementById('chart1-title').innerHTML = '<span class="w-3 h-3 rounded-full bg-pink-500"></span> ผู้รับบริการและพบประวัติคลอด รายอำเภอ';
+  document.getElementById('chart2-title').innerHTML = '<span class="w-3 h-3 rounded-full bg-fuchsia-500"></span> อัตราบริการล่าช้าและความเข้มข้นการดูแล';
+
+  chart1Instance = new Chart(document.getElementById('chart1'), {
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'ผู้รับบริการ (คน)',data:dataDistrict.map(d=>metric(d,'received')),backgroundColor:'rgba(236,72,153,.80)',borderRadius:7},
+      {label:'พบประวัติคลอด (คน)',data:dataDistrict.map(d=>metric(d,'history')),backgroundColor:'rgba(217,70,239,.65)',borderRadius:7}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true},x:{ticks:{maxRotation:45,minRotation:20}}}}
+  });
+
+  chart2Instance = new Chart(document.getElementById('chart2'), {
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'อัตราล่าช้า (%)',data:dataDistrict.map(d=>rate(d,'late_rate')),backgroundColor:'rgba(251,146,60,.72)',borderRadius:7,yAxisID:'y'},
+      {type:'line',label:'ครั้งบริการ/คน',data:dataDistrict.map(d=>rate(d,'visits_per_person')),borderColor:'rgb(192,38,211)',backgroundColor:'rgb(192,38,211)',pointRadius:5,tension:.3,yAxisID:'y1'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,title:{display:true,text:'อัตราล่าช้า (%)'},ticks:{callback:v=>v+'%'}},y1:{beginAtZero:true,position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'ครั้ง/คน'}},x:{ticks:{maxRotation:45,minRotation:20}}}}
+  });
+
+  renderDistrictTable();
+  updateAnalysis('district', dataDistrict);
+}
+
+function applyHospitalFilters() {
+  const district = document.getElementById('district-select').value;
+  const q = document.getElementById('hospital-search').value.trim().toLowerCase();
+  currentHospitalData = dataHospital.filter(h => (district==='all' || h.district===district) && (!q || h.name.toLowerCase().includes(q) || h.code.toLowerCase().includes(q)));
+  document.getElementById('filtered-count').textContent = currentHospitalData.length;
+  if (currentView === 'hospital') renderHospital(currentHospitalData);
+  else if (currentView === 'risk') renderRisk(currentHospitalData);
+}
+
+function setChartMinWidth(count) {
+  const minWidth = count > 16 ? `${Math.max(count*48, 900)}px` : '100%';
+  document.getElementById('chart1-wrap').style.minWidth = minWidth;
+  document.getElementById('chart2-wrap').style.minWidth = minWidth;
+}
+
+function renderHospital(data) {
+  destroyCharts(); setChartMinWidth(data.length);
+  const working = [...data].sort((a,b)=>metric(b,'received')-metric(a,'received'));
+  const top = working.slice(0,15);
+  const topService = [...data].sort((a,b)=>metric(b,'service')-metric(a,'service')).slice(0,15);
+  document.getElementById('chart1-title').innerHTML = '<span class="w-3 h-3 rounded-full bg-pink-500"></span> Top 15 หน่วยบริการ: ผู้รับบริการ';
+  document.getElementById('chart2-title').innerHTML = '<span class="w-3 h-3 rounded-full bg-fuchsia-500"></span> Top 15 หน่วยบริการ: จำนวนบริการ';
+
+  chart1Instance = new Chart(document.getElementById('chart1'), {
+    type:'bar', data:{labels:top.map(x=>shortName(x.name)),datasets:[{label:'ผู้รับบริการ (คน)',data:top.map(x=>metric(x,'received')),backgroundColor:'rgba(236,72,153,.78)',borderRadius:6}]},
+    options:baseBarOptions('คน')
+  });
+  chart2Instance = new Chart(document.getElementById('chart2'), {
+    type:'bar', data:{labels:topService.map(x=>shortName(x.name)),datasets:[{label:'จำนวนบริการ (ครั้ง)',data:topService.map(x=>metric(x,'service')),backgroundColor:'rgba(192,38,211,.68)',borderRadius:6}]},
+    options:baseBarOptions('ครั้ง')
+  });
+  renderHospitalTable(data);
+  updateAnalysis('hospital', data);
+}
+
+function renderRisk(data) {
+  destroyCharts(); setChartMinWidth(data.length);
+  const active = data.filter(x=>metric(x,'received')>0);
+  const byLate = [...active].sort((a,b)=>metric(b,'late')-metric(a,'late')).slice(0,15);
+  const byRate = [...active].sort((a,b)=>lateRate(b)-lateRate(a)).slice(0,15);
+  document.getElementById('chart1-title').innerHTML = '<span class="w-3 h-3 rounded-full bg-amber-500"></span> Top 15 จำนวนผู้รับบริการล่าช้า';
+  document.getElementById('chart2-title').innerHTML = '<span class="w-3 h-3 rounded-full bg-rose-500"></span> Top 15 อัตราบริการล่าช้า';
+
+  chart1Instance = new Chart(document.getElementById('chart1'), {
+    type:'bar',data:{labels:byLate.map(x=>shortName(x.name)),datasets:[{label:'ล่าช้า (คน)',data:byLate.map(x=>metric(x,'late')),backgroundColor:'rgba(251,146,60,.76)',borderRadius:6}]},
+    options:baseBarOptions('คน')
+  });
+  chart2Instance = new Chart(document.getElementById('chart2'), {
+    type:'bar',data:{labels:byRate.map(x=>shortName(x.name)),datasets:[{label:'อัตราล่าช้า (%)',data:byRate.map(x=>lateRate(x)),backgroundColor:byRate.map(x=>riskColor(lateRate(x))),borderRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>pct(c.parsed.y)}}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}},x:{ticks:{maxRotation:70,minRotation:35}}}}
+  });
+  renderRiskTable(active);
+  updateAnalysis('risk', active);
+}
+
+function baseBarOptions(unit) {
+  return {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${fmt(c.parsed.y)} ${unit}`}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>fmt(v)}},x:{ticks:{maxRotation:70,minRotation:35}}}};
+}
+function shortName(name) {
+  return name.replace('โรงพยาบาลส่งเสริมสุขภาพตำบล','รพ.สต.').replace('สถานีอนามัยเฉลิมพระเกียรติ 60 พรรษา นวมินทราชินี','สอน.');
+}
+function lateRate(row) {
+  const received = metric(row,'received'), late = metric(row,'late');
+  return received ? late/received*100 : 0;
+}
+function historyRate(row) {
+  const received = metric(row,'received'), history = metric(row,'history');
+  return received ? history/received*100 : 0;
+}
+function intensity(row) {
+  const received = metric(row,'received'), service = metric(row,'service');
+  return received ? service/received : 0;
+}
+function riskClass(rate) { return rate>=80?'สูง':rate>=50?'เฝ้าระวัง':'ต่ำ'; }
+function riskColor(rate) { return rate>=80?'rgba(225,29,72,.78)':rate>=50?'rgba(251,146,60,.78)':'rgba(244,114,182,.70)'; }
+function riskBadge(rate) {
+  const c=riskClass(rate);
+  const cls=c==='สูง'?'bg-rose-100 text-rose-800 border-rose-200':c==='เฝ้าระวัง'?'bg-amber-100 text-amber-800 border-amber-200':'bg-pink-100 text-pink-800 border-pink-200';
+  return `<span class="px-2.5 py-1 rounded-full border text-xs font-extrabold ${cls}">${c}</span>`;
+}
+
+function tableHead(cols) {
+  document.getElementById('data-head').innerHTML = '<tr>' + cols.map(c=>`<th class="px-4 py-3 text-${c.align||'left'} font-extrabold text-pink-900 whitespace-nowrap">${c.label}</th>`).join('') + '</tr>';
+}
+function setTableInfo(title, subtitle) {
+  document.getElementById('table-title').textContent = title;
+  document.getElementById('table-subtitle').textContent = subtitle;
+}
+function renderOverviewTable() {
+  setTableInfo('📋 สรุปตัวชี้วัดระดับจังหวัด', `สิทธิที่เลือก: ${labelRights()}`);
+  tableHead([
+    {label:'ตัวชี้วัด'},{label:'จำนวน',align:'right'},{label:'หน่วย'},{label:'ข้อสังเกต'}
+  ]);
+  const rec=metric(provinceData,'received'), hist=metric(provinceData,'history'), srv=metric(provinceData,'service'), late=metric(provinceData,'late'), over=metric(provinceData,'over90'), hs=metric(provinceData,'history_service');
+  const rows=[
+    ['ผู้รับบริการ',rec,'คน','ฐานผู้รับบริการของชุดข้อมูล'],
+    ['พบประวัติคลอด',hist,'คน',`ร้อยละ ${(rec?hist/rec*100:0).toFixed(2)}%`],
+    ['จำนวนบริการ',srv,'ครั้ง',`เฉลี่ย ${rec?(srv/rec).toFixed(2):'0.00'} ครั้ง/คน`],
+    ['บริการพบประวัติคลอด',hs,'ครั้ง',`คิดเป็น ${srv?(hs/srv*100).toFixed(2):'0.00'}% ของจำนวนบริการ`],
+    ['บริการล่าช้า',late,'คน',`คิดเป็น ${rec?(late/rec*100).toFixed(2):'0.00'}% ของผู้รับบริการ`],
+    ['บริการเกิน 90 วัน',over,'คน',over===0?'ไม่พบในชุดข้อมูลนี้':'ควรติดตามรายกรณี']
+  ];
+  document.getElementById('data-body').innerHTML = rows.map((r,i)=>`<tr class="hover:bg-pink-50/60"><td class="px-4 py-3 font-bold text-slate-800 border-l-4 ${i===4?'border-amber-400':'border-pink-300'}">${r[0]}</td><td class="px-4 py-3 text-right font-black text-pink-700">${fmt(r[1])}</td><td class="px-4 py-3 text-slate-600 font-semibold">${r[2]}</td><td class="px-4 py-3 text-slate-600">${r[3]}</td></tr>`).join('');
+}
+function renderDistrictTable() {
+  setTableInfo('📍 ตารางผลการบริบาลหลังคลอดรายอำเภอ', `6 อำเภอ • ${labelRights()}`);
+  tableHead([
+    {label:'อำเภอ'},{label:'หน่วยบริการ',align:'right'},{label:'มีผลงาน',align:'right'},{label:'ผู้รับบริการ',align:'right'},
+    {label:'พบประวัติ',align:'right'},{label:'บริการ',align:'right'},{label:'ล่าช้า',align:'right'},{label:'อัตราล่าช้า',align:'right'},{label:'ครั้ง/คน',align:'right'}
+  ]);
+  document.getElementById('data-body').innerHTML = [...dataDistrict].sort((a,b)=>metric(b,'received')-metric(a,'received')).map(r=>`
+    <tr class="hover:bg-pink-50/60">
+      <td class="px-4 py-3 font-extrabold text-pink-900 border-l-4 border-pink-300">${r.name}</td>
+      <td class="px-4 py-3 text-right">${fmt(r.unit_count)}</td>
+      <td class="px-4 py-3 text-right font-bold text-fuchsia-700">${fmt(r.active_units)}</td>
+      <td class="px-4 py-3 text-right font-bold">${fmt(metric(r,'received'))}</td>
+      <td class="px-4 py-3 text-right">${fmt(metric(r,'history'))}</td>
+      <td class="px-4 py-3 text-right">${fmt(metric(r,'service'))}</td>
+      <td class="px-4 py-3 text-right font-bold text-amber-700">${fmt(metric(r,'late'))}</td>
+      <td class="px-4 py-3 text-right font-black ${lateRate(r)>=80?'text-rose-600':'text-amber-600'}">${pct(lateRate(r))}</td>
+      <td class="px-4 py-3 text-right font-bold text-fuchsia-700">${intensity(r).toFixed(2)}</td>
+    </tr>`).join('');
+}
+function renderHospitalTable(data) {
+  setTableInfo('🏥 ตารางรายละเอียดระดับหน่วยบริการ', `${data.length} แห่ง • ${labelRights()}`);
+  tableHead([
+    {label:'หน่วยบริการ'},{label:'อำเภอ'},{label:'ผู้รับบริการ',align:'right'},{label:'พบประวัติ',align:'right'},{label:'บริการ',align:'right'},
+    {label:'บริการพบประวัติ',align:'right'},{label:'ล่าช้า',align:'right'},{label:'เกิน 90 วัน',align:'right'},{label:'ครั้ง/คน',align:'right'}
+  ]);
+  const sorted=[...data].sort((a,b)=>metric(b,'received')-metric(a,'received'));
+  document.getElementById('data-body').innerHTML = sorted.map(r=>`
+    <tr class="hover:bg-pink-50/60">
+      <td class="px-4 py-3 min-w-[320px] font-bold text-slate-800 border-l-4 ${metric(r,'received')>0?'border-pink-400':'border-slate-200'}">
+        ${shortName(r.name)}<div class="text-[11px] text-slate-500 mt-1 font-semibold">รหัส ${r.code}</div>
+      </td>
+      <td class="px-4 py-3 whitespace-nowrap text-pink-700 font-semibold">${r.district}</td>
+      <td class="px-4 py-3 text-right font-black text-pink-700">${fmt(metric(r,'received'))}</td>
+      <td class="px-4 py-3 text-right">${fmt(metric(r,'history'))}</td>
+      <td class="px-4 py-3 text-right font-bold text-fuchsia-700">${fmt(metric(r,'service'))}</td>
+      <td class="px-4 py-3 text-right">${fmt(metric(r,'history_service'))}</td>
+      <td class="px-4 py-3 text-right font-bold text-amber-700">${fmt(metric(r,'late'))}</td>
+      <td class="px-4 py-3 text-right">${fmt(metric(r,'over90'))}</td>
+      <td class="px-4 py-3 text-right font-bold">${intensity(r).toFixed(2)}</td>
+    </tr>`).join('');
+}
+function renderRiskTable(data) {
+  setTableInfo('⏰ ตารางเฝ้าระวังบริการล่าช้า', `${data.length} หน่วยบริการที่มีผู้รับบริการ • เกณฑ์สีเป็นการจัดกลุ่มเพื่อวิเคราะห์ภายใน`);
+  tableHead([
+    {label:'หน่วยบริการ'},{label:'อำเภอ'},{label:'ผู้รับบริการ',align:'right'},{label:'ล่าช้า',align:'right'},{label:'อัตราล่าช้า',align:'right'},
+    {label:'พบประวัติคลอด',align:'right'},{label:'ครั้ง/คน',align:'right'},{label:'ระดับเฝ้าระวัง',align:'center'}
+  ]);
+  const sorted=[...data].sort((a,b)=>lateRate(b)-lateRate(a) || metric(b,'late')-metric(a,'late'));
+  document.getElementById('data-body').innerHTML = sorted.map(r=>`
+    <tr class="hover:bg-pink-50/60">
+      <td class="px-4 py-3 min-w-[320px] font-bold text-slate-800 border-l-4 ${lateRate(r)>=80?'border-rose-500':lateRate(r)>=50?'border-amber-400':'border-pink-300'}">
+        ${shortName(r.name)}<div class="text-[11px] text-slate-500 mt-1 font-semibold">รหัส ${r.code}</div>
+      </td>
+      <td class="px-4 py-3 whitespace-nowrap text-pink-700 font-semibold">${r.district}</td>
+      <td class="px-4 py-3 text-right font-bold">${fmt(metric(r,'received'))}</td>
+      <td class="px-4 py-3 text-right font-black text-amber-700">${fmt(metric(r,'late'))}</td>
+      <td class="px-4 py-3 text-right font-black ${lateRate(r)>=80?'text-rose-600':'text-amber-600'}">${pct(lateRate(r))}</td>
+      <td class="px-4 py-3 text-right">${fmt(metric(r,'history'))} (${pct(historyRate(r))})</td>
+      <td class="px-4 py-3 text-right font-bold text-fuchsia-700">${intensity(r).toFixed(2)}</td>
+      <td class="px-4 py-3 text-center">${riskBadge(lateRate(r))}</td>
+    </tr>`).join('');
+}
+
+function updateAnalysis(view, scopeData) {
+  const box=document.getElementById('analysis-content');
+  const rec=metric(provinceData,'received'), late=metric(provinceData,'late'), hist=metric(provinceData,'history'), srv=metric(provinceData,'service');
+  const lateP=rec?late/rec*100:0, histP=rec?hist/rec*100:0, inten=rec?srv/rec:0;
+  if(view==='overview') {
+    const topD=[...dataDistrict].sort((a,b)=>metric(b,'received')-metric(a,'received'))[0];
+    const highLate=[...dataDistrict].filter(d=>metric(d,'received')>0).sort((a,b)=>lateRate(b)-lateRate(a))[0];
+    box.innerHTML=`
+      <p><strong class="text-pink-900 text-lg">📌 Executive Summary:</strong> ใน ${labelRights()} มีผู้รับบริการ <strong>${fmt(rec)}</strong> คน พบประวัติคลอด <strong>${fmt(hist)}</strong> คน (${histP.toFixed(2)}%) และเกิดบริการรวม <strong>${fmt(srv)}</strong> ครั้ง หรือเฉลี่ย <strong>${inten.toFixed(2)} ครั้ง/คน</strong></p>
+      <p>จำนวนบริการล่าช้าอยู่ที่ <strong class="text-amber-700">${fmt(late)} คน (${lateP.toFixed(2)}%)</strong> จึงควรใช้รายชื่อหน่วยบริการในเมนู “เฝ้าระวังความล่าช้า” เป็น worklist สำหรับติดตามสาเหตุและแก้ระบบนัดหมาย/เยี่ยมบ้าน โดยไม่ตีความเกณฑ์สีเป็นเกณฑ์ราชการ</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div class="bg-pink-50 border border-pink-100 rounded-xl p-3"><strong class="text-pink-800">พื้นที่ปริมาณบริการสูง:</strong> ${topD.name} มีผู้รับบริการ ${fmt(metric(topD,'received'))} คน</div>
+        <div class="bg-amber-50 border border-amber-100 rounded-xl p-3"><strong class="text-amber-800">อัตราล่าช้าสูงสุดในระดับอำเภอ:</strong> ${highLate.name} ${pct(lateRate(highLate))}</div>
+      </div>`;
+  } else if(view==='district') {
+    const leader=[...dataDistrict].sort((a,b)=>metric(b,'received')-metric(a,'received'))[0];
+    const lowActive=[...dataDistrict].sort((a,b)=>a.active_units-b.active_units)[0];
+    box.innerHTML=`
+      <p><strong class="text-pink-900 text-lg">📍 District Performance:</strong> อำเภอที่มีจำนวนผู้รับบริการสูงสุดใน ${labelRights()} คือ <strong>${leader.name}</strong> (${fmt(metric(leader,'received'))} คน) ส่วนการกระจายหน่วยบริการที่มีผลงานยังไม่สม่ำเสมอ โดย <strong>${lowActive.name}</strong> มีหน่วยที่มีผลงานเพียง ${lowActive.active_units} แห่งจาก ${lowActive.unit_count} แห่ง</p>
+      <p><strong>ข้อเสนอเชิงบริหาร:</strong> ควรแยกโจทย์เป็น 2 track คือ (1) เพิ่ม coverage ในอำเภอที่หน่วย active ต่ำ และ (2) ลด delay ในอำเภอที่มีอัตราล่าช้าสูง โดยติดตามรายหน่วยบริการจากตารางด้านล่างค่ะ</p>`;
+  } else if(view==='hospital') {
+    const active=scopeData.filter(x=>metric(x,'received')>0);
+    const top=[...active].sort((a,b)=>metric(b,'received')-metric(a,'received')).slice(0,3);
+    box.innerHTML=`
+      <p><strong class="text-pink-900 text-lg">🏥 Micro-level Review:</strong> ในขอบเขตตัวกรองนี้มี ${scopeData.length} หน่วยบริการ และมี ${active.length} แห่งที่พบข้อมูลผู้รับบริการใน ${labelRights()}</p>
+      <p><strong>หน่วยบริการที่มีผู้รับบริการสูง:</strong> ${top.length?top.map(x=>`${shortName(x.name)} ${fmt(metric(x,'received'))} คน`).join(' • '):'ไม่พบข้อมูลผู้รับบริการในขอบเขตนี้'}</p>
+      <p>แนะนำให้ใช้ตารางนี้ตรวจ 3 ประเด็นควบคู่กัน: ความครอบคลุมผู้รับบริการ, ความสอดคล้องระหว่างจำนวนคนกับจำนวนครั้งบริการ และความล่าช้า เพื่อแยกว่าเป็นปัญหา access, continuity หรือ data recording ค่ะ</p>`;
+  } else {
+    const ranked=[...scopeData].sort((a,b)=>metric(b,'late')-metric(a,'late')).slice(0,5);
+    const high=scopeData.filter(x=>lateRate(x)>=80).length;
+    box.innerHTML=`
+      <p><strong class="text-amber-900 text-lg">⏰ Delay Watch:</strong> จากหน่วยที่มีผู้รับบริการในขอบเขตตัวกรอง พบ ${high} แห่งอยู่ในกลุ่มอัตราล่าช้า ≥80% ตามเกณฑ์จัดกลุ่มเพื่อการวิเคราะห์ภายในของ Dashboard นี้</p>
+      <p><strong>หน่วยที่มีจำนวนเคสล่าช้าสูง:</strong> ${ranked.length?ranked.map(x=>`${shortName(x.name)} ${fmt(metric(x,'late'))} คน`).join(' • '):'ไม่พบเคสล่าช้าในขอบเขตนี้'}</p>
+      <p><strong>Action ที่แนะนำ:</strong> เรียงติดตามจาก “จำนวนคนล่าช้า” ก่อน แล้วใช้ “อัตราล่าช้า” ช่วยจัดลำดับรอง เพื่อไม่ให้หน่วยขนาดเล็กที่มี denominator น้อยบดบังหน่วยที่มีภาระเคสจริงสูงค่ะ</p>`;
+  }
+}
+
+window.addEventListener('load',()=>{ setupDistrictSelect(); updateKpis(); switchView('overview'); });
+</script>
+</body>
+</html>
