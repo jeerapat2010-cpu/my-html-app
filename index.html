@@ -276,7 +276,52 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.07);
         }
         .menu-item:hover .icon-box { transform: scale(1.08); }
-        .menu-text { flex-grow: 1; font-size: 0.98rem; line-height: 1.45; font-weight: 500; }
+        .menu-text { flex-grow: 1; font-size: 0.98rem; line-height: 1.45; font-weight: 500; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
+
+        /* ===== LAST-UPDATE PILL (auto from server Last-Modified) ===== */
+        .update-line {
+            display: inline-flex; align-items: center; gap: 5px;
+            align-self: flex-start;
+            font-family: 'Kanit', sans-serif;
+            font-size: 0.7rem; font-weight: 600; line-height: 1;
+            padding: 3px 10px 3px 8px;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.6);
+            color: #475569;
+            border: 1px solid rgba(0,0,0,0.06);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            white-space: nowrap;
+            transition: all 0.25s;
+        }
+        .update-line i { font-size: 0.68rem; color: var(--gold); }
+        .update-line.is-loading { opacity: 0.55; font-weight: 400; font-style: italic; background: rgba(255,255,255,0.35); }
+        .update-line.is-fresh {
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+            color: #166534; border-color: #86efac;
+            box-shadow: 0 2px 6px rgba(22,163,74,0.18);
+        }
+        .update-line.is-fresh i { color: #16a34a; }
+        .update-line.is-fresh::after {
+            content: 'ใหม่'; margin-left: 3px;
+            background: #16a34a; color: #fff;
+            font-size: 0.58rem; padding: 1px 5px; border-radius: 10px;
+        }
+        .update-line.is-hidden { display: none; }
+        /* readable pills on gold buttons */
+        .btn-gold .update-line { background: rgba(0,0,0,0.22); color: #fff; border-color: rgba(255,255,255,0.25); }
+        .btn-gold .update-line i { color: var(--gold-light); }
+
+        /* notice bar (shown only if dates can't be read, e.g. file://) */
+        .update-notice {
+            max-width: 1200px; margin: 0 auto 22px;
+            background: linear-gradient(135deg, #fef9c3, #fef08a);
+            border: 1px solid #fde047; color: #713f12;
+            border-radius: 14px; padding: 12px 18px;
+            font-size: 0.9rem; display: none; align-items: center; gap: 10px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+            line-height: 1.5;
+        }
+        .update-notice i { color: #ca8a04; font-size: 1.15rem; flex-shrink: 0; }
 
         /* ===== RIPPLE ===== */
         .ripple-dot {
@@ -488,6 +533,12 @@
             <button class="filter-btn" data-filter="cat-4">💚 Wellness</button>
             <button class="filter-btn" data-filter="cat-5">🌈 เครื่องมือทั่วไป</button>
         </div>
+    </div>
+
+    <!-- ===== UPDATE-DATE NOTICE (hidden by default) ===== -->
+    <div class="update-notice" id="updateNotice">
+        <i class="fas fa-circle-info"></i>
+        <span>กำลังเปิดจากไฟล์ในเครื่อง — ป้าย "อัปเดตล่าสุด" ของแต่ละปุ่มจะแสดงวันที่จริงอัตโนมัติเมื่อเปิดผ่านเว็บเซิร์ฟเวอร์ / โฮสต์ที่แชร์ทาง LINE ค่ะ</span>
     </div>
 
     <!-- ===== GROUP 1: AMBER/GOLD — KPI ===== -->
@@ -1188,6 +1239,75 @@ window.addEventListener('scroll', () => {
 document.getElementById('backToTop').addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 });
+</script>
+
+<!-- ========== LAST-UPDATED DATES (real, from server Last-Modified) ========== -->
+<script>
+(function(){
+    const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    function fmtThai(d){
+        return `${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
+    }
+    const notice = document.getElementById('updateNotice');
+    const isFile = location.protocol === 'file:';
+
+    // เก็บเฉพาะปุ่มที่ลิงก์ไปไฟล์ .html ภายใน (ไม่ใช่ลิงก์ภายนอก)
+    const items = Array.from(document.querySelectorAll('a.menu-item')).filter(a => {
+        const h = (a.getAttribute('href') || '').trim();
+        return h && h.toLowerCase().endsWith('.html') && !/^https?:/i.test(h);
+    });
+
+    // ใส่ป้าย placeholder ให้ทุกปุ่มก่อน
+    items.forEach(a => {
+        const txt = a.querySelector('.menu-text');
+        if(!txt) return;
+        const line = document.createElement('div');
+        line.className = 'update-line is-loading';
+        line.innerHTML = '<i class="far fa-clock"></i> กำลังตรวจสอบ...';
+        txt.appendChild(line);
+        a._updLine = line;
+    });
+
+    // เปิดจากไฟล์ในเครื่อง → อ่าน header ไม่ได้ ซ่อนป้ายและแจ้งเตือน
+    if(isFile){
+        items.forEach(a => a._updLine && a._updLine.classList.add('is-hidden'));
+        if(notice) notice.style.display = 'flex';
+        return;
+    }
+
+    let failCount = 0;
+    async function check(a){
+        const line = a._updLine;
+        try {
+            let res = await fetch(a.href, { method:'HEAD', cache:'no-store' });
+            let lm = res.headers.get('Last-Modified');
+            if(!lm){ // บางเซิร์ฟเวอร์ไม่ส่งค่าใน HEAD → ลอง GET แบบดึงแค่ 1 ไบต์
+                res = await fetch(a.href, { method:'GET', cache:'no-store', headers:{ 'Range':'bytes=0-0' } });
+                lm = res.headers.get('Last-Modified');
+            }
+            if(!lm) throw 0;
+            const d = new Date(lm);
+            if(isNaN(d.getTime())) throw 0;
+            line.classList.remove('is-loading');
+            line.innerHTML = '<i class="far fa-clock"></i> อัปเดต ' + fmtThai(d);
+            if((Date.now() - d.getTime()) / 86400000 <= 14) line.classList.add('is-fresh'); // อัปเดตใน 14 วัน = ป้ายเขียว "ใหม่"
+        } catch(e){
+            failCount++;
+            line.classList.add('is-hidden');
+        }
+    }
+
+    // จำกัดการยิงพร้อมกันไม่ให้หนักเกินไป (6 คิว)
+    const queue = items.slice();
+    async function worker(){ while(queue.length) await check(queue.shift()); }
+    Promise.all(Array.from({length:6}, worker)).then(() => {
+        if(failCount === items.length && notice){
+            notice.querySelector('span').textContent =
+                'ยังอ่านวันที่อัปเดตจากเซิร์ฟเวอร์ไม่ได้ (เซิร์ฟเวอร์อาจไม่ได้ส่งค่า Last-Modified มาให้)';
+            notice.style.display = 'flex';
+        }
+    });
+})();
 </script>
 
 <!-- Firebase Visitor Counter -->
