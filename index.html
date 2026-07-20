@@ -538,7 +538,7 @@
     <!-- ===== UPDATE-DATE NOTICE (hidden by default) ===== -->
     <div class="update-notice" id="updateNotice">
         <i class="fas fa-circle-info"></i>
-        <span>กำลังเปิดจากไฟล์ในเครื่อง — ป้าย "อัปเดตล่าสุด" ของแต่ละปุ่มจะแสดงวันที่จริงอัตโนมัติเมื่อเปิดผ่านเว็บเซิร์ฟเวอร์ / โฮสต์ที่แชร์ทาง LINE ค่ะ</span>
+        <span>กำลังโหลดวันที่อัปเดตของแต่ละปุ่มจากประวัติ GitHub...</span>
     </div>
 
     <!-- ===== GROUP 1: AMBER/GOLD — KPI ===== -->
@@ -1241,72 +1241,158 @@ document.getElementById('backToTop').addEventListener('click', () => {
 });
 </script>
 
-<!-- ========== LAST-UPDATED DATES (real, from server Last-Modified) ========== -->
+<!-- ========== LAST-UPDATED DATES — SINGLE FILE (GitHub commit dates) ========== -->
 <script>
 (function(){
-    const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-    function fmtThai(d){
-        return `${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
-    }
-    const notice = document.getElementById('updateNotice');
-    const isFile = location.protocol === 'file:';
+    /* ============================================================
+       ⚙️  ตั้งค่า (ส่วนใหญ่ไม่ต้องแตะ)
+       - ถ้า host บน GitHub Pages (xxx.github.io) ระบบจะเดา owner/repo ให้เอง
+       - ถ้าใช้โดเมนอื่น/custom domain ให้กรอก 2 ค่านี้เอง
+       ============================================================ */
+    const CFG = {
+        owner:  '',      // เช่น 'jeerapat'  (ปล่อยว่าง = เดาอัตโนมัติ)
+        repo:   '',      // เช่น 'ttm-portal' (ปล่อยว่าง = เดาอัตโนมัติ)
+        branch: 'main'   // ถ้า repo ใช้ branch ชื่ออื่น (เช่น 'master') แก้ตรงนี้
+    };
+    const CACHE_TTL_H = 12; // ชั่วโมงที่จะจำวันที่ไว้ในเครื่อง (ลดการยิง API)
 
-    // เก็บเฉพาะปุ่มที่ลิงก์ไปไฟล์ .html ภายใน (ไม่ใช่ลิงก์ภายนอก)
+    const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    const fmtThai = d => `${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
+    const notice = document.getElementById('updateNotice');
+    const setNotice = msg => { if(notice){ notice.querySelector('span').textContent = msg; notice.style.display = 'flex'; } };
+    function paint(line, d){
+        line.classList.remove('is-loading');
+        line.innerHTML = '<i class="far fa-clock"></i> อัปเดต ' + fmtThai(d);
+        if((Date.now() - d.getTime()) / 86400000 <= 14) line.classList.add('is-fresh');
+    }
+
+    /* ---------- เดา owner/repo จาก GitHub Pages ---------- */
+    function detectRepo(){
+        let { owner, repo, branch } = CFG;
+        const m = location.hostname.match(/^([a-z0-9-]+)\.github\.io$/i);
+        const parts = location.pathname.split('/').filter(Boolean);
+        const firstIsDir = parts.length > 0 && !/\.[a-z0-9]+$/i.test(parts[0]); // ไม่มีนามสกุล = โฟลเดอร์ (ชื่อ repo)
+        let isProject = false;
+        if(m){
+            owner = owner || m[1];
+            if(!repo){
+                if(firstIsDir){ repo = parts[0]; isProject = true; }      // owner.github.io/REPO/... = project site
+                else { repo = m[1] + '.github.io'; }                       // owner.github.io/file.html = user/org site
+            } else { isProject = firstIsDir; }
+        }
+        return (owner && repo) ? { owner, repo, branch: branch || 'main', isProject } : null;
+    }
+    const R = detectRepo();
+
+    /* ---------- แปลง href ของปุ่ม → path ภายใน repo ---------- */
+    function repoBaseDir(){
+        let p = location.pathname; // เช่น /repo/index.html หรือ /index.html
+        if(R && R.isProject) p = p.replace(new RegExp('^/' + R.repo + '(?=/|$)'), ''); // ตัด /repo ออก
+        return p.replace(/[^/]*$/, ''); // เหลือเฉพาะโฟลเดอร์ (มี / ปิดท้าย)
+    }
+    const BASE = repoBaseDir();
+    const toRepoPath = href => (BASE + href).replace(/\/+/g, '/').replace(/^\//, '');
+
+    /* ---------- เก็บปุ่ม + ใส่ป้าย placeholder ---------- */
     const items = Array.from(document.querySelectorAll('a.menu-item')).filter(a => {
         const h = (a.getAttribute('href') || '').trim();
         return h && h.toLowerCase().endsWith('.html') && !/^https?:/i.test(h);
     });
-
-    // ใส่ป้าย placeholder ให้ทุกปุ่มก่อน
     items.forEach(a => {
-        const txt = a.querySelector('.menu-text');
-        if(!txt) return;
+        const txt = a.querySelector('.menu-text'); if(!txt) return;
         const line = document.createElement('div');
         line.className = 'update-line is-loading';
         line.innerHTML = '<i class="far fa-clock"></i> กำลังตรวจสอบ...';
         txt.appendChild(line);
         a._updLine = line;
+        a._path = toRepoPath(decodeURIComponent(a.getAttribute('href').trim()));
     });
 
-    // เปิดจากไฟล์ในเครื่อง → อ่าน header ไม่ได้ ซ่อนป้ายและแจ้งเตือน
-    if(isFile){
-        items.forEach(a => a._updLine && a._updLine.classList.add('is-hidden'));
-        if(notice) notice.style.display = 'flex';
-        return;
+    /* ---------- cache ในเครื่อง (localStorage) ---------- */
+    const CK = p => `ghupd:${R ? R.owner + '/' + R.repo : '_'}:${p}`;
+    function getCache(p){
+        try {
+            const raw = localStorage.getItem(CK(p)); if(!raw) return null;
+            const o = JSON.parse(raw);
+            if(Date.now() - o.ts > CACHE_TTL_H * 3600000) return null;
+            return o.date || false; // false = เคยเช็คแล้วไม่พบ (กันยิงซ้ำ)
+        } catch(e){ return null; }
     }
+    const setCache = (p, date) => { try { localStorage.setItem(CK(p), JSON.stringify({ date, ts: Date.now() })); } catch(e){} };
 
-    let failCount = 0;
-    async function check(a){
-        const line = a._updLine;
+    /* ---------- fallback: Last-Modified (ใช้เมื่อไม่มี repo) ---------- */
+    async function lastModified(a){
         try {
             let res = await fetch(a.href, { method:'HEAD', cache:'no-store' });
             let lm = res.headers.get('Last-Modified');
-            if(!lm){ // บางเซิร์ฟเวอร์ไม่ส่งค่าใน HEAD → ลอง GET แบบดึงแค่ 1 ไบต์
-                res = await fetch(a.href, { method:'GET', cache:'no-store', headers:{ 'Range':'bytes=0-0' } });
-                lm = res.headers.get('Last-Modified');
-            }
-            if(!lm) throw 0;
-            const d = new Date(lm);
-            if(isNaN(d.getTime())) throw 0;
-            line.classList.remove('is-loading');
-            line.innerHTML = '<i class="far fa-clock"></i> อัปเดต ' + fmtThai(d);
-            if((Date.now() - d.getTime()) / 86400000 <= 14) line.classList.add('is-fresh'); // อัปเดตใน 14 วัน = ป้ายเขียว "ใหม่"
-        } catch(e){
-            failCount++;
-            line.classList.add('is-hidden');
-        }
+            if(!lm){ res = await fetch(a.href, { method:'GET', cache:'no-store', headers:{ 'Range':'bytes=0-0' } }); lm = res.headers.get('Last-Modified'); }
+            if(!lm) return null;
+            const d = new Date(lm); return isNaN(d.getTime()) ? null : d;
+        } catch(e){ return null; }
     }
 
-    // จำกัดการยิงพร้อมกันไม่ให้หนักเกินไป (6 คิว)
-    const queue = items.slice();
-    async function worker(){ while(queue.length) await check(queue.shift()); }
-    Promise.all(Array.from({length:6}, worker)).then(() => {
-        if(failCount === items.length && notice){
-            notice.querySelector('span').textContent =
-                'ยังอ่านวันที่อัปเดตจากเซิร์ฟเวอร์ไม่ได้ (เซิร์ฟเวอร์อาจไม่ได้ส่งค่า Last-Modified มาให้)';
-            notice.style.display = 'flex';
+    /* ---------- โหมดไม่มี repo → ใช้ Last-Modified ล้วน ---------- */
+    async function runFallbackOnly(){
+        if(location.protocol === 'file:'){
+            items.forEach(a => a._updLine.classList.add('is-hidden'));
+            setNotice('กำลังเปิดจากไฟล์ในเครื่อง — วันที่จริงจะแสดงเมื่อเปิดผ่านเว็บ/โฮสต์ค่ะ');
+            return;
         }
-    });
+        setNotice('ตรวจไม่พบ GitHub Pages — กำลังใช้วันที่จากเซิร์ฟเวอร์แทน (อาจเป็นวันเดียวกันหมด). ถ้า host บนโดเมนอื่น ให้กรอก owner/repo ในไฟล์ index.html นะคะ');
+        const q = items.slice(); let any = false;
+        async function w(){ while(q.length){ const a = q.shift(); const d = await lastModified(a); if(d){ paint(a._updLine, d); any = true; } else a._updLine.classList.add('is-hidden'); } }
+        await Promise.all(Array.from({ length:6 }, w));
+        if(any && notice) notice.style.display = 'none';
+    }
+
+    /* ---------- โหมดหลัก: ดึงวันที่ commit จาก GitHub API ---------- */
+    async function runGitHub(){
+        // 1) เสิร์ฟจาก cache ก่อน (ไม่ยิง API)
+        const need = [];
+        items.forEach(a => {
+            const c = getCache(a._path);
+            if(c){ paint(a._updLine, new Date(c)); }
+            else if(c === false){ a._updLine.classList.add('is-hidden'); }
+            else need.push(a);
+        });
+        if(!need.length) return;
+
+        let rateLimited = false, gotAny = false, remain = null;
+        async function fetchOne(a){
+            if(rateLimited) return false;
+            const url = `https://api.github.com/repos/${R.owner}/${R.repo}/commits`
+                      + `?path=${encodeURIComponent(a._path)}&sha=${encodeURIComponent(R.branch)}&per_page=1`;
+            try {
+                const res = await fetch(url, { headers:{ 'Accept':'application/vnd.github+json' } });
+                remain = res.headers.get('X-RateLimit-Remaining');
+                if(res.status === 403 || res.status === 429 || remain === '0'){ rateLimited = true; return false; }
+                if(!res.ok) return false;
+                const arr = await res.json();
+                const iso = arr && arr[0] && arr[0].commit && (arr[0].commit.committer?.date || arr[0].commit.author?.date);
+                if(!iso){ setCache(a._path, false); a._updLine.classList.add('is-hidden'); return true; }
+                const d = new Date(iso);
+                if(isNaN(d.getTime())) return false;
+                setCache(a._path, iso); paint(a._updLine, d); gotAny = true; return true;
+            } catch(e){ return false; }
+        }
+
+        const q = need.slice();
+        async function w(){ while(q.length && !rateLimited) await fetchOne(q.shift()); }
+        await Promise.all(Array.from({ length:4 }, w)); // ยิงทีละ 4 อย่างสุภาพ
+
+        // ปุ่มที่ยังไม่ได้ (ค้างคิว หรือโดน limit)
+        const leftovers = items.filter(a => a._updLine.classList.contains('is-loading'));
+        if(rateLimited && leftovers.length){
+            leftovers.forEach(a => a._updLine.classList.add('is-hidden'));
+            setNotice(`โหลดวันที่แล้วบางส่วน (GitHub จำกัด 60 ครั้ง/ชม.) — เหลืออีก ${leftovers.length} ปุ่ม รีเฟรชหน้าอีกครั้งภายหลังจะแสดงครบค่ะ (ระบบจำค่าไว้ให้แล้ว)`);
+        } else if(leftovers.length){
+            // ไม่โดน limit แต่หาไม่เจอ → ลอง Last-Modified เป็นทางสุดท้าย
+            for(const a of leftovers){ const d = await lastModified(a); d ? paint(a._updLine, d) : a._updLine.classList.add('is-hidden'); }
+        }
+        if((gotAny || items.some(a=>!a._updLine.classList.contains('is-loading'))) && !rateLimited && notice) notice.style.display = 'none';
+    }
+
+    (R ? runGitHub() : runFallbackOnly());
 })();
 </script>
 
