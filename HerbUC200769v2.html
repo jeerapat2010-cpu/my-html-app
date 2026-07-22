@@ -465,6 +465,20 @@ const REPLACEMENT_DETAILS = [
   { hospital:'โรงพยาบาลสมุทรปราการ', modern:'Diclofenac Spray', herbal:'สเปรย์กระดูกไก่ดำ', indication:'บรรเทาอาการปวดอักเสบ', date:'12 มกราคม พ.ศ. 2569' }
 ];
 
+
+/* ข้อมูลการเงินสำหรับเมนูเงินค่าตอบแทนคืนจาก สปสช.
+   - มูลค่าสมุนไพร UC เชื่อมจาก DATA ปัจจุบัน
+   - purchaseAmount และ nhsoReturnAmount ใช้ null จนกว่าจะได้รับข้อมูลจริง
+   - ห้ามตีความ null เป็น 0 บาท */
+const NHSO_RETURN_FINANCE = {
+  pageCreatedDate:'22 ก.ค. 69',
+  ucRecordDate:DATA.updateDate,
+  purchaseRecordDate:null,
+  nhsoReturnRecordDate:null,
+  purchaseAmountByDistrict:{},
+  nhsoReturnAmountByDistrict:{}
+};
+
 const MENU_GROUPS = [
   {id:'overview',title:'ภาพรวม',icon:'▦'},
   {id:'performance',title:'ผลการดำเนินงาน',icon:'↗'},
@@ -480,6 +494,7 @@ const MENU = [
   {id:'onepage',icon:'▤',title:'รายงานผู้บริหาร 1 หน้า',en:'Executive One-page',sub:'สรุปพร้อมพิมพ์ประชุมและบันทึก PDF',group:'overview',roles:['executive','district','analyst']},
   {id:'meeting',icon:'☷',title:'รายงานประชุมและติดตามรอบเดือน',en:'Meeting Cycle',sub:'วาระประชุม มติ งานค้าง และการติดตามรอบถัดไป',group:'overview',roles:['executive','district','analyst','auditor']},
   {id:'district',icon:'⌖',title:'รายอำเภอ',en:'District Performance',sub:'ผลงานและเป้าหมายรายอำเภอ',group:'performance',roles:['executive','district','analyst']},
+  {id:'nhsoreturn',icon:'฿',title:'เงินค่าตอบแทนคืนจาก สปสช.',en:'NHSO Purchase & Reimbursement',sub:'มูลค่า UC ค่าจัดซื้อ และเงินที่ได้รับจัดสรรคืน รายอำเภอ',group:'performance',roles:['executive','district','analyst','auditor']},
   {id:'units',icon:'H',title:'รายหน่วยบริการ',en:'Service Units',sub:'ผลงานระดับ รพ./รพ.สต./หน่วยบริการ',group:'performance',roles:['executive','district','analyst']},
   {id:'analysis',icon:'Σ',title:'วิเคราะห์เชิงลึก',en:'Deep Analysis',sub:'สถิติ ABC และข้อค้นพบเชิงกลยุทธ์',group:'performance',roles:['district','analyst']},
   {id:'problem',icon:'?',title:'ปัญหา / OFI',en:'Problems & OFI',sub:'วิเคราะห์ปัญหาและข้อเสนอแนะรายพื้นที่',group:'performance',roles:['district','analyst']},
@@ -499,6 +514,7 @@ const USER_MODES={
   auditor:{title:'ผู้ตรวจสอบข้อมูล',icon:'✓',help:'เน้น Reconciliation, คุณภาพข้อมูล, สูตร และการนำเข้า Excel'}
 };
 let current = 'dashboard';
+let nhsoReturnDistrict = 'จังหวัดรวม';
 let userMode = SAFE_STORAGE.get('herbuc_phase2_user_mode') || 'analyst';
 let userDistrict = SAFE_STORAGE.get('herbuc_phase2_user_district') || 'เมือง';
 let unitFilter = 'All';
@@ -1070,6 +1086,58 @@ function filteredUnits(){
 }
 function resetUnitFilters(){unitFilter='All';unitSearch='';unitTypeFilter='All';unitStatusFilter='All';unitSort='achievement_desc';render()}
 
+
+
+function nhsoFinanceRecord(area){
+  const isProvince=area==='จังหวัดรวม';
+  const district=isProvince?null:DATA.districts.find(d=>normalizeDistrictName(d.name)===normalizeDistrictName(area));
+  const ucValue=isProvince?Number(DATA.districtTotals.value69||0):Number(district?.value69||0);
+  const target10=isProvince?Number(DATA.districtTotals.target10m||0):Number(district?.target10m||0);
+  const target12=isProvince?Number(DATA.districtTotals.target12m||0):Number(district?.target12m||0);
+  const purchaseRaw=NHSO_RETURN_FINANCE.purchaseAmountByDistrict[area];
+  const returnRaw=NHSO_RETURN_FINANCE.nhsoReturnAmountByDistrict[area];
+  return {
+    areaLabel:isProvince?'จังหวัดสมุทรปราการ':`อ.${district?displayDistrictName(district.name):displayDistrictName(area)}`,
+    ucValue,target10,target12,
+    achievement10:target10?ucValue/target10*100:0,
+    achievement12:target12?ucValue/target12*100:0,
+    gap12:Math.max(0,target12-ucValue),
+    purchaseAmount:Number.isFinite(Number(purchaseRaw))?Number(purchaseRaw):null,
+    returnAmount:Number.isFinite(Number(returnRaw))?Number(returnRaw):null
+  };
+}
+function nhsoMoneyValue(value){return value===null?'<div class="money-value pending">รออัปเดตข้อมูล</div>':`<div class="money-value">${fmtMoney(value)}</div>`}
+function nhsoRecordDate(date){return date?`<b>${esc(date)}</b>`:'<b style="color:#b45309">ยังไม่บันทึก</b>'}
+function renderNhsoReturn(){
+  const areas=['จังหวัดรวม',...DATA.districts.slice().sort((a,b)=>a.name.localeCompare(b.name,'th')).map(d=>d.name)];
+  if(!areas.some(x=>normalizeDistrictName(x)===normalizeDistrictName(nhsoReturnDistrict))) nhsoReturnDistrict='จังหวัดรวม';
+  const r=nhsoFinanceRecord(nhsoReturnDistrict);
+  const hasPurchase=r.purchaseAmount!==null,hasReturn=r.returnAmount!==null;
+  const purchaseRatio=hasPurchase&&r.ucValue?r.purchaseAmount/r.ucValue*100:null;
+  const returnToPurchase=hasPurchase&&hasReturn&&r.purchaseAmount?r.returnAmount/r.purchaseAmount*100:null;
+  const returnToUc=hasReturn&&r.ucValue?r.returnAmount/r.ucValue*100:null;
+  const net=hasPurchase&&hasReturn?r.returnAmount-r.purchaseAmount:null;
+  const scope=nhsoReturnDistrict==='จังหวัดรวม'?'ภาพรวมจังหวัด':'รายอำเภอ';
+  const options=areas.map(a=>`<option value="${esc(a)}"${normalizeDistrictName(a)===normalizeDistrictName(nhsoReturnDistrict)?' selected':''}>${a==='จังหวัดรวม'?'จังหวัดสมุทรปราการ':`อ.${displayDistrictName(a)}`}</option>`).join('');
+  const financeText=(!hasPurchase||!hasReturn)
+    ?`ข้อมูลค่าจัดซื้อสมุนไพรและเงินที่ได้รับจัดสรรคืนจาก สปสช. ของ ${r.areaLabel} ยังไม่ถูกบันทึก จึงยังไม่สามารถคำนวณอัตราคืนทุน ส่วนต่างสุทธิ หรือความสัมพันธ์ระหว่างมูลค่าบริการกับเงินคืนได้อย่างถูกต้อง การแสดง “รออัปเดต” มีเจตนาเพื่อป้องกันการตีความผิดว่าเป็นยอด 0 บาท`
+    :`มีข้อมูลการเงินครบแล้ว สามารถใช้ติดตามสัดส่วนค่าจัดซื้อต่อมูลค่า UC อัตราเงินคืนต่อค่าจัดซื้อ และส่วนต่างสุทธิ เพื่อประเมินประสิทธิภาพทางการเงินของ ${r.areaLabel}`;
+  return `<section>
+    <div class="nhso-status-hero"><h3>฿ เงินค่าตอบแทนคืนจาก สปสช.</h3><p>ติดตามมูลค่าการใช้ยาสมุนไพรในสิทธิ UC เงินค่าจัดซื้อสมุนไพร และเงินที่ได้รับจัดสรรคืนจาก สปสช. แบบ ${scope} โดยแยกวันที่ลงข้อมูลของแต่ละรายการอย่างชัดเจน</p></div>
+    <div class="nhso-filter"><label>เลือกพื้นที่สำหรับวิเคราะห์<select onchange="nhsoReturnDistrict=this.value;render()">${options}</select></label><div style="display:flex;gap:7px;flex-wrap:wrap"><span class="nhso-date-chip">วันที่สร้างเมนู: ${esc(NHSO_RETURN_FINANCE.pageCreatedDate)}</span><span class="nhso-date-chip">พื้นที่: ${esc(r.areaLabel)}</span></div></div>
+    <div class="nhso-money-grid">
+      <div class="nhso-money-card"><small>มูลค่าสมุนไพรสิทธิ UC</small>${nhsoMoneyValue(r.ucValue)}<div class="metric-sub">เทียบเป้า 10 เดือน <b>${pct(r.achievement10)}</b><br>เทียบเป้า 12 เดือน <b>${pct(r.achievement12)}</b><br>GAP เป้า 12 เดือน <b>${fmtMoney(r.gap12)}</b></div><span class="nhso-ready-badge">✓ มีข้อมูลแล้ว</span><div class="record-date">วันที่ลงข้อมูล: ${nhsoRecordDate(NHSO_RETURN_FINANCE.ucRecordDate)}</div></div>
+      <div class="nhso-money-card purchase"><small>เงินค่าจัดซื้อสมุนไพร</small>${nhsoMoneyValue(r.purchaseAmount)}<div class="metric-sub">ใช้ติดตามต้นทุนการจัดซื้อจริงของหน่วยบริการในพื้นที่ และเปรียบเทียบกับมูลค่าบริการ UC</div><span class="nhso-pending-badge">⌛ รออัปเดตจากแหล่งข้อมูล</span><div class="record-date">วันที่ลงข้อมูล: ${nhsoRecordDate(NHSO_RETURN_FINANCE.purchaseRecordDate)}</div></div>
+      <div class="nhso-money-card return"><small>เงินที่ได้รับจัดสรรคืนจาก สปสช.</small>${nhsoMoneyValue(r.returnAmount)}<div class="metric-sub">ใช้ติดตามยอดเงินชดเชยหรือค่าตอบแทนที่ได้รับจัดสรรคืนจริงตามรอบข้อมูล</div><span class="nhso-pending-badge">⌛ รออัปเดตจากแหล่งข้อมูล</span><div class="record-date">วันที่ลงข้อมูล: ${nhsoRecordDate(NHSO_RETURN_FINANCE.nhsoReturnRecordDate)}</div></div>
+    </div>
+    <div class="nhso-analysis">
+      <div class="nhso-analysis-card"><h4>บทวิเคราะห์ ${esc(r.areaLabel)}</h4><p>มูลค่าสมุนไพร UC สะสมอยู่ที่ <b>${fmtMoney(r.ucValue)}</b> คิดเป็น <b>${pct(r.achievement10)}</b> ของเป้า 10 เดือน และ <b>${pct(r.achievement12)}</b> ของเป้า 12 เดือน เหลือ GAP สิ้นปี <b>${fmtMoney(r.gap12)}</b></p><p>${financeText}</p><ul class="nhso-analysis-list"><li>เมื่อมีข้อมูลค่าจัดซื้อ ควรวิเคราะห์สัดส่วนค่าจัดซื้อต่อมูลค่า UC เพื่อเฝ้าระวังต้นทุนและสินค้าคงคลัง</li><li>เมื่อมีข้อมูลเงินคืน สปสช. ควรเทียบทั้งต่อค่าจัดซื้อและต่อมูลค่า UC เพื่อประเมินประสิทธิภาพการเบิกจ่าย</li><li>ควรระบุ “วันที่ลงข้อมูล” แยกรายตัวแปรทุกครั้ง เพราะรอบข้อมูล UC การจัดซื้อ และการจัดสรรเงินคืนอาจไม่ตรงกัน</li></ul></div>
+      <div class="nhso-analysis-card warn"><h4>ตัวชี้วัดการเงินที่จะคำนวณเมื่อข้อมูลครบ</h4><div class="nhso-formula"><div class="nhso-formula-item ${purchaseRatio===null?'pending':''}"><small>ค่าจัดซื้อ ÷ มูลค่า UC</small><b>${purchaseRatio===null?'รอข้อมูล':pct(purchaseRatio)}</b></div><div class="nhso-formula-item ${returnToPurchase===null?'pending':''}"><small>เงินคืน ÷ ค่าจัดซื้อ</small><b>${returnToPurchase===null?'รอข้อมูล':pct(returnToPurchase)}</b></div><div class="nhso-formula-item ${returnToUc===null?'pending':''}"><small>เงินคืน ÷ มูลค่า UC</small><b>${returnToUc===null?'รอข้อมูล':pct(returnToUc)}</b></div></div><div class="nhso-formula" style="grid-template-columns:1fr"><div class="nhso-formula-item ${net===null?'pending':''}"><small>ส่วนต่างสุทธิ: เงินคืน − ค่าจัดซื้อ</small><b>${net===null?'รอข้อมูล':fmtMoney(net)}</b></div></div><p style="margin-top:12px"><b>ข้อควรระวัง:</b> เงินคืนจาก สปสช. อาจมีรอบจัดสรรและหลักเกณฑ์ต่างจากช่วงเวลาที่เกิดมูลค่าบริการ จึงควรใช้วันที่อ้างอิงและงวดจัดสรรประกอบทุกครั้ง</p></div>
+    </div>
+    <div class="nhso-data-note"><strong>สถานะข้อมูล:</strong> ขณะนี้มีเฉพาะมูลค่าสมุนไพรสิทธิ UC จากไฟล์ ${esc(DATA.sourceFile)} ณ วันที่ ${esc(DATA.updateDate)} ส่วนเงินค่าจัดซื้อสมุนไพรและเงินที่ได้รับจัดสรรคืนจาก สปสช. ถูกกำหนดเป็นค่าว่าง (ไม่ใช่ศูนย์) เพื่อรออัปเดตข้อมูลจริงภายหลัง</div>
+  </section>`;
+}
+
 function renderUnits(){
   const ds=[...new Set(DATA.units.map(u=>u.district))], rows=filteredUnits(),target10=sum(rows,'target10m'),target12=sum(rows,'target12m'),value=sum(rows,'value69'),p10=target10?value/target10*100:0,p12=target12?value/target12*100:0,gap12=Math.max(0,target12-value),days=daysRemaining12M();
   const eligible=rows.filter(u=>u.target12m>0),pass=eligible.filter(u=>u.percentAchieved12m>=80).length,zero=rows.filter(u=>u.target12m===0||u.value69===0).length;
@@ -1544,7 +1612,7 @@ function renderImport(){
 function render(){
   document.body.classList.toggle('public-release',PUBLIC_RELEASE);
   renderNav(); setTitle(); renderRoleControls();
-  const map={dashboard:renderDashboard,command:renderCommand,national:renderNational,trend:renderTrend,planner:renderPlanner,onepage:renderOnePage,meeting:renderMeeting,district:renderDistrict,units:renderUnits,analysis:renderAnalysis,problem:renderProblem,drugs:renderDrugs,quality:renderQuality,replacement:renderReplacement,support:renderSupport,method:renderMethod,backup:renderBackup,import:renderImport,system:renderSystem};
+  const map={dashboard:renderDashboard,command:renderCommand,national:renderNational,trend:renderTrend,planner:renderPlanner,onepage:renderOnePage,meeting:renderMeeting,district:renderDistrict,nhsoreturn:renderNhsoReturn,units:renderUnits,analysis:renderAnalysis,problem:renderProblem,drugs:renderDrugs,quality:renderQuality,replacement:renderReplacement,support:renderSupport,method:renderMethod,backup:renderBackup,import:renderImport,system:renderSystem};
   $('content').innerHTML=(map[current]||renderDashboard)();
   setTimeout(setProgress,30);
 }
