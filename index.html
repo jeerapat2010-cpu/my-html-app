@@ -453,6 +453,18 @@ body.present .card.pres-on{outline:4px solid var(--gold);outline-offset:4px;box-
 body.present #presTip{display:block}
 #presTip .kbd{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.25);color:#fff}
 
+/* ===== วิธีติดตั้งแอป ===== */
+.how{counter-reset:s}
+.how li{list-style:none;display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px dashed var(--line);font-size:.92rem;line-height:1.6}
+.how li:last-child{border:0}
+.how li::before{counter-increment:s;content:counter(s);flex-shrink:0;width:26px;height:26px;border-radius:9px;
+  background:linear-gradient(135deg,var(--gold),#b8862f);color:#fff;font-family:'Kanit';font-size:.8rem;
+  display:flex;align-items:center;justify-content:center;margin-top:1px}
+.how b{font-family:'Kanit';font-weight:500;color:var(--gold)}
+.how-note{margin-top:14px;padding:12px 15px;border-radius:13px;background:var(--paper);
+  border:1px solid var(--line);font-size:.84rem;color:var(--txt-soft);line-height:1.6}
+.how-note i{color:var(--gold);margin-right:6px}
+
 /* ===== WHAT'S NEW SHELF ===== */
 #newShelf{position:relative;padding:20px 20px 8px;border-radius:24px;border:1px solid var(--line);
   background:linear-gradient(135deg,color-mix(in srgb,var(--gold) 12%,var(--card)),var(--card) 60%);
@@ -500,7 +512,7 @@ html[data-theme="dark"] #newShelf::before{background:linear-gradient(to right,tr
 .tl-date{font-family:'Kanit';font-size:.72rem;color:var(--txt-soft);flex-shrink:0}
 
 /* ===== PWA UI ===== */
-.tbtn.install{display:none;background:linear-gradient(135deg,var(--gold),var(--gold2,#b8862f));color:#fff;border-color:transparent;width:auto;padding:0 16px;gap:8px;font-family:'Kanit';font-size:.84rem}
+.tbtn.install{display:flex;background:linear-gradient(135deg,var(--gold),var(--gold2,#b8862f));color:#fff;border-color:transparent;width:auto;padding:0 16px;gap:8px;font-family:'Kanit';font-size:.84rem}
 .tbtn.install.show{display:flex}
 .tbtn.install:hover{filter:brightness(1.08)}
 #netbar{
@@ -1943,6 +1955,15 @@ html[data-theme="dark"] #newShelf::before{background:linear-gradient(to right,tr
   </div>
 </div>
 
+<!-- ============ วิธีติดตั้งแอป ============ -->
+<div class="mdl" id="how">
+  <div class="mdl-box">
+    <div class="mdl-top"><i class="fas fa-mobile-screen-button"></i><b>ติดตั้งเป็นแอปบนหน้าจอ</b>
+      <button class="mdl-x" data-close="how"><i class="fas fa-xmark"></i></button></div>
+    <div class="mdl-bd"><ol class="how" id="howList"></ol><div class="how-note" id="howNote"></div></div>
+  </div>
+</div>
+
 <!-- ============ QR ============ -->
 <div class="mdl" id="qr">
   <div class="mdl-box">
@@ -2715,30 +2736,51 @@ function countUp(el,to,ms=1100){
     });
   }
 
-  /* -- ปุ่มติดตั้งแอป -- */
+  /* -- ปุ่มติดตั้งแอป (แสดงตลอด — กดแล้วติดตั้งเลย หรือบอกวิธีถ้าทำอัตโนมัติไม่ได้) -- */
   let deferred=null;
   const btn=$('#installBtn');
-  window.addEventListener('beforeinstallprompt',e=>{
-    e.preventDefault(); deferred=e; btn.classList.add('show');
-  });
-  btn.onclick=async()=>{
-    if(!deferred){
-      toast('เปิดเมนูเบราว์เซอร์ แล้วเลือก "เพิ่มไปยังหน้าจอหลัก"','fa-mobile-screen');
-      return;
-    }
-    deferred.prompt();
-    const {outcome}=await deferred.userChoice;
-    if(outcome==='accepted') toast('ติดตั้งแอปเรียบร้อยแล้ว','fa-circle-check');
-    deferred=null; btn.classList.remove('show');
-  };
-  window.addEventListener('appinstalled',()=>{
-    btn.classList.remove('show'); toast('ติดตั้ง TTM Portal สำเร็จ','fa-circle-check');
-  });
-  // iOS (Safari ไม่มี beforeinstallprompt) — แสดงปุ่มพร้อมคำแนะนำ
-  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const UA=navigator.userAgent;
+  const isIOS=/iphone|ipad|ipod/i.test(UA);
+  const inLine=/Line\//i.test(UA), inFB=/FBAN|FBAV|Instagram/i.test(UA);
   let standalone=false;
-  try{ standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone===true; }catch(e){}
-  if(isIOS && !standalone) btn.classList.add('show');
+  try{ standalone=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true; }catch(e){}
+  if(standalone) btn.style.display='none';        // ติดตั้งแล้ว ไม่ต้องโชว์
+
+  window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferred=e; });
+  window.addEventListener('appinstalled',()=>{ btn.style.display='none'; toast('ติดตั้ง TTM Portal สำเร็จ','fa-circle-check'); });
+
+  function howTo(){
+    let steps=[], note='';
+    if(inLine||inFB){
+      steps=['กดปุ่ม <b>⋯</b> (หรือ <b>⋮</b>) ที่มุมขวาบนของหน้าจอ',
+             'เลือก <b>“เปิดในเบราว์เซอร์”</b> (Open in browser)',
+             'เมื่อหน้าเปิดใน Chrome หรือ Safari แล้ว กดปุ่ม <b>“ติดตั้งแอป”</b> นี้อีกครั้ง'];
+      note='<i class="fas fa-circle-info"></i> ตอนนี้กำลังเปิดในแอป LINE/Facebook ซึ่งติดตั้งแอปไม่ได้ ต้องเปิดในเบราว์เซอร์จริงก่อนค่ะ';
+    } else if(isIOS){
+      steps=['กดปุ่ม <b>แชร์</b> (รูปสี่เหลี่ยมมีลูกศรขึ้น) ที่แถบล่างของ Safari',
+             'เลื่อนลงหา <b>“เพิ่มไปยังหน้าจอโฮม”</b> (Add to Home Screen)',
+             'กด <b>“เพิ่ม”</b> มุมขวาบน — จะได้ไอคอน TTM บนหน้าจอทันที'];
+      note='<i class="fab fa-apple"></i> บน iPhone/iPad ต้องใช้ <b>Safari</b> เท่านั้น (Chrome บน iOS ทำไม่ได้)';
+    } else {
+      steps=['กดปุ่มเมนู <b>⋮</b> มุมขวาบนของ Chrome',
+             'เลือก <b>“ติดตั้งแอป”</b> หรือ <b>“เพิ่มลงในหน้าจอหลัก”</b>',
+             'กดยืนยัน — จะได้ไอคอน TTM บนหน้าจอ'];
+      note='<i class="fas fa-circle-info"></i> ถ้าไม่เห็นเมนูนี้ ให้ตรวจว่าเปิดผ่าน <b>https://</b> และอัปไฟล์ manifest.json กับ sw.js ขึ้นเซิร์ฟเวอร์แล้ว';
+    }
+    $('#howList').innerHTML=steps.map(s=>`<li><span>${s}</span></li>`).join('');
+    $('#howNote').innerHTML=note;
+    mdlOpen('how');
+  }
+
+  btn.onclick=async()=>{
+    if(deferred){
+      deferred.prompt();
+      try{ const {outcome}=await deferred.userChoice;
+           if(outcome==='accepted') toast('กำลังติดตั้งแอป…','fa-circle-check'); }catch(e){}
+      deferred=null; return;
+    }
+    howTo();
+  };
 
   /* -- สถานะออนไลน์/ออฟไลน์ -- */
   const nb=$('#netbar');
