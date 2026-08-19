@@ -275,6 +275,29 @@ textarea.fc{resize:vertical;min-height:65px}
   border:1px solid rgba(41,182,246,.3);border-radius:8px;min-height:40px;font-size:13px;color:var(--B1);display:none}
 #hw-loading{margin-top:9px;text-align:center;color:var(--B1);font-size:13px;display:none;font-weight:600}
 .hidden{display:none!important}
+/* ===API KEY OVERLAY=== */
+#apikey-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(2,22,40,.85);backdrop-filter:blur(6px);z-index:999;align-items:center;justify-content:center}
+#apikey-overlay.show{display:flex}
+#apikey-box{background:rgba(255,255,255,.97);border-radius:16px;padding:20px;width:92%;max-width:480px;
+  box-shadow:0 24px 80px rgba(0,119,182,.4),0 0 0 1px rgba(41,182,246,.3)}
+#apikey-box h3{color:var(--B1);margin-bottom:3px;font-size:14.5px;font-weight:800}
+#apikey-box p.sub{color:var(--TM);font-size:11.5px;margin-bottom:10px;line-height:1.6}
+#apikey-input{width:100%;padding:9px 12px;border:1.5px solid var(--BD);border-radius:8px;
+  font-family:monospace;font-size:12.5px;background:#fff;color:var(--TX);outline:none;margin-bottom:8px}
+#apikey-input:focus{border-color:var(--AC);box-shadow:0 0 0 3px rgba(41,182,246,.15)}
+#apikey-status{font-size:11.5px;margin-bottom:10px;padding:7px 10px;border-radius:7px}
+#apikey-status.set{background:#D1FAE5;color:#065F46}
+#apikey-status.unset{background:#FFF3E0;color:#92400E}
+/* ===AI PHOTO EVAL=== */
+.ai-eval-btn{background:linear-gradient(135deg,#5E35B1,#7C4DFF)!important}
+.ai-eval-box{margin-top:6px;border-radius:8px;padding:8px 10px;font-size:11px;line-height:1.6;display:none}
+.ai-eval-box.pass{background:#D1FAE5;border:1px solid #6EE7B7;color:#065F46}
+.ai-eval-box.fail{background:#FFE4E6;border:1px solid #FCA5A5;color:#9F1239}
+.ai-eval-box.unclear{background:#FFF3E0;border:1px solid #FFCC80;color:#92400E}
+.ai-eval-loading{display:none;font-size:11px;color:var(--purple);margin-top:6px;font-weight:600}
+.ai-eval-actions{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
+.ai-eval-actions button{padding:2px 8px;font-size:10px;border-radius:12px;border:1.5px solid;cursor:pointer;font-family:'Sarabun',sans-serif;font-weight:700}
 /* ===== iPAD / TABLET RESPONSIVE ===== */
 #sb-overlay{display:none;position:fixed;inset:0;background:rgba(2,22,40,.5);backdrop-filter:blur(2px);z-index:99}
 #sb-overlay.show{display:block}
@@ -549,6 +572,7 @@ body.dark #search-bar{background:rgba(15,23,42,.95)}
         border-radius:8px;border:1px solid rgba(2,62,138,.2);color:var(--B1);cursor:pointer;
         font-variant-numeric:tabular-nums" onclick="gp('dashboard')">📊 0%</div>
       <button class="btn btn-purple" onclick="openHW()">✏️ iPAD Note</button>
+      <button class="btn" id="apikey-nav-btn" style="background:#546E7A;color:#fff" onclick="openApiKeySettings()" title="ตั้งค่า Claude API Key">🔑 API Key</button>
       <button class="btn btn-g" onclick="resetAll()">🔄 รีเซ็ต</button>
       <button class="btn btn-info" onclick="openManual()">📖 คู่มือ</button>
       <button class="btn btn-p" onclick="gp('summary')">📊 สรุป</button>
@@ -843,6 +867,22 @@ body.dark #search-bar{background:rgba(15,23,42,.95)}
     </div>
   </div>
 </div>
+<!-- API KEY OVERLAY -->
+<div id="apikey-overlay">
+  <div id="apikey-box">
+    <h3>🔑 ตั้งค่า Claude API Key</h3>
+    <p class="sub">ใช้สำหรับฟีเจอร์ AI ทั้งหมด (📷 AI ประเมินจากภาพ, ✏️ อ่านลายมือ, 🤖 สรุปแผน CAPA)<br>
+      ขอ API Key ได้ที่ <strong>console.anthropic.com</strong> — คีย์จะถูกเก็บไว้ในเบราว์เซอร์นี้เท่านั้น (localStorage) ไม่ถูกส่งไปที่อื่นนอกจาก Anthropic API</p>
+    <div id="apikey-status" class="unset">⚠️ ยังไม่ได้ตั้งค่า API Key</div>
+    <input type="password" id="apikey-input" placeholder="sk-ant-api03-...">
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-p" onclick="saveApiKey()">✅ บันทึก</button>
+      <button class="btn btn-g" onclick="toggleApiKeyVisible()" id="apikey-toggle-btn">👁️ แสดง/ซ่อน</button>
+      <button class="btn" style="background:var(--DR);color:#fff" onclick="clearApiKey()">🗑️ ลบคีย์</button>
+      <button class="btn btn-g" onclick="closeApiKeySettings()" style="margin-left:auto">❌ ปิด</button>
+    </div>
+  </div>
+</div>
 <script>
 // ============================================================
 // SECTION DATA — 14 หมวด ครบทุกข้อย่อย
@@ -1133,6 +1173,11 @@ const SECS=[
 ]}
 ];
 // ============================================================
+// PHOTO AI — หมวดที่เหมาะกับการประเมินจากภาพถ่าย (สภาพจริง/พฤติกรรม/สถานที่)
+// ไม่รวมหมวด 1 (แผนควบคุมการผลิต-เอกสาร) และหมวด 3 (บันทึกเอกสาร) ซึ่งเป็นการตรวจเอกสารเป็นหลัก
+// ============================================================
+const PHOTO_AI_SECS=new Set([2,4,5,6,7,8,9,10,11,12,13,14]);
+// ============================================================
 // REF DATA
 // ============================================================
 const REF3={
@@ -1256,6 +1301,9 @@ function buildAllSections(){
           <button class="hw-btn" style="background:linear-gradient(135deg,var(--B1),var(--B3));margin-top:2px" onclick="openPhoto('${it.no}')">📷 ถ่ายรูปหลักฐาน</button>
           <div class="hw-status" id="hws-${k}"></div>
           <div id="ph-prev-${k}" style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px"></div>
+          ${PHOTO_AI_SECS.has(sec.n)?`<button class="hw-btn ai-eval-btn" style="margin-top:2px" onclick="aiEvalPhoto('${it.no}')">🤖 AI ประเมินจากภาพ</button>
+          <div class="ai-eval-loading" id="aiev-load-${k}">⏳ AI กำลังวิเคราะห์ภาพ...</div>
+          <div class="ai-eval-box" id="aiev-box-${k}"></div>`:''}
           <div id="capa-wrap-${k}" style="display:none;margin-top:5px;background:#FFF8E1;border:1px solid #FFD54F;border-radius:6px;padding:6px 8px">
             <div style="font-size:10.5px;font-weight:800;color:#7a5700;margin-bottom:4px">📋 แผน CAPA</div>
             <textarea id="capa-fix-${k}" placeholder="มาตรการแก้ไข (Corrective Action)..." oninput="saveCapa('${it.no}')" style="width:100%;border:1px solid #FFD54F;border-radius:5px;padding:4px 6px;font-family:Sarabun,sans-serif;font-size:11px;resize:none;min-height:36px;background:#FFFDE7"></textarea>
@@ -1918,6 +1966,65 @@ function renderProvDash(){
 }
 
 // ============================================================
+// API KEY MANAGEMENT (Claude API — ใช้กับฟีเจอร์ AI ทั้งหมดในไฟล์นี้)
+// ============================================================
+const APIKEY_LS='gacp2_claude_apikey';
+function getApiKey(){return localStorage.getItem(APIKEY_LS)||'';}
+function openApiKeySettings(){
+  const cur=getApiKey();
+  document.getElementById('apikey-input').value=cur;
+  updateApiKeyStatusUI();
+  document.getElementById('apikey-overlay').classList.add('show');
+}
+function closeApiKeySettings(){document.getElementById('apikey-overlay').classList.remove('show');}
+function saveApiKey(){
+  const v=document.getElementById('apikey-input').value.trim();
+  if(!v){alert('กรุณากรอก API Key ก่อน');return;}
+  localStorage.setItem(APIKEY_LS,v);
+  updateApiKeyStatusUI();
+  alert('✅ บันทึก API Key แล้ว');
+}
+function clearApiKey(){
+  if(!confirm('ลบ API Key ที่บันทึกไว้ในเบราว์เซอร์นี้?'))return;
+  localStorage.removeItem(APIKEY_LS);
+  document.getElementById('apikey-input').value='';
+  updateApiKeyStatusUI();
+}
+function toggleApiKeyVisible(){
+  const inp=document.getElementById('apikey-input');
+  inp.type=inp.type==='password'?'text':'password';
+}
+function updateApiKeyStatusUI(){
+  const st=document.getElementById('apikey-status');
+  const navBtn=document.getElementById('apikey-nav-btn');
+  if(getApiKey()){
+    if(st){st.className='set';st.textContent='✅ ตั้งค่า API Key แล้ว (เก็บในเบราว์เซอร์นี้เท่านั้น)';}
+    if(navBtn)navBtn.style.background='#00838F';
+  }else{
+    if(st){st.className='unset';st.textContent='⚠️ ยังไม่ได้ตั้งค่า API Key';}
+    if(navBtn)navBtn.style.background='#546E7A';
+  }
+}
+// เรียกใช้ Claude API กลาง — คืนค่า text แรกที่ตอบกลับ, โยน error ถ้าไม่มี key/เรียกไม่สำเร็จ
+async function callClaude({model='claude-sonnet-4-6',max_tokens=1000,messages}){
+  const key=getApiKey();
+  if(!key){openApiKeySettings();throw new Error('กรุณาตั้งค่า Claude API Key ก่อนใช้งานฟีเจอร์ AI');}
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':key,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({model,max_tokens,messages})
+  });
+  const data=await res.json();
+  if(data.error) throw new Error(data.error.message||'เรียก API ไม่สำเร็จ');
+  return data.content?.find(b=>b.type==='text')?.text||'';
+}
+
+// ============================================================
 // HANDWRITING
 // ============================================================
 function initHW(){
@@ -1959,19 +2066,15 @@ async function convertHW(){
     auto:'Please read the handwritten text in this image. It may be Thai, English, or mixed. Convert it to digital text in the same language(s) as written. Return only the transcribed text, no explanations.',
   };
   const prompt=promptMap[lang]||promptMap.th;
+  if(!getApiKey()){openApiKeySettings();return;}
   document.getElementById('hw-loading').style.display='block';
   document.getElementById('hw-result').style.display='none';
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
-        messages:[{role:'user',content:[
-          {type:'image',source:{type:'base64',media_type:'image/png',data:img.split(',')[1]}},
-          {type:'text',text:prompt}
-        ]}]})
-    });
-    const data=await res.json();
-    const txt=data.content?.find(b=>b.type==='text')?.text||'ไม่สามารถแปลงได้';
+    const txt=await callClaude({max_tokens:1000,
+      messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:'image/png',data:img.split(',')[1]}},
+        {type:'text',text:prompt}
+      ]}]}) || 'ไม่สามารถแปลงได้';
     const rd=document.getElementById('hw-result');
     rd.style.display='block';
     rd.innerHTML=`<div style="font-size:11px;color:var(--TM);margin-bottom:4px">
@@ -2814,6 +2917,100 @@ async function openPhoto(no){
 }
 
 // ============================================================
+// FEATURE: AI PHOTO EVALUATION — ถ่ายรูป แล้วให้ AI ประเมินตามข้อกำหนด
+// (เฉพาะหมวดที่เป็นการตรวจสภาพจริง/สถานที่/พฤติกรรม ดู PHOTO_AI_SECS)
+// ============================================================
+function getItemFullReq(sec,no){
+  for(const it of sec.items){
+    if(it.no===no) return{req:it.req,cond:it.cond||''};
+    const sub=(it.subs||[]).find(s=>s.no===no);
+    if(sub) return{req:sub.req,cond:it.cond||''};
+  }
+  return{req:no,cond:''};
+}
+async function aiEvalPhoto(no){
+  const secNum=parseInt(no.split('.')[0]);
+  const sec=SECS.find(s=>s.n===secNum);
+  if(!sec)return;
+  if(!getApiKey()){openApiKeySettings();return;}
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='image/*';inp.capture='environment';
+  inp.onchange=async e=>{
+    const f=e.target.files[0];if(!f)return;
+    const k=no.replace(/\./g,'_');
+    const loadEl=document.getElementById('aiev-load-'+k);
+    const boxEl=document.getElementById('aiev-box-'+k);
+    if(loadEl)loadEl.style.display='block';
+    if(boxEl)boxEl.style.display='none';
+    try{
+      const raw=await new Promise(r=>{const rd=new FileReader();rd.onload=e2=>r(e2.target.result);rd.readAsDataURL(f);});
+      const compressed=await compressImage(raw,900,0.8);
+      const{req,cond}=getItemFullReq(sec,no);
+      const prompt=`คุณเป็นผู้ตรวจประเมินมาตรฐาน GACP การปลูกและแปรรูปกัญชาทางการแพทย์ของประเทศไทย
+หมวดที่ตรวจ: หมวด ${sec.n} ${sec.t} (${sec.te})
+ข้อที่ตรวจ: ${no}
+ข้อกำหนด: ${req}
+${cond?'เงื่อนไข/วิธีการตรวจตามคู่มือ: '+cond:''}
+
+จากภาพถ่ายหลักฐานที่แนบมา โปรดประเมินว่าสภาพที่เห็นในภาพสอดคล้อง/ผ่านตามข้อกำหนดนี้หรือไม่ ตอบเป็นภาษาไทยตามรูปแบบนี้เท่านั้น (ห้ามเพิ่มหัวข้ออื่น):
+ผล: [ผ่าน|ไม่ผ่าน|ไม่ชัดเจน]
+เหตุผล: (อธิบายสิ่งที่เห็นในภาพและเหตุผลของการประเมิน 1-3 ประโยค)
+ข้อเสนอแนะ: (สิ่งที่ควรปรับปรุงถ้ามี ถ้าไม่มีให้เขียนว่า "-")`;
+      const txt=await callClaude({max_tokens:500,messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:compressed.split(',')[1]}},
+        {type:'text',text:prompt}
+      ]}]});
+      renderAiEvalResult(no,txt,compressed);
+    }catch(err){
+      if(boxEl){boxEl.style.display='block';boxEl.className='ai-eval-box unclear';boxEl.innerHTML='❌ เกิดข้อผิดพลาด: '+err.message;}
+    }
+    if(loadEl)loadEl.style.display='none';
+  };inp.click();
+}
+function renderAiEvalResult(no,txt,photoDataURL){
+  const k=no.replace(/\./g,'_');
+  const boxEl=document.getElementById('aiev-box-'+k);
+  if(!boxEl)return;
+  const m=txt.match(/ผล:\s*(ผ่าน|ไม่ผ่าน|ไม่ชัดเจน)/);
+  const verdict=m?m[1]:'ไม่ชัดเจน';
+  const cls=verdict==='ผ่าน'?'pass':verdict==='ไม่ผ่าน'?'fail':'unclear';
+  const icon=verdict==='ผ่าน'?'✅':verdict==='ไม่ผ่าน'?'❌':'❓';
+  boxEl.className='ai-eval-box '+cls;
+  boxEl.style.display='block';
+  boxEl.dataset.txt=txt;boxEl.dataset.verdict=verdict;boxEl.dataset.photo=photoDataURL;
+  boxEl.innerHTML=`<div style="font-weight:800;margin-bottom:3px">${icon} AI ประเมิน: ${verdict}</div>
+    <div>${txt.replace(/\n/g,'<br>')}</div>
+    <div class="ai-eval-actions">
+      <button style="border-color:#16A34A;color:#16A34A;background:#F0FDF4" onclick="applyAiEval('${no}')">✅ ใช้ผลนี้ลงในแบบตรวจ</button>
+      <button style="border-color:var(--B1);color:var(--B1);background:rgba(227,242,253,.5)" onclick="attachAiEvalPhoto('${no}')">📎 แนบภาพนี้เป็นหลักฐาน</button>
+    </div>`;
+}
+function applyAiEval(no){
+  const k=no.replace(/\./g,'_');
+  const boxEl=document.getElementById('aiev-box-'+k);
+  if(!boxEl||!boxEl.dataset.txt)return;
+  const verdict=boxEl.dataset.verdict;
+  const resultKey=verdict==='ผ่าน'?'pass':verdict==='ไม่ผ่าน'?'fail':null;
+  if(resultKey&&ST.res[no]!==resultKey) SR(no,resultKey);
+  const ta=document.getElementById('rem-'+k);
+  if(ta){
+    const aiNote='[AI ประเมินจากภาพ] '+boxEl.dataset.txt.replace(/\n/g,' ');
+    ta.value=(ta.value?ta.value+'\n':'')+aiNote;
+    setRem(no,ta.value);
+  }
+  alert(resultKey?'✅ นำผลประเมินไปใช้แล้ว':'ℹ️ AI ยังไม่ชัดเจน กรุณาตรวจสอบและประเมินด้วยตนเอง');
+}
+function attachAiEvalPhoto(no){
+  const k=no.replace(/\./g,'_');
+  const boxEl=document.getElementById('aiev-box-'+k);
+  if(!boxEl||!boxEl.dataset.photo)return;
+  if(!ST.photos[no])ST.photos[no]=[];
+  ST.photos[no].push(boxEl.dataset.photo);
+  renderPhotoPreviews(no);save();
+  alert('📎 แนบภาพเป็นหลักฐานแล้ว');
+}
+
+// ============================================================
 // FEATURE 4: QUICK-FILL (pass all / na all / clear all)
 // ============================================================
 function quickFill(secId,result){
@@ -3073,16 +3270,12 @@ ${failList}
 Failed items:\n${failList}\n
 Please provide a professional CAPA plan in English with: corrective actions, preventive actions, and recommended timelines.`,
   };
+  if(!getApiKey()){openApiKeySettings();return;}
   document.getElementById('ai-capa-loading').style.display='block';
   document.getElementById('ai-capa-result').style.display='none';
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,
-        messages:[{role:'user',content:prompts[lang]||prompts.th}]})
-    });
-    const data=await res.json();
-    const txt=data.content?.find(b=>b.type==='text')?.text||'ไม่สามารถสร้างแผนได้';
+    const txt=await callClaude({max_tokens:2000,
+      messages:[{role:'user',content:prompts[lang]||prompts.th}]}) || 'ไม่สามารถสร้างแผนได้';
     const el=document.getElementById('ai-capa-result');
     el.style.display='block';
     el.dataset.txt=txt;
@@ -3271,6 +3464,7 @@ function restoreState(){
 
 window.onload=function(){
   document.getElementById('sd').value=new Date().toISOString().split('T')[0];
+  updateApiKeyStatusUI();
   buildAllSections();buildRef3();buildRef4();buildSecGrid();
   renderIns();initHW();
   injectFlagBtns();
