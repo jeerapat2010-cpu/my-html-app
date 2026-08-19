@@ -679,27 +679,54 @@ function emptySession(meta){
 }
 
 /* =========================================================================
-   STORAGE
+   STORAGE — works both inside claude.ai (window.storage) and as a
+   standalone site e.g. hosted on GitHub Pages (falls back to localStorage)
    ========================================================================= */
+const HAS_ARTIFACT_STORAGE = (typeof window.storage !== 'undefined' && window.storage && typeof window.storage.get === 'function');
+
+const KV = {
+  async get(key){
+    if(HAS_ARTIFACT_STORAGE){
+      try{ return await window.storage.get(key); }catch(e){ return null; }
+    }
+    try{
+      const v = localStorage.getItem('gacpkv:'+key);
+      return v===null ? null : {key, value:v};
+    }catch(e){ return null; }
+  },
+  async set(key, value){
+    if(HAS_ARTIFACT_STORAGE){
+      try{ return await window.storage.set(key, value); }catch(e){ return null; }
+    }
+    try{ localStorage.setItem('gacpkv:'+key, value); return {key, value}; }catch(e){ return null; }
+  },
+  async delete(key){
+    if(HAS_ARTIFACT_STORAGE){
+      try{ return await window.storage.delete(key); }catch(e){ return null; }
+    }
+    try{ localStorage.removeItem('gacpkv:'+key); return {key, deleted:true}; }catch(e){ return null; }
+  }
+};
+
 const Store = {
   async listSessions(){
     try{
-      const r = await window.storage.get('gacp-session-index');
+      const r = await KV.get('gacp-session-index');
       return r ? JSON.parse(r.value) : [];
     }catch(e){ return []; }
   },
   async saveSessionIndex(idx){
-    try{ await window.storage.set('gacp-session-index', JSON.stringify(idx)); }catch(e){}
+    try{ await KV.set('gacp-session-index', JSON.stringify(idx)); }catch(e){}
   },
   async loadSession(id){
     try{
-      const r = await window.storage.get('gacp-inspection:'+id);
+      const r = await KV.get('gacp-inspection:'+id);
       return r ? JSON.parse(r.value) : null;
     }catch(e){ return null; }
   },
   async saveSession(session){
     session.updatedAt = Date.now();
-    try{ await window.storage.set('gacp-inspection:'+session.id, JSON.stringify(session)); }catch(e){
+    try{ await KV.set('gacp-inspection:'+session.id, JSON.stringify(session)); }catch(e){
       console.error('save session failed', e);
     }
     // update index
@@ -710,28 +737,37 @@ const Store = {
     await this.saveSessionIndex(idx);
   },
   async deleteSession(id){
-    try{ await window.storage.delete('gacp-inspection:'+id); }catch(e){}
+    try{ await KV.delete('gacp-inspection:'+id); }catch(e){}
     let idx = await this.listSessions();
     idx = idx.filter(x=>x.id!==id);
     await this.saveSessionIndex(idx);
   },
   async loadBadges(){
     try{
-      const r = await window.storage.get('gacp-badges');
+      const r = await KV.get('gacp-badges');
       return r ? JSON.parse(r.value) : [];
     }catch(e){ return []; }
   },
   async saveBadges(list){
-    try{ await window.storage.set('gacp-badges', JSON.stringify(list)); }catch(e){}
+    try{ await KV.set('gacp-badges', JSON.stringify(list)); }catch(e){}
   },
   async loadLastSessionId(){
     try{
-      const r = await window.storage.get('gacp-last-session');
+      const r = await KV.get('gacp-last-session');
       return r ? r.value : null;
     }catch(e){ return null; }
   },
   async saveLastSessionId(id){
-    try{ await window.storage.set('gacp-last-session', id); }catch(e){}
+    try{ await KV.set('gacp-last-session', id); }catch(e){}
+  },
+  async loadApiKey(){
+    try{
+      const r = await KV.get('gacp-api-key');
+      return r ? r.value : '';
+    }catch(e){ return ''; }
+  },
+  async saveApiKey(key){
+    try{ await KV.set('gacp-api-key', key); }catch(e){}
   }
 };
 
@@ -789,26 +825,59 @@ async function analyzePhoto(item, imageDataUrl){
 
   let response;
   try{
-    response = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({
-        model:"claude-sonnet-4-6",
-        max_tokens:1000,
-        system: system,
-        messages:[{
-          role:"user",
-          content:[
-            {type:"image", source:{type:"base64", media_type:"image/jpeg", data: base64}},
-            {type:"text", text: userText}
-          ]
-        }]
-      })
-    });
+    if(HAS_ARTIFACT_STORAGE){
+      // running inside claude.ai — the platform proxies/authenticates this call automatically
+      response = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-5",
+          max_tokens:1000,
+          system: system,
+          messages:[{
+            role:"user",
+            content:[
+              {type:"image", source:{type:"base64", media_type:"image/jpeg", data: base64}},
+              {type:"text", text: userText}
+            ]
+          }]
+        })
+      });
+    } else {
+      // standalone deployment (e.g. GitHub Pages) — call the Anthropic API
+      // directly from the browser using the user's own API key
+      const apiKey = await Store.loadApiKey();
+      if(!apiKey){
+        const e = new Error("ยังไม่ได้ตั้งค่า Anthropic API key — กดปุ่ม ⚙️ ที่มุมขวาบนเพื่อใส่ API key ก่อนใช้งานฟีเจอร์วิเคราะห์ภาพ");
+        throw e;
+      }
+      response = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json",
+          "x-api-key": apiKey,
+          "anthropic-version":"2023-06-01",
+          "anthropic-dangerous-direct-browser-access":"true"
+        },
+        body: JSON.stringify({
+          model:"claude-sonnet-5",
+          max_tokens:1000,
+          system: system,
+          messages:[{
+            role:"user",
+            content:[
+              {type:"image", source:{type:"base64", media_type:"image/jpeg", data: base64}},
+              {type:"text", text: userText}
+            ]
+          }]
+        })
+      });
+    }
   }catch(networkErr){
-    // fetch itself threw — almost always a network/CORS failure, e.g. this file
-    // was opened directly in a browser outside claude.ai (no API proxy available)
-    const e = new Error("เชื่อมต่อ API ไม่สำเร็จ (network/CORS) — เปิดไฟล์นี้อยู่นอกหน้าต่าง claude.ai หรือไม่มีอินเทอร์เน็ตหรือไม่? รายละเอียด: " + networkErr.message);
+    // fetch itself threw — almost always a network/CORS failure or a missing API key
+    const e = new Error(networkErr.message && networkErr.message.indexOf('API key')>=0
+      ? networkErr.message
+      : "เชื่อมต่อ API ไม่สำเร็จ (network/CORS) รายละเอียด: " + networkErr.message);
     e.debug = String(networkErr);
     throw e;
   }
@@ -935,8 +1004,17 @@ function renderTopbar(){
           <div class="brand-sub">${State.view==='home' ? 'Compliance Check · น้องมายด์' : (s? esc(s.siteName) : '')}</div>
         </div>
       </div>
+      <button class="topbar-action" onclick="openApiKeyModal()" title="ตั้งค่า API key" style="margin-right:6px;">⚙️</button>
       <button class="topbar-action" onclick="openSessionSwitcher()" title="เปลี่ยนรอบตรวจ">📁</button>
     </div>
+    ${(!HAS_ARTIFACT_STORAGE && !State.apiKeySet) ? `
+    <div class="site-chip" style="background:rgba(220,180,95,.16); border-color:rgba(220,180,95,.35); cursor:pointer;" onclick="openApiKeyModal()">
+      <div class="site-chip-icon">🔑</div>
+      <div class="site-chip-text">
+        <div class="site-chip-name" style="color:var(--gold-400)">ยังไม่ได้ตั้งค่า API key</div>
+        <div class="site-chip-meta">แตะเพื่อใส่ Anthropic API key สำหรับใช้ AI วิเคราะห์ภาพ</div>
+      </div>
+    </div>` : ``}
     ${s ? `
     <div class="site-chip">
       <div class="site-chip-icon">${s.siteType==='grow'?'🌱':'💊'}</div>
@@ -1339,6 +1417,44 @@ function renderSessionSwitcher(){
 }
 
 /* =========================================================================
+   MODAL: API KEY SETUP (only relevant for standalone / GitHub-hosted use)
+   ========================================================================= */
+function renderApiKeyModal(){
+  const current = State.apiKeyValue || '';
+  return `
+  <div class="overlay" onclick="if(event.target===this) closeModal()">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head">
+        <div class="sheet-title">ตั้งค่า Anthropic API key</div>
+        <button class="sheet-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="sheet-body">
+        ${HAS_ARTIFACT_STORAGE ? `
+          <div class="criteria-box">
+            ตอนนี้แอปกำลังทำงานอยู่ในหน้าต่างของ claude.ai ระบบจะเรียกใช้ AI ให้อัตโนมัติ ไม่ต้องตั้งค่า API key เองค่ะ
+          </div>
+        ` : `
+          <div class="criteria-box">
+            เนื่องจากเปิดแอปนี้แบบไฟล์เดี่ยว (เช่น ผ่าน GitHub Pages) ฟีเจอร์ "วิเคราะห์ด้วย AI" ต้องใช้ Anthropic API key ของพี่เอง โดยจะถูกเก็บไว้ใน localStorage ของเบราว์เซอร์เครื่องนี้เท่านั้น <b>ไม่ถูกส่งไปที่อื่นนอกจาก api.anthropic.com</b><br><br>
+            📎 ขอ API key ได้ที่ <b>console.anthropic.com</b> → Settings → API Keys<br>
+            ⚠️ หมายเหตุ: การเรียก API ตรงจากเบราว์เซอร์แบบนี้มีค่าใช้จ่ายตามการใช้งานจริง และ key จะถูกเก็บแบบไม่เข้ารหัสในเครื่อง เหมาะกับการใช้งานส่วนตัว/ภายในทีมเท่านั้น ไม่ควรแชร์ไฟล์นี้พร้อม key ให้คนอื่น
+          </div>
+        `}
+        <div class="field mt-16">
+          <label>Anthropic API key</label>
+          <input id="apikey-input" type="password" placeholder="sk-ant-..." value="${esc(current)}" ${HAS_ARTIFACT_STORAGE?'disabled':''}>
+        </div>
+        ${!HAS_ARTIFACT_STORAGE ? `
+          <button class="btn btn-primary btn-block" style="padding:14px;" onclick="saveApiKeyFromModal()">บันทึก API key</button>
+          ${current ? `<button class="btn btn-danger btn-block mt-8" onclick="clearApiKey()">ลบ API key ที่บันทึกไว้</button>` : ''}
+        ` : ``}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* =========================================================================
    MODAL: BADGE UNLOCK CELEBRATION
    ========================================================================= */
 function renderBadgeCelebration(){
@@ -1417,6 +1533,7 @@ function render(){
     if(State.modal.type==='newSession') modalHtml = renderNewSessionModal();
     else if(State.modal.type==='capture') modalHtml = renderCaptureModal();
     else if(State.modal.type==='sessionSwitcher') modalHtml = renderSessionSwitcher();
+    else if(State.modal.type==='apiKey') modalHtml = renderApiKeyModal();
     else if(State.modal.type==='badgeUnlock') modalHtml = renderBadgeCelebration();
     else if(State.modal.type==='confirmDelete') modalHtml = renderConfirmDelete();
   }
@@ -1460,6 +1577,28 @@ function openNewSessionModal(){
 function openSessionSwitcher(){
   State.modal = {type:'sessionSwitcher'};
   render();
+}
+async function openApiKeyModal(){
+  State.apiKeyValue = await Store.loadApiKey();
+  State.modal = {type:'apiKey'};
+  render();
+}
+async function saveApiKeyFromModal(){
+  const val = document.getElementById('apikey-input').value.trim();
+  await Store.saveApiKey(val);
+  State.apiKeySet = !!val;
+  State.apiKeyValue = val;
+  State.modal = null;
+  render();
+  showToast(val ? 'บันทึก API key แล้ว ✓' : 'ลบ API key แล้ว');
+}
+async function clearApiKey(){
+  await Store.saveApiKey('');
+  State.apiKeySet = false;
+  State.apiKeyValue = '';
+  State.modal = null;
+  render();
+  showToast('ลบ API key แล้ว');
 }
 function closeModal(){
   State.modal = null;
@@ -1652,6 +1791,9 @@ async function init(){
     const s = await Store.loadSession(lastId);
     if(s) State.session = s;
   }
+  const key = await Store.loadApiKey();
+  State.apiKeySet = !!key;
+  State.apiKeyValue = key;
   State.loading = false;
   render();
 }
