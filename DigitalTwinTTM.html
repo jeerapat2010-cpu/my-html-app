@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Digital Twin Health Unit — สสจ.สมุทรปราการ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root{
+    --ink:#081512;
+    --ink-2:#0D1F1A;
+    --panel:#11241F;
+    --panel-2:#152B24;
+    --line:#20392F;
+    --line-soft:#1A2E27;
+    --text:#EAF3EE;
+    --text-dim:#9FBBAC;
+    --text-faint:#6E8A7C;
+    --gold:#D9A83C;
+    --gold-dim:#9C7E3F;
+    --jade:#3FD497;
+    --jade-dim:#1F6B4D;
+    --amber:#F6B23E;
+    --amber-dim:#7A5A1E;
+    --coral:#FB6B4F;
+    --coral-dim:#7A3324;
+    --radius:10px;
+    --sans:'IBM Plex Sans Thai','Sarabun','Noto Sans Thai',sans-serif;
+    --mono:'JetBrains Mono','IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;background:var(--ink);color:var(--text);font-family:var(--sans);overflow:hidden;}
+  #app{position:relative;width:100vw;height:100vh;background:
+    radial-gradient(circle at 20% 15%, rgba(63,212,151,0.05), transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(217,168,60,0.05), transparent 50%),
+    var(--ink);}
+
+  #canvas-wrap{position:absolute;inset:0;}
+  canvas{display:block;width:100%;height:100%;}
+
+  .noise{position:absolute;inset:0;pointer-events:none;opacity:0.025;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+
+  /* ---------- top bar ---------- */
+  #topbar{position:absolute;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;
+    padding:14px 22px;background:linear-gradient(180deg, rgba(8,21,18,0.92) 0%, rgba(8,21,18,0.55) 80%, transparent 100%);
+    pointer-events:none;}
+  #topbar > *{pointer-events:auto;}
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand .mark{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--jade),var(--jade-dim));
+    display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:600;font-size:13px;color:var(--ink);flex:none;}
+  .brand h1{font-size:15px;font-weight:600;margin:0;line-height:1.25;letter-spacing:0.2px;}
+  .brand p{font-size:11px;color:var(--text-dim);margin:0;font-family:var(--mono);letter-spacing:0.3px;}
+
+  .stat-strip{display:flex;gap:8px;flex-wrap:wrap;}
+  .stat{background:rgba(17,36,31,0.75);border:0.5px solid var(--line);border-radius:9px;padding:7px 13px;min-width:76px;text-align:center;backdrop-filter:blur(6px);}
+  .stat .n{font-family:var(--mono);font-size:17px;font-weight:600;line-height:1.1;}
+  .stat .l{font-size:10px;color:var(--text-dim);margin-top:2px;letter-spacing:0.3px;}
+  .stat.green .n{color:var(--jade);}
+  .stat.amber .n{color:var(--amber);}
+  .stat.red .n{color:var(--coral);}
+
+  .sync-pill{display:flex;align-items:center;gap:7px;background:rgba(17,36,31,0.75);border:0.5px solid var(--line);border-radius:20px;
+    padding:6px 12px 6px 8px;font-family:var(--mono);font-size:11px;color:var(--text-dim);backdrop-filter:blur(6px);}
+  .dot-live{width:7px;height:7px;border-radius:50%;background:var(--jade);animation:pulse 1.8s ease-in-out infinite;flex:none;}
+  @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(63,212,151,0.5);}50%{opacity:0.55;box-shadow:0 0 0 4px rgba(63,212,151,0);}}
+
+  /* ---------- demo banner ---------- */
+  #demo-banner{position:absolute;top:64px;left:50%;transform:translateX(-50%);z-index:19;
+    background:rgba(217,168,60,0.12);border:0.5px solid rgba(217,168,60,0.35);color:var(--gold);
+    font-size:11.5px;padding:6px 14px;border-radius:20px;font-family:var(--mono);display:flex;align-items:center;gap:8px;
+    backdrop-filter:blur(6px);white-space:nowrap;}
+  #demo-banner button{background:none;border:none;color:var(--gold);opacity:0.7;cursor:pointer;font-size:13px;padding:0 0 0 4px;line-height:1;}
+  #demo-banner button:hover{opacity:1;}
+
+  /* ---------- left control rail ---------- */
+  #rail{position:absolute;left:18px;top:130px;bottom:100px;z-index:18;width:230px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;
+    scrollbar-width:thin;padding-right:2px;}
+  #rail::-webkit-scrollbar{width:4px;}
+  #rail::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+
+  .panel-block{background:rgba(17,36,31,0.72);border:0.5px solid var(--line);border-radius:var(--radius);padding:12px 13px;backdrop-filter:blur(8px);}
+  .panel-block h3{font-size:10.5px;text-transform:uppercase;letter-spacing:0.9px;color:var(--text-dim);margin:0 0 10px;font-weight:600;}
+
+  .search-box{position:relative;}
+  .search-box input{width:100%;background:var(--panel-2);border:0.5px solid var(--line);border-radius:8px;color:var(--text);
+    font-family:var(--sans);font-size:13px;padding:9px 12px 9px 32px;outline:none;transition:border-color .15s;}
+  .search-box input:focus{border-color:var(--jade-dim);}
+  .search-box input::placeholder{color:var(--text-faint);}
+  .search-box svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--text-dim);}
+  #search-results{margin-top:8px;display:flex;flex-direction:column;gap:4px;max-height:150px;overflow-y:auto;}
+  .search-result{font-size:12px;padding:6px 8px;border-radius:6px;cursor:pointer;color:var(--text-dim);display:flex;justify-content:space-between;gap:6px;}
+  .search-result:hover{background:var(--panel-2);color:var(--text);}
+  .search-result .dot{width:7px;height:7px;border-radius:50%;flex:none;margin-top:3px;}
+
+  .chip-group{display:flex;flex-wrap:wrap;gap:6px;}
+  .chip{font-size:11.5px;padding:6px 11px;border-radius:20px;border:0.5px solid var(--line);background:var(--panel-2);
+    color:var(--text-dim);cursor:pointer;transition:all .15s;user-select:none;font-family:var(--sans);}
+  .chip:hover{border-color:var(--jade-dim);color:var(--text);}
+  .chip.active{background:rgba(63,212,151,0.14);border-color:var(--jade-dim);color:var(--jade);}
+  .chip .cnt{opacity:0.6;font-family:var(--mono);font-size:10px;margin-left:4px;}
+
+  .status-legend{display:flex;flex-direction:column;gap:7px;}
+  .legend-row{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--text-dim);cursor:pointer;padding:3px 4px;border-radius:6px;transition:background .15s;}
+  .legend-row:hover{background:var(--panel-2);}
+  .legend-row.dim{opacity:0.35;}
+  .legend-sw{width:10px;height:10px;border-radius:3px;flex:none;}
+  .legend-row .cnt{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text-faint);}
+
+  .view-toggle{display:flex;gap:6px;}
+  .view-toggle button{flex:1;background:var(--panel-2);border:0.5px solid var(--line);color:var(--text-dim);
+    font-family:var(--sans);font-size:11.5px;padding:8px 6px;border-radius:7px;cursor:pointer;transition:all .15s;}
+  .view-toggle button.active{background:rgba(63,212,151,0.14);border-color:var(--jade-dim);color:var(--jade);}
+
+  /* ---------- bottom KPI strip ---------- */
+  #bottom-strip{position:absolute;left:18px;right:18px;bottom:16px;z-index:18;display:flex;gap:10px;
+    overflow-x:auto;scrollbar-width:none;}
+  #bottom-strip::-webkit-scrollbar{display:none;}
+  .kpi-card{flex:none;min-width:150px;background:rgba(17,36,31,0.78);border:0.5px solid var(--line);border-radius:var(--radius);
+    padding:10px 13px;backdrop-filter:blur(8px);}
+  .kpi-card .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+  .kpi-card .name{font-size:10.5px;color:var(--text-dim);letter-spacing:0.2px;}
+  .kpi-card .val{font-family:var(--mono);font-size:16px;font-weight:600;}
+  .kpi-card .bar{height:4px;border-radius:3px;background:var(--line-soft);overflow:hidden;}
+  .kpi-card .bar i{display:block;height:100%;border-radius:3px;}
+  .kpi-card .trend{font-family:var(--mono);font-size:10px;margin-top:5px;color:var(--text-faint);}
+
+  /* ---------- detail panel ---------- */
+  #detail{position:absolute;top:0;right:0;bottom:0;width:360px;z-index:30;background:rgba(11,25,21,0.97);
+    border-left:0.5px solid var(--line);backdrop-filter:blur(10px);transform:translateX(100%);transition:transform .28s cubic-bezier(.2,.8,.3,1);
+    overflow-y:auto;padding:20px 20px 30px;scrollbar-width:thin;}
+  #detail::-webkit-scrollbar{width:5px;}
+  #detail::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+  #detail.open{transform:translateX(0);}
+  #detail-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--text-dim);cursor:pointer;padding:6px;
+    border-radius:6px;line-height:0;}
+  #detail-close:hover{color:var(--text);background:var(--panel-2);}
+  #detail-close svg{width:16px;height:16px;stroke:currentColor;}
+
+  .d-eyebrow{font-family:var(--mono);font-size:10.5px;color:var(--text-faint);letter-spacing:0.5px;margin-bottom:6px;}
+  .d-title{font-size:19px;font-weight:600;line-height:1.3;margin:0 0 4px;padding-right:26px;}
+  .d-sub{font-size:12.5px;color:var(--text-dim);margin-bottom:16px;}
+
+  .d-score-row{display:flex;align-items:center;gap:14px;background:var(--panel-2);border:0.5px solid var(--line);
+    border-radius:var(--radius);padding:14px;margin-bottom:16px;}
+  .d-score-ring{position:relative;width:64px;height:64px;flex:none;}
+  .d-score-ring svg{transform:rotate(-90deg);}
+  .d-score-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);
+    font-size:16px;font-weight:600;}
+  .d-score-txt .lbl{font-size:10.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;}
+  .d-score-txt .val{font-size:14px;font-weight:600;}
+  .status-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 9px;border-radius:20px;font-family:var(--mono);margin-top:4px;}
+
+  .d-section{margin-bottom:18px;}
+  .d-section h4{font-size:10.5px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-dim);margin:0 0 10px;font-weight:600;}
+  .metric-row{margin-bottom:10px;}
+  .metric-row .mh{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;}
+  .metric-row .mh .mname{color:var(--text-dim);}
+  .metric-row .mh .mval{font-family:var(--mono);font-weight:600;}
+  .metric-row .mbar{height:5px;background:var(--line-soft);border-radius:3px;overflow:hidden;}
+  .metric-row .mbar i{display:block;height:100%;border-radius:3px;transition:width .4s;}
+
+  .badge-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .cbadge{flex:1;min-width:110px;background:var(--panel-2);border:0.5px solid var(--line);border-radius:8px;padding:9px 10px;}
+  .cbadge .l{font-size:10px;color:var(--text-dim);margin-bottom:3px;}
+  .cbadge .v{font-family:var(--mono);font-size:14px;font-weight:600;}
+
+  .alert-item{display:flex;gap:9px;padding:9px 10px;background:rgba(251,107,79,0.08);border:0.5px solid rgba(251,107,79,0.25);
+    border-radius:8px;margin-bottom:7px;font-size:12px;line-height:1.5;}
+  .alert-item.warn{background:rgba(246,178,62,0.08);border-color:rgba(246,178,62,0.25);}
+  .alert-item svg{width:14px;height:14px;flex:none;margin-top:2px;}
+  .alert-empty{font-size:12px;color:var(--text-faint);padding:8px 2px;}
+
+  .spark{width:100%;height:44px;}
+
+  .d-actions{display:flex;gap:8px;margin-top:6px;}
+  .d-actions button{flex:1;background:var(--panel-2);border:0.5px solid var(--line);color:var(--text);
+    font-family:var(--sans);font-size:12px;padding:9px;border-radius:8px;cursor:pointer;transition:all .15s;}
+  .d-actions button:hover{border-color:var(--jade-dim);}
+  .d-actions button.primary{background:rgba(63,212,151,0.14);border-color:var(--jade-dim);color:var(--jade);}
+
+  /* ---------- list view (fallback) ---------- */
+  #list-view{position:absolute;inset:0;z-index:15;background:var(--ink);padding:130px 24px 24px;overflow-y:auto;display:none;}
+  #list-view.open{display:block;}
+  .list-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;max-width:1400px;margin:0 auto;}
+  .unit-card{background:var(--panel);border:0.5px solid var(--line);border-radius:var(--radius);padding:13px 14px;cursor:pointer;transition:border-color .15s, transform .15s;}
+  .unit-card:hover{border-color:var(--jade-dim);transform:translateY(-1px);}
+  .unit-card .uc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;}
+  .unit-card .uc-name{font-size:13px;font-weight:500;line-height:1.35;}
+  .unit-card .uc-dist{font-size:10.5px;color:var(--text-dim);font-family:var(--mono);margin-top:3px;}
+  .uc-score{font-family:var(--mono);font-size:15px;font-weight:600;flex:none;}
+  .uc-bar{height:4px;background:var(--line-soft);border-radius:3px;overflow:hidden;}
+  .uc-bar i{display:block;height:100%;}
+
+  /* ---------- loader ---------- */
+  #loader{position:absolute;inset:0;z-index:50;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    transition:opacity .5s;}
+  #loader .ring{width:38px;height:38px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--jade);animation:spin 0.9s linear infinite;}
+  #loader .txt{font-family:var(--mono);font-size:12px;color:var(--text-dim);letter-spacing:0.5px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* ---------- hint ---------- */
+  #hint{position:absolute;bottom:110px;left:50%;transform:translateX(-50%);z-index:16;font-family:var(--mono);font-size:11px;
+    color:var(--text-faint);background:rgba(17,36,31,0.6);border:0.5px solid var(--line-soft);padding:6px 14px;border-radius:20px;
+    pointer-events:none;transition:opacity .5s;backdrop-filter:blur(6px);}
+
+  /* ---------- responsive ---------- */
+  @media (max-width:880px){
+    #rail{display:none;}
+    .stat-strip{display:none;}
+    #topbar{padding:10px 12px;}
+    .brand h1{font-size:13px;}
+    .brand p{display:none;}
+    #detail{width:100%;top:auto;height:78%;bottom:0;border-left:none;border-top:0.5px solid var(--line);border-radius:16px 16px 0 0;
+      transform:translateY(100%);}
+    #detail.open{transform:translateY(0);}
+    #bottom-strip{bottom:8px;}
+    .kpi-card{min-width:130px;}
+    #mobile-menu-btn{display:flex;}
+    #demo-banner{top:56px;font-size:10px;padding:5px 10px;max-width:88vw;overflow:hidden;text-overflow:ellipsis;}
+  }
+  #mobile-menu-btn{display:none;background:var(--panel-2);border:0.5px solid var(--line);color:var(--text);border-radius:8px;
+    padding:8px 10px;align-items:center;gap:6px;font-size:12px;font-family:var(--sans);}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="loader"><div class="ring"></div><div class="txt">กำลังประมวลผล DIGITAL TWIN…</div></div>
+
+  <div id="canvas-wrap"></div>
+  <div class="noise"></div>
+
+  <div id="topbar">
+    <div class="brand">
+      <div class="mark">DT</div>
+      <div>
+        <h1>Digital Twin — หน่วยบริการ</h1>
+        <p>สสจ.สมุทรปราการ · แพทย์แผนไทยและการแพทย์ทางเลือก</p>
+      </div>
+    </div>
+    <div class="stat-strip" id="stat-strip"></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button id="mobile-menu-btn" onclick="toggleListView(true)">☰ รายการ</button>
+      <div class="sync-pill"><span class="dot-live"></span><span id="sync-text">ซิงก์ล่าสุด 0 วิ</span></div>
+    </div>
+  </div>
+
+  <div id="demo-banner">
+    <span id="demo-banner-text">⬢ ข้อมูลจริงจาก HDC — อัปเดตรอบ 14 สิงหาคม 2569 (กวป 14 ส.ค. 69) · คะแนนคำนวณจาก 7 ตัวชี้วัด (ปฐมภูมิ/สมุนไพร UC/IMC/กัญชา PC/กัญชาผู้ป่วยทั่วไป/มารดาหลังคลอด/ชดเชย สปสช.) · เป็นข้อมูลนิ่ง (snapshot)</span>
+    <button onclick="document.getElementById('demo-banner').style.display='none'">✕</button>
+  </div>
+
+  <div id="rail">
+    <div class="panel-block">
+      <h3>ค้นหาหน่วยบริการ</h3>
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" id="search-input" placeholder="พิมพ์ชื่อหน่วยบริการ...">
+      </div>
+      <div id="search-results"></div>
+    </div>
+
+    <div class="panel-block">
+      <h3>อำเภอ</h3>
+      <div class="chip-group" id="district-chips"></div>
+    </div>
+
+    <div class="panel-block">
+      <h3>สถานะสุขภาพหน่วยบริการ</h3>
+      <div class="status-legend" id="status-legend"></div>
+    </div>
+
+    <div class="panel-block">
+      <h3>มุมมอง</h3>
+      <div class="view-toggle">
+        <button id="btn-view-3d" class="active" onclick="toggleListView(false)">แผนที่ 3D</button>
+        <button id="btn-view-list" onclick="toggleListView(true)">รายการ</button>
+      </div>
+      <div class="view-toggle" style="margin-top:8px;">
+        <button id="btn-labels" onclick="toggleLabels()">แสดงชื่อหน่วยทั้งหมด</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="hint">ลากเพื่อหมุนมุมมอง · เลื่อนล้อเพื่อซูม · คลิกหน่วยบริการเพื่อดูรายละเอียด · ซูมเข้าเพื่อดูชื่อหน่วย</div>
+
+  <div id="bottom-strip"></div>
+
+  <div id="list-view">
+    <div class="list-grid" id="list-grid"></div>
+  </div>
+
+  <div id="detail">
+    <button id="detail-close" onclick="closeDetail()"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    <div id="detail-body"></div>
+  </div>
+
+</div>
+
+<script>
+/* =========================================================
+   REAL DATA — extracted from HDC-derived district HTML files
+   (DATAMUNG / DATABB / DataBP / DATAPPD / DATAPS1 / DATABST)
+   ========================================================= */
+const REAL_DATA = {"units":[{"id":"mueang-0","code":"00933","name":"รพสต.สำโรงเหนือ","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":23760,"ttm":10054,"kpi14":42.3,"kpi15":34.3,"kpi15Prev":28.9,"kpi15Change":18.7,"imcB":69,"imcA":3,"imcPct":4.35,"herbUC":443064,"herbPct12":155.6,"pcB":37,"pcA":0,"pcPct":0,"canB":0,"canA":87,"canGrowth":0,"ppCoverage":null,"nhsoComp":0,"nhsoItems":0,"components":{"primary":38.3,"herbUC":100,"imc":59.8,"pcCannabis":0,"canRank":96.5,"ppCoverage":null,"nhsoRank":0.0},"componentsUsed":6,"composite":49,"status":"amber"},{"id":"mueang-1","code":"00934","name":"รพสต.บางเมือง","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":16988,"ttm":4000,"kpi14":23.6,"kpi15":42.0,"kpi15Prev":38.0,"kpi15Change":10.6,"imcB":42,"imcA":3,"imcPct":7.14,"herbUC":136838,"herbPct12":67.6,"pcB":24,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":18934,"nhsoItems":260,"components":{"primary":32.8,"herbUC":67.6,"imc":98.2,"pcCannabis":0,"canRank":0.0,"ppCoverage":null,"nhsoRank":63.6},"componentsUsed":6,"composite":44,"status":"amber"},{"id":"mueang-2","code":"00935","name":"สถานีอนามัยเฉลิมพระเกียรติ 60 พรรษา นวมินทราชินี บ้านคลองบางปิ้ง","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":48690,"ttm":30840,"kpi14":63.3,"kpi15":17.9,"kpi15Prev":19.8,"kpi15Change":-9.2,"imcB":148,"imcA":4,"imcPct":2.7,"herbUC":388992,"herbPct12":54.3,"pcB":34,"pcA":0,"pcPct":0,"canB":0,"canA":1,"canGrowth":0,"ppCoverage":100,"nhsoComp":0,"nhsoItems":0,"components":{"primary":40.6,"herbUC":54.3,"imc":37.1,"pcCannabis":0,"canRank":87.1,"ppCoverage":100,"nhsoRank":3.0},"componentsUsed":7,"composite":46,"status":"amber"},{"id":"mueang-3","code":"00936","name":"รพสต.บางปูใหม่","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":28004,"ttm":18882,"kpi14":67.4,"kpi15":42.4,"kpi15Prev":15.1,"kpi15Change":180.3,"imcB":68,"imcA":6,"imcPct":8.82,"herbUC":366419,"herbPct12":119.7,"pcB":35,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":0.0,"nhsoComp":54168,"nhsoItems":843,"components":{"primary":54.9,"herbUC":100,"imc":100,"pcCannabis":0,"canRank":1.2,"ppCoverage":0.0,"nhsoRank":78.8},"componentsUsed":7,"composite":48,"status":"amber"},{"id":"mueang-4","code":"00937","name":"รพสต.แพรกษา","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":25374,"ttm":7168,"kpi14":28.2,"kpi15":41.3,"kpi15Prev":38.1,"kpi15Change":8.4,"imcB":79,"imcA":2,"imcPct":2.53,"herbUC":291621,"herbPct12":70.4,"pcB":48,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":0,"nhsoItems":0,"components":{"primary":34.8,"herbUC":70.4,"imc":34.8,"pcCannabis":0,"canRank":2.4,"ppCoverage":null,"nhsoRank":6.1},"componentsUsed":6,"composite":25,"status":"red"},{"id":"mueang-5","code":"00938","name":"รพสต.บางโปรง","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":12114,"ttm":12058,"kpi14":99.5,"kpi15":47.8,"kpi15Prev":47.3,"kpi15Change":1.1,"imcB":39,"imcA":1,"imcPct":2.56,"herbUC":149753,"herbPct12":84.4,"pcB":20,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":49676,"nhsoItems":725,"components":{"primary":73.7,"herbUC":84.4,"imc":35.2,"pcCannabis":0,"canRank":3.5,"ppCoverage":null,"nhsoRank":75.8},"componentsUsed":6,"composite":45,"status":"amber"},{"id":"mueang-6","code":"00939","name":"รพสต.บางปู","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":15452,"ttm":11182,"kpi14":72.4,"kpi15":38.3,"kpi15Prev":29.9,"kpi15Change":28.3,"imcB":49,"imcA":2,"imcPct":4.08,"herbUC":155685,"herbPct12":61.3,"pcB":28,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":7770,"nhsoItems":81,"components":{"primary":55.4,"herbUC":61.3,"imc":56.1,"pcCannabis":0,"canRank":4.7,"ppCoverage":null,"nhsoRank":51.5},"componentsUsed":6,"composite":38,"status":"red"},{"id":"mueang-7","code":"00940","name":"รพสต.บางด้วน","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":12150,"ttm":12914,"kpi14":106.3,"kpi15":26.1,"kpi15Prev":35.1,"kpi15Change":-25.7,"imcB":35,"imcA":1,"imcPct":2.86,"herbUC":39895,"herbPct12":57.9,"pcB":22,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":11523,"nhsoItems":134,"components":{"primary":66.2,"herbUC":57.9,"imc":39.3,"pcCannabis":0,"canRank":5.9,"ppCoverage":null,"nhsoRank":54.5},"componentsUsed":6,"composite":37,"status":"red"},{"id":"mueang-8","code":"00941","name":"รพสต.บางเมืองใหม่","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":15736,"ttm":8152,"kpi14":51.8,"kpi15":27.7,"kpi15Prev":27.5,"kpi15Change":0.7,"imcB":60,"imcA":3,"imcPct":5.0,"herbUC":116304,"herbPct12":42.6,"pcB":30,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":0.0,"nhsoComp":44364,"nhsoItems":471,"components":{"primary":39.8,"herbUC":42.6,"imc":68.8,"pcCannabis":0,"canRank":7.1,"ppCoverage":0.0,"nhsoRank":72.7},"componentsUsed":7,"composite":33,"status":"red"},{"id":"mueang-9","code":"00942","name":"รพสต.เทพารักษ์","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":34078,"ttm":29518,"kpi14":86.6,"kpi15":43.2,"kpi15Prev":28.4,"kpi15Change":52.2,"imcB":80,"imcA":12,"imcPct":15.0,"herbUC":311582,"herbPct12":54.1,"pcB":27,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":0.0,"nhsoComp":120890,"nhsoItems":1179,"components":{"primary":64.9,"herbUC":54.1,"imc":100,"pcCannabis":0,"canRank":8.2,"ppCoverage":0.0,"nhsoRank":93.9},"componentsUsed":7,"composite":46,"status":"amber"},{"id":"mueang-10","code":"00943","name":"รพสต.ท้ายบ้านใหม่","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":25552,"ttm":6690,"kpi14":26.2,"kpi15":42.9,"kpi15Prev":47.2,"kpi15Change":-9.1,"imcB":77,"imcA":2,"imcPct":2.6,"herbUC":288233,"herbPct12":55.2,"pcB":62,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":0,"nhsoItems":0,"components":{"primary":34.5,"herbUC":55.2,"imc":35.8,"pcCannabis":0,"canRank":9.4,"ppCoverage":null,"nhsoRank":9.1},"componentsUsed":6,"composite":24,"status":"red"},{"id":"mueang-11","code":"00944","name":"รพสต.แพรกษาใหม่","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":26012,"ttm":13576,"kpi14":52.2,"kpi15":60.2,"kpi15Prev":15.2,"kpi15Change":295.8,"imcB":77,"imcA":1,"imcPct":1.3,"herbUC":246662,"herbPct12":50.5,"pcB":38,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":20152,"nhsoItems":346,"components":{"primary":56.2,"herbUC":50.5,"imc":17.9,"pcCannabis":0,"canRank":10.6,"ppCoverage":null,"nhsoRank":66.7},"componentsUsed":6,"composite":34,"status":"red"},{"id":"mueang-12","code":"10685","name":"รพ.สมุทรปราการ","type":"โรงพยาบาลชุมชน","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":0,"ttm":0,"kpi14":0,"kpi15":9.3,"kpi15Prev":6.2,"kpi15Change":51.0,"imcB":0,"imcA":0,"imcPct":0,"herbUC":3732724,"herbPct12":52.7,"pcB":0,"pcA":0,"pcPct":0,"canB":28,"canA":118,"canGrowth":321.4,"ppCoverage":100,"nhsoComp":1399967,"nhsoItems":25251,"components":{"primary":4.7,"herbUC":52.7,"imc":0,"pcCannabis":0,"canRank":97.6,"ppCoverage":100,"nhsoRank":100.0},"componentsUsed":7,"composite":51,"status":"amber"},{"id":"mueang-13","code":"12251","name":"รพ.ยุวประสาทไวทโยปถัมภ์","type":"โรงพยาบาลชุมชน","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":0,"ttm":0,"kpi14":0,"kpi15":4.4,"kpi15Prev":3.1,"kpi15Change":44.4,"imcB":0,"imcA":0,"imcPct":0,"herbUC":0,"herbPct12":0,"pcB":0,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":0,"nhsoItems":0,"components":{"primary":2.2,"herbUC":0,"imc":0,"pcCannabis":0,"canRank":11.8,"ppCoverage":null,"nhsoRank":12.1},"componentsUsed":6,"composite":4,"status":"red"},{"id":"mueang-14","code":"13812","name":"รพสต.ท้ายบ้าน","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":10665,"ttm":5692,"kpi14":53.4,"kpi15":26.1,"kpi15Prev":15.6,"kpi15Change":67.8,"imcB":50,"imcA":2,"imcPct":4.0,"herbUC":129192,"herbPct12":73.1,"pcB":20,"pcA":0,"pcPct":0,"canB":0,"canA":1,"canGrowth":0,"ppCoverage":100,"nhsoComp":91874,"nhsoItems":1375,"components":{"primary":39.7,"herbUC":73.1,"imc":55.0,"pcCannabis":0,"canRank":88.2,"ppCoverage":100,"nhsoRank":90.9},"componentsUsed":7,"composite":64,"status":"green"},{"id":"mueang-15","code":"15048","name":"ศูนย์สุขภาพชุมชนเมือง รพ.สมุทรปราการ","type":"ศูนย์สุขภาพชุมชนเมือง","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":8398,"ttm":422,"kpi14":5.0,"kpi15":28.3,"kpi15Prev":29.7,"kpi15Change":-4.7,"imcB":71,"imcA":2,"imcPct":2.82,"herbUC":30374,"herbPct12":61.1,"pcB":46,"pcA":1,"pcPct":2.17,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":55142,"nhsoItems":881,"components":{"primary":16.6,"herbUC":61.1,"imc":38.8,"pcCannabis":100,"canRank":12.9,"ppCoverage":null,"nhsoRank":81.8},"componentsUsed":6,"composite":52,"status":"amber"},{"id":"mueang-16","code":"23945","name":"สถานีอนามัยเฉลิมพระเกียรติ 60 พรรษา นวมินทราชินี สาขาวัดบางปิ้ง","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":9846,"ttm":4417,"kpi14":44.9,"kpi15":32.5,"kpi15Prev":26.9,"kpi15Change":20.6,"imcB":36,"imcA":1,"imcPct":2.78,"herbUC":38620,"herbPct12":45.4,"pcB":19,"pcA":0,"pcPct":0,"canB":0,"canA":13,"canGrowth":0,"ppCoverage":100,"nhsoComp":34244,"nhsoItems":469,"components":{"primary":38.7,"herbUC":45.4,"imc":38.2,"pcCannabis":0,"canRank":92.9,"ppCoverage":100,"nhsoRank":69.7},"componentsUsed":7,"composite":55,"status":"amber"},{"id":"mueang-17","code":"24027","name":"รพสต.พุทธรักษา","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":11426,"ttm":6596,"kpi14":57.7,"kpi15":53.5,"kpi15Prev":53.0,"kpi15Change":1.0,"imcB":50,"imcA":0,"imcPct":0,"herbUC":157497,"herbPct12":55.0,"pcB":22,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":69662,"nhsoItems":1052,"components":{"primary":55.6,"herbUC":55.0,"imc":0,"pcCannabis":0,"canRank":14.1,"ppCoverage":null,"nhsoRank":87.9},"componentsUsed":6,"composite":35,"status":"red"},{"id":"mueang-18","code":"24028","name":"รพสต.ร่มโพธิ์","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":8674,"ttm":714,"kpi14":8.2,"kpi15":27.1,"kpi15Prev":34.3,"kpi15Change":-21.1,"imcB":62,"imcA":0,"imcPct":0,"herbUC":49229,"herbPct12":44.4,"pcB":32,"pcA":1,"pcPct":3.13,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":4642,"nhsoItems":88,"components":{"primary":17.6,"herbUC":44.4,"imc":0,"pcCannabis":100,"canRank":15.3,"ppCoverage":null,"nhsoRank":45.5},"componentsUsed":6,"composite":37,"status":"red"},{"id":"mueang-19","code":"24029","name":"รพสต.บุญศิริ","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":6858,"ttm":3567,"kpi14":52.0,"kpi15":21.6,"kpi15Prev":17.1,"kpi15Change":25.9,"imcB":63,"imcA":0,"imcPct":0,"herbUC":49021,"herbPct12":100.1,"pcB":21,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":100,"nhsoComp":16107,"nhsoItems":300,"components":{"primary":36.8,"herbUC":100,"imc":0,"pcCannabis":0,"canRank":16.5,"ppCoverage":100,"nhsoRank":60.6},"componentsUsed":7,"composite":45,"status":"amber"},{"id":"mueang-20","code":"24702","name":"รพสต.เทศบาลตำบลสำโรงเหนือ","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":6410,"ttm":2995,"kpi14":46.7,"kpi15":45.4,"kpi15Prev":48.8,"kpi15Change":-7.0,"imcB":24,"imcA":0,"imcPct":0,"herbUC":66333,"herbPct12":61.6,"pcB":14,"pcA":1,"pcPct":7.14,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":100,"nhsoComp":68289,"nhsoItems":919,"components":{"primary":46.0,"herbUC":61.6,"imc":0,"pcCannabis":100,"canRank":17.6,"ppCoverage":100,"nhsoRank":84.8},"componentsUsed":7,"composite":59,"status":"amber"},{"id":"mueang-21","code":"28826","name":"รพสต.มังกรทอง","type":"รพ.สต.","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":15071,"ttm":12803,"kpi14":85.0,"kpi15":43.9,"kpi15Prev":44.4,"kpi15Change":-1.1,"imcB":102,"imcA":6,"imcPct":5.88,"herbUC":223508,"herbPct12":64.3,"pcB":60,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":13386,"nhsoItems":222,"components":{"primary":64.4,"herbUC":64.3,"imc":80.9,"pcCannabis":0,"canRank":18.8,"ppCoverage":null,"nhsoRank":57.6},"componentsUsed":6,"composite":48,"status":"amber"},{"id":"mueang-22","code":"MUE-SP2","name":"ศูนย์บริการสาธารณสุข 2 (สะพาน 3) เทศบาลนครสมุทรปราการ","type":"ศูนย์สุขภาพชุมชนเมือง","district":"mueang","districtName":"เมืองสมุทรปราการ","opd":0,"ttm":0,"kpi14":0,"kpi15":0,"kpi15Prev":0,"kpi15Change":0,"imcB":0,"imcA":0,"imcPct":0,"herbUC":0,"herbPct12":0,"pcB":0,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":0,"nhsoItems":0,"components":{"primary":0,"herbUC":0,"imc":0,"pcCannabis":0,"canRank":20.0,"ppCoverage":null,"nhsoRank":15.2},"componentsUsed":6,"composite":6,"status":"red"},{"id":"bangbo-23","code":"00945","name":"รพสต.บางบ่อ","type":"รพ.สต.","district":"bangbo","districtName":"บางบ่อ","opd":7850,"ttm":4008,"kpi14":51.1,"kpi15":51.1,"kpi15Prev":57.4,"kpi15Change":-10.9,"imcB":36,"imcA":0,"imcPct":0,"herbUC":168805,"herbPct12":125.3,"pcB":24,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":51.1,"herbUC":100,"imc":0,"pcCannabis":0,"canRank":21.2,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":34,"status":"red"},{"id":"bangbo-24","code":"00946","name":"รพสต.บ้านระกาศ หมู่ 3","type":"รพ.สต.","district":"bangbo","districtName":"บางบ่อ","opd":2832,"ttm":1762,"kpi14":62.2,"kpi15":56.2,"kpi15Prev":42.8,"kpi15Change":31.3,"imcB":8,"imcA":2,"imcPct":25.0,"herbUC":72454,"herbPct12":75.7,"pcB":10,"pcA":1,"pcPct":10.0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":59.2,"herbUC":75.7,"imc":100,"pcCannabis":100,"canRank":22.4,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":71,"status":"green"},{"id":"bangbo-25","code":"00947","name":"รพสต.บ้านระกาศ หมู่ 8","type":"รพ.สต.","district":"bangbo","districtName":"บางบ่อ","opd":7572,"ttm":3868,"kpi14":51.1,"kpi15":65.4,"kpi15Prev":61.6,"kpi15Change":6.2,"imcB":13,"imcA":0,"imcPct":0,"herbUC":160680,"herbPct12":55.2,"pcB":6,"pcA":1,"pcPct":16.67,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":58.2,"herbUC":55.2,"imc":0,"pcCannabis":100,"canRank":23.5,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":47,"status":"amber"},{"id":"bangbo-26","code":"00948","name":"รพสต.บางพลีน้อย หมู่ที่ 3","type":"รพ.สต.","district":"bangbo","districtName":"บางบ่อ","opd":10948,"ttm":5880,"kpi14":53.7,"kpi15":54.0,"kpi15Prev":42.2,"kpi15Change":27.9,"imcB":24,"imcA":0,"imcPct":0,"herbUC":193975,"herbPct12":76.1,"pcB":10,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":53.9,"herbUC":76.1,"imc":0,"pcCannabis":0,"canRank":24.7,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":31,"status":"red"},{"id":"bangbo-27","code":"00949","name":"รพสต.บางพลีน้อย หมู่ที่ 5","type":"รพ.สต.","district":"bangbo","districtName":"บางบ่อ","opd":6842,"ttm":2584,"kpi14":37.8,"kpi15":53.0,"kpi15Prev":47.4,"kpi15Change":11.7,"imcB":14,"imcA":0,"imcPct":0,"herbUC":94539,"herbPct12":104.0,"pcB":6,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":45.4,"herbUC":100,"imc":0,"pcCannabis":0,"canRank":25.9,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":34,"status":"red"},{"id":"bangbo-28","code":"00950","name":"รพสต.บางพลีน้อย หมู่ที่ 8","type":"รพ.สต.","district":"bangbo","districtName":"บางบ่อ","opd":2474,"ttm":1352,"kpi14":54.6,"kpi15":68.0,"kpi15Prev":65.2,"kpi15Change":4.4,"imcB":7,"imcA":0,"imcPct":0,"herbUC":50188,"herbPct12":83.8,"pcB":2,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":61.3,"herbUC":83.8,"imc":0,"pcCannabis":0,"canRank":27.1,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":34,"status":"red"},{"id":"bangbo-29","code":"00951","name":"รพสต.บางเพรียง","type":"รพ.สต.","district":"bangbo","districtName":"บางบ่อ","opd":8516,"ttm":4152,"kpi14":48.8,"kpi15":35.4,"kpi15Prev":46.9,"kpi15Change":-24.5,"imcB":30,"imcA":0,"imcPct":0,"herbUC":199121,"herbPct12":83.8,"pcB":13,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":42.1,"herbUC":83.8,"imc":0,"pcCannabis":0,"canRank":28.2,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":31,"status":"red"},{"id":"bangbo-30","code":"00952","name":"รพสต.คลองด่าน หมู่ที่ 1","type":"รพ.สต.","district":"bangbo","districtName":"บางบ่อ","opd":37530,"ttm":33876,"kpi14":90.3,"kpi15":9.1,"kpi15Prev":0,"kpi15Change":0,"imcB":38,"imcA":14,"imcPct":36.84,"herbUC":853257,"herbPct12":377.3,"pcB":37,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":100,"nhsoComp":null,"nhsoItems":null,"components":{"primary":49.7,"herbUC":100,"imc":100,"pcCannabis":0,"canRank":29.4,"ppCoverage":100,"nhsoRank":null},"componentsUsed":6,"composite":63,"status":"green"},{"id":"bangbo-31","code":"00953","name":"รพสต.คลองด่าน หมู่ที่ 13","type":"รพ.สต.","district":"bangbo","districtName":"บางบ่อ","opd":7898,"ttm":5518,"kpi14":69.9,"kpi15":72.5,"kpi15Prev":64.5,"kpi15Change":12.3,"imcB":32,"imcA":2,"imcPct":6.25,"herbUC":136642,"herbPct12":90.6,"pcB":16,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":100,"nhsoComp":null,"nhsoItems":null,"components":{"primary":71.2,"herbUC":90.6,"imc":86.0,"pcCannabis":0,"canRank":30.6,"ppCoverage":100,"nhsoRank":null},"componentsUsed":6,"composite":63,"status":"green"},{"id":"bangbo-32","code":"00954","name":"รพสต.คลองสวน","type":"รพ.สต.","district":"bangbo","districtName":"บางบ่อ","opd":9556,"ttm":4128,"kpi14":43.2,"kpi15":52.1,"kpi15Prev":44.8,"kpi15Change":16.3,"imcB":6,"imcA":2,"imcPct":33.33,"herbUC":130387,"herbPct12":87.0,"pcB":7,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":47.7,"herbUC":87.0,"imc":100,"pcCannabis":0,"canRank":31.8,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":53,"status":"amber"},{"id":"bangbo-33","code":"00955","name":"รพสต.เปร็ง","type":"รพ.สต.","district":"bangbo","districtName":"บางบ่อ","opd":5902,"ttm":4100,"kpi14":69.5,"kpi15":73.4,"kpi15Prev":64.7,"kpi15Change":13.4,"imcB":18,"imcA":0,"imcPct":0,"herbUC":181650,"herbPct12":107.8,"pcB":13,"pcA":1,"pcPct":7.69,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":71.4,"herbUC":100,"imc":0,"pcCannabis":100,"canRank":32.9,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":61,"status":"green"},{"id":"bangbo-34","code":"00956","name":"รพสต.นิยมยาตรา","type":"รพ.สต.","district":"bangbo","districtName":"บางบ่อ","opd":2584,"ttm":2170,"kpi14":84.0,"kpi15":88.4,"kpi15Prev":88.5,"kpi15Change":-0.1,"imcB":9,"imcA":0,"imcPct":0,"herbUC":182617,"herbPct12":102.6,"pcB":6,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":86.2,"herbUC":100,"imc":0,"pcCannabis":0,"canRank":34.1,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":44,"status":"amber"},{"id":"bangbo-35","code":"10752","name":"รพ.บางบ่อ","type":"โรงพยาบาลชุมชน","district":"bangbo","districtName":"บางบ่อ","opd":0,"ttm":0,"kpi14":0,"kpi15":10.7,"kpi15Prev":14.9,"kpi15Change":-28.1,"imcB":0,"imcA":0,"imcPct":0,"herbUC":509756,"herbPct12":83.1,"pcB":0,"pcA":0,"pcPct":0,"canB":6,"canA":84,"canGrowth":1300.0,"ppCoverage":100,"nhsoComp":null,"nhsoItems":null,"components":{"primary":5.3,"herbUC":83.1,"imc":0,"pcCannabis":0,"canRank":95.3,"ppCoverage":100,"nhsoRank":null},"componentsUsed":6,"composite":47,"status":"amber"},{"id":"bangbo-36","code":"23032","name":"ศูนย์สุขภาพชุมชนรพ.บางบ่อ","type":"ศูนย์สุขภาพชุมชนเมือง","district":"bangbo","districtName":"บางบ่อ","opd":3230,"ttm":846,"kpi14":26.2,"kpi15":0,"kpi15Prev":0,"kpi15Change":0,"imcB":37,"imcA":0,"imcPct":0,"herbUC":61059,"herbPct12":121.2,"pcB":18,"pcA":1,"pcPct":5.56,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":13.1,"herbUC":100,"imc":0,"pcCannabis":100,"canRank":35.3,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":50,"status":"amber"},{"id":"bangbo-37","code":"23911","name":"รพสต.คลองด่าน หมู่ 7","type":"รพ.สต.","district":"bangbo","districtName":"บางบ่อ","opd":3889,"ttm":2092,"kpi14":53.8,"kpi15":56.3,"kpi15Prev":23.0,"kpi15Change":145.3,"imcB":31,"imcA":1,"imcPct":3.23,"herbUC":115846,"herbPct12":104.2,"pcB":13,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":55.1,"herbUC":100,"imc":44.4,"pcCannabis":0,"canRank":36.5,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":47,"status":"amber"},{"id":"bangbo-38","code":"BB-สถานพยาบ","name":"สถานพยาบาลเรือนจำกลางสมุทรปราการ","type":"รพ.สต.","district":"bangbo","districtName":"บางบ่อ","opd":0,"ttm":0,"kpi14":0,"kpi15":0,"kpi15Prev":0,"kpi15Change":0,"imcB":0,"imcA":0,"imcPct":0,"herbUC":212717,"herbPct12":240.2,"pcB":0,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":0,"herbUC":100,"imc":0,"pcCannabis":0,"canRank":37.6,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":28,"status":"red"},{"id":"bangphli-39","code":"00957","name":"รพสต.บางแก้ว","type":"รพ.สต.","district":"bangphli","districtName":"บางพลี","opd":11532,"ttm":4504,"kpi14":39.1,"kpi15":22.2,"kpi15Prev":31.8,"kpi15Change":-30.2,"imcB":47,"imcA":2,"imcPct":4.26,"herbUC":204731,"herbPct12":51.4,"pcB":32,"pcA":0,"pcPct":0,"canB":0,"canA":8,"canGrowth":0,"ppCoverage":null,"nhsoComp":3540,"nhsoItems":null,"components":{"primary":30.6,"herbUC":51.4,"imc":58.6,"pcCannabis":0,"canRank":91.8,"ppCoverage":null,"nhsoRank":42.4},"componentsUsed":6,"composite":46,"status":"amber"},{"id":"bangphli-40","code":"00958","name":"รพสต.วัดสลุด","type":"รพ.สต.","district":"bangphli","districtName":"บางพลี","opd":7094,"ttm":2252,"kpi14":31.8,"kpi15":39.5,"kpi15Prev":44.3,"kpi15Change":-10.7,"imcB":43,"imcA":1,"imcPct":2.33,"herbUC":65517,"herbPct12":98.8,"pcB":26,"pcA":1,"pcPct":3.85,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":480,"nhsoItems":null,"components":{"primary":35.6,"herbUC":98.8,"imc":32.0,"pcCannabis":100,"canRank":38.8,"ppCoverage":null,"nhsoRank":33.3},"componentsUsed":6,"composite":56,"status":"amber"},{"id":"bangphli-41","code":"00959","name":"รพสต.บางปลา","type":"รพ.สต.","district":"bangphli","districtName":"บางพลี","opd":6584,"ttm":1692,"kpi14":25.7,"kpi15":24.2,"kpi15Prev":22.8,"kpi15Change":6.3,"imcB":18,"imcA":0,"imcPct":0,"herbUC":48015,"herbPct12":79.0,"pcB":12,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":1012,"nhsoItems":null,"components":{"primary":25.0,"herbUC":79.0,"imc":0,"pcCannabis":0,"canRank":40.0,"ppCoverage":null,"nhsoRank":36.4},"componentsUsed":6,"composite":30,"status":"red"},{"id":"bangphli-42","code":"00960","name":"รพสต.คลองสี่","type":"รพ.สต.","district":"bangphli","districtName":"บางพลี","opd":7854,"ttm":1312,"kpi14":16.7,"kpi15":27.3,"kpi15Prev":31.1,"kpi15Change":-12.1,"imcB":22,"imcA":0,"imcPct":0,"herbUC":32074,"herbPct12":56.8,"pcB":16,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":0,"nhsoItems":null,"components":{"primary":22.0,"herbUC":56.8,"imc":0,"pcCannabis":0,"canRank":41.2,"ppCoverage":null,"nhsoRank":18.2},"componentsUsed":6,"composite":23,"status":"red"},{"id":"bangphli-43","code":"00961","name":"รพสต.บางโฉลง","type":"รพ.สต.","district":"bangphli","districtName":"บางพลี","opd":6640,"ttm":3968,"kpi14":59.8,"kpi15":25.8,"kpi15Prev":20,"kpi15Change":29.0,"imcB":19,"imcA":1,"imcPct":5.26,"herbUC":94508,"herbPct12":50.1,"pcB":14,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":252,"nhsoItems":null,"components":{"primary":42.8,"herbUC":50.1,"imc":72.4,"pcCannabis":0,"canRank":42.4,"ppCoverage":null,"nhsoRank":30.3},"componentsUsed":6,"composite":40,"status":"amber"},{"id":"bangphli-44","code":"00962","name":"รพสต.ราชาเทวะ","type":"รพ.สต.","district":"bangphli","districtName":"บางพลี","opd":10424,"ttm":5000,"kpi14":48.0,"kpi15":20.2,"kpi15Prev":21.5,"kpi15Change":-6.1,"imcB":67,"imcA":3,"imcPct":4.48,"herbUC":151544,"herbPct12":84.0,"pcB":45,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":100,"nhsoComp":2658,"nhsoItems":null,"components":{"primary":34.1,"herbUC":84.0,"imc":61.6,"pcCannabis":0,"canRank":43.5,"ppCoverage":100,"nhsoRank":39.4},"componentsUsed":7,"composite":52,"status":"amber"},{"id":"bangphli-45","code":"00963","name":"รพสต.หนองปรือ","type":"รพ.สต.","district":"bangphli","districtName":"บางพลี","opd":4726,"ttm":1760,"kpi14":37.2,"kpi15":41.1,"kpi15Prev":37.1,"kpi15Change":10.9,"imcB":16,"imcA":1,"imcPct":6.25,"herbUC":51907,"herbPct12":70.8,"pcB":8,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":0,"nhsoItems":null,"components":{"primary":39.2,"herbUC":70.8,"imc":86.0,"pcCannabis":0,"canRank":44.7,"ppCoverage":null,"nhsoRank":21.2},"componentsUsed":6,"composite":44,"status":"amber"},{"id":"bangphli-46","code":"10753","name":"รพ.บางพลี","type":"โรงพยาบาลชุมชน","district":"bangphli","districtName":"บางพลี","opd":0,"ttm":0,"kpi14":0,"kpi15":20.7,"kpi15Prev":21.4,"kpi15Change":-3.2,"imcB":0,"imcA":0,"imcPct":0,"herbUC":1482658,"herbPct12":53.4,"pcB":1,"pcA":0,"pcPct":0,"canB":41,"canA":696,"canGrowth":1597.6,"ppCoverage":100,"nhsoComp":1086527,"nhsoItems":null,"components":{"primary":10.4,"herbUC":53.4,"imc":0,"pcCannabis":0,"canRank":100.0,"ppCoverage":100,"nhsoRank":97.0},"componentsUsed":7,"composite":52,"status":"amber"},{"id":"bangphli-47","code":"23034","name":"ศูนย์แพทย์ชุมชนวัดบางพลีใหญ่กลาง","type":"ศูนย์สุขภาพชุมชนเมือง","district":"bangphli","districtName":"บางพลี","opd":4761,"ttm":636,"kpi14":13.4,"kpi15":33.8,"kpi15Prev":27.7,"kpi15Change":22.2,"imcB":102,"imcA":2,"imcPct":1.96,"herbUC":43807,"herbPct12":105.4,"pcB":64,"pcA":1,"pcPct":1.56,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":0,"nhsoItems":null,"components":{"primary":23.6,"herbUC":100,"imc":27.0,"pcCannabis":100,"canRank":45.9,"ppCoverage":null,"nhsoRank":24.2},"componentsUsed":6,"composite":53,"status":"amber"},{"id":"bangphli-48","code":"24675","name":"รพสต.บัวเกราะ","type":"รพ.สต.","district":"bangphli","districtName":"บางพลี","opd":3219,"ttm":739,"kpi14":23.0,"kpi15":54.4,"kpi15Prev":37,"kpi15Change":47.1,"imcB":18,"imcA":0,"imcPct":0,"herbUC":33588,"herbPct12":70.7,"pcB":9,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":6460,"nhsoItems":null,"components":{"primary":38.7,"herbUC":70.7,"imc":0,"pcCannabis":0,"canRank":47.1,"ppCoverage":null,"nhsoRank":48.5},"componentsUsed":6,"composite":34,"status":"red"},{"id":"bangphli-49","code":"99826","name":"ศูนย์สุขภาพชุมชน1 รพ.บางพลี","type":"ศูนย์สุขภาพชุมชนเมือง","district":"bangphli","districtName":"บางพลี","opd":1,"ttm":0,"kpi14":0,"kpi15":0,"kpi15Prev":0,"kpi15Change":0,"imcB":68,"imcA":2,"imcPct":2.94,"herbUC":0,"herbPct12":0,"pcB":48,"pcA":2,"pcPct":4.17,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":0,"nhsoItems":null,"components":{"primary":0,"herbUC":0,"imc":40.4,"pcCannabis":100,"canRank":48.2,"ppCoverage":null,"nhsoRank":27.3},"componentsUsed":6,"composite":36,"status":"red"},{"id":"phrapradaeng-50","code":"00964","name":"รพสต.บางพึ่ง","type":"รพ.สต.","district":"phrapradaeng","districtName":"พระประแดง","opd":8768,"ttm":4836,"kpi14":55.2,"kpi15":31.2,"kpi15Prev":28.9,"kpi15Change":7.9,"imcB":57,"imcA":5,"imcPct":8.77,"herbUC":127787,"herbPct12":176.1,"pcB":27,"pcA":2,"pcPct":7.41,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":100,"nhsoComp":null,"nhsoItems":null,"components":{"primary":43.2,"herbUC":100,"imc":100,"pcCannabis":100,"canRank":49.4,"ppCoverage":100,"nhsoRank":null},"componentsUsed":6,"composite":82,"status":"green"},{"id":"phrapradaeng-51","code":"00965","name":"รพสต.บางจาก","type":"รพ.สต.","district":"phrapradaeng","districtName":"พระประแดง","opd":9312,"ttm":5736,"kpi14":61.6,"kpi15":29.2,"kpi15Prev":32.2,"kpi15Change":-9.1,"imcB":63,"imcA":10,"imcPct":15.87,"herbUC":226883,"herbPct12":199.6,"pcB":20,"pcA":0,"pcPct":0,"canB":0,"canA":5,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":45.4,"herbUC":100,"imc":100,"pcCannabis":0,"canRank":89.4,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":67,"status":"green"},{"id":"phrapradaeng-52","code":"00966","name":"รพสต.บางครุ","type":"รพ.สต.","district":"phrapradaeng","districtName":"พระประแดง","opd":16772,"ttm":5274,"kpi14":31.4,"kpi15":43.3,"kpi15Prev":39.4,"kpi15Change":9.8,"imcB":83,"imcA":10,"imcPct":12.05,"herbUC":227776,"herbPct12":100.1,"pcB":23,"pcA":1,"pcPct":4.35,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":37.4,"herbUC":100,"imc":100,"pcCannabis":100,"canRank":50.6,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":78,"status":"green"},{"id":"phrapradaeng-53","code":"00967","name":"รพสต.บางหญ้าแพรก","type":"รพ.สต.","district":"phrapradaeng","districtName":"พระประแดง","opd":10386,"ttm":5436,"kpi14":52.3,"kpi15":56.0,"kpi15Prev":48.6,"kpi15Change":15.2,"imcB":55,"imcA":1,"imcPct":1.82,"herbUC":171229,"herbPct12":71.9,"pcB":17,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":54.2,"herbUC":71.9,"imc":25.0,"pcCannabis":0,"canRank":51.8,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":41,"status":"amber"},{"id":"phrapradaeng-54","code":"00968","name":"รพสต.บางหัวเสือ","type":"รพ.สต.","district":"phrapradaeng","districtName":"พระประแดง","opd":12602,"ttm":11064,"kpi14":87.8,"kpi15":24.3,"kpi15Prev":21.0,"kpi15Change":16.0,"imcB":42,"imcA":0,"imcPct":0,"herbUC":41080,"herbPct12":3.1,"pcB":20,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":0.0,"nhsoComp":null,"nhsoItems":null,"components":{"primary":56.1,"herbUC":3.1,"imc":0,"pcCannabis":0,"canRank":52.9,"ppCoverage":0.0,"nhsoRank":null},"componentsUsed":6,"composite":19,"status":"red"},{"id":"phrapradaeng-55","code":"00969","name":"รพสต.บางยอ","type":"รพ.สต.","district":"phrapradaeng","districtName":"พระประแดง","opd":6984,"ttm":4486,"kpi14":64.2,"kpi15":37.6,"kpi15Prev":34.2,"kpi15Change":9.9,"imcB":64,"imcA":8,"imcPct":12.5,"herbUC":113687,"herbPct12":52.3,"pcB":15,"pcA":2,"pcPct":13.33,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":50.9,"herbUC":52.3,"imc":100,"pcCannabis":100,"canRank":54.1,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":71,"status":"green"},{"id":"phrapradaeng-56","code":"00970","name":"รพสต.บางกะเจ้า","type":"รพ.สต.","district":"phrapradaeng","districtName":"พระประแดง","opd":4676,"ttm":2750,"kpi14":58.8,"kpi15":31.0,"kpi15Prev":30.1,"kpi15Change":3.0,"imcB":32,"imcA":5,"imcPct":15.63,"herbUC":83835,"herbPct12":67.8,"pcB":11,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":44.9,"herbUC":67.8,"imc":100,"pcCannabis":0,"canRank":55.3,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":54,"status":"amber"},{"id":"phrapradaeng-57","code":"00971","name":"รพสต.บางน้ำผึ้ง","type":"รพ.สต.","district":"phrapradaeng","districtName":"พระประแดง","opd":7806,"ttm":2966,"kpi14":38.0,"kpi15":40.0,"kpi15Prev":36.7,"kpi15Change":9.0,"imcB":28,"imcA":3,"imcPct":10.71,"herbUC":79095,"herbPct12":89.6,"pcB":10,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":39.0,"herbUC":89.6,"imc":100,"pcCannabis":0,"canRank":56.5,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":57,"status":"amber"},{"id":"phrapradaeng-58","code":"00972","name":"รพสต.บางกระสอบ","type":"รพ.สต.","district":"phrapradaeng","districtName":"พระประแดง","opd":3204,"ttm":1880,"kpi14":58.7,"kpi15":46.8,"kpi15Prev":38.3,"kpi15Change":22.3,"imcB":19,"imcA":1,"imcPct":5.26,"herbUC":48111,"herbPct12":49.5,"pcB":3,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":52.7,"herbUC":49.5,"imc":72.4,"pcCannabis":0,"canRank":57.6,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":46,"status":"amber"},{"id":"phrapradaeng-59","code":"00973","name":"รพสต.บางกอบัว","type":"รพ.สต.","district":"phrapradaeng","districtName":"พระประแดง","opd":6178,"ttm":5188,"kpi14":84.0,"kpi15":69.5,"kpi15Prev":65.0,"kpi15Change":6.9,"imcB":25,"imcA":3,"imcPct":12.0,"herbUC":75548,"herbPct12":65.7,"pcB":11,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":76.8,"herbUC":65.7,"imc":100,"pcCannabis":0,"canRank":58.8,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":60,"status":"green"},{"id":"phrapradaeng-60","code":"00974","name":"รพสต.บางกอ","type":"รพ.สต.","district":"phrapradaeng","districtName":"พระประแดง","opd":2736,"ttm":5502,"kpi14":201.1,"kpi15":35.7,"kpi15Prev":28.9,"kpi15Change":23.7,"imcB":22,"imcA":4,"imcPct":18.18,"herbUC":32832,"herbPct12":83.3,"pcB":5,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":100,"herbUC":83.3,"imc":100,"pcCannabis":0,"canRank":60.0,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":69,"status":"green"},{"id":"phrapradaeng-61","code":"00975","name":"รพสต.ทรงคนอง","type":"รพ.สต.","district":"phrapradaeng","districtName":"พระประแดง","opd":9122,"ttm":4824,"kpi14":52.9,"kpi15":75.0,"kpi15Prev":69.1,"kpi15Change":8.6,"imcB":52,"imcA":4,"imcPct":7.69,"herbUC":171348,"herbPct12":83.2,"pcB":20,"pcA":1,"pcPct":5.0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":64.0,"herbUC":83.2,"imc":100,"pcCannabis":100,"canRank":61.2,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":82,"status":"green"},{"id":"phrapradaeng-62","code":"00976","name":"รพสต.สำโรง","type":"รพ.สต.","district":"phrapradaeng","districtName":"พระประแดง","opd":11764,"ttm":5816,"kpi14":49.4,"kpi15":23.3,"kpi15Prev":11.7,"kpi15Change":98.5,"imcB":43,"imcA":0,"imcPct":0,"herbUC":131337,"herbPct12":80.4,"pcB":22,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":36.4,"herbUC":80.4,"imc":0,"pcCannabis":0,"canRank":62.4,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":36,"status":"red"},{"id":"phrapradaeng-63","code":"00977","name":"รพสต.สำโรงกลาง","type":"รพ.สต.","district":"phrapradaeng","districtName":"พระประแดง","opd":11674,"ttm":6270,"kpi14":53.7,"kpi15":41.8,"kpi15Prev":26.7,"kpi15Change":56.6,"imcB":49,"imcA":0,"imcPct":0,"herbUC":144054,"herbPct12":78.5,"pcB":14,"pcA":1,"pcPct":7.14,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":47.8,"herbUC":78.5,"imc":0,"pcCannabis":100,"canRank":63.5,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":58,"status":"amber"},{"id":"phrapradaeng-64","code":"00978","name":"รพสต.สำโรงใต้","type":"รพ.สต.","district":"phrapradaeng","districtName":"พระประแดง","opd":9320,"ttm":4496,"kpi14":48.2,"kpi15":48.3,"kpi15Prev":42.1,"kpi15Change":14.5,"imcB":27,"imcA":0,"imcPct":0,"herbUC":138683,"herbPct12":118.7,"pcB":16,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":48.3,"herbUC":100,"imc":0,"pcCannabis":0,"canRank":64.7,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":43,"status":"amber"},{"id":"phrapradaeng-65","code":"10754","name":"รพ.บางจาก","type":"โรงพยาบาลชุมชน","district":"phrapradaeng","districtName":"พระประแดง","opd":0,"ttm":0,"kpi14":0,"kpi15":28.0,"kpi15Prev":25.3,"kpi15Change":10.5,"imcB":145,"imcA":22,"imcPct":15.17,"herbUC":1788687,"herbPct12":123.7,"pcB":29,"pcA":5,"pcPct":17.24,"canB":23,"canA":128,"canGrowth":456.5,"ppCoverage":71.4,"nhsoComp":null,"nhsoItems":null,"components":{"primary":14.0,"herbUC":100,"imc":100,"pcCannabis":100,"canRank":98.8,"ppCoverage":71.4,"nhsoRank":null},"componentsUsed":6,"composite":81,"status":"green"},{"id":"phrapradaeng-66","code":"23944","name":"รพสต.อยู่เจริญ","type":"รพ.สต.","district":"phrapradaeng","districtName":"พระประแดง","opd":4686,"ttm":1896,"kpi14":40.5,"kpi15":14.9,"kpi15Prev":15.4,"kpi15Change":-3.4,"imcB":44,"imcA":1,"imcPct":2.27,"herbUC":105720,"herbPct12":95.7,"pcB":16,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":27.7,"herbUC":95.7,"imc":31.2,"pcCannabis":0,"canRank":65.9,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":44,"status":"amber"},{"id":"phrasamutchedi-67","code":"00979","name":"รพสต.บ้านขุนสมุทรไทย","type":"รพ.สต.","district":"phrasamutchedi","districtName":"พระสมุทรเจดีย์","opd":1562,"ttm":768,"kpi14":49.2,"kpi15":44.2,"kpi15Prev":27.7,"kpi15Change":59.6,"imcB":15,"imcA":1,"imcPct":6.67,"herbUC":0,"herbPct12":0,"pcB":5,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":46.7,"herbUC":0,"imc":91.7,"pcCannabis":0,"canRank":67.1,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":41,"status":"amber"},{"id":"phrasamutchedi-68","code":"00980","name":"รพสต.นาเกลือ","type":"รพ.สต.","district":"phrasamutchedi","districtName":"พระสมุทรเจดีย์","opd":9858,"ttm":4334,"kpi14":44.0,"kpi15":29.6,"kpi15Prev":42.3,"kpi15Change":-30.1,"imcB":18,"imcA":0,"imcPct":0,"herbUC":85162,"herbPct12":80.5,"pcB":17,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":36.8,"herbUC":80.5,"imc":0,"pcCannabis":0,"canRank":68.2,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":37,"status":"red"},{"id":"phrasamutchedi-69","code":"00981","name":"รพสต.บ้านคลองทะเล","type":"รพ.สต.","district":"phrasamutchedi","districtName":"พระสมุทรเจดีย์","opd":3088,"ttm":1594,"kpi14":51.6,"kpi15":38.9,"kpi15Prev":42.5,"kpi15Change":-8.6,"imcB":6,"imcA":1,"imcPct":16.67,"herbUC":53865,"herbPct12":107.3,"pcB":4,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":45.2,"herbUC":100,"imc":100,"pcCannabis":0,"canRank":69.4,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":63,"status":"green"},{"id":"phrasamutchedi-70","code":"00982","name":"รพสต.บ้านคลองสวน","type":"รพ.สต.","district":"phrasamutchedi","districtName":"พระสมุทรเจดีย์","opd":4868,"ttm":2666,"kpi14":54.8,"kpi15":33.1,"kpi15Prev":26.5,"kpi15Change":25.1,"imcB":19,"imcA":6,"imcPct":31.58,"herbUC":70963,"herbPct12":107.6,"pcB":7,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":43.9,"herbUC":100,"imc":100,"pcCannabis":0,"canRank":70.6,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":63,"status":"green"},{"id":"phrasamutchedi-71","code":"00983","name":"รพสต.แหลมฟ้าผ่า","type":"รพ.สต.","district":"phrasamutchedi","districtName":"พระสมุทรเจดีย์","opd":18340,"ttm":12624,"kpi14":68.8,"kpi15":42.4,"kpi15Prev":18.2,"kpi15Change":132.6,"imcB":35,"imcA":8,"imcPct":22.86,"herbUC":137585,"herbPct12":78.6,"pcB":14,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":55.6,"herbUC":78.6,"imc":100,"pcCannabis":0,"canRank":71.8,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":61,"status":"green"},{"id":"phrasamutchedi-72","code":"00984","name":"รพสต.บ้านขุนสมุทร","type":"รพ.สต.","district":"phrasamutchedi","districtName":"พระสมุทรเจดีย์","opd":382,"ttm":376,"kpi14":98.4,"kpi15":98.1,"kpi15Prev":91.6,"kpi15Change":7.1,"imcB":3,"imcA":1,"imcPct":33.33,"herbUC":0,"herbPct12":0,"pcB":1,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":98.2,"herbUC":0,"imc":100,"pcCannabis":0,"canRank":72.9,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":54,"status":"amber"},{"id":"phrasamutchedi-73","code":"00985","name":"รพสต.ในคลองบางปลากด","type":"รพ.สต.","district":"phrasamutchedi","districtName":"พระสมุทรเจดีย์","opd":13162,"ttm":8188,"kpi14":62.2,"kpi15":38.6,"kpi15Prev":31.5,"kpi15Change":22.6,"imcB":76,"imcA":21,"imcPct":27.63,"herbUC":251184,"herbPct12":107.0,"pcB":17,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":50.4,"herbUC":100,"imc":100,"pcCannabis":0,"canRank":74.1,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":65,"status":"green"},{"id":"phrasamutchedi-74","code":"00986","name":"รพสต.บ้านคู่สร้าง","type":"รพ.สต.","district":"phrasamutchedi","districtName":"พระสมุทรเจดีย์","opd":13538,"ttm":10118,"kpi14":74.7,"kpi15":34.9,"kpi15Prev":18.6,"kpi15Change":87.3,"imcB":51,"imcA":16,"imcPct":31.37,"herbUC":143463,"herbPct12":65.0,"pcB":23,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":54.8,"herbUC":65.0,"imc":100,"pcCannabis":0,"canRank":75.3,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":59,"status":"amber"},{"id":"phrasamutchedi-75","code":"10755","name":"รพ.พระสมุทรเจดีย์สวาทยานนท์","type":"โรงพยาบาลชุมชน","district":"phrasamutchedi","districtName":"พระสมุทรเจดีย์","opd":0,"ttm":0,"kpi14":0,"kpi15":13.9,"kpi15Prev":10.4,"kpi15Change":33.2,"imcB":56,"imcA":5,"imcPct":8.93,"herbUC":500665,"herbPct12":223.4,"pcB":28,"pcA":0,"pcPct":0,"canB":7,"canA":0,"canGrowth":-100.0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":6.9,"herbUC":100,"imc":100,"pcCannabis":0,"canRank":76.5,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":57,"status":"amber"},{"id":"phrasamutchedi-76","code":"24410","name":"รพสต.บ้านคลองนาเกลือน้อย","type":"รพ.สต.","district":"phrasamutchedi","districtName":"พระสมุทรเจดีย์","opd":3156,"ttm":1861,"kpi14":59.0,"kpi15":48.2,"kpi15Prev":47.5,"kpi15Change":1.6,"imcB":27,"imcA":7,"imcPct":25.93,"herbUC":60127,"herbPct12":57.5,"pcB":7,"pcA":0,"pcPct":0,"canB":0,"canA":5,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":53.6,"herbUC":57.5,"imc":100,"pcCannabis":0,"canRank":90.6,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":60,"status":"green"},{"id":"phrasamutchedi-77","code":"24559","name":"รพสต.คลองกระออม","type":"รพ.สต.","district":"phrasamutchedi","districtName":"พระสมุทรเจดีย์","opd":1900,"ttm":1414,"kpi14":74.4,"kpi15":31.7,"kpi15Prev":27.3,"kpi15Change":15.8,"imcB":13,"imcA":3,"imcPct":23.08,"herbUC":57728,"herbPct12":72.5,"pcB":7,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":53.0,"herbUC":72.5,"imc":100,"pcCannabis":0,"canRank":77.6,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":61,"status":"green"},{"id":"bangsaothong-78","code":"00987","name":"รพสต.เมืองใหม่บางพลี","type":"รพ.สต.","district":"bangsaothong","districtName":"บางเสาธง","opd":9468,"ttm":4184,"kpi14":44.2,"kpi15":54.2,"kpi15Prev":51.4,"kpi15Change":5.5,"imcB":27,"imcA":5,"imcPct":18.52,"herbUC":183609,"herbPct12":113.7,"pcB":15,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":100,"nhsoComp":null,"nhsoItems":null,"components":{"primary":49.2,"herbUC":100,"imc":100,"pcCannabis":0,"canRank":78.8,"ppCoverage":100,"nhsoRank":null},"componentsUsed":6,"composite":71,"status":"green"},{"id":"bangsaothong-79","code":"00988","name":"รพสต.เสาธงกลาง ต.บางเสาธง","type":"รพ.สต.","district":"bangsaothong","districtName":"บางเสาธง","opd":3910,"ttm":3176,"kpi14":81.2,"kpi15":71.4,"kpi15Prev":2.8,"kpi15Change":2460.1,"imcB":61,"imcA":5,"imcPct":8.2,"herbUC":127902,"herbPct12":113.8,"pcB":28,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":76.3,"herbUC":100,"imc":100,"pcCannabis":0,"canRank":80.0,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":71,"status":"green"},{"id":"bangsaothong-80","code":"00990","name":"รพสต.ศรีษะจระเข้น้อย","type":"รพ.สต.","district":"bangsaothong","districtName":"บางเสาธง","opd":7796,"ttm":4906,"kpi14":62.9,"kpi15":47.9,"kpi15Prev":34.3,"kpi15Change":39.8,"imcB":50,"imcA":1,"imcPct":2.0,"herbUC":121702,"herbPct12":88.7,"pcB":34,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":55.4,"herbUC":88.7,"imc":27.5,"pcCannabis":0,"canRank":81.2,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":51,"status":"amber"},{"id":"bangsaothong-81","code":"00991","name":"รพสต.ศีรษะจรเข้ใหญ่","type":"รพ.สต.","district":"bangsaothong","districtName":"บางเสาธง","opd":874,"ttm":557,"kpi14":63.7,"kpi15":72.4,"kpi15Prev":24.0,"kpi15Change":201.3,"imcB":39,"imcA":4,"imcPct":10.26,"herbUC":69726,"herbPct12":243.2,"pcB":19,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":68.1,"herbUC":100,"imc":100,"pcCannabis":0,"canRank":82.4,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":70,"status":"green"},{"id":"bangsaothong-82","code":"00992","name":"รพสต.วัดศรีวารีน้อย ต.ศีรษะจรเข้ใหญ่","type":"รพ.สต.","district":"bangsaothong","districtName":"บางเสาธง","opd":4289,"ttm":2792,"kpi14":65.1,"kpi15":67.9,"kpi15Prev":27.9,"kpi15Change":143.3,"imcB":18,"imcA":1,"imcPct":5.56,"herbUC":313404,"herbPct12":52.8,"pcB":18,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":66.5,"herbUC":52.8,"imc":76.5,"pcCannabis":0,"canRank":83.5,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":56,"status":"amber"},{"id":"bangsaothong-83","code":"24411","name":"รพสต.เจริญราษฎร์","type":"รพ.สต.","district":"bangsaothong","districtName":"บางเสาธง","opd":3890,"ttm":1744,"kpi14":44.8,"kpi15":52.9,"kpi15Prev":30.7,"kpi15Change":72.5,"imcB":29,"imcA":3,"imcPct":10.34,"herbUC":158499,"herbPct12":83.1,"pcB":16,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":48.9,"herbUC":83.1,"imc":100,"pcCannabis":0,"canRank":84.7,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":63,"status":"green"},{"id":"bangsaothong-84","code":"24412","name":"รพสต.กัลปพฤกษ์ ต.บางเสาธง","type":"รพ.สต.","district":"bangsaothong","districtName":"บางเสาธง","opd":1980,"ttm":1179,"kpi14":59.5,"kpi15":52.0,"kpi15Prev":44.6,"kpi15Change":16.8,"imcB":38,"imcA":2,"imcPct":5.26,"herbUC":155406,"herbPct12":204.7,"pcB":24,"pcA":0,"pcPct":0,"canB":0,"canA":0,"canGrowth":0,"ppCoverage":null,"nhsoComp":null,"nhsoItems":null,"components":{"primary":55.8,"herbUC":100,"imc":72.4,"pcCannabis":0,"canRank":85.9,"ppCoverage":null,"nhsoRank":null},"componentsUsed":5,"composite":63,"status":"green"},{"id":"bangsaothong-85","code":"28785","name":"โรงพยาบาลบางเสาธง","type":"รพ.สต.","district":"bangsaothong","districtName":"บางเสาธง","opd":0,"ttm":0,"kpi14":0,"kpi15":12.0,"kpi15Prev":12.1,"kpi15Change":-0.4,"imcB":45,"imcA":2,"imcPct":4.44,"herbUC":159203,"herbPct12":76.0,"pcB":14,"pcA":0,"pcPct":0,"canB":3,"canA":22,"canGrowth":633.3,"ppCoverage":0.0,"nhsoComp":null,"nhsoItems":null,"components":{"primary":6.0,"herbUC":76.0,"imc":61.1,"pcCannabis":0,"canRank":94.1,"ppCoverage":0.0,"nhsoRank":null},"componentsUsed":6,"composite":40,"status":"amber"}],"districts":[{"id":"mueang","name":"เมืองสมุทรปราการ","count":23,"angle":0},{"id":"bangphli","name":"บางพลี","count":11,"angle":60},{"id":"phrapradaeng","name":"พระประแดง","count":17,"angle":120},{"id":"bangbo","name":"บางบ่อ","count":16,"angle":180},{"id":"phrasamutchedi","name":"พระสมุทรเจดีย์","count":11,"angle":240},{"id":"bangsaothong","name":"บางเสาธง","count":8,"angle":300}],"province":{"kpi14Overall":{"country":50.83,"zone":50.75,"province":56.59895840680613,"best":86.42},"commonOverall":{"country":14.33,"zone":3.43,"province":15.39,"best":15.39},"imcOverall":{"country":16.83,"zone":18.1,"province":7.2701149425287355,"best":26.21},"herbOverall":{"country_target":2000000000.0,"country_actual":1444784496.5,"country_pct":72.239224825,"zone_target10":125000000.0,"zone_actual":96813869.5,"zone_pct10":77.4510956,"zone_target12":165000000.0,"zone_pct12":58.67507242424242,"province_target10":21501020.31,"province_actual":19704151.5,"province_pct10":91.64286724958683,"province_target12":28381346.0,"province_pct12":69.42641656248438,"zone_target6":165000000.0,"zone_pct6":58.67507242424242,"province_target6":28381346.0,"province_pct6":69.42641656248438},"pcOverall":{"country":1.87,"zone":1.15,"province":1.38,"best":1.64},"growthOverall":{"country":398.53,"zone":571.61,"province":981.48,"best":13950.0},"licenses":{"research":0.0,"sale_office":76.0,"sale_online":13.0,"export_office":6.0,"export_online":0.0},"flagship":{"cityTarget":53,"cityPassed":53,"cityPct":100.0,"provinceTarget":124,"provincePassed":124,"provincePct":100.0},"dataVersionNote":"อัปเดตจาก Excel รอบ 14 สิงหาคม 2569 (กวป 14 ส.ค. 69)","districtKpi14":[{"name":"เมือง","value":55.98},{"name":"บางบ่อ","value":64.9},{"name":"บางพลี","value":34.79},{"name":"พระประแดง","value":57.67},{"name":"พระสมุทรเจดีย์","value":62.91},{"name":"บางเสาธง","value":57.56}],"districtCommon":[{"name":"เมืองฯ","value":29.33},{"name":"บางบ่อ","value":-2.66},{"name":"บางพลี","value":-3.61},{"name":"พระประแดง","value":11.22},{"name":"พระสมุทรเจดีย์","value":14.71},{"name":"บางเสาธง","value":62.15}],"districtImc":[{"name":"เมืองฯ","b":1281,"a":51,"value":3.9812646370023423},{"name":"บางบ่อ","b":303,"a":21,"value":6.9306930693069315},{"name":"บางพลี","b":420,"a":12,"value":2.857142857142857},{"name":"พระประแดง","b":850,"a":77,"value":9.058823529411764},{"name":"พระสมุทรเจดีย์","b":319,"a":69,"value":21.630094043887148},{"name":"บางเสาธง","b":307,"a":23,"value":7.491856677524431}],"districtHerb":[{"name":"เมือง","value":7520962.0,"target":9532657.76,"target12":12583107.88443439,"pct":78.89680075958167,"pct12":59.770305309895754},{"name":"บางบ่อ","value":3328980.0,"target":2901455.23,"target12":3829920.794402504,"pct":114.73483945502754,"pct12":86.92033539872058},{"name":"บางพลี","value":2215869.5,"target":2947814.11,"target12":3891114.514257768,"pct":75.1699197206163,"pct12":56.94691050290711},{"name":"พระประแดง","value":3884751.0,"target":3691068.33,"target12":4872210.056685081,"pct":105.24733363578778,"pct12":79.73283078527774},{"name":"พระสมุทรเจดีย์","value":1407967.0,"target":1284169.8,"target12":1695104.087669726,"pct":109.64025162404536,"pct12":83.06079905308613},{"name":"บางเสาธง","value":1345622.0,"target":1143855.08,"target12":1509888.66255053,"pct":117.63920303610489,"pct12":89.12061090166425}],"districtPc":[{"name":"เมืองสมุทรปราการ","b":639,"a":3,"value":0.4694835680751174},{"name":"บางบ่อ","b":181,"a":4,"value":2.209944751381215},{"name":"บางพลี","b":275,"a":4,"value":1.4545454545454546},{"name":"พระประแดง","b":279,"a":12,"value":4.301075268817205},{"name":"พระสมุทรเจดีย์","b":130,"a":0,"value":0},{"name":"บางเสาธง","b":168,"a":0,"value":0}],"districtGrowth":[{"name":"เมือง","b":28,"a":220,"value":685.7142857142857},{"name":"บางบ่อ","b":6,"a":84,"value":1300},{"name":"บางพลี","b":41,"a":704,"value":1617.0731707317075},{"name":"พระประแดง","b":23,"a":133,"value":478.2608695652174},{"name":"พระสมุทรเจดีย์","b":7,"a":5,"value":-28.57142857142857},{"name":"บางเสาธง","b":3,"a":22,"value":633.3333333333333}],"trend":[{"name":"เมือง","y67":51.51659879677576,"y68":50.2295207834745,"y69":55.98},{"name":"บางบ่อ","y67":45.327014218009474,"y68":56.4497639919083,"y69":64.9},{"name":"บางพลี","y67":36.69804659919981,"y68":31.594023953574514,"y69":34.79},{"name":"พระประแดง","y67":36.885710921527284,"y68":42.208730496023314,"y69":57.67},{"name":"พระสมุทรเจดีย์","y67":54.6402358201278,"y68":56.55104063429138,"y69":62.91},{"name":"บางเสาธง","y67":50.68832487309645,"y68":37.720465176157575,"y69":57.56}]}};
+
+/* =========================================================
+   DATA MODEL
+   ========================================================= */
+function mulberry32(seed){
+  return function(){
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+}
+function hashStr(s){ var h=0; for(var i=0;i<s.length;i++){ h=(h<<5)-h+s.charCodeAt(i); h|=0; } return Math.abs(h); }
+function seededShuffle(arr, rnd){
+  var a = arr.slice();
+  for(var i=a.length-1;i>0;i--){ var j=Math.floor(rnd()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; }
+  return a;
+}
+function clampScore(v, lo, hi){ lo=(lo===undefined?0:lo); hi=(hi===undefined?100:hi); return Math.max(lo, Math.min(hi, v)); }
+
+var DISTRICTS = REAL_DATA.districts;
+var PROVINCE = REAL_DATA.province;
+var IMC_BASE = PROVINCE.imcOverall.province;
+var PC_BASE = PROVINCE.pcOverall.province;
+
+function canPercentileRank(canA){
+  var vals = REAL_DATA.units.map(function(u){return u.canA;}).sort(function(a,b){return a-b;});
+  var n = vals.length;
+  var idx = vals.indexOf(canA);
+  return n>1 ? Math.round((idx/(n-1))*100) : 100;
+}
+function nhsoPercentileRank(nhsoComp){
+  if(nhsoComp===null||nhsoComp===undefined) return null;
+  var vals = REAL_DATA.units.filter(function(u){return u.nhsoComp!==null;}).map(function(u){return u.nhsoComp;}).sort(function(a,b){return a-b;});
+  var n = vals.length;
+  var idx = vals.indexOf(nhsoComp);
+  return n>1 ? Math.round((idx/(n-1))*100) : 100;
+}
+
+/* 7-indicator composite: 1.ปฐมภูมิ(KPI14+15) 2.มูลค่าสมุนไพรUC 3.IMC 4.กัญชาPC 5.กัญชาผู้ป่วยทั่วไป 6.มารดาหลังคลอด 7.ชดเชยสปสช
+   Components without underlying data (null) are excluded and the remaining components reweighted equally. */
+function computeComposite(u){
+  var c1 = clampScore((u.kpi14+u.kpi15)/2);
+  var c2 = clampScore(u.herbPct12);
+  var c3 = u.imcPct ? clampScore((u.imcPct/IMC_BASE)*100) : 0;
+  var c4 = u.pcPct ? clampScore((u.pcPct/PC_BASE)*100) : 0;
+  var c5 = canPercentileRank(u.canA);
+  var c6 = (u.ppCoverage===null||u.ppCoverage===undefined) ? null : clampScore(u.ppCoverage);
+  var c7 = nhsoPercentileRank(u.nhsoComp);
+  var comps = [c1,c2,c3,c4,c5,c6,c7].filter(function(v){return v!==null && v!==undefined;});
+  return Math.round(comps.reduce(function(a,b){return a+b;},0)/comps.length);
+}
+function statusForComposite(c){ return c>=60?'green':(c>=40?'amber':'red'); }
+
+function buildUnitsFromRealData(){
+  var maxTtm = Math.max.apply(null, REAL_DATA.units.map(function(u){return u.ttm||0;}));
+  return REAL_DATA.units.map(function(raw){
+    var rnd = mulberry32(hashStr(raw.id)+7);
+    var u = Object.assign({}, raw);
+    u.volume = clampScore(15 + ((raw.ttm||0)/maxTtm)*85, 15, 100);
+    u.phase = rnd()*Math.PI*2;
+    u.jitterSeed = hashStr(raw.id+'j');
+    return u;
+  });
+}
+
+var UNITS = buildUnitsFromRealData();
+var STATUS_COLOR = { green:'#3FD497', amber:'#F6B23E', red:'#FB6B4F' };
+var STATUS_LABEL = { green:'ปกติ', amber:'เฝ้าระวัง', red:'วิกฤต' };
+
+var activeDistrict = 'all';
+var activeStatus = null;
+var selectedUnit = null;
+var lastSyncSeconds = 0;
+
+/* =========================================================
+   THREE.JS SCENE
+   ========================================================= */
+var scene, camera, renderer, raycaster, mouse;
+var unitMeshes = [];
+var clusterGroups = {};
+var clock = new THREE.Clock();
+
+var camState = { azimuth: Math.PI*0.28, polar: 1.02, distance: 46, target: new THREE.Vector3(0,2,0) };
+var dragging = false, lastX=0, lastY=0;
+
+function initScene(){
+  var wrap = document.getElementById('canvas-wrap');
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x081512, 0.016);
+
+  camera = new THREE.PerspectiveCamera(42, wrap.clientWidth/wrap.clientHeight, 0.1, 500);
+
+  renderer = new THREE.WebGLRenderer({antialias:true, alpha:false});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+  renderer.setClearColor(0x081512, 1);
+  wrap.appendChild(renderer.domElement);
+
+  var ambient = new THREE.AmbientLight(0x3a5a4d, 1.1);
+  scene.add(ambient);
+  var dir = new THREE.DirectionalLight(0xdfffe9, 0.65);
+  dir.position.set(20,40,10);
+  scene.add(dir);
+  var dir2 = new THREE.DirectionalLight(0xd9a83c, 0.18);
+  dir2.position.set(-20,15,-15);
+  scene.add(dir2);
+
+  buildGround();
+  buildClusters();
+
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2();
+
+  window.addEventListener('resize', onResize);
+  var dom = renderer.domElement;
+  dom.addEventListener('pointerdown', onPointerDown);
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp);
+  dom.addEventListener('wheel', onWheel, {passive:false});
+  dom.addEventListener('click', onClick);
+  dom.addEventListener('touchend', function(e){ if(e.changedTouches && e.changedTouches.length===1 && !didDrag) onClick(e.changedTouches[0]); }, {passive:true});
+
+  updateCamera();
+  animate();
+}
+
+function buildGround(){
+  var grid = new THREE.GridHelper(120, 40, 0x1E3830, 0x142822);
+  grid.position.y = -0.02;
+  scene.add(grid);
+
+  var geo = new THREE.CircleGeometry(60, 48);
+  var mat = new THREE.MeshBasicMaterial({color:0x0B1E18, transparent:true, opacity:0.55});
+  var floor = new THREE.Mesh(geo, mat);
+  floor.rotation.x = -Math.PI/2;
+  floor.position.y = -0.05;
+  scene.add(floor);
+}
+
+function makeLabelSprite(text, color){
+  var canvas = document.createElement('canvas');
+  var scale = 4;
+  canvas.width = 512*scale/2; canvas.height = 96*scale/2;
+  var ctx = canvas.getContext('2d');
+  ctx.font = '600 '+ (30*scale/2) +'px "IBM Plex Sans Thai", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = color;
+  ctx.globalAlpha = 0.92;
+  ctx.fillText(text, canvas.width/2, canvas.height/2);
+  var tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  var mat = new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false});
+  var sprite = new THREE.Sprite(mat);
+  sprite.scale.set(9, 9*(canvas.height/canvas.width), 1);
+  return sprite;
+}
+
+function shortUnitName(name){
+  var n = name.replace(/^รพ\.?สต\.?\s*/,'').replace(/^สถานีอนามัย/,'สอ.').trim();
+  if(n.length>22) n = n.slice(0,21)+'…';
+  return n;
+}
+
+function makeUnitLabelSprite(text, color){
+  var canvas = document.createElement('canvas');
+  var padding = 16;
+  var fontSize = 30;
+  var tmp = document.createElement('canvas').getContext('2d');
+  tmp.font = '500 '+fontSize+'px "IBM Plex Sans Thai", sans-serif';
+  var textW = tmp.measureText(text).width;
+  canvas.width = Math.ceil(textW+padding*2);
+  canvas.height = fontSize+padding*1.4;
+  var ctx = canvas.getContext('2d');
+  ctx.font = '500 '+fontSize+'px "IBM Plex Sans Thai", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(8,21,18,0.72)';
+  var r = 8;
+  ctx.beginPath();
+  ctx.moveTo(r,0); ctx.lineTo(canvas.width-r,0); ctx.quadraticCurveTo(canvas.width,0,canvas.width,r);
+  ctx.lineTo(canvas.width,canvas.height-r); ctx.quadraticCurveTo(canvas.width,canvas.height,canvas.width-r,canvas.height);
+  ctx.lineTo(r,canvas.height); ctx.quadraticCurveTo(0,canvas.height,0,canvas.height-r);
+  ctx.lineTo(0,r); ctx.quadraticCurveTo(0,0,r,0);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = color;
+  ctx.fillText(text, canvas.width/2, canvas.height/2+1);
+  var tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  var mat = new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false, opacity:0});
+  var sprite = new THREE.Sprite(mat);
+  var worldH = 0.62;
+  sprite.scale.set(worldH*(canvas.width/canvas.height), worldH, 1);
+  return sprite;
+}
+
+var CLUSTER_RADIUS = 24;
+
+function buildClusters(){
+  DISTRICTS.forEach(function(dist){
+    var g = new THREE.Group();
+    var rad = (dist.angle * Math.PI)/180;
+    var cx = Math.cos(rad)*CLUSTER_RADIUS;
+    var cz = Math.sin(rad)*CLUSTER_RADIUS;
+    g.position.set(cx, 0, cz);
+    scene.add(g);
+    clusterGroups[dist.id] = g;
+
+    var ringGeo = new THREE.RingGeometry(9.6, 9.85, 48);
+    var ringMat = new THREE.MeshBasicMaterial({color:0x2A4A3D, transparent:true, opacity:0.5, side:THREE.DoubleSide});
+    var ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI/2;
+    g.add(ring);
+
+    var label = makeLabelSprite(dist.name, '#D9A83C');
+    label.position.set(0, 0.4, 10.8);
+    g.add(label);
+
+    var units = UNITS.filter(function(u){return u.district===dist.id;});
+    var cols = Math.ceil(Math.sqrt(units.length));
+    var spacing = 3.1;
+    var startOffset = ((cols-1)*spacing)/2;
+
+    units.forEach(function(u, idx){
+      var row = Math.floor(idx/cols);
+      var col = idx % cols;
+      var localX = col*spacing - startOffset + (row%2===0?0:spacing*0.28);
+      var localZ = row*spacing - startOffset*0.85;
+      var jr = mulberry32(u.jitterSeed);
+      localX += (jr()-0.5)*0.5;
+      localZ += (jr()-0.5)*0.5;
+
+      var mesh = buildUnitMesh(u);
+      mesh.position.set(localX, 0, localZ);
+      g.add(mesh);
+      u.mesh = mesh;
+      u.baseY = mesh.userData.towerHeight;
+      unitMeshes.push(mesh);
+    });
+  });
+}
+
+function heightForUnit(u){
+  return 0.9 + (u.volume/100)*4.6;
+}
+
+function buildUnitMesh(u){
+  var h = heightForUnit(u);
+  var color = new THREE.Color(STATUS_COLOR[u.status]);
+
+  var group = new THREE.Group();
+
+  var baseGeo = new THREE.CylinderGeometry(0.62, 0.7, 0.12, 8);
+  var baseMat = new THREE.MeshStandardMaterial({color:0x0F2019, roughness:0.9});
+  var base = new THREE.Mesh(baseGeo, baseMat);
+  base.position.y = 0.06;
+  group.add(base);
+
+  var geo = new THREE.CylinderGeometry(0.34, 0.42, h, 6);
+  var mat = new THREE.MeshStandardMaterial({
+    color:color, emissive:color, emissiveIntensity:0.55, roughness:0.35, metalness:0.15
+  });
+  var tower = new THREE.Mesh(geo, mat);
+  tower.position.y = h/2 + 0.12;
+  group.add(tower);
+
+  var capGeo = new THREE.SphereGeometry(0.16, 10, 10);
+  var capMat = new THREE.MeshBasicMaterial({color:color});
+  var cap = new THREE.Mesh(capGeo, capMat);
+  cap.position.y = h + 0.2;
+  group.add(cap);
+
+  var label = makeUnitLabelSprite(shortUnitName(u.name), '#EAF3EE');
+  label.position.y = h + 0.75;
+  group.add(label);
+
+  group.userData = {unit:u, towerHeight:h, tower:tower, cap:cap, label:label, isUnitGroup:true};
+  return group;
+}
+
+/* -------- camera controls -------- */
+var didDrag = false;
+function onPointerDown(e){ dragging=true; didDrag=false; lastX=e.clientX; lastY=e.clientY; }
+function onPointerMove(e){
+  if(!dragging) return;
+  var dx = e.clientX-lastX, dy = e.clientY-lastY;
+  if(Math.abs(dx)>2||Math.abs(dy)>2) didDrag = true;
+  camState.azimuth -= dx*0.005;
+  camState.polar = Math.max(0.5, Math.min(1.5, camState.polar - dy*0.004));
+  lastX=e.clientX; lastY=e.clientY;
+  updateCamera();
+}
+function onPointerUp(){ dragging=false; }
+function onWheel(e){
+  e.preventDefault();
+  camState.distance = Math.max(14, Math.min(85, camState.distance + e.deltaY*0.03));
+  updateCamera();
+}
+function updateCamera(){
+  var x = camState.distance * Math.sin(camState.polar) * Math.cos(camState.azimuth);
+  var y = camState.distance * Math.cos(camState.polar);
+  var z = camState.distance * Math.sin(camState.polar) * Math.sin(camState.azimuth);
+  camera.position.set(camState.target.x+x, camState.target.y+y, camState.target.z+z);
+  camera.lookAt(camState.target);
+}
+
+var idleRotate = true;
+var showAllLabels = false;
+function toggleLabels(){
+  showAllLabels = !showAllLabels;
+  var btn = document.getElementById('btn-labels');
+  if(btn) btn.classList.toggle('active', showAllLabels);
+}
+function onClick(evClient){
+  var rect = renderer.domElement.getBoundingClientRect();
+  var cx = (evClient.clientX!==undefined?evClient.clientX:evClient.pageX);
+  var cy = (evClient.clientY!==undefined?evClient.clientY:evClient.pageY);
+  mouse.x = ((cx-rect.left)/rect.width)*2-1;
+  mouse.y = -((cy-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(mouse, camera);
+  var intersects = raycaster.intersectObjects(unitMeshes, true);
+  if(intersects.length>0){
+    var obj = intersects[0].object;
+    while(obj && !(obj.userData && obj.userData.isUnitGroup)) obj = obj.parent;
+    if(obj) selectUnit(obj.userData.unit, true);
+  }
+}
+
+function flyTo(unit){
+  var worldPos = new THREE.Vector3();
+  unit.mesh.getWorldPosition(worldPos);
+  camState.target.copy(worldPos);
+  camState.distance = 16;
+  camState.polar = 0.85;
+  idleRotate = false;
+  updateCamera();
+}
+
+function onResize(){
+  var wrap = document.getElementById('canvas-wrap');
+  camera.aspect = wrap.clientWidth/wrap.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  var t = clock.getElapsedTime();
+
+  UNITS.forEach(function(u){
+    if(!u.mesh) return;
+    var pulse = Math.sin(t*1.4 + u.phase)*0.06;
+    var isSel = selectedUnit && selectedUnit.id===u.id;
+    var scaleTarget = isSel ? 1.35 : 1.0;
+    u.mesh.scale.x += (scaleTarget - u.mesh.scale.x)*0.15;
+    u.mesh.scale.z += (scaleTarget - u.mesh.scale.z)*0.15;
+    var ud = u.mesh.userData;
+    ud.tower.position.y = ud.towerHeight/2 + 0.12 + (isSel?pulse*1.6:pulse*0.3);
+    ud.cap.position.y = ud.towerHeight + 0.2 + (isSel?pulse*1.6:pulse*0.3);
+    var baseIntensity = isSel ? 1.15 : 0.55;
+    ud.tower.material.emissiveIntensity = baseIntensity + Math.sin(t*2+u.phase)*0.12;
+    var visible = matchesFilter(u);
+    u.mesh.visible = true;
+    ud.tower.material.opacity = visible?1:0.12;
+    ud.tower.material.transparent = !visible;
+    ud.cap.material.opacity = visible?1:0.12;
+    ud.cap.material.transparent = !visible;
+
+    var worldPos = new THREE.Vector3();
+    ud.label.getWorldPosition(worldPos);
+    var dist = camera.position.distanceTo(worldPos);
+    var near = 15, far = 32;
+    var distFade = 1 - Math.max(0, Math.min(1, (dist-near)/(far-near)));
+    var targetOp = showAllLabels ? Math.max(distFade, 0.55) : distFade;
+    if(isSel) targetOp = 1;
+    if(!visible) targetOp = 0;
+    ud.label.material.opacity += (targetOp - ud.label.material.opacity)*0.15;
+  });
+
+  if(idleRotate && !dragging){
+    camState.azimuth += 0.0009;
+    updateCamera();
+  }
+
+  renderer.render(scene, camera);
+}
+
+function matchesFilter(u){
+  if(activeDistrict!=='all' && u.district!==activeDistrict) return false;
+  if(activeStatus && u.status!==activeStatus) return false;
+  return true;
+}
+
+/* =========================================================
+   UI RENDERING
+   ========================================================= */
+function computeSummary(){
+  var g=0,a=0,r=0,sum=0;
+  UNITS.forEach(function(u){
+    if(u.status==='green')g++; else if(u.status==='amber')a++; else r++;
+    sum+=u.composite;
+  });
+  return {green:g, amber:a, red:r, avg:Math.round(sum/UNITS.length)};
+}
+
+function renderStatStrip(){
+  var s = computeSummary();
+  var el = document.getElementById('stat-strip');
+  el.innerHTML =
+    '<div class="stat"><div class="n">'+UNITS.length+'</div><div class="l">หน่วยทั้งหมด</div></div>'+
+    '<div class="stat green"><div class="n">'+s.green+'</div><div class="l">ปกติ</div></div>'+
+    '<div class="stat amber"><div class="n">'+s.amber+'</div><div class="l">เฝ้าระวัง</div></div>'+
+    '<div class="stat red"><div class="n">'+s.red+'</div><div class="l">วิกฤต</div></div>'+
+    '<div class="stat"><div class="n">'+s.avg+'</div><div class="l">คะแนนเฉลี่ย</div></div>';
+}
+
+function renderDistrictChips(){
+  var el = document.getElementById('district-chips');
+  var html = '<div class="chip'+(activeDistrict==='all'?' active':'')+'" data-d="all">ทั้งหมด <span class="cnt">'+UNITS.length+'</span></div>';
+  DISTRICTS.forEach(function(d){
+    var cnt = UNITS.filter(function(u){return u.district===d.id;}).length;
+    html += '<div class="chip'+(activeDistrict===d.id?' active':'')+'" data-d="'+d.id+'">'+d.name+' <span class="cnt">'+cnt+'</span></div>';
+  });
+  el.innerHTML = html;
+  el.querySelectorAll('.chip').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      activeDistrict = chip.getAttribute('data-d');
+      renderDistrictChips();
+      renderListView();
+    });
+  });
+}
+
+function renderStatusLegend(){
+  var s = computeSummary();
+  var el = document.getElementById('status-legend');
+  var rows = [
+    {key:'green', label:STATUS_LABEL.green, cnt:s.green, desc:'คะแนน ≥ 60'},
+    {key:'amber', label:STATUS_LABEL.amber, cnt:s.amber, desc:'คะแนน 40–59'},
+    {key:'red', label:STATUS_LABEL.red, cnt:s.red, desc:'คะแนน < 40'},
+  ];
+  el.innerHTML = rows.map(function(r){
+    var dim = (activeStatus && activeStatus!==r.key) ? ' dim' : '';
+    return '<div class="legend-row'+dim+'" data-s="'+r.key+'">'+
+      '<span class="legend-sw" style="background:'+STATUS_COLOR[r.key]+'"></span>'+
+      '<span>'+r.label+' <span style="color:var(--text-faint);font-size:10.5px;">('+r.desc+')</span></span>'+
+      '<span class="cnt">'+r.cnt+'</span></div>';
+  }).join('');
+  el.querySelectorAll('.legend-row').forEach(function(row){
+    row.addEventListener('click', function(){
+      var k = row.getAttribute('data-s');
+      activeStatus = (activeStatus===k) ? null : k;
+      renderStatusLegend();
+      renderListView();
+    });
+  });
+}
+
+function renderBottomStrip(){
+  var el = document.getElementById('bottom-strip');
+  var n = UNITS.length;
+  var avgK14 = Math.round(UNITS.reduce(function(a,u){return a+u.kpi14;},0)/n);
+  var avgK15 = Math.round(UNITS.reduce(function(a,u){return a+u.kpi15;},0)/n);
+  var avgHerb = Math.round(UNITS.reduce(function(a,u){return a+u.herbPct12;},0)/n);
+  var avgImc = (UNITS.reduce(function(a,u){return a+u.imcPct;},0)/n).toFixed(1);
+  var avgPc = (UNITS.reduce(function(a,u){return a+u.pcPct;},0)/n).toFixed(2);
+  var totalCan = UNITS.reduce(function(a,u){return a+u.canA;},0);
+  var ppUnits = UNITS.filter(function(u){return u.ppCoverage!==null && u.ppCoverage!==undefined;});
+  var avgPp = ppUnits.length ? Math.round(ppUnits.reduce(function(a,u){return a+u.ppCoverage;},0)/ppUnits.length) : null;
+  var nhsoUnits = UNITS.filter(function(u){return u.nhsoComp!==null && u.nhsoComp!==undefined;});
+  var totalNhso = nhsoUnits.reduce(function(a,u){return a+u.nhsoComp;},0);
+
+  function card(name, val, colorPct){
+    var color = colorPct>=60?'var(--jade)':colorPct>=40?'var(--amber)':'var(--coral)';
+    return '<div class="kpi-card"><div class="top"><span class="name">'+name+'</span><span class="val" style="color:'+color+'">'+val+'</span></div>'+
+      '<div class="bar"><i style="width:'+Math.min(100,colorPct)+'%;background:'+color+'"></i></div></div>';
+  }
+  el.innerHTML =
+    card('1. ปฐมภูมิ (KPI14+15 เฉลี่ย)', Math.round((avgK14+avgK15)/2)+'%', Math.round((avgK14+avgK15)/2)) +
+    card('2. มูลค่าสมุนไพร UC เทียบเป้าปี', avgHerb+'%', avgHerb) +
+    card('3. IMC (เฉลี่ยจังหวัด '+IMC_BASE.toFixed(1)+'%)', avgImc+'%', clampScore((avgImc/IMC_BASE)*100)) +
+    card('4. กัญชาใน PC (เฉลี่ยจังหวัด '+PC_BASE.toFixed(2)+'%)', avgPc+'%', clampScore((avgPc/PC_BASE)*100)) +
+    '<div class="kpi-card"><div class="top"><span class="name">5. ผู้ป่วยกัญชาทั่วไป (สะสม)</span><span class="val" style="color:var(--gold)">'+totalCan+' ราย</span></div>'+
+    '<div class="bar"><i style="width:60%;background:var(--gold)"></i></div></div>' +
+    (avgPp!==null ? card('6. มารดาหลังคลอด (เฉพาะหน่วยมีข้อมูล)', avgPp+'%', avgPp) :
+      '<div class="kpi-card"><div class="top"><span class="name">6. มารดาหลังคลอด</span><span class="val" style="color:var(--text-faint)">ไม่มีข้อมูล</span></div></div>') +
+    '<div class="kpi-card"><div class="top"><span class="name">7. เงินชดเชย สปสช (รวม '+nhsoUnits.length+' หน่วย)</span><span class="val" style="color:var(--gold)">'+fmtNum(totalNhso)+' บ.</span></div>'+
+    '<div class="bar"><i style="width:60%;background:var(--gold)"></i></div></div>';
+}
+
+function renderListView(){
+  var el = document.getElementById('list-grid');
+  var filtered = UNITS.filter(matchesFilter);
+  el.innerHTML = filtered.map(function(u){
+    return '<div class="unit-card" data-id="'+u.id+'">'+
+      '<div class="uc-top"><div><div class="uc-name">'+u.name+'</div><div class="uc-dist">'+u.districtName+' · '+u.type+'</div></div>'+
+      '<div class="uc-score" style="color:'+STATUS_COLOR[u.status]+'">'+u.composite+'</div></div>'+
+      '<div class="uc-bar"><i style="width:'+u.composite+'%;background:'+STATUS_COLOR[u.status]+'"></i></div>'+
+      '</div>';
+  }).join('');
+  el.querySelectorAll('.unit-card').forEach(function(card){
+    card.addEventListener('click', function(){
+      var u = UNITS.find(function(x){return x.id===card.getAttribute('data-id');});
+      selectUnit(u, false);
+      toggleListView(false);
+      setTimeout(function(){ flyTo(u); }, 350);
+    });
+  });
+}
+
+function toggleListView(show){
+  document.getElementById('list-view').classList.toggle('open', show);
+  document.getElementById('btn-view-3d').classList.toggle('active', !show);
+  document.getElementById('btn-view-list').classList.toggle('active', show);
+  if(show) renderListView();
+}
+
+/* -------- search -------- */
+document.getElementById('search-input').addEventListener('input', function(e){
+  var q = e.target.value.trim();
+  var el = document.getElementById('search-results');
+  if(!q){ el.innerHTML=''; return; }
+  var matches = UNITS.filter(function(u){ return u.name.indexOf(q)>-1 || u.districtName.indexOf(q)>-1; }).slice(0,8);
+  el.innerHTML = matches.map(function(u){
+    return '<div class="search-result" data-id="'+u.id+'"><span><span class="dot" style="background:'+STATUS_COLOR[u.status]+';display:inline-block;"></span> '+u.name+'</span><span style="font-family:var(--mono);color:var(--text-faint);">'+u.composite+'</span></div>';
+  }).join('') || '<div class="search-result" style="cursor:default;">ไม่พบหน่วยบริการ</div>';
+  el.querySelectorAll('.search-result[data-id]').forEach(function(row){
+    row.addEventListener('click', function(){
+      var u = UNITS.find(function(x){return x.id===row.getAttribute('data-id');});
+      selectUnit(u, true);
+      flyTo(u);
+      el.innerHTML='';
+      document.getElementById('search-input').value = u.name;
+    });
+  });
+});
+
+/* =========================================================
+   DETAIL PANEL
+   ========================================================= */
+function sparkPath(history){
+  var w=280, h=40, pad=3;
+  var min=Math.min.apply(null,history), max=Math.max.apply(null,history);
+  var range = Math.max(1,max-min);
+  var pts = history.map(function(v,i){
+    var x = pad + (i/(history.length-1))*(w-pad*2);
+    var y = h-pad - ((v-min)/range)*(h-pad*2);
+    return x+','+y;
+  });
+  return {points:pts.join(' '), w:w, h:h};
+}
+function fmtNum(n){ return Math.round(n).toLocaleString('th-TH'); }
+function districtTrend(districtName){
+  var row = PROVINCE.trend.find(function(t){ return districtName.indexOf(t.name.replace('ฯ',''))>-1 || t.name.replace('ฯ','').indexOf(districtName)>-1; });
+  if(!row) return [50,50,50];
+  return [Math.round(row.y67), Math.round(row.y68), Math.round(row.y69)];
+}
+
+function selectUnit(u, doFly){
+  selectedUnit = u;
+  var d = document.getElementById('detail-body');
+  var color = STATUS_COLOR[u.status];
+  var circumference = 2*Math.PI*26;
+  var offset = circumference - (u.composite/100)*circumference;
+  var spark = sparkPath(districtTrend(u.districtName));
+
+  var pcScore = u.pcPct ? clampScore((u.pcPct/PC_BASE)*100) : 0;
+  var canRank = canPercentileRank(u.canA);
+  var hasPp = (u.ppCoverage!==null && u.ppCoverage!==undefined);
+  var hasNhso = (u.nhsoComp!==null && u.nhsoComp!==undefined);
+
+  var alerts = [];
+  if(u.kpi14<33) alerts.push({t:'KPI14 การเข้าถึงแพทย์แผนไทยต่ำกว่าค่าเฉลี่ยจังหวัด (25% ล่างสุด)', warn:u.kpi14>=18});
+  if(u.kpi15<26) alerts.push({t:'อัตราสั่งจ่ายยาสมุนไพรโรคที่พบบ่อยต่ำกว่าค่าเฉลี่ยจังหวัด (25% ล่างสุด)', warn:u.kpi15>=13});
+  if(u.herbPct12<56) alerts.push({t:'การเบิกจ่ายงบสมุนไพร UC ต่ำกว่าเป้าหมายรายปีค่อนข้างมาก', warn:u.herbPct12>=30});
+  if(u.imcPct===0 && u.imcB>0) alerts.push({t:'ยังไม่มีผู้ป่วยเข้ารับบริการ IMC โรคหลอดเลือดสมองในรอบนี้', warn:true});
+  if(hasPp && u.ppCoverage<40) alerts.push({t:'อัตราติดตามมารดาหลังคลอดต่ำกว่าเกณฑ์', warn:u.ppCoverage>=20});
+
+  d.innerHTML =
+    '<div class="d-eyebrow">'+u.districtName.toUpperCase()+' · รหัสหน่วย '+u.code+'</div>'+
+    '<h2 class="d-title">'+u.name+'</h2>'+
+    '<div class="d-sub">'+u.type+' · อำเภอ'+u.districtName+'</div>'+
+
+    '<div class="d-score-row">'+
+      '<div class="d-score-ring"><svg width="64" height="64" viewBox="0 0 64 64">'+
+        '<circle cx="32" cy="32" r="26" fill="none" stroke="#1A2E27" stroke-width="6"/>'+
+        '<circle cx="32" cy="32" r="26" fill="none" stroke="'+color+'" stroke-width="6" stroke-linecap="round" '+
+        'stroke-dasharray="'+circumference+'" stroke-dashoffset="'+offset+'"/></svg>'+
+        '<div class="d-score-num" style="color:'+color+'">'+u.composite+'</div></div>'+
+      '<div class="d-score-txt"><div class="lbl">คะแนนสุขภาพรวม (7 ตัวชี้วัด)</div><div class="val">'+u.composite+' / 100</div>'+
+        '<div class="status-badge" style="background:'+color+'22;color:'+color+';">● '+STATUS_LABEL[u.status]+'</div></div>'+
+    '</div>'+
+
+    '<div class="d-section"><h4>1–2. ปฐมภูมิ และ งบสมุนไพร UC</h4>'+
+      metricRow('ปฐมภูมิ (เฉลี่ย KPI14+KPI15)', clampScore((u.kpi14+u.kpi15)/2), Math.round((u.kpi14+u.kpi15)/2)+'%')+
+      metricRow('KPI14 · การเข้าถึงแพทย์แผนไทย (TTM/OPD)', clampScore(u.kpi14), u.kpi14+'%')+
+      metricRow('KPI15 · สั่งจ่ายยาสมุนไพรโรคที่พบบ่อย', clampScore(u.kpi15), u.kpi15+'%')+
+      metricRow('มูลค่าสมุนไพร UC เทียบเป้าหมายรายปี', clampScore(u.herbPct12), u.herbPct12+'%')+
+    '</div>'+
+
+    '<div class="d-section"><h4>3. IMC โรคหลอดเลือดสมอง</h4><div class="badge-row">'+
+      '<div class="cbadge"><div class="l">ผู้ป่วยเข้าเกณฑ์ (Base)</div><div class="v">'+fmtNum(u.imcB)+' ราย</div></div>'+
+      '<div class="cbadge"><div class="l">ได้รับ IMC</div><div class="v" style="color:var(--jade)">'+fmtNum(u.imcA)+' ราย</div></div>'+
+      '<div class="cbadge"><div class="l">อัตรา (เทียบเฉลี่ยจังหวัด '+IMC_BASE.toFixed(1)+'%)</div><div class="v" style="color:var(--gold)">'+u.imcPct+'%</div></div>'+
+    '</div></div>'+
+
+    '<div class="d-section"><h4>4–5. กัญชาทางการแพทย์</h4>'+
+      metricRow('4. กัญชาใน PC (เทียบเฉลี่ยจังหวัด '+PC_BASE.toFixed(2)+'%)', pcScore, u.pcPct+'%')+
+      metricRow('5. กัญชาใช้ในผู้ป่วยทั่วไป (อันดับเทียบทุกหน่วย)', canRank, 'อันดับที่ '+canRank+'/100')+
+      '<div class="badge-row" style="margin-top:8px;">'+
+      '<div class="cbadge"><div class="l">ผู้ป่วยประคับประคอง (ก่อน→หลัง)</div><div class="v" style="color:var(--gold)">'+u.pcB+' → '+u.pcA+' ราย</div></div>'+
+      '<div class="cbadge"><div class="l">ผู้ป่วยใช้กัญชาทั่วไป (ก่อน→หลัง)</div><div class="v" style="color:var(--gold)">'+u.canB+' → '+u.canA+' ราย</div></div>'+
+      '</div></div>'+
+
+    '<div class="d-section"><h4>6. การดูแลมารดาหลังคลอด</h4>'+
+      (hasPp ? metricRow('อัตราติดตามบริการหลังคลอด', clampScore(u.ppCoverage), u.ppCoverage+'%')
+             : '<div class="alert-empty">ไม่มีข้อมูลนำเข้าสำหรับหน่วยนี้ในไฟล์ต้นฉบับ — ไม่ถูกนำไปคำนวณคะแนน</div>')+
+    '</div>'+
+
+    '<div class="d-section"><h4>7. เงินชดเชยจาก สปสช</h4>'+
+      (hasNhso ? ('<div class="badge-row">'+
+        '<div class="cbadge"><div class="l">มูลค่าชดเชย</div><div class="v" style="color:var(--jade)">'+fmtNum(u.nhsoComp)+' บาท</div></div>'+
+        (u.nhsoItems!==null&&u.nhsoItems!==undefined ? '<div class="cbadge"><div class="l">จำนวนรายการ</div><div class="v">'+fmtNum(u.nhsoItems)+' รายการ</div></div>' : '')+
+        '<div class="cbadge"><div class="l">อันดับเทียบหน่วยที่มีข้อมูล</div><div class="v" style="color:var(--gold)">'+nhsoPercentileRank(u.nhsoComp)+'/100</div></div>'+
+        '</div>')
+        : '<div class="alert-empty">ไม่มีข้อมูลนำเข้าสำหรับหน่วยนี้ในไฟล์ต้นฉบับ — ไม่ถูกนำไปคำนวณคะแนน</div>')+
+    '</div>'+
+
+    '<div class="d-section"><h4>แนวโน้ม KPI14 ระดับอำเภอ (ปี 2567–2569)</h4>'+
+      '<svg class="spark" viewBox="0 0 '+spark.w+' '+spark.h+'" preserveAspectRatio="none">'+
+        '<polyline points="'+spark.points+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'+
+      '</svg>'+
+    '</div>'+
+
+    '<div class="d-section"><h4>การแจ้งเตือน</h4>'+
+      (alerts.length ? alerts.map(function(a){
+        return '<div class="alert-item'+(a.warn?' warn':'')+'"><svg viewBox="0 0 24 24" fill="none" stroke="'+(a.warn?'var(--amber)':'var(--coral)')+'" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0z"/></svg><span>'+a.t+'</span></div>';
+      }).join('') : '<div class="alert-empty">ไม่มีการแจ้งเตือน — ตัวชี้วัดหลักอยู่ในเกณฑ์ดี</div>')+
+    '</div>'+
+
+    '<div class="d-actions">'+
+      '<button class="primary" onclick="flyToSelected()">โฟกัสในแผนที่</button>'+
+      '<button onclick="refreshUnit(\''+u.id+'\')">จำลองซิงก์ข้อมูล</button>'+
+    '</div>';
+
+  document.getElementById('detail').classList.add('open');
+  if(doFly) flyTo(u);
+}
+
+function metricRow(name, barVal, displayText){
+  var color = barVal>=65?'var(--jade)':barVal>=45?'var(--amber)':'var(--coral)';
+  var txt = displayText!==undefined ? displayText : (barVal+'%');
+  return '<div class="metric-row"><div class="mh"><span class="mname">'+name+'</span><span class="mval" style="color:'+color+'">'+txt+'</span></div>'+
+    '<div class="mbar"><i style="width:'+Math.min(100,barVal)+'%;background:'+color+'"></i></div></div>';
+}
+
+function flyToSelected(){ if(selectedUnit) flyTo(selectedUnit); }
+
+function refreshUnit(id){
+  var u = UNITS.find(function(x){return x.id===id;});
+  if(!u) return;
+  var rnd = mulberry32(Date.now()%100000);
+  u.kpi14 = Math.max(0, u.kpi14 + (rnd()-0.5)*4);
+  u.kpi15 = Math.max(0, u.kpi15 + (rnd()-0.5)*4);
+  u.herbPct12 = Math.max(0, u.herbPct12 + (rnd()-0.5)*4);
+  u.composite = computeComposite(u);
+  u.status = statusForComposite(u.composite);
+  updateUnitVisual(u);
+  selectUnit(u, false);
+  renderStatStrip(); renderStatusLegend(); renderBottomStrip();
+}
+
+function updateUnitVisual(u){
+  if(!u.mesh) return;
+  var color = new THREE.Color(STATUS_COLOR[u.status]);
+  var newH = heightForUnit(u);
+  var ud = u.mesh.userData;
+  ud.tower.material.color = color; ud.tower.material.emissive = color;
+  ud.cap.material.color = color;
+  ud.towerHeight = newH;
+  ud.tower.geometry.dispose();
+  ud.tower.geometry = new THREE.CylinderGeometry(0.34, 0.42, newH, 6);
+}
+
+function closeDetail(){
+  document.getElementById('detail').classList.remove('open');
+  selectedUnit = null;
+  idleRotate = true;
+}
+
+/* =========================================================
+   LIVE SIMULATION
+   ========================================================= */
+function tickSync(){
+  lastSyncSeconds++;
+  var txt;
+  if(lastSyncSeconds<60) txt = 'ซิงก์ล่าสุด '+lastSyncSeconds+' วิ';
+  else txt = 'ซิงก์ล่าสุด '+Math.floor(lastSyncSeconds/60)+' นาที';
+  document.getElementById('sync-text').textContent = txt;
+}
+setInterval(tickSync, 1000);
+
+setInterval(function(){
+  var candidates = seededShuffle(UNITS, Math.random);
+  var n = 2 + Math.floor(Math.random()*3);
+  for(var i=0;i<n;i++){
+    var u = candidates[i];
+    var rnd = Math.random;
+    u.kpi14 = Math.max(0, u.kpi14 + (rnd()-0.5)*2.5);
+    u.kpi15 = Math.max(0, u.kpi15 + (rnd()-0.5)*2.5);
+    u.herbPct12 = Math.max(0, u.herbPct12 + (rnd()-0.5)*2.5);
+    u.composite = computeComposite(u);
+    u.status = statusForComposite(u.composite);
+    updateUnitVisual(u);
+  }
+  lastSyncSeconds = 0;
+  renderStatStrip(); renderStatusLegend(); renderBottomStrip();
+  if(document.getElementById('list-view').classList.contains('open')) renderListView();
+  if(selectedUnit) selectUnit(selectedUnit, false);
+}, 15000);
+
+/* =========================================================
+   BOOT
+   ========================================================= */
+function boot(){
+  renderStatStrip();
+  renderDistrictChips();
+  renderStatusLegend();
+  renderBottomStrip();
+  initScene();
+  setTimeout(function(){
+    document.getElementById('loader').style.opacity='0';
+    setTimeout(function(){ document.getElementById('loader').style.display='none'; }, 500);
+  }, 550);
+  setTimeout(function(){ document.getElementById('hint').style.opacity='0'; }, 7000);
+}
+if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', boot); } else { boot(); }
+</script>
+</body>
+</html>
