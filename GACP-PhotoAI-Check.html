@@ -787,31 +787,73 @@ async function analyzePhoto(item, imageDataUrl){
 
 โปรดวิเคราะห์ภาพที่แนบมาและให้ผลการประเมินตามรูปแบบ JSON ที่กำหนด`;
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({
-      model:"claude-sonnet-4-6",
-      max_tokens:1000,
-      system: system,
-      messages:[{
-        role:"user",
-        content:[
-          {type:"image", source:{type:"base64", media_type:"image/jpeg", data: base64}},
-          {type:"text", text: userText}
-        ]
-      }]
-    })
-  });
-  const data = await response.json();
+  let response;
+  try{
+    response = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model:"claude-sonnet-4-6",
+        max_tokens:1000,
+        system: system,
+        messages:[{
+          role:"user",
+          content:[
+            {type:"image", source:{type:"base64", media_type:"image/jpeg", data: base64}},
+            {type:"text", text: userText}
+          ]
+        }]
+      })
+    });
+  }catch(networkErr){
+    // fetch itself threw — almost always a network/CORS failure, e.g. this file
+    // was opened directly in a browser outside claude.ai (no API proxy available)
+    const e = new Error("เชื่อมต่อ API ไม่สำเร็จ (network/CORS) — เปิดไฟล์นี้อยู่นอกหน้าต่าง claude.ai หรือไม่มีอินเทอร์เน็ตหรือไม่? รายละเอียด: " + networkErr.message);
+    e.debug = String(networkErr);
+    throw e;
+  }
+
+  let data;
+  const rawText = await response.text();
+  try{
+    data = JSON.parse(rawText);
+  }catch(parseErr){
+    const e = new Error("เซิร์ฟเวอร์ตอบกลับไม่ใช่ JSON (HTTP " + response.status + "): " + rawText.slice(0,200));
+    e.debug = rawText.slice(0,500);
+    throw e;
+  }
+
+  if(!response.ok){
+    const msg = (data && data.error && data.error.message) ? data.error.message : ("HTTP " + response.status);
+    const e = new Error("API ตอบกลับข้อผิดพลาด: " + msg);
+    e.debug = JSON.stringify(data).slice(0,500);
+    throw e;
+  }
+  if(data.error){
+    const e = new Error("API ตอบกลับข้อผิดพลาด: " + data.error.message);
+    e.debug = JSON.stringify(data).slice(0,500);
+    throw e;
+  }
+
   const textBlock = (data.content||[]).find(b=>b.type==="text");
-  if(!textBlock) throw new Error("no response");
+  if(!textBlock){
+    const e = new Error("ไม่พบข้อความตอบกลับจาก AI (stop_reason: " + (data.stop_reason||'ไม่ทราบ') + ")");
+    e.debug = JSON.stringify(data).slice(0,500);
+    throw e;
+  }
+
   let clean = textBlock.text.replace(/```json|```/g,"").trim();
   const firstBrace = clean.indexOf('{');
   const lastBrace = clean.lastIndexOf('}');
   if(firstBrace>=0 && lastBrace>=0) clean = clean.slice(firstBrace, lastBrace+1);
-  const parsed = JSON.parse(clean);
-  return parsed;
+  try{
+    const parsed = JSON.parse(clean);
+    return parsed;
+  }catch(jsonErr){
+    const e = new Error("แปลผลลัพธ์จาก AI ไม่สำเร็จ: " + jsonErr.message);
+    e.debug = textBlock.text.slice(0,500);
+    throw e;
+  }
 }
 
 /* =========================================================================
@@ -1202,6 +1244,26 @@ function renderCaptureModal(){
         <p><b>น้องมายด์กำลังวิเคราะห์ภาพ...</b><br>เทียบกับเกณฑ์ข้อ ${item.ref} ในคู่มือ GACP</p>
       </div>
     `;
+  } else if(phase==='error'){
+    const err = State.modal.error || {};
+    body = `
+      <div class="preview-wrap"><img src="${img}"></div>
+      <div class="verdict-card verdict-fail">
+        <div class="verdict-head">
+          <div class="verdict-icon">✕</div>
+          <div>
+            <div class="verdict-label">วิเคราะห์ไม่สำเร็จ</div>
+            <div class="verdict-conf">เกิดข้อผิดพลาดระหว่างเรียก AI</div>
+          </div>
+        </div>
+        <div class="verdict-text"><b>สาเหตุ:</b> ${esc(err.message||'ไม่ทราบสาเหตุ')}</div>
+        ${err.debug ? `<div class="verdict-text" style="font-family:monospace; font-size:10.5px; background:rgba(0,0,0,.05); padding:8px; border-radius:8px; word-break:break-all; margin-top:8px;">${esc(err.debug)}</div>` : ''}
+      </div>
+      <div class="row-gap mt-16">
+        <button class="btn btn-outline" style="flex:1" onclick="retakePhoto()">↺ ถ่ายภาพใหม่</button>
+        <button class="btn btn-primary" style="flex:1" onclick="runAnalysis()">🔁 ลองวิเคราะห์อีกครั้ง</button>
+      </div>
+    `;
   } else if(phase==='result'){
     const verdict = r.status; // pass|fail|review
     const vClass = verdict==='pass'?'verdict-pass':verdict==='fail'?'verdict-fail':'verdict-review';
@@ -1241,6 +1303,7 @@ function renderCaptureModal(){
         ${phase!=='analyzing' ? `<button class="sheet-close" onclick="closeModal()">✕</button>` : ''}
       </div>
       <div class="sheet-body">${body}</div>
+      ${phase==='error' ? `<div style="padding:0 18px 4px;"><button class="btn btn-ghost btn-block btn-sm" onclick="copyErrorDebug()">📋 คัดลอกรายละเอียด error ไปส่งให้ตรวจสอบ</button></div>` : ''}
     </div>
   </div>`;
 }
@@ -1509,11 +1572,21 @@ async function runAnalysis(){
       }, 550);
     }
   }catch(e){
-    console.error(e);
-    State.modal.phase = 'capture';
+    console.error('GACP analysis error:', e);
+    State.modal.phase = 'error';
+    State.modal.error = {message: e.message || String(e), debug: e.debug || ''};
     render();
-    showToast('วิเคราะห์ไม่สำเร็จ ลองใหม่อีกครั้ง');
   }
+}
+
+function copyErrorDebug(){
+  const err = (State.modal && State.modal.error) || {};
+  const txt = 'GACP Photo-AI — Error report\n' + (err.message||'') + '\n\n' + (err.debug||'');
+  navigator.clipboard.writeText(txt).then(()=>{
+    showToast('คัดลอกรายละเอียด error แล้ว');
+  }).catch(()=>{
+    showToast('ไม่สามารถคัดลอกได้');
+  });
 }
 
 function shrinkForStorage(dataUrl){
