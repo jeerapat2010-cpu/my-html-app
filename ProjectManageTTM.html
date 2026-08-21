@@ -1,0 +1,1784 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบบริหารแผนงานโครงการและบุคลากร | กลุ่มงานการแพทย์แผนไทยฯ สสจ.สมุทรปราการ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Sans+Thai+Looped:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --g-900:#0B3D2E; --g-800:#0F5132; --g-700:#146C43; --g-600:#1A8754; --g-500:#22A05F;
+  --g-400:#4FC087; --g-100:#E3F5EC; --g-50:#F3FAF6;
+  --gold:#C89B3C; --gold-d:#9C7A2C;
+  --ink:#173226; --ink-soft:#4B6358; --line:#DCEAE2;
+  --red:#D64545; --amber:#DE9A1F; --blue:#2D6FA5; --purple:#7C4FA0; --gray:#8A9A92;
+  --bg:#F5F8F6; --card:#FFFFFF;
+  --shadow: 0 1px 2px rgba(15,81,50,.06), 0 4px 16px rgba(15,81,50,.06);
+  --radius:14px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:'IBM Plex Sans Thai','Sarabun',sans-serif;
+  background:var(--bg); color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+}
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-thumb{background:#C5DACD;border-radius:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+
+a{color:inherit;}
+button{font-family:inherit;cursor:pointer;}
+input,select,textarea{font-family:inherit;}
+
+#app{display:flex; min-height:100vh;}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  width:264px; flex:none; background:linear-gradient(180deg,var(--g-900),#0A2F23 85%);
+  color:#EAF6EF; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; z-index:20;
+}
+.brand{ padding:22px 20px 16px; border-bottom:1px solid rgba(255,255,255,.08);}
+.brand-title{font-size:15.5px; font-weight:700; line-height:1.35; color:#fff;}
+.brand-sub{font-size:11.5px; color:#9FCBAF; margin-top:4px; line-height:1.5;}
+.nav-scroll{flex:1; overflow-y:auto; padding:10px 12px 18px;}
+.nav-group-label{font-size:10.5px; letter-spacing:.06em; color:#7FB397; text-transform:uppercase; margin:16px 10px 6px; font-weight:600;}
+.nav-leg{ margin:6px 8px 4px; padding:8px 10px; border-radius:10px; background:rgba(255,255,255,.05); display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:#CFE9DA;}
+.nav-leg .dot{width:8px;height:8px;border-radius:3px;}
+.nav-item{
+  display:flex; align-items:center; gap:10px; padding:9px 12px; margin:2px 6px; border-radius:9px;
+  font-size:13.5px; color:#D3E9DC; cursor:pointer; transition:.15s; user-select:none;
+}
+.nav-item:hover{background:rgba(255,255,255,.08); color:#fff;}
+.nav-item.active{background:var(--g-500); color:#06231A; font-weight:700; box-shadow:0 3px 10px rgba(34,160,95,.35);}
+.nav-item .ic{width:18px;text-align:center;font-size:14px;}
+.sidebar-foot{padding:14px 18px 18px; border-top:1px solid rgba(255,255,255,.08); font-size:10.5px; color:#6FA084; line-height:1.6;}
+
+/* ---------- Main ---------- */
+.main{flex:1; min-width:0; display:flex; flex-direction:column;}
+.topbar{
+  position:sticky; top:0; z-index:15; background:rgba(245,248,246,.9); backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line); padding:14px 26px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+}
+.page-title{font-size:19px; font-weight:700; color:var(--g-900);}
+.page-sub{font-size:12px; color:var(--ink-soft); margin-top:1px;}
+.spacer{flex:1;}
+.fy-select-wrap{display:flex; align-items:center; gap:8px; background:#fff; border:1px solid var(--line); border-radius:10px; padding:6px 10px; box-shadow:var(--shadow);}
+.fy-select-wrap label{font-size:11px; color:var(--ink-soft); font-weight:600;}
+select.fy-select{border:none; background:transparent; font-weight:700; color:var(--g-800); font-size:13.5px; outline:none;}
+.btn{
+  border:none; border-radius:10px; padding:9px 15px; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:7px;
+  transition:.15s; white-space:nowrap;
+}
+.btn-primary{background:var(--g-600); color:#fff; box-shadow:0 2px 8px rgba(26,135,84,.35);}
+.btn-primary:hover{background:var(--g-700);}
+.btn-ghost{background:#fff; color:var(--g-800); border:1px solid var(--line);}
+.btn-ghost:hover{border-color:var(--g-500); color:var(--g-700);}
+.btn-danger{background:#FCEAEA; color:var(--red);}
+.btn-danger:hover{background:#F8D4D4;}
+.btn-sm{padding:6px 10px; font-size:12px; border-radius:8px;}
+.btn:disabled{opacity:.45; cursor:not-allowed;}
+
+.content{padding:22px 26px 60px;}
+
+/* ---------- Cards / grid ---------- */
+.grid{display:grid; gap:16px;}
+.grid-4{grid-template-columns:repeat(4,1fr);}
+.grid-3{grid-template-columns:repeat(3,1fr);}
+.grid-2{grid-template-columns:repeat(2,1fr);}
+@media(max-width:1180px){.grid-4{grid-template-columns:repeat(2,1fr);} .grid-3{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:760px){.grid-4,.grid-3,.grid-2{grid-template-columns:1fr;}}
+
+.card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); border:1px solid #EDF4F0;}
+.card-pad{padding:18px 20px;}
+.card-head{display:flex; align-items:center; justify-content:space-between; padding:16px 20px 0;}
+.card-title{font-size:14.5px; font-weight:700; color:var(--g-900);}
+.card-title .muted{font-weight:500; color:var(--ink-soft); font-size:11.5px;}
+
+.kpi-card{padding:18px 20px; display:flex; flex-direction:column; gap:6px; position:relative; overflow:hidden;}
+.kpi-icon{position:absolute; right:14px; top:14px; font-size:26px; opacity:.16;}
+.kpi-label{font-size:12px; color:var(--ink-soft); font-weight:600;}
+.kpi-value{font-size:26px; font-weight:700; color:var(--g-900);}
+.kpi-delta{font-size:11.5px; font-weight:600;}
+.kpi-delta.up{color:var(--g-600);} .kpi-delta.down{color:var(--red);}
+
+/* ---------- Badges / tags ---------- */
+.badge{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; padding:3px 9px; border-radius:99px;}
+.badge-dot{width:6px;height:6px;border-radius:50%;}
+.b-notstarted{background:#EEF1EF; color:#5A6B63;}
+.b-inprogress{background:#FFF3DC; color:#9C6B0B;}
+.b-done{background:#E1F5E9; color:#0F7A45;}
+.b-delayed{background:#FCE7E7; color:#C23838;}
+.b-cancelled{background:#F1EFF6; color:#7A6A96;}
+.pri-high{background:#FCE7E7; color:#C23838;}
+.pri-mid{background:#FFF3DC; color:#9C6B0B;}
+.pri-low{background:#E7F1FC; color:#2A6FA0;}
+
+/* ---------- Table ---------- */
+table{width:100%; border-collapse:collapse; font-size:13px;}
+th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:var(--ink-soft); font-weight:700; padding:9px 12px; border-bottom:2px solid var(--line); white-space:nowrap;}
+td{padding:11px 12px; border-bottom:1px solid var(--line); vertical-align:middle;}
+tr.tbl-row{cursor:pointer; transition:.1s;}
+tr.tbl-row:hover{background:var(--g-50);}
+.tbl-wrap{overflow-x:auto;}
+
+.progress-bar{width:100%; height:7px; background:#EAF0EC; border-radius:99px; overflow:hidden;}
+.progress-fill{height:100%; background:linear-gradient(90deg,var(--g-500),var(--g-600)); border-radius:99px;}
+
+/* ---------- Buttons small icon ---------- */
+.icon-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--line); background:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:13px; color:var(--ink-soft);}
+.icon-btn:hover{border-color:var(--g-500); color:var(--g-700); background:var(--g-50);}
+
+/* ---------- Search / filters ---------- */
+.filter-bar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px;}
+.input, .select{border:1px solid var(--line); border-radius:9px; padding:8px 12px; font-size:13px; background:#fff; color:var(--ink); outline:none;}
+.input:focus,.select:focus{border-color:var(--g-500); box-shadow:0 0 0 3px rgba(34,160,95,.12);}
+.input-search{min-width:220px;}
+
+/* ---------- Modal ---------- */
+.modal-overlay{position:fixed; inset:0; background:rgba(11,61,46,.45); z-index:100; display:flex; align-items:flex-start; justify-content:center; padding:38px 16px; overflow-y:auto;}
+.modal{background:#fff; border-radius:16px; width:100%; max-width:720px; box-shadow:0 20px 60px rgba(0,0,0,.25); animation:pop .15s ease;}
+.modal.modal-wide{max-width:980px;}
+@keyframes pop{from{transform:translateY(8px); opacity:0;} to{transform:translateY(0); opacity:1;}}
+.modal-head{padding:18px 22px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between;}
+.modal-head h3{margin:0; font-size:16.5px; color:var(--g-900);}
+.modal-body{padding:20px 22px; max-height:72vh; overflow-y:auto;}
+.modal-foot{padding:16px 22px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:10px;}
+.modal-close{background:none;border:none;font-size:18px;color:var(--ink-soft);}
+
+.form-row{margin-bottom:14px;}
+.form-row label{display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:5px;}
+.form-row .input, .form-row .select, .form-row textarea{width:100%;}
+.form-2col{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+textarea.input{resize:vertical; min-height:70px;}
+
+/* ---------- Kanban ---------- */
+.kanban{display:grid; grid-template-columns:repeat(4,1fr); gap:14px;}
+@media(max-width:1000px){.kanban{grid-template-columns:repeat(2,1fr);}}
+.kanban-col{background:#EEF5F0; border-radius:14px; padding:12px; min-height:200px;}
+.kanban-col-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; padding:0 4px;}
+.kanban-col-title{font-size:12.5px; font-weight:700;}
+.kanban-count{font-size:11px; background:#fff; padding:2px 8px; border-radius:99px; font-weight:700; color:var(--ink-soft);}
+.kanban-card{background:#fff; border-radius:11px; padding:11px 12px; margin-bottom:9px; box-shadow:0 1px 3px rgba(0,0,0,.06); cursor:grab; border-left:4px solid var(--g-500);}
+.kanban-card:active{cursor:grabbing;}
+.kanban-card .kc-title{font-size:12.8px; font-weight:600; color:var(--ink); margin-bottom:5px; line-height:1.4;}
+.kanban-card .kc-meta{font-size:11px; color:var(--ink-soft); display:flex; justify-content:space-between; align-items:center;}
+.kanban-col.drag-over{outline:2px dashed var(--g-500); outline-offset:-4px;}
+
+/* ---------- Misc ---------- */
+.avatar{width:34px;height:34px;border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:700; color:#fff; flex:none;}
+.person-card{padding:16px; display:flex; gap:12px; align-items:flex-start; cursor:pointer;}
+.person-card:hover{border-color:var(--g-400);}
+.empty-state{text-align:center; padding:50px 20px; color:var(--ink-soft);}
+.empty-state .ic{font-size:34px; margin-bottom:10px;}
+.tag-chip{display:inline-flex; align-items:center; gap:6px; background:var(--g-50); border:1px solid var(--g-100); color:var(--g-800); font-size:11.5px; font-weight:600; padding:4px 10px; border-radius:99px;}
+.hr{height:1px; background:var(--line); margin:16px 0;}
+.subtask-row{display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line);}
+.subtask-row:last-child{border-bottom:none;}
+.chk{width:19px;height:19px; border-radius:6px; border:2px solid #C7D9CE; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; flex:none; font-size:12px; color:#fff;}
+.chk.done{background:var(--g-600); border-color:var(--g-600);}
+.file-chip{display:flex; align-items:center; gap:8px; background:#F5F8F6; border:1px solid var(--line); border-radius:9px; padding:7px 10px; font-size:12px; margin-bottom:6px;}
+.file-chip a{color:var(--g-700); font-weight:600; text-decoration:none; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.small-muted{font-size:11.5px; color:var(--ink-soft);}
+.star-row{display:flex; gap:4px;}
+.star{font-size:19px; color:#DDE6E0; cursor:pointer;}
+.star.on{color:var(--gold);}
+.section-title{font-size:13px; font-weight:700; color:var(--g-900); margin:22px 0 10px; display:flex; align-items:center; gap:8px;}
+.section-title .line-flex{flex:1; height:1px; background:var(--line);}
+.toast{position:fixed; bottom:22px; right:22px; background:var(--g-900); color:#fff; padding:12px 18px; border-radius:10px; font-size:13px; box-shadow:0 8px 24px rgba(0,0,0,.25); z-index:200; opacity:0; transform:translateY(10px); transition:.25s;}
+.toast.show{opacity:1; transform:translateY(0);}
+.priority-arrows{display:flex; flex-direction:column; gap:2px;}
+.priority-arrows button{width:20px;height:16px;border:none;background:#F0F5F1;border-radius:4px;font-size:9px;color:var(--ink-soft);}
+.gantt-wrap{overflow-x:auto;}
+.gantt-grid{display:grid; grid-template-columns:220px repeat(12,1fr); min-width:920px; font-size:11px;}
+.gantt-head{padding:8px 6px; font-weight:700; text-align:center; color:var(--ink-soft); border-bottom:2px solid var(--line);}
+.gantt-name{padding:9px 10px; font-size:12px; font-weight:600; border-bottom:1px solid var(--line); display:flex; align-items:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.gantt-cell{border-bottom:1px solid var(--line); border-left:1px solid #F0F4F1; height:36px; position:relative;}
+.gantt-bar{position:absolute; top:8px; bottom:8px; left:2px; right:2px; border-radius:5px; background:var(--g-500);}
+.credit-footer{margin-top:34px; text-align:center; font-size:11px; color:#9FB3A8; padding:16px 0 4px;}
+.link-btn{background:none;border:none;color:var(--g-700);font-weight:600;font-size:12.5px;text-decoration:underline;cursor:pointer;padding:0;}
+.two-leg-banner{display:flex; gap:14px; margin-bottom:18px;}
+.leg-pill{flex:1; border-radius:14px; padding:14px 18px; display:flex; align-items:center; gap:12px; color:#fff;}
+.leg-pill .leg-ic{font-size:22px;}
+.leg-pill .leg-t{font-size:13.5px; font-weight:700;}
+.leg-pill .leg-s{font-size:11px; opacity:.85;}
+.leg-pill.work{background:linear-gradient(120deg,#146C43,#1A8754);}
+.leg-pill.people{background:linear-gradient(120deg,#2A5C8A,#3B7BB0);}
+.radio-pills{display:flex; gap:8px; flex-wrap:wrap;}
+.radio-pill{border:1px solid var(--line); border-radius:9px; padding:7px 13px; font-size:12.5px; font-weight:600; cursor:pointer; background:#fff; color:var(--ink-soft);}
+.radio-pill.sel{background:var(--g-600); border-color:var(--g-600); color:#fff;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" class="toast"></div>
+
+<script>
+/* =========================================================================
+   ระบบบริหารแผนงานโครงการและบุคลากร (Work & People Ops)
+   กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สสจ.สมุทรปราการ
+   Single-file offline-capable app · localStorage persistence
+   ========================================================================= */
+
+const STORAGE_KEY = 'thaimed_ops_v1';
+const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const FY_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
+const STATUS_LIST = [
+  {id:'notstarted', label:'ยังไม่เริ่ม', cls:'b-notstarted', color:'#8A9A92'},
+  {id:'inprogress', label:'กำลังดำเนินการ', cls:'b-inprogress', color:'#DE9A1F'},
+  {id:'done', label:'เสร็จสิ้น', cls:'b-done', color:'#1A8754'},
+  {id:'delayed', label:'ล่าช้า', cls:'b-delayed', color:'#D64545'},
+  {id:'cancelled', label:'ยกเลิก', cls:'b-cancelled', color:'#7C4FA0'},
+];
+const PRIORITY_LIST = [
+  {id:'high', label:'สูง', cls:'pri-high'},
+  {id:'mid', label:'กลาง', cls:'pri-mid'},
+  {id:'low', label:'ต่ำ', cls:'pri-low'},
+];
+const AVATAR_COLORS = ['#1A8754','#2D6FA5','#C89B3C','#7C4FA0','#D64545','#0F5132','#3B7BB0','#9C6B0B'];
+
+function uid(p){ return (p||'id')+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function money(n){ n=Number(n)||0; return n.toLocaleString('th-TH',{maximumFractionDigits:0}); }
+function fmtDateTH(iso){
+  if(!iso) return '-';
+  const d=new Date(iso+'T00:00:00'); if(isNaN(d)) return '-';
+  return d.getDate()+' '+THAI_MONTHS[d.getMonth()]+' '+(d.getFullYear()+543);
+}
+function fmtDateShort(iso){
+  if(!iso) return '-';
+  const d=new Date(iso+'T00:00:00'); if(isNaN(d)) return '-';
+  return d.getDate()+' '+THAI_MONTHS[d.getMonth()]+' '+String(d.getFullYear()+543).slice(2);
+}
+function daysUntil(iso){
+  if(!iso) return null;
+  const d=new Date(iso+'T00:00:00'); const now=new Date(); now.setHours(0,0,0,0);
+  return Math.round((d-now)/86400000);
+}
+function statusObj(id){ return STATUS_LIST.find(s=>s.id===id) || STATUS_LIST[0]; }
+function priObj(id){ return PRIORITY_LIST.find(s=>s.id===id) || PRIORITY_LIST[1]; }
+function escapeHtml(s){ return (s===undefined||s===null)?'':String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function initials(name){ if(!name) return '?'; const parts=name.trim().split(/\s+/); return parts.length>1?(parts[0][0]+parts[1][0]).toUpperCase():name.slice(0,2).toUpperCase(); }
+function colorForId(id){ let h=0; for(let i=0;i<id.length;i++) h=id.charCodeAt(i)+((h<<5)-h); return AVATAR_COLORS[Math.abs(h)%AVATAR_COLORS.length]; }
+function showToast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(window.__toastTimer); window.__toastTimer=setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+/* ---------------------------- Default / Seed Data ---------------------------- */
+function seedData(){
+  const p1=uid('p'), p2=uid('p'), p3=uid('p'), p4=uid('p'), p5=uid('p'), p6=uid('p'), p7=uid('p'), p8=uid('p'), p9=uid('p'), p10=uid('p'), p12=uid('p');
+  const c1=uid('cat'), c2=uid('cat'), c3=uid('cat'), c4=uid('cat');
+  const proj1=uid('proj'), proj2=uid('proj'), proj3=uid('proj'), proj4=uid('proj'), proj5=uid('proj'), proj6=uid('proj'), proj7=uid('proj'), proj8=uid('proj'), proj9=uid('proj'), proj10=uid('proj'), proj11=uid('proj'), proj12=uid('proj'), proj13=uid('proj'), proj14=uid('proj'), proj15=uid('proj'), proj16=uid('proj');
+  return {
+    meta:{ org:'สำนักงานสาธารณสุขจังหวัดสมุทรปราการ', group:'กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก', version:'v1.9' },
+    currentYear: 2569,
+    fiscalYears:[2567,2568,2569,2570,2571],
+    categories:[
+      {id:c1,name:'ส่วนที่ 1 · โครงการตามนโยบายและแผนยุทธศาสตร์ระบบสุขภาพ',color:'#146C43'},
+      {id:c2,name:'ส่วนที่ 2 · โครงการตามภาระงานประจำ',color:'#2D6FA5'},
+      {id:c3,name:'โครงการยุทธศาสตร์จังหวัด/ท้องถิ่น',color:'#C89B3C'},
+      {id:c4,name:'โครงการริเริ่มใหม่ / นวัตกรรม',color:'#7C4FA0'},
+    ],
+    /* แหล่งงบประมาณ 6 ประเภท ตามไฟล์สรุปงบประมาณ (Sheet "สรุป") ของกลุ่มงาน */
+    budgetSources:['เงินบำรุง','เงินงบประมาณ','งบ UC','งบกองทุนส่งเสริมภูมิปัญญา','งบสำนักงานเขตสุขภาพที่ 6','อื่นๆ'],
+    budgetTypes:['งบดำเนินงาน','งบลงทุน','งบอุดหนุน','งบรายจ่ายอื่น'],
+    /* ที่มา: คำสั่ง สสจ.สมุทรปราการ ที่ ก.๗/๒๕๖๙ เรื่อง มอบหมายงานในหน้าที่ของกลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก ลงวันที่ 12 พ.ย. 2568 */
+    personnel:[
+      {id:p1, name:'นางสาววิภาวีร์ ฤทธิ์แก้ว', position:'แพทย์แผนไทยชำนาญการพิเศษ (หัวหน้ากลุ่มงาน)', phone:'', email:'', startDate:'', note:'หัวหน้ากลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก · ควบคุม ดูแล กำกับงานภาพรวมกลุ่มงาน'},
+      {id:p2, name:'นายจีรภัทร พลายงาม', position:'เภสัชกรชำนาญการ (รองหัวหน้ากลุ่มงาน)', phone:'', email:'', startDate:'', note:'หัวหน้างานพัฒนาระบบบริหารงานฯ · หัวหน้างาน Service Plan สาขากัญชาทางการแพทย์ · หัวหน้างานตรวจสอบเฝ้าระวังหลังได้รับใบอนุญาตสมุนไพรควบคุม (กัญชา)'},
+      {id:p3, name:'นางสาวขจีวรรณ ตันพานิช', position:'แพทย์แผนไทยชำนาญการ (รองหัวหน้ากลุ่มงาน)', phone:'', email:'', startDate:'', note:'หัวหน้างานแผนปฏิบัติการ วิเคราะห์และประเมินผลงาน · หัวหน้างานพัฒนาสถานประกอบการเพื่อสุขภาพ/เวลเนสเซ็นเตอร์ · กำกับงบประมาณกลุ่มงาน'},
+      {id:p4, name:'นางสาวกานต์รวี รัตนโชติ', position:'แพทย์แผนไทยชำนาญการ (รองหัวหน้ากลุ่มงาน)', phone:'', email:'', startDate:'', note:'หัวหน้างานพัฒนาและส่งเสริมบริการแพทย์แผนไทย · หัวหน้างานพัฒนาวิชาการ งานวิจัย นวัตกรรม และงานส่งเสริมสมุนไพร'},
+      {id:p5, name:'นางสาวมัธนา สุขโชติ', position:'เจ้าพนักงานสาธารณสุขชำนาญงาน', phone:'', email:'', startDate:'', note:'หัวหน้างานพัฒนาบุคลากรด้านการแพทย์แผนไทย และศูนย์เรียนรู้การพัฒนาแพทย์แผนไทย'},
+      {id:p6, name:'นางสาวพัชรา สุดกังวาน', position:'เจ้าพนักงานสาธารณสุขชำนาญงาน', phone:'', email:'', startDate:'', note:'หัวหน้างานข้อมูลข่าวสารการแพทย์แผนไทยและการแพทย์ทางเลือก · งานสารบรรณกลุ่มงาน · งานบริหารจัดสรรงบ สปสช.'},
+      {id:p7, name:'นางสาวรัตนาวลี วิฑูรสกุล', position:'แพทย์แผนไทยปฏิบัติการ', phone:'', email:'', startDate:'', note:'หัวหน้างานคุ้มครองและส่งเสริมภูมิปัญญาด้านการแพทย์แผนไทย · หัวหน้างานทะเบียนภูมิปัญญาด้านการแพทย์แผนไทย'},
+      {id:p8, name:'นางสาววิลาวัลย์ อริยกุชัย', position:'เภสัชกรปฏิบัติการ', phone:'', email:'', startDate:'', note:'หัวหน้างานส่งเสริมและพัฒนาระบบบริการกัญชาทางการแพทย์ · งานพิจารณาอนุญาตและทะเบียนใบอนุญาต'},
+      {id:p9, name:'นายติณห์ จันทร์แจ้ง', position:'แพทย์แผนจีน (จ้างเหมาบริการ)', phone:'', email:'', startDate:'', note:'งานบริการคลินิกการแพทย์แผนจีน'},
+      {id:p10, name:'นางสาวสิราณี ชาญปรีชา', position:'พนักงานนวดไทย (จ้างเหมาบริการ)', phone:'', email:'', startDate:'', note:'งานบริการคลินิกการแพทย์แผนไทย · ศูนย์เรียนรู้การพัฒนาแพทย์แผนไทย'},
+      {id:p12, name:'นายศรัญญู', position:'แพทย์แผนไทยชำนาญการ', phone:'', email:'', startDate:'', note:'งานคุ้มครองและส่งเสริมภูมิปัญญาด้านการแพทย์แผนไทย'},
+    ],
+    projects:[
+      {id:proj1, year:2569, name:'โครงการอบรมหลักสูตรการนวดไทย ยืดเหยียดเฉพาะทาง 7 ด้าน สำนักงานสาธารณสุขจังหวัดสมุทรปราการ ปีงบประมาณ 2569', categoryId:c1, ownerPersonId:p5, priority:'mid', status:'notstarted', startDate:'', endDate:'', budgetAmount:25000, budgetType:'งบดำเนินงาน', budgetSource:'งบสำนักงานเขตสุขภาพที่ 6', target:'ผู้เข้ารับการอบรม (ก.ย. -ธ.ค. 68)', indicator:'- ผู้เข้าอบรมได้รับการพัฒนา และยกระดับด้านการนวดไทย ให้มีความรู้การนวดไทย การยืดเหยียด เฉพาะทาง 7 ด้าน ร้อยละ 80', description:'ระยะเวลาดำเนินการ (ตามแผน): ก.ย. -ธ.ค. 68 | นำเข้าจากไฟล์แผนปฏิบัติการ FY2569 (V9-013) โดยอัตโนมัติ โปรดตรวจสอบและปรับแก้วันที่/รายละเอียดให้ตรงตามแผนจริง', attachments:[], sortOrder:1, createdAt:new Date().toISOString()},
+      {id:proj2, year:2569, name:'โครงการสร้างงานสร้างอาชีพ ยกระดับ และสร้างบุคลากรด้านการนวดไทย ปีงบประมาณ 2569', categoryId:c1, ownerPersonId:p5, priority:'mid', status:'notstarted', startDate:'', endDate:'', budgetAmount:0, budgetType:'งบดำเนินงาน', budgetSource:'อื่นๆ', target:'ประชาชนทั่วไป (มค - กย. 69)', indicator:'- ผู้เข้าอบรมสามารถ ผ่านการอบรมและนำไปประกอบอาชีพ ไม่น้อยกว่าร้อยละ 80', description:'ระยะเวลาดำเนินการ (ตามแผน): มค - กย. 69 | นำเข้าจากไฟล์แผนปฏิบัติการ FY2569 (V9-013) โดยอัตโนมัติ โปรดตรวจสอบและปรับแก้วันที่/รายละเอียดให้ตรงตามแผนจริง', attachments:[], sortOrder:2, createdAt:new Date().toISOString()},
+      {id:proj3, year:2569, name:'โครงการรักษาภูมิปัญญาไทย และพัฒนาความรู้หมอพื้นบ้านจังหวัดสมุทรปราการ ปีงบประมาณ พ.ศ. 2569', categoryId:c1, ownerPersonId:p7, priority:'mid', status:'notstarted', startDate:'', endDate:'', budgetAmount:15720, budgetType:'งบดำเนินงาน', budgetSource:'งบกองทุนส่งเสริมภูมิปัญญา', target:'หมอพื้นบ้านที่ได้รับ (ม.ค.-เม.ย. 69)', indicator:'- ร้อยละ 60 ของหมอพื้นบ้านจังหวัด สมุทรปราการ เข้ารับการอบรมพัฒนา ศักยภาพและฟื้นฟูความรู้ฯ - ร้อยละ 80 ของผู้เข้ารับการอบรม พัฒนาศักยภาพและฟื้นฟูความรู้ฯ มีความพึงพอใจ ความรู้ และการนำไปใช้ - ลงพื้นที่กำกับติดตามหมอพื้นบ้าน ที่เข้ารับการพัฒนาความรู้หมอพื้นบ้านฯ ไม่น้อยกว่าร้อยละ 80', description:'ระยะเวลาดำเนินการ (ตามแผน): ม.ค.-เม.ย. 69 | นำเข้าจากไฟล์แผนปฏิบัติการ FY2569 (V9-013) โดยอัตโนมัติ โปรดตรวจสอบและปรับแก้วันที่/รายละเอียดให้ตรงตามแผนจริง', attachments:[], sortOrder:3, createdAt:new Date().toISOString()},
+      {id:proj4, year:2569, name:'โครงการพัฒนาองค์ความรู้นวัตกรรม และผลิตภัณฑ์ด้านการแพทย์แผนไทย จังหวัดสมุทรปราการ ปีงบประมาณ 2569', categoryId:c1, ownerPersonId:p4, priority:'mid', status:'notstarted', startDate:'', endDate:'', budgetAmount:54250, budgetType:'งบดำเนินงาน', budgetSource:'เงินบำรุง', target:'แพทย์แผนไทย (ธ.ค. 68 - ก.พ. 69)', indicator:'- แพทย์แผนไทย กลุ่มเป้าหมาย เข้าร่วมอบรมตามโครงการฯ ไม่น้อยกว่าร้อยละ 80 \' - แพทย์แผนไทย กลุ่มเป้าหมายเข้าร่วม อบรมฯ ไม่น้อยกว่าร้อยละ 80', description:'ระยะเวลาดำเนินการ (ตามแผน): ธ.ค. 68 - ก.พ. 69 | นำเข้าจากไฟล์แผนปฏิบัติการ FY2569 (V9-013) โดยอัตโนมัติ โปรดตรวจสอบและปรับแก้วันที่/รายละเอียดให้ตรงตามแผนจริง', attachments:[], sortOrder:4, createdAt:new Date().toISOString()},
+      {id:proj5, year:2569, name:'โครงการพัฒนา Wellness Center และแหล่งท่องเที่ยวเชิงสุขภาพ จังหวัดสมุทรปราการ ปีงบประมาณ 2569', categoryId:c1, ownerPersonId:p2, priority:'mid', status:'notstarted', startDate:'', endDate:'', budgetAmount:30000, budgetType:'งบดำเนินงาน', budgetSource:'เงินบำรุง', target:'ผู้ประกอบการหลากหลายสาขา (ธ.ค.68 - เม.ย. 69)', indicator:'- กลุ่มเป้าหมาย เข้าร่วมอบรมตามโครงการฯ ไม่น้อยกว่าร้อยละ 80 บูรณาการร่วมกับงานคุ้มครองผู้บริโภคและเภสัชสาธารณสุข', description:'ระยะเวลาดำเนินการ (ตามแผน): ธ.ค.68 - เม.ย. 69 | ทีมผู้รับผิดชอบ: จีรภัทร, ขจีวรรณ | นำเข้าจากไฟล์แผนปฏิบัติการ FY2569 (V9-013) โดยอัตโนมัติ โปรดตรวจสอบและปรับแก้วันที่/รายละเอียดให้ตรงตามแผนจริง', attachments:[], sortOrder:5, createdAt:new Date().toISOString()},
+      {id:proj6, year:2569, name:'โครงการวันภูมิปัญญาการแพทย์แผนไทย จังหวัดสมุทรปราการ ประจำปี พ.ศ. 2568', categoryId:c2, ownerPersonId:p3, priority:'mid', status:'notstarted', startDate:'', endDate:'', budgetAmount:65630, budgetType:'งบดำเนินงาน', budgetSource:'เงินบำรุง', target:'ผู้บริหาร (ต.ค. 68)', indicator:'- ผู้เข้าร่วมโครงการ ร้อยละ 80 - ร้อยละ 100 ของอำเภอที่ร่วมนำเสนอ ผลิตภัณฑ์สมุนไพรจากภูมิปัญญา การแพทย์แผนไทย', description:'ระยะเวลาดำเนินการ (ตามแผน): ต.ค. 68 | ทีมผู้รับผิดชอบ: ขจีวรรณ, รัตนาวลี | นำเข้าจากไฟล์แผนปฏิบัติการ FY2569 (V9-013) โดยอัตโนมัติ โปรดตรวจสอบและปรับแก้วันที่/รายละเอียดให้ตรงตามแผนจริง', attachments:[], sortOrder:6, createdAt:new Date().toISOString()},
+      {id:proj7, year:2569, name:'โครงการดำเนินงานคุ้มครองและส่งเสริมภูมิปัญญาการแพทย์แผนไทยและสมุนไพร จังหวัดสมุทรปราการ ปีงบประมาณ 2569', categoryId:c2, ownerPersonId:p7, priority:'mid', status:'notstarted', startDate:'', endDate:'', budgetAmount:50530, budgetType:'งบดำเนินงาน', budgetSource:'งบกองทุนส่งเสริมภูมิปัญญา', target:'จนท.ผู้รับผิดชอบงาน (ตค. 68 - ก.ย. 69)', indicator:'- จัดทำรายงานการดำเนินงานด้าน การคุ้มครองฯ 4 ครั้ง/ปี - มีการดำเนินการหรือบูรณาการร่วมกับ หน่วยงานที่เกี่ยวข้องเพื่อจัดกิจกรรม การปลูกสมุนไพรไม่น้อยกว่า 10 ชนิด ในพื้นที่ป่าอนุรักษ์/ป่านอกเขตอนุรักษ์ /สวนสมุนไพรในชุมชน จังหวัดละ 1 แห่ง/ปี - มีแนวทางการดำเนินงานเพื่อขับเคลื่อน การอนุรักษ์คุ้มครอง แล', description:'ระยะเวลาดำเนินการ (ตามแผน): ตค. 68 - ก.ย. 69 | นำเข้าจากไฟล์แผนปฏิบัติการ FY2569 (V9-013) โดยอัตโนมัติ โปรดตรวจสอบและปรับแก้วันที่/รายละเอียดให้ตรงตามแผนจริง', attachments:[], sortOrder:7, createdAt:new Date().toISOString()},
+      {id:proj8, year:2569, name:'โครงการมหกรรมการแพทย์แผนไทย การแพทย์พื้นบ้าน และการแพทย์ทางเลือก จังหวัดสมุทรปราการ ปีงบประมาณ 2569', categoryId:c2, ownerPersonId:p3, priority:'mid', status:'notstarted', startDate:'', endDate:'', budgetAmount:107450, budgetType:'งบดำเนินงาน', budgetSource:'งบกองทุนส่งเสริมภูมิปัญญา', target:'ผู้บริหาร (พ.ค.  - ส.ค. 69)', indicator:'- กลุ่มเป้าหมาย เข้าร่วมอบรมตามโครงการฯ ไม่น้อยกว่าร้อยละ 80 - ร้อยละ 80 ของกลุ่มเป้าหมาย ได้เข้าร่วมโครงการ - ได้รับความรู้ความเข้าใจในการดูแล สุขภาพด้วยศาสตร์ การแพทย์แผนไทย และการแพทย์ทางเลือก ภูมิปัญญา ท้องถิ่น และสมุนไพร สามารถเข้ารับ บริการด้านการแพทย์แผนไทย และการแพทย์ทางเลือก - ร้อยละ 80 ของ', description:'ระยะเวลาดำเนินการ (ตามแผน): พ.ค.  - ส.ค. 69 | ทีมผู้รับผิดชอบ: ขจีวรรณ, กานต์รวี, มัธนา, พัชรา, รัตนาวลี | นำเข้าจากไฟล์แผนปฏิบัติการ FY2569 (V9-013) โดยอัตโนมัติ โปรดตรวจสอบและปรับแก้วันที่/รายละเอียดให้ตรงตามแผนจริง', attachments:[], sortOrder:8, createdAt:new Date().toISOString()},
+      {id:proj9, year:2569, name:'โครงการพัฒนาระบบบริการของหน่วยบริการตามมาตรฐานโรงพยาบาลส่งเสริมและสนับสนุนการแพทย์แผนไทยและการแพทย์ผสมผสาน จังหวัดสมุทรปราการ ปีงบประมาณ 2569', categoryId:c2, ownerPersonId:p4, priority:'mid', status:'notstarted', startDate:'', endDate:'', budgetAmount:13650, budgetType:'งบดำเนินงาน', budgetSource:'งบกองทุนส่งเสริมภูมิปัญญา', target:'หน่วยบริการ (ต.ค. 68 - เม.ย. 69)', indicator:'- ร้อยละ 80 ของหน่วยบริการ ผ่านเกณฑ์มาตรฐาน รพ.สส.พท. ที่กำหนด', description:'ระยะเวลาดำเนินการ (ตามแผน): ต.ค. 68 - เม.ย. 69 | แหล่งงบประมาณ (แยกย่อย): เงินบำรุง 6,450 บาท + กองทุนภูมิปัญญา 7,200 บาท | นำเข้าจากไฟล์แผนปฏิบัติการ FY2569 (V9-013) โดยอัตโนมัติ โปรดตรวจสอบและปรับแก้วันที่/รายละเอียดให้ตรงตามแผนจริง', attachments:[], sortOrder:9, createdAt:new Date().toISOString()},
+      {id:proj10, year:2569, name:'โครงการพัฒนาระบบบริการคลินิกบริการการแพทย์แผนไทย จังหวัดสมุทรปราการ ปีงบประมาณ 2569', categoryId:c2, ownerPersonId:p4, priority:'mid', status:'notstarted', startDate:'', endDate:'', budgetAmount:270000, budgetType:'งบดำเนินงาน', budgetSource:'เงินบำรุง', target:'ผู้มารับบริการ (ต.ค. 68 - ก.ย. 69)', indicator:'- ร้อยละความพึงพอใจของผู้มา รับบริการด้านการแพทย์แผนไทย และการแพทย์ทางเลือก ไม่น้อยร้อยละ 80 ขึ้นไป - หน่วยบริการฯ ผ่านเกณฑ์การประเมิน มาตรฐานหน่วยบริการ รพ.สส.พท. - ร้อยละความพึงพอใจของผู้มา รับบริการด้านการแพทย์แผนไทย', description:'ระยะเวลาดำเนินการ (ตามแผน): ต.ค. 68 - ก.ย. 69 | นำเข้าจากไฟล์แผนปฏิบัติการ FY2569 (V9-013) โดยอัตโนมัติ โปรดตรวจสอบและปรับแก้วันที่/รายละเอียดให้ตรงตามแผนจริง', attachments:[], sortOrder:10, createdAt:new Date().toISOString()},
+      {id:proj11, year:2569, name:'โครงการกำกับและพัฒนามาตรฐานสถานประกอบการจำหน่ายกัญชาทางการแพทย์แผนไทย ก่อนได้รับอนุญาต จังหวัดสมุทรปราการ ปีงบประมาณ 2569', categoryId:c2, ownerPersonId:p8, priority:'mid', status:'notstarted', startDate:'', endDate:'', budgetAmount:19920, budgetType:'งบดำเนินงาน', budgetSource:'เงินบำรุง', target:'คณะทำงาน (ต.ค. 68 - ก.ย. 69)', indicator:'- มีแนวทางการดำเนินงานเพื่อขับเคลื่อน พิจารณาคำขออนุญาต สมุนไพรควบคุม (กัญชา) - ร้อยละ 100 ของสถานประกอบการ ที่ขออนุญาตสมุนไพรควบคุม (กัญชา) มีการตรวจก่อนอนุญาต', description:'ระยะเวลาดำเนินการ (ตามแผน): ต.ค. 68 - ก.ย. 69 | นำเข้าจากไฟล์แผนปฏิบัติการ FY2569 (V9-013) โดยอัตโนมัติ โปรดตรวจสอบและปรับแก้วันที่/รายละเอียดให้ตรงตามแผนจริง', attachments:[], sortOrder:11, createdAt:new Date().toISOString()},
+      {id:proj12, year:2569, name:'โครงการอบรมเชิงปฏิบัติการพัฒนาศักยภาพแพทย์แผนไทย จังหวัดสมุทรปราการ ปีงบประมาณ 2569', categoryId:c2, ownerPersonId:p5, priority:'mid', status:'notstarted', startDate:'', endDate:'', budgetAmount:52200, budgetType:'งบดำเนินงาน', budgetSource:'เงินบำรุง', target:'แพทย์แผนไทย (ม.ค. - มี.ค. 69)', indicator:'- กลุ่มเป้าหมาย เข้าร่วมอบรมตามโครงการฯ ไม่น้อยกว่าร้อยละ 80 - ผู้เข้ารับการอบรม ผ่านการประเมิน ความรู้หลังอบรม (Post-test) ไม่น้อยกว่า 80% - ผู้เข้ารับการอบรมสามารถนำความรู้ ไปประยุกต์ใช้ในสถานบริการ ไม่น้อยกว่า 70% ของผู้เข้าอบรม', description:'ระยะเวลาดำเนินการ (ตามแผน): ม.ค. - มี.ค. 69 | ทีมผู้รับผิดชอบ: มัธนา, พัชรา | นำเข้าจากไฟล์แผนปฏิบัติการ FY2569 (V9-013) โดยอัตโนมัติ โปรดตรวจสอบและปรับแก้วันที่/รายละเอียดให้ตรงตามแผนจริง', attachments:[], sortOrder:12, createdAt:new Date().toISOString()},
+      {id:proj13, year:2569, name:'โครงการประชุมเชิงปฏิบัติการด้านการพัฒนาระบบบริการด้านการแพทย์แผนไทยของหน่วยบริการ และส่งเสริมสุขภาพแบบบูรณาการ ปีงบประมาณ 2569', categoryId:c2, ownerPersonId:p5, priority:'mid', status:'notstarted', startDate:'', endDate:'', budgetAmount:198000, budgetType:'งบดำเนินงาน', budgetSource:'เงินบำรุง', target:'แพทย์แผนไทย (มี.ค - ส.ค. 69)', indicator:'- แพทย์แผนไทยกลุ่มเป้าหมาย เข้าร่วมประชุมตามโครงการฯ ไม่น้อยกว่าร้อยละ 80 - หน่วยบริการที่จัดทำ (หรือปรับปรุง) แนวทาง/Flow ระบบบริการแพทย์ แผนไทยแบบบูรณาการ ไม่น้อยกว่า 75% - หน่วยบริการที่นำแนวทางที่ได้ไปเริ่มต้น ขับเคลื่อนจริงในพื้นที่ ไม่น้อยกว่า 70%', description:'ระยะเวลาดำเนินการ (ตามแผน): มี.ค - ส.ค. 69 | นำเข้าจากไฟล์แผนปฏิบัติการ FY2569 (V9-013) โดยอัตโนมัติ โปรดตรวจสอบและปรับแก้วันที่/รายละเอียดให้ตรงตามแผนจริง', attachments:[], sortOrder:13, createdAt:new Date().toISOString()},
+      {id:proj14, year:2569, name:'โครงการตรวจเฝ้าระวังสถานประกอบการหลังได้รับอนุญาตให้ศึกษาวิจัย ส่งออก จำหน่ายหรือแปรรูปสมุนไพรควบคุม (กัญชา) จังหวัดสมุทรปราการ ปีงบประมาณ 2569', categoryId:c2, ownerPersonId:p2, priority:'mid', status:'notstarted', startDate:'', endDate:'', budgetAmount:12000, budgetType:'งบดำเนินงาน', budgetSource:'เงินบำรุง', target:'จนท.สสจ. (ต.ค. 68 - ก.ย. 69)', indicator:'- ร้อยละ 100 ของสถานประกอบการ ที่ตรวจสอบตามเกณฑ์สามารถ ดำเนินการตามเงื่อนไขการพิจารณา อนุญาตได้อย่างถูกต้อง - ร้อยละ 100 ของเรื่องร้องเรียน ได้รับการตรวจสอบและดำเนินการ ตามเกณฑ์ระยะเวลา', description:'ระยะเวลาดำเนินการ (ตามแผน): ต.ค. 68 - ก.ย. 69 | นำเข้าจากไฟล์แผนปฏิบัติการ FY2569 (V9-013) โดยอัตโนมัติ โปรดตรวจสอบและปรับแก้วันที่/รายละเอียดให้ตรงตามแผนจริง', attachments:[], sortOrder:14, createdAt:new Date().toISOString()},
+      {id:proj15, year:2569, name:'โครงการพัฒนาระบบบริการสุขภาพ (Service Plan)สาขาการแพทย์แผนไทยและการแพทย์ผสมผสาน และสาขากัญชาทางการแพทย์ จังหวัดสมุทรปราการ ปีงบประมาณ 2569', categoryId:c2, ownerPersonId:p2, priority:'mid', status:'notstarted', startDate:'', endDate:'', budgetAmount:1400, budgetType:'งบดำเนินงาน', budgetSource:'งบกองทุนส่งเสริมภูมิปัญญา', target:'คณะกรรมการ (พ.ย 68 - ก.ค. 69)', indicator:'- จังหวัดมีการขับเคลื่อน การดำเนินงานการตามตัวชี้วัด service plan กัญชาทางการแพทย์ - จังหวัดมีการขับเคลื่อน การดำเนินงานการตามตัวชี้วัด Srvice plan การแพทย์แผนไทย', description:'ระยะเวลาดำเนินการ (ตามแผน): พ.ย 68 - ก.ค. 69 | ทีมผู้รับผิดชอบ: จีรภัทร, ขจีวรรณ, กานต์รวี, วิลาวัลย์ | นำเข้าจากไฟล์แผนปฏิบัติการ FY2569 (V9-013) โดยอัตโนมัติ โปรดตรวจสอบและปรับแก้วันที่/รายละเอียดให้ตรงตามแผนจริง', attachments:[], sortOrder:15, createdAt:new Date().toISOString()},
+      {id:proj16, year:2569, name:'โครงการพัฒนาระบบข้อมูลงานการแพทย์แผนไทยและการแพทย์ทางเลือก จังหวัดสมุทรปราการ ปีงบประมาณ 2569', categoryId:c2, ownerPersonId:p3, priority:'mid', status:'notstarted', startDate:'', endDate:'', budgetAmount:27250, budgetType:'งบดำเนินงาน', budgetSource:'งบกองทุนส่งเสริมภูมิปัญญา', target:'แพทย์แผนไทย (พ.ย. 68 - มิ.ย. 69)', indicator:'- กลุ่มเป้าหมายเข้าอบรม ไม่น้อยกว่าร้อยละ 80 - กลุ่มเป้าหมายเข้าอบรม ไม่น้อยกว่าร้อยละ 80', description:'ระยะเวลาดำเนินการ (ตามแผน): พ.ย. 68 - มิ.ย. 69 | ทีมผู้รับผิดชอบ: ขจีวรรณ, พัชรา | แหล่งงบประมาณ (แยกย่อย): เงินบำรุง 9,550 บาท + กองทุนภูมิปัญญา 17,700 บาท | นำเข้าจากไฟล์แผนปฏิบัติการ FY2569 (V9-013) โดยอัตโนมัติ โปรดตรวจสอบและปรับแก้วันที่/รายละเอียดให้ตรงตามแผนจริง', attachments:[], sortOrder:16, createdAt:new Date().toISOString()},
+    ],
+    /* หมายเหตุ: 16 โครงการข้างต้นนำเข้าจากไฟล์ V9-013 (Sheet "โครงการรองรับนโยบาย", "แผนงานประจำ", "สรุป") ทั้งหมดโดยอัตโนมัติ
+       - วันที่เริ่ม/สิ้นสุด (startDate/endDate) ยังว่างไว้ เนื่องจากไฟล์ต้นฉบับระบุเป็นข้อความช่วงเดือน (เช่น "ก.ย.-ธ.ค. 68") ไม่ใช่วันที่แบบเจาะจง — ดูช่วงเวลาที่ระบุไว้เดิมได้ในช่อง "รายละเอียดโครงการ" และกรอกวันที่ที่แน่นอนเพิ่มเองได้
+       - แหล่งงบประมาณ เลือกจากยอดสูงสุดในแต่ละโครงการ (บางโครงการมีงบผสมหลายแหล่ง จะระบุสัดส่วนไว้ในรายละเอียดโครงการ) */
+    /* งานย่อย/กิจกรรม (แผนย่อย) ทั้งหมด 81 รายการ ดึงจากคอลัมน์ "โครงการ/กิจกรรม" ใต้หัวข้อ "กิจกรรม" ของแต่ละโครงการในไฟล์ต้นฉบับ */
+    tasks:[
+      {id:uid('tsk'), projectId:proj1, name:'1. การอบรมหลักสูตรนวดไทยยืดเหยียดเฉพาะทาง 7 ด้าน (กลุ่มมีใบประกอบวิชาชีพ)', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj1, name:'1.1 ดำเนินการประชาสัมพันธ์กลุ่มมีใบประกอบวิชาชีพ อบรมครู ก ผ่านระบบออนไลน์', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj1, name:'1.2 ประเมินภาคปฏิบัติ ผู้ที่ผ่าน อบรมครู ก ผ่านระบบออนไลน์ จำนวน 2 รุ่น', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj1, name:'2. การอบรมหลักสูตรนวดไทยยืดเหยียดเฉพาะทาง 7 ด้าน (กลุ่มมีไม่มีใบปกระกอบวิชาชีพ)', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj1, name:'2.1 ดำเนินการ ประชาสัมพันธ์ ผ่านระบบออนไลน์ (จำนวน 200 คน)', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj1, name:'2.2 คัดเลือกผู้ที่คุณสมบัติ เข้าร่วมการอบรม - การบรรยาย E-Learning จำนวน 24 ชั่วโมง - กายวิภาคศาสตร์และสรีรวิทยาของ 7 ด้าน จำนวน 8 ชั่วโมง - นวดไทย ยืดเหยียด...', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj1, name:'2.3 การฝึกปฏิบัติ ประสบการณ์การนวดไทย ยืดเหยียดเฉพาะทาง 7 ด้าน ด้านละ 20 เคส', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj1, name:'2.4 ประเมินทักษะ นวดไทย ยืดเหยียดเฉพาะทาง 7 ด้าน', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj1, name:'2.5 จัดทำเกียรติสำหรับผู้ผ่านกรอบรม', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj2, name:'1. ดำเนินการรับสมัครและคัดเลือกผู้มีคุณสมบัติเข้าร่วมอบรม การนวดไทยเพื่อสุขภาพ 150 ชั่วโมง', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj2, name:'2. จัดอบรม หลักสูตรนวดไทยเพื่อสุขภาพ 150 ชั่วโมง จำนวน 2 รุ่น', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj2, name:'3. ดำเนินการทดสอบเพื่อประเมินผลผู้เข้าร่วมอบรมตามหลักสูตรฯ', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj2, name:'4. จัดทำใบประกาศสำหรับผู้ผ่านการอบรมนวดไทยเพื่อสุขภาพ 150 ชั่วโมง เพื่อให้ไปขึ้นทะเบียนเป็นผู้ให้บริการ ในสถานประกอบการเพื่อสุขภาพ', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj2, name:'5. สรุปประเมินผลและติดตามการประเมินผล หลังจากอบรมดำเนินการ', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj3, name:'1.จัดโครงการรักษาภูมิปัญญาไทย และพัฒนาความรู้หมอพื้นบ้าน จังหวัดสมุทรปราการ ปีงบประมาณ พ.ศ. 2569', assigneeId:p7, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj3, name:'1.1.ถ่ายทอดองค์ความรู้ของหมอพื้นบ้านในจังหวัดสมุทรปราการ ร่วมกับแพทย์แผนไทยในจังหวัดสมุทรปราการ', assigneeId:p7, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj3, name:'1.2.การดำเนินการรับรองหมอพื้นบ้าน ตามระเบียบกระทรวง สาธารณสุข ว่าด้วยการรับรองหมอพื้นบ้าน พ.ศ. 2562', assigneeId:p7, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj3, name:'1.3. กฎหมาย/ระเบียบที่เกี่ยวข้องกับหมอพื้นบ้าน ตามระเบียบ กระทรวงสาธารณสุขว่าด้วยการรับรองหมอพื้นบ้าน พ.ศ. 2562', assigneeId:p7, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj3, name:'1.4. การเตรียมยา/เก็บรักษายาสมุนไพรที่ถูกต้อง (ป้องกันการเกิดเชื้อรา) และการใช้พืชสมุนไพรอย่างยั่งยืน', assigneeId:p7, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj3, name:'1.5.การสร้างเสริมความปลอดภัย คุณภาพและประสิทธิผลการรักษา ของหมอพื้นบ้านในระบบสุขภาพชุมชน', assigneeId:p7, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj3, name:'2. ลงพื้นที่กำกับติดตามหมอพื้นบ้านที่เข้ารับการอบรมพัฒนา ศักยภาพและฟื้นฟูความรู้หมอพื้นบ้านจังหวัดสมุทรปราการ ปีงบประมาณ พ.ศ. 2569', assigneeId:p7, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj4, name:'1. อบรมพัฒนาองค์ความรู้ด้านนวัตกรรม และผลิตภัณฑ์ ด้านการแพทย์แผนไทยและการแพทย์ทางเลือกจังหวัดสมุทรปราการ ปีงบประมาณ 2569', assigneeId:p4, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj4, name:'2. คัดเลือกและนำเสนอผลงานนวัตกรรม/ผลิตภัณฑ์ ด้านการแพทย์แผนไทย ระดับจังหวัด ปีงบประมาณ 2569', assigneeId:p4, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj4, name:'3. สรุปผลการประเมินผล', assigneeId:p4, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj4, name:'4. จัดทำเกียรติบัตรสำหรับผู้ผ่านการคัดเลือก', assigneeId:p4, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj5, name:'5.1 สำรวจสถานประกอบการเวลเนส (Wellness center)', assigneeId:p2, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj5, name:'5.2 วางแผน Wellness Center และแหล่งท่องเที่ยวเชิงสุขภาพ พัฒนาสถานประกอบการให้ได้มาตรฐาน', assigneeId:p2, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj5, name:'5.3 ส่งเสริมพัฒนาศักยภาพผู้ประกอบการ Health & Wellness', assigneeId:p2, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj5, name:'5.4 จัดอบรมแลกเปลี่ยนเรียนรู้ยกระดับบริการการแพทย์แผนไทย และการแพทย์ทางเลือกของผู้ประกอบการ (onsite /online )', assigneeId:p2, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj5, name:'5.5 พัฒนายกระดับเส้นทางท่องเที่ยวเชิงสุขภาพ เชื่อมโยงสถานประกอบการ และชุมชน', assigneeId:p2, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj5, name:'5.6 พัฒนาเครือข่าย (smart wellness network) ฐานข้อมูล เชื่อมโยงหน่วยบริการแหล่งท่องเที่ยวเชิงสุขภาพ และสถานประกอบการ', assigneeId:p2, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj5, name:'5.7 ลงพื้นที่ประเมินศูนย์เวลเนส(Wellness Center) เพื่อยกระดับ เป็นเวลเนสอัตลักษณ์ไทย', assigneeId:p2, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj5, name:'5.8 ประชาสัมพันธ์ศูนย์เวลเนส (Wellness Center) และแหล่งท่องเที่ยวเชิงสุขภาพ', assigneeId:p2, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj5, name:'5.9 ประเมินผลการดำเนินงาน และรายงานผลการดำเนินงาน', assigneeId:p2, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj6, name:'1) จัดพิธีทำบุญใส่บาตรพระ 9 รูป', assigneeId:p3, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj6, name:'2) จัดพิธีบวงสรวงบูชาครู (พิธีไหว้ครูแพทย์แผนไทย)', assigneeId:p3, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj6, name:'3) จัดพิธีถวายราชสักการะและถวายราชสดุดีเทิดเกียรติพระบาท สมเด็จพระนั่งเกล้าเจ้าอยู่หัว พระมหาเจษฎาราชเจ้า รัชกาลที่ 3 แห่งราชวงศ์จักรี “พระบิดาแห่งการแพทย์แผ...', assigneeId:p3, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj6, name:'4) จัดนิทรรศการเทิดพระเกียรติพระบาทสมเด็จพระนั่งเกล้าเจ้าอยู่หัว รัชกาลที่ 3 และนิทรรศการวันภูมิปัญญาการแพทย์แผนไทย', assigneeId:p3, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj7, name:'1) คุ้มครองภูมิปัญญาการแพทย์แผนไทยและส่งเสริมภูมิปัญญา การแพทย์ การใช้ตำรับยาแผนไทย ตำราการแพทย์แผนไทย สมุนไพร - จัดทำรายงานการดำเนินงานด้านการคุ้มครองและส่ง...', assigneeId:p7, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj7, name:'2) ประชุมเชิงปฏิบัติการเพื่อส่งเสริมการปลูกสมุนไพรในพื้นที่ป่า เขตอนุรักษ์/นอกเขตอนุรักษ์/ ป่าชุมชน ซึ่งขึ้นทะเบียนกรมป่าไม้/ ป่าครอบครัว/สวนสมุนไพรชุมชน - พ...', assigneeId:p7, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj7, name:'3) ประชุมคณะอนุกรรมการคุ้มครองและส่งเสริมภูมิปัญญา การแพทย์แผนไทย จังหวัดสมุทรปราการ (1 ครั้ง/ปี)', assigneeId:p7, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj7, name:'4) คัดเลือกหน่วยบริการด้านการแพทย์แผนไทย เจ้าหน้าที่ ผู้ปฏิบัติงานและหมอแพทย์แผนไทย/หมอพื้นบ้านในพื้นที่ แต่ละอำเภอ สู่การคัดเลือกพื้นที่ต้นแบบดีเด่นด้านการแ...', assigneeId:p7, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj7, name:'5) จัดทำบัตรประจำตัวพนักงานเจ้าหน้าที่ ตามพระราชบัญญัติ คุ้มครองและส่งเสริมภูมิปัญญาการแพทย์แผนไทย พ.ศ. 2542 ปีงบประมาณ พ.ศ. 2569', assigneeId:p7, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj8, name:'3.1 ประชุมเตรียมความพร้อมการจัดงานมหกรรมการแพทย์แผนไทย การแพทย์พื้นบ้าน และการแพทย์ทางเลือก จังหวัดสมุทรปราการ ปีงบประมาณ พ.ศ. 2569', assigneeId:p3, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj8, name:'3.2 จัดนิทรรศการส่งเสริมการใช้ภูมิปัญญาการแพทย์แผนไทย การแพทย์พื้นบ้านและการแพทย์ทางเลือก จังหวัดสมุทรปราการ ปีงบประมาณ พ.ศ. 2569', assigneeId:p3, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj8, name:'3.3 จัดกิจกรรมสาธิตให้ความรู้ด้านภูมิปัญญาการแพทย์แผนไทย การแพทย์พื้นบ้าน และการแพทย์ทางเลือก งานมหกรรมการแพทย์แผนไทย การแพทย์พื้นบ้าน และการแพทย์ทางเลือก จั...', assigneeId:p3, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj9, name:'9.1 สำรวจหน่วยบริการที่มีแพทย์แผนไทยเข้ารับการประเมิน ตามมาตรฐาน รพ.สส.พท.', assigneeId:p4, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj9, name:'9.2 ชี้แจงเกณฑ์การประเมินมาตรฐานงานบริการแพทย์แผนไทยภาครัฐ - ชี้แจงเกณฑ์การประเมินหน่วยบริการที่มีแพทย์แผนไทย (รพ.สส.พท) ในหน่วยบริการภาครัฐ จ.สมุทรปราการ 43...', assigneeId:p4, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj9, name:'9.3 ลงพื้นที่ประเมินมาตรฐานงานบริการแพทย์แผนไทยภาครัฐ', assigneeId:p4, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj9, name:'9.4 สรุปประเมินผล', assigneeId:p4, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj9, name:'9.5 ส่งผลการประเมิน รพ.สส.พท. ให้กรมการแพทย์แผนไทยฯ เพื่อออกใบประกาศฯ', assigneeId:p4, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj9, name:'9.5 พิธีมอบใบประกาศ', assigneeId:p4, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj10, name:'10.1 คลินิกการแพทย์แผนไทยและการแพทย์ทางเลือก สสจ.สมุทรปราการ - จัดบริการด้านการแพทย์แผนไทย ครอบคลุม 4 มิติ เช่น นวดรักษา ประคบสมุนไพร เผายา จ่ายยาสมุนไพร การ...', assigneeId:p4, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj10, name:'10.2 สนับสนุนข้อมูลทางวิชาการและมาตรฐานงานบริการ ด้านการแพทย์แผนไทยการแพทย์ทางเลือก สมุนไพร และที่เกี่ยวข้องฯ', assigneeId:p4, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj10, name:'10.3 เป็นแหล่งศึกษาดูงานระบบริการสุขภาพคลินิกการแพทย์ แผนไทยและการแพทย์ทางเลือกต้นแบบเขตเมืองฯ ระดับสำนักงานสาธารณสุขจังหวัด', assigneeId:p4, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj10, name:'10.4 เป็นแหล่งผลิตยาสมุนไพรภาครัฐและศึกษาพัฒนา ผลิตภัณฑ์สมุนไพร ระดับจังหวัดสมุทรปราการ ประเภทสำนักงานสาธารณสุขจังหวัด', assigneeId:p4, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj10, name:'10.5 ศูนย์ฝึกอบรมหลักสูตรนวดไทย 150, 330 ชม. และนวดส่งเสริมสุขภาพตามมาตรฐานกรมการแพทย์แผนไทย', assigneeId:p4, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj11, name:'1) ประชุมคณะทำงานพิจารณาคำขออนุญาตสมุนไพรควบคุม (กัญชา) จังหวัดสมุทรปราการ', assigneeId:p8, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj11, name:'2) ตรวจสถานประกอบการก่อนได้รับอนุญาตให้ศึกษา วิจัย ส่งออก จำหน่าย หรือแปรรูปสมุนไพรควบคุม (กัญชา) โดยพนักงานเจ้าหน้าที่ ตาม พรบ.คุ้มครองและส่งเสริมภูมิปัญญา...', assigneeId:p8, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj12, name:'1) จัดอบรมหลักสูตร บ่งต้อด้วยหนามหวาย หัตถการที่ใช้รักษา บรรเทาอาการตาต้อ', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj12, name:'1.1) สรุปผลการประเมินผล', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj12, name:'1.2) จัดทำใบประกาศสำหรับผู้ผ่านการอบรม (อิเล็กทรอนิกส์)', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj12, name:'1.3) มอบใบประกาศสำหรับผู้ผ่านการอบรม', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj12, name:'7.2 จัดอบรมหลักสูตร สักยาด้วยสมุนไพร หัตถการที่ใช้รักษา บรรเทาอาการปวดกล้ามเนื้อ', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj12, name:'7.2.1 สรุปผลการประเมินผล', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj12, name:'7.2.2 จัดทำใบประกาศสำหรับผู้ผ่านการอบรม (อิเล็กทรอนิกส์)', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj12, name:'7.2.3 มอบใบประกาศสำหรับผู้ผ่านการอบรม', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj13, name:'1) แลกเปลี่ยนเรียนรู้ Best Practices และแนวทางการพัฒนา ระบบการบริการงานบริการแพทย์แผนไทย', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj13, name:'2) แลกเปลี่ยนเรียนรู้ส่งเสริมสุขภาพแบบบูรณาการและการทำงาน เชิงรุกของหน่วยบริการการแพทย์แผนไทย', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj13, name:'3) สรุปผลการประเมินผล', assigneeId:p5, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj14, name:'1) ตรวจสอบ เฝ้าระวัง กำกับและติดตามสถานประกอบการ หลังได้รับอนุญาตฯ ให้ปฏิบัติตามเงื่อนไขของกฎหมายที่เกี่ยวข้อง โดยพนักงานเจ้าหน้าที่ ตามพรบ.คุ้มครองและส่งเสร...', assigneeId:p2, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj14, name:'2) ตรวจสอบข้อเท็จจริงประเด็นเรื่องร้องเรียนที่เกี่ยวข้องกับ สมุนไพรควบคุม (กัญชา)', assigneeId:p2, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj14, name:'3) สรุปรายงานผู้บริหาร', assigneeId:p2, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj14, name:'4) ประเมินผลการดำเนินการ', assigneeId:p2, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj15, name:'15.1 ประชุมคณะกรรมการ/คณะทำงานการพัฒนาระบบบริการ (Service Plan) สาขากัญชาทางการแพทย์ (2 ครั้ง/ปี)', assigneeId:p2, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj15, name:'15.2 ประชุมคณะกรรมการ/คณะทำงานการพัฒนาระบบบริการ (Service Plan) สาขาการแพทย์แผนไทยและการแพทย์ ผสมผสาน (2 ครั้ง/ปั)', assigneeId:p2, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj15, name:'15.3 กำกับติดตามการดำเนินงาน', assigneeId:p2, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj15, name:'15.4 สรุปผลการดำเนินงาน วิเคราะห์ปัญหาอุปสรรค และแนวทาง พัฒนางาน', assigneeId:p2, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj16, name:'16.1 ประชุมเชิงปฏิบัติการหลักเกณฑ์วิธีการ เงื่อนไขการจ่ายค่าใช้จ่าย และการบันทึกข้อมูลการให้บริการการแพทย์แผนไทย และการแพทย์ทางเลือก - การบันทึกข้อมูลการให้บ...', assigneeId:p3, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj16, name:'16.2 เผยแพร่และประชาสัมพันธ์งานการแพทย์แผนไทย และการแพทย์ทางเลือก', assigneeId:p3, dueDate:'', status:'notstarted', priority:'mid', note:''},
+      {id:uid('tsk'), projectId:proj16, name:'16.3 ประชุมเชิงปฏิบัติการ การใช้ AI ในการตรวจสอบประมวลผล หาข้อมูล ERROR ใน ระบบข้อมูลผู้ป่วยนอกและส่งเสริม ป้องกันโรครายบุคคล(op/pp) แผนงาน/โครงการทั้งหมดตาม...', assigneeId:p3, dueDate:'', status:'notstarted', priority:'mid', note:''},
+    ],
+    evaluations:[
+      {id:uid('eval'), personId:p5, year:2569, period:'รอบที่ 1/2569 (ต.ค.-มี.ค.)', criteria:{quantity:4,quality:4,punctuality:3,teamwork:5}, note:'ทำงานภาคสนามได้ดี ตรงเวลาต้องปรับปรุงเล็กน้อย', evaluatorNote:'', evaluatedAt:new Date().toISOString()},
+    ],
+  };
+}
+
+let DB = null;
+function loadDB(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    DB = raw ? JSON.parse(raw) : seedData();
+  }catch(e){ DB = seedData(); }
+  if(!DB.tasks) DB.tasks=[];
+  if(!DB.evaluations) DB.evaluations=[];
+}
+function saveDB(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); }
+  catch(e){ showToast('⚠️ บันทึกไม่สำเร็จ (พื้นที่จัดเก็บเต็ม) กรุณาลบไฟล์แนบบางส่วน'); }
+}
+
+/* ---------------------------- App / router state ---------------------------- */
+const UI = { route:'dashboard', projectFilter:{status:'',cat:'',pri:'',q:'',owner:'',source:''}, personDetailId:null, projectViewMode:'table', baseEditSourceYear:null, baseEditSelected:new Set(), projectsSelected:new Set() };
+
+function getPersonName(id){ const p=DB.personnel.find(x=>x.id===id); return p?p.name:'— ไม่ระบุ —'; }
+function getPerson(id){ return DB.personnel.find(x=>x.id===id); }
+function getProject(id){ return DB.projects.find(x=>x.id===id); }
+function getCategory(id){ return DB.categories.find(x=>x.id===id); }
+function tasksOfProject(pid){ return DB.tasks.filter(t=>t.projectId===pid); }
+function projectProgress(pid){
+  const ts=tasksOfProject(pid);
+  if(!ts.length) return null;
+  const done=ts.filter(t=>t.status==='done').length;
+  return Math.round(done/ts.length*100);
+}
+function yearProjects(){ return DB.projects.filter(p=>p.year===DB.currentYear); }
+
+/* =========================================================================
+   RENDER: layout
+   ========================================================================= */
+function render(){
+  const app=document.getElementById('app');
+  app.innerHTML = `
+    ${renderSidebar()}
+    <div class="main">
+      ${renderTopbar()}
+      <div class="content" id="contentArea">${renderRoute()}</div>
+    </div>
+  `;
+  wireGlobalEvents();
+  afterRenderHook();
+}
+
+function renderSidebar(){
+  const navItem=(route,ic,label)=>`<div class="nav-item ${UI.route===route?'active':''}" data-route="${route}"><span class="ic">${ic}</span>${label}</div>`;
+  return `
+  <div class="sidebar">
+    <div class="brand">
+      <div class="brand-title">🌿 ระบบบริหารแผนงาน<br>โครงการและบุคลากร</div>
+      <div class="brand-sub">${DB.meta.group}<br>${DB.meta.org}</div>
+    </div>
+    <div class="nav-scroll">
+      ${navItem('dashboard','📊','แดชบอร์ดภาพรวม')}
+
+      <div class="nav-leg"><span class="dot" style="background:#4FC087"></span>ขาที่ 1 · บริหารแผนงาน/โครงการ</div>
+      ${navItem('projects','📁','โครงการทั้งหมด')}
+      ${navItem('kanban','✅','ติดตามงานย่อย (Kanban)')}
+      ${navItem('timeline','📅','ปฏิทิน / Timeline')}
+      ${navItem('budget','💰','งบประมาณ')}
+      ${navItem('baseedit','🔄','ปรับแก้โครงการ (จากปีฐาน)')}
+      ${navItem('exportsummary','📤','สรุป & ส่งออก Excel')}
+
+      <div class="nav-leg"><span class="dot" style="background:#8FC4E8"></span>ขาที่ 2 · บริหารบุคลากร</div>
+      ${navItem('people','👥','บุคลากรทั้งหมด')}
+      ${navItem('performance','📈','ผลงานรายบุคคล')}
+      ${navItem('evaluation','⭐','ประเมินผลงาน')}
+
+      <div class="nav-group-label">ระบบ</div>
+      ${navItem('settings','⚙️','ตั้งค่า / นำเข้า-ส่งออก')}
+    </div>
+    <div class="sidebar-foot">
+      สร้างโดยน้องมายด์ 🌸<br>Powered by Claude · ${DB.meta.version}<br>ข้อมูลเก็บในเครื่องนี้ (Local Storage)
+    </div>
+  </div>`;
+}
+
+function pageTitleFor(route){
+  const map={
+    dashboard:['แดชบอร์ดภาพรวม','สรุปภาพรวมแผนงาน โครงการ และบุคลากรของกลุ่มงาน'],
+    projects:['โครงการทั้งหมด','จัดการโครงการ งานย่อย ผู้รับผิดชอบ และไฟล์แนบ'],
+    kanban:['ติดตามงานย่อย','ลากการ์ดเพื่ออัปเดตสถานะงานย่อยทั้งหมด'],
+    timeline:['ปฏิทิน / Timeline','ภาพรวมช่วงเวลาดำเนินโครงการตามปีงบประมาณ'],
+    budget:['งบประมาณ','สรุปงบประมาณตามประเภทและแหล่งที่มา'],
+    baseedit:['ปรับแก้โครงการ (จากปีฐาน)','คัดลอกแผนงานโครงการจากปีก่อนหน้า มาปรับแก้เป็นปีงบปัจจุบัน'],
+    exportsummary:['สรุป & ส่งออก Excel','ตารางสรุปแผนงานโครงการรูปแบบเดียวกับไฟล์ที่นำเข้า พร้อมส่งออกเป็น .xlsx'],
+    people:['บุคลากรทั้งหมด','ทำเนียบบุคลากรกลุ่มงานและภาระงาน'],
+    performance:['ผลงานรายบุคคล','เปรียบเทียบผลงานและภาระงานของบุคลากร'],
+    evaluation:['ประเมินผลงาน','บันทึกและติดตามผลการประเมินผลงานรายบุคคล'],
+    settings:['ตั้งค่า / นำเข้า-ส่งออก','จัดการปีงบประมาณ หมวดหมู่ แหล่งงบ และสำรองข้อมูล'],
+  };
+  return map[route] || ['',''];
+}
+
+function renderTopbar(){
+  const [title,sub] = pageTitleFor(UI.route);
+  const fyOptions = DB.fiscalYears.slice().sort((a,b)=>b-a).map(y=>`<option value="${y}" ${y===DB.currentYear?'selected':''}>ปีงบประมาณ ${y}</option>`).join('');
+  return `
+  <div class="topbar">
+    <div>
+      <div class="page-title">${title}</div>
+      <div class="page-sub">${sub}</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="fy-select-wrap">
+      <label>ปีงบ</label>
+      <select class="fy-select" id="fySelect">${fyOptions}</select>
+    </div>
+    <button class="btn btn-primary" id="btnQuickAddProject">＋ โครงการใหม่</button>
+  </div>`;
+}
+
+function renderRoute(){
+  switch(UI.route){
+    case 'dashboard': return viewDashboard();
+    case 'projects': return viewProjects();
+    case 'kanban': return viewKanban();
+    case 'timeline': return viewTimeline();
+    case 'budget': return viewBudget();
+    case 'baseedit': return viewBaseEdit();
+    case 'exportsummary': return viewExportSummary();
+    case 'people': return UI.personDetailId ? viewPersonDetail(UI.personDetailId) : viewPeople();
+    case 'performance': return viewPerformance();
+    case 'evaluation': return viewEvaluation();
+    case 'settings': return viewSettings();
+    default: return '<div>ไม่พบหน้า</div>';
+  }
+}
+
+/* =========================================================================
+   VIEW: Dashboard
+   ========================================================================= */
+function viewDashboard(){
+  const projs = yearProjects();
+  const totalBudget = projs.reduce((s,p)=>s+(Number(p.budgetAmount)||0),0);
+  const allTasks = DB.tasks.filter(t=>projs.some(p=>p.id===t.projectId));
+  const doneTasks = allTasks.filter(t=>t.status==='done').length;
+  const taskPct = allTasks.length ? Math.round(doneTasks/allTasks.length*100) : 0;
+  const delayed = projs.filter(p=>p.status==='delayed').length;
+  const upcoming = projs.filter(p=>{const d=daysUntil(p.endDate); return d!==null && d>=0 && d<=21 && p.status!=='done' && p.status!=='cancelled';})
+    .sort((a,b)=>daysUntil(a.endDate)-daysUntil(b.endDate));
+
+  return `
+  <div class="two-leg-banner">
+    <div class="leg-pill work"><span class="leg-ic">📁</span><div><div class="leg-t">ขา “งาน” — ${projs.length} โครงการ</div><div class="leg-s">งบประมาณรวม ${money(totalBudget)} บาท · ปีงบ ${DB.currentYear}</div></div></div>
+    <div class="leg-pill people"><span class="leg-ic">👥</span><div><div class="leg-t">ขา “คน” — ${DB.personnel.length} คน</div><div class="leg-s">งานย่อยทั้งหมด ${allTasks.length} รายการ</div></div></div>
+  </div>
+
+  <div class="grid grid-4">
+    ${kpiCard('📁','โครงการทั้งหมด (ปีนี้)', projs.length, `${projs.filter(p=>p.status==='inprogress').length} กำลังดำเนินการ`)}
+    ${kpiCard('💰','งบประมาณรวม', money(totalBudget)+' บาท', `${DB.budgetSources.length} แหล่งงบ`)}
+    ${kpiCard('✅','ความคืบหน้างานย่อย', taskPct+'%', `${doneTasks}/${allTasks.length} รายการเสร็จสิ้น`)}
+    ${kpiCard('⚠️','โครงการล่าช้า', delayed, delayed>0?'ต้องติดตามเร่งด่วน':'ไม่มีโครงการล่าช้า')}
+  </div>
+
+  <div class="grid grid-3" style="margin-top:16px;">
+    <div class="card card-pad">
+      <div class="card-title" style="margin-bottom:10px;">สัดส่วนสถานะโครงการ</div>
+      <canvas id="chartStatus" height="200"></canvas>
+    </div>
+    <div class="card card-pad">
+      <div class="card-title" style="margin-bottom:10px;">งบประมาณตามแหล่งที่มา</div>
+      <canvas id="chartBudgetSource" height="200"></canvas>
+    </div>
+    <div class="card card-pad">
+      <div class="card-title" style="margin-bottom:10px;">ภาระงานรายบุคคล (จำนวนงานย่อย)</div>
+      <canvas id="chartWorkload" height="200"></canvas>
+    </div>
+  </div>
+
+  <div class="grid grid-2" style="margin-top:16px; align-items:start;">
+    <div class="card">
+      <div class="card-head"><div class="card-title">โครงการใกล้ครบกำหนด <span class="muted">(ภายใน 21 วัน)</span></div></div>
+      <div class="card-pad" style="padding-top:12px;">
+        ${upcoming.length? upcoming.map(p=>{
+          const d=daysUntil(p.endDate); const s=statusObj(p.status);
+          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer" onclick="openProjectDetail('${p.id}')">
+            <div><div style="font-weight:600;font-size:13px;">${escapeHtml(p.name)}</div><div class="small-muted">กำหนดเสร็จ ${fmtDateTH(p.endDate)} · ${getPersonName(p.ownerPersonId)}</div></div>
+            <span class="badge ${d<=7?'b-delayed':'b-inprogress'}">${d} วัน</span>
+          </div>`;
+        }).join('') : `<div class="empty-state" style="padding:20px;">ไม่มีโครงการใกล้ครบกำหนดในขณะนี้ 🎉</div>`}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">การจัดลำดับความสำคัญโครงการ</div></div>
+      <div class="card-pad" style="padding-top:12px;">
+        ${PRIORITY_LIST.map(pr=>{
+          const list = projs.filter(p=>p.priority===pr.id).sort((a,b)=>a.sortOrder-b.sortOrder);
+          if(!list.length) return '';
+          return `<div style="margin-bottom:10px;"><span class="badge ${pr.cls}">ระดับ${pr.label}</span>
+            <div style="margin-top:6px;">${list.map(p=>`<div style="font-size:12.5px;padding:5px 0;cursor:pointer;" onclick="openProjectDetail('${p.id}')">• ${escapeHtml(p.name)}</div>`).join('')}</div></div>`;
+        }).join('') || `<div class="empty-state" style="padding:20px;">ยังไม่มีโครงการในปีงบนี้</div>`}
+      </div>
+    </div>
+  </div>
+  <div class="credit-footer">สร้างโดยน้องมายด์ 🌸 ระบบบริหารแผนงานโครงการและบุคลากร · ${DB.meta.group} · ${DB.meta.version}</div>
+  `;
+}
+function kpiCard(icon,label,value,delta){
+  return `<div class="card kpi-card"><span class="kpi-icon">${icon}</span><div class="kpi-label">${label}</div><div class="kpi-value">${value}</div><div class="kpi-delta up">${delta}</div></div>`;
+}
+
+/* =========================================================================
+   VIEW: Projects list
+   ========================================================================= */
+function viewProjects(){
+  let projs = yearProjects();
+  const f = UI.projectFilter;
+  if(f.status) projs = projs.filter(p=>p.status===f.status);
+  if(f.cat) projs = projs.filter(p=>p.categoryId===f.cat);
+  if(f.pri) projs = projs.filter(p=>p.priority===f.pri);
+  if(f.owner) projs = projs.filter(p=>p.ownerPersonId===f.owner);
+  if(f.source) projs = projs.filter(p=>p.budgetSource===f.source);
+  if(f.q) projs = projs.filter(p=>p.name.toLowerCase().includes(f.q.toLowerCase()));
+  projs = projs.slice().sort((a,b)=> (a.priority===b.priority? a.sortOrder-b.sortOrder : ({high:0,mid:1,low:2}[a.priority]-{high:0,mid:1,low:2}[b.priority])));
+  const selCount = UI.projectsSelected.size;
+  const filteredTotal = projs.reduce((s,p)=>s+(Number(p.budgetAmount)||0),0);
+
+  return `
+  <div class="filter-bar">
+    <input class="input input-search" placeholder="🔍 ค้นหาชื่อโครงการ..." id="fltQ" value="${escapeHtml(f.q)}">
+    <select class="select" id="fltStatus"><option value="">ทุกสถานะ</option>${STATUS_LIST.map(s=>`<option value="${s.id}" ${f.status===s.id?'selected':''}>${s.label}</option>`).join('')}</select>
+    <select class="select" id="fltCat"><option value="">ทุกหมวดหมู่</option>${DB.categories.map(c=>`<option value="${c.id}" ${f.cat===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}</select>
+    <select class="select" id="fltPri"><option value="">ทุกลำดับความสำคัญ</option>${PRIORITY_LIST.map(p=>`<option value="${p.id}" ${f.pri===p.id?'selected':''}>${p.label}</option>`).join('')}</select>
+    <select class="select" id="fltOwner"><option value="">ผู้รับผิดชอบทุกคน</option>${DB.personnel.map(p=>`<option value="${p.id}" ${f.owner===p.id?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}</select>
+    <select class="select" id="fltSource"><option value="">ทุกแหล่งงบประมาณ</option>${DB.budgetSources.map(s=>`<option value="${escapeHtml(s)}" ${f.source===s?'selected':''}>${escapeHtml(s)}</option>`).join('')}</select>
+    <div class="spacer"></div>
+    <button class="btn btn-ghost btn-sm" id="btnClearFilter">ล้างตัวกรอง</button>
+  </div>
+  <div class="card card-pad" style="margin-bottom:14px; display:flex; align-items:center; gap:22px; flex-wrap:wrap;">
+    <div><span class="small-muted">จำนวนโครงการ${f.source?` (${escapeHtml(f.source)})`:''}</span><div style="font-weight:700;font-size:18px;color:var(--g-900);">${projs.length} โครงการ</div></div>
+    <div style="width:1px;height:32px;background:var(--line);"></div>
+    <div><span class="small-muted">รวมงบประมาณ${f.source?` (${escapeHtml(f.source)})`:''}</span><div style="font-weight:700;font-size:18px;color:var(--g-800);">${money(filteredTotal)} บาท</div></div>
+  </div>
+  <div class="filter-bar" style="margin-top:-6px;">
+    <span class="small-muted">เลือกแล้ว ${selCount} โครงการ</span>
+    <button class="btn btn-ghost btn-sm" id="btnSelectAllProj">เลือกทั้งหมดในตาราง</button>
+    <button class="btn btn-ghost btn-sm" id="btnClearSelProj">ล้างการเลือก</button>
+    <div class="spacer"></div>
+    <button class="btn btn-ghost btn-sm" onclick="exportBudgetSummaryExcel(${DB.currentYear})">⬇️ ส่งออกสรุปงบประมาณ (Excel ตามแหล่งงบ)</button>
+    <button class="btn btn-primary btn-sm" id="btnMoveProjYear" ${selCount?'':'disabled'}>📋 ย้าย/คัดลอกที่เลือกไปปีงบอื่น</button>
+  </div>
+
+  <div class="card">
+    <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th style="width:30px;"></th><th>ลำดับ</th><th>โครงการ</th><th>หมวดหมู่</th><th>ผู้รับผิดชอบหลัก</th><th>ระยะเวลา</th>
+        <th>งบประมาณ / ประเภท / แหล่งงบ</th><th>ความคืบหน้า</th><th>ความสำคัญ</th><th>สถานะ</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${projs.length? projs.map((p,idx)=>{
+          const cat=getCategory(p.categoryId); const st=statusObj(p.status); const pr=priObj(p.priority);
+          const prog=projectProgress(p.id);
+          return `<tr class="tbl-row" onclick="openProjectDetail('${p.id}')">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="projSelChk" data-id="${p.id}" ${UI.projectsSelected.has(p.id)?'checked':''}></td>
+            <td>
+              <div class="priority-arrows">
+                <button onclick="event.stopPropagation();moveProjectPriority('${p.id}',-1)">▲</button>
+                <button onclick="event.stopPropagation();moveProjectPriority('${p.id}',1)">▼</button>
+              </div>
+            </td>
+            <td style="max-width:280px;"><div style="font-weight:600;">${escapeHtml(p.name)}</div><div class="small-muted">${p.attachments&&p.attachments.length?'📎 '+p.attachments.length+' ไฟล์แนบ':''}</div></td>
+            <td><span class="tag-chip" style="border-color:${cat?cat.color+'33':''}">${cat?escapeHtml(cat.name):'-'}</span></td>
+            <td>${escapeHtml(getPersonName(p.ownerPersonId))}</td>
+            <td class="small-muted">${fmtDateShort(p.startDate)} – ${fmtDateShort(p.endDate)}</td>
+            <td style="min-width:130px;"><div style="font-weight:700;">${money(p.budgetAmount)}</div><div class="small-muted">${escapeHtml(p.budgetType)||'-'}</div><div class="small-muted">${escapeHtml(p.budgetSource)||'-'}</div></td>
+            <td style="min-width:110px;">${prog===null?'<span class="small-muted">ไม่มีงานย่อย</span>':`<div class="progress-bar"><div class="progress-fill" style="width:${prog}%"></div></div><div class="small-muted" style="margin-top:3px;">${prog}%</div>`}</td>
+            <td><span class="badge ${pr.cls}">${pr.label}</span></td>
+            <td><span class="badge ${st.cls}"><span class="badge-dot" style="background:${st.color}"></span>${st.label}</span></td>
+            <td><button class="icon-btn" onclick="event.stopPropagation();deleteProject('${p.id}')">🗑️</button></td>
+          </tr>`;
+        }).join('') : `<tr><td colspan="11"><div class="empty-state"><div class="ic">📁</div>ยังไม่มีโครงการในปีงบ ${DB.currentYear} หรือไม่ตรงตัวกรอง<br><button class="link-btn" onclick="openProjectForm()">+ เพิ่มโครงการใหม่</button></div></td></tr>`}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  `;
+}
+
+/* =========================================================================
+   VIEW: Project detail modal content
+   ========================================================================= */
+function openProjectDetail(id){
+  const p=getProject(id); if(!p) return;
+  const cat=getCategory(p.categoryId); const st=statusObj(p.status); const pr=priObj(p.priority);
+  const ts=tasksOfProject(id);
+  const prog=projectProgress(id);
+  const body=`
+    <div class="form-2col" style="margin-bottom:6px;">
+      <div><span class="small-muted">หมวดหมู่</span><div><span class="tag-chip">${cat?escapeHtml(cat.name):'-'}</span></div></div>
+      <div><span class="small-muted">ปีงบประมาณ</span><div style="font-weight:700;">${p.year}</div></div>
+    </div>
+    <div class="form-2col">
+      <div><span class="small-muted">ผู้รับผิดชอบหลัก</span><div style="font-weight:600;">${escapeHtml(getPersonName(p.ownerPersonId))}</div></div>
+      <div><span class="small-muted">ระยะเวลาดำเนินการ</span><div style="font-weight:600;">${fmtDateTH(p.startDate)} – ${fmtDateTH(p.endDate)}</div></div>
+    </div>
+    <div class="form-2col" style="margin-top:10px;">
+      <div><span class="small-muted">งบประมาณ</span><div style="font-weight:700;color:var(--g-800);">${money(p.budgetAmount)} บาท</div><div class="small-muted">${escapeHtml(p.budgetType||'-')} · ${escapeHtml(p.budgetSource||'-')}</div></div>
+      <div><span class="small-muted">สถานะ / ความสำคัญ</span><div style="margin-top:3px;"><span class="badge ${st.cls}">${st.label}</span> <span class="badge ${pr.cls}">${pr.label}</span></div></div>
+    </div>
+    <div class="hr"></div>
+    <div><span class="small-muted">เป้าหมาย/หน่วยนับ</span><div style="margin-top:3px;">${escapeHtml(p.target)||'-'}</div></div>
+    <div style="margin-top:10px;"><span class="small-muted">ตัวชี้วัดความสำเร็จ</span><div style="margin-top:3px;">${escapeHtml(p.indicator)||'-'}</div></div>
+    <div style="margin-top:10px;"><span class="small-muted">รายละเอียด</span><div style="margin-top:3px; white-space:pre-wrap;">${escapeHtml(p.description)||'-'}</div></div>
+
+    <div class="section-title">งานย่อย ${prog!==null?'· ความคืบหน้า '+prog+'%':''}<span class="line-flex"></span><button class="link-btn" onclick="openTaskForm(null,'${p.id}')">+ เพิ่มงานย่อย</button></div>
+    ${prog!==null?`<div class="progress-bar" style="margin-bottom:10px;"><div class="progress-fill" style="width:${prog}%"></div></div>`:''}
+    <div id="subtaskList">
+      ${ts.length? ts.map(t=>subtaskRowHtml(t)).join('') : '<div class="small-muted">ยังไม่มีงานย่อย</div>'}
+    </div>
+
+    <div class="section-title">ไฟล์แนบ<span class="line-flex"></span>
+      <label class="link-btn" style="cursor:pointer;">+ แนบไฟล์<input type="file" id="fileInputProject" style="display:none" multiple></label>
+    </div>
+    <div id="attachmentList">${renderAttachments(p)}</div>
+  `;
+  const footer=`<button class="btn btn-ghost" onclick="openProjectForm('${p.id}')">✏️ แก้ไขโครงการ</button><button class="btn btn-primary" onclick="closeModal()">ปิด</button>`;
+  openModal(p.name, body, footer, true);
+  document.getElementById('fileInputProject').addEventListener('change', (e)=>handleFileAttach(e, p.id));
+}
+function subtaskRowHtml(t){
+  const st=statusObj(t.status);
+  return `<div class="subtask-row">
+    <span class="chk ${t.status==='done'?'done':''}" onclick="toggleTaskDone('${t.id}')">${t.status==='done'?'✓':''}</span>
+    <div style="flex:1;cursor:pointer;" onclick="openTaskForm('${t.id}')">
+      <div style="font-weight:600;font-size:13px;${t.status==='done'?'text-decoration:line-through;color:var(--ink-soft);':''}">${escapeHtml(t.name)}</div>
+      <div class="small-muted">${escapeHtml(getPersonName(t.assigneeId))} · กำหนดเสร็จ ${fmtDateTH(t.dueDate)}</div>
+    </div>
+    <span class="badge ${st.cls}">${st.label}</span>
+    <button class="icon-btn" onclick="event.stopPropagation();deleteTask('${t.id}')">🗑️</button>
+  </div>`;
+}
+function renderAttachments(p){
+  if(!p.attachments || !p.attachments.length) return '<div class="small-muted">ยังไม่มีไฟล์แนบ</div>';
+  return p.attachments.map(a=>`<div class="file-chip">
+    <span>📎</span><a href="${a.data}" download="${escapeHtml(a.name)}" target="_blank">${escapeHtml(a.name)}</a>
+    <span class="small-muted">${(a.size/1024).toFixed(0)} KB</span>
+    <button class="icon-btn" onclick="removeAttachment('${p.id}','${a.id}')">✕</button>
+  </div>`).join('');
+}
+function handleFileAttach(e, projectId){
+  const files=Array.from(e.target.files||[]);
+  const p=getProject(projectId); if(!p) return;
+  let remaining=files.length;
+  if(!files.length) return;
+  files.forEach(file=>{
+    if(file.size>4*1024*1024){ showToast('⚠️ ไฟล์ "'+file.name+'" ใหญ่เกิน 4MB ข้ามไป'); remaining--; return; }
+    const reader=new FileReader();
+    reader.onload=()=>{
+      p.attachments = p.attachments||[];
+      p.attachments.push({id:uid('att'), name:file.name, size:file.size, type:file.type, data:reader.result});
+      saveDB();
+      const el=document.getElementById('attachmentList'); if(el) el.innerHTML=renderAttachments(p);
+      showToast('แนบไฟล์ "'+file.name+'" เรียบร้อย');
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function removeAttachment(projectId, attId){
+  const p=getProject(projectId); if(!p) return;
+  p.attachments = (p.attachments||[]).filter(a=>a.id!==attId);
+  saveDB();
+  const el=document.getElementById('attachmentList'); if(el) el.innerHTML=renderAttachments(p);
+}
+function toggleTaskDone(taskId){
+  const t=DB.tasks.find(x=>x.id===taskId); if(!t) return;
+  t.status = t.status==='done' ? 'inprogress' : 'done';
+  saveDB();
+  const el=document.getElementById('subtaskList');
+  if(el){ const ts=tasksOfProject(t.projectId); el.innerHTML = ts.map(subtaskRowHtml).join(''); }
+  refreshBackground();
+}
+function deleteTask(taskId){
+  if(!confirm('ลบงานย่อยนี้หรือไม่?')) return;
+  const t=DB.tasks.find(x=>x.id===taskId);
+  DB.tasks = DB.tasks.filter(x=>x.id!==taskId);
+  saveDB();
+  if(t){ const el=document.getElementById('subtaskList'); if(el){ const ts=tasksOfProject(t.projectId); el.innerHTML = ts.length? ts.map(subtaskRowHtml).join('') : '<div class="small-muted">ยังไม่มีงานย่อย</div>'; } }
+  refreshBackground();
+}
+function deleteProject(id){
+  if(!confirm('ลบโครงการนี้ทั้งหมด (รวมงานย่อยและไฟล์แนบ) ?')) return;
+  DB.projects = DB.projects.filter(p=>p.id!==id);
+  DB.tasks = DB.tasks.filter(t=>t.projectId!==id);
+  saveDB(); render();
+  showToast('ลบโครงการเรียบร้อย');
+}
+function moveProjectPriority(id, dir){
+  const p=getProject(id); if(!p) return;
+  const siblings = DB.projects.filter(x=>x.priority===p.priority && x.year===p.year).sort((a,b)=>a.sortOrder-b.sortOrder);
+  const idx=siblings.findIndex(x=>x.id===id);
+  const swapIdx=idx+dir;
+  if(swapIdx<0||swapIdx>=siblings.length) return;
+  const tmp=siblings[idx].sortOrder; siblings[idx].sortOrder=siblings[swapIdx].sortOrder; siblings[swapIdx].sortOrder=tmp;
+  saveDB(); render();
+}
+
+/* ---- Move/copy selected projects to another fiscal year ---- */
+function openMoveProjectsModal(){
+  const count = UI.projectsSelected.size;
+  if(!count){ showToast('กรุณาเลือกอย่างน้อย 1 โครงการ'); return; }
+  const yearOptions = DB.fiscalYears.filter(y=>y!==DB.currentYear).sort((a,b)=>a-b);
+  const defaultTarget = yearOptions.find(y=>y>DB.currentYear) || yearOptions[0] || DB.currentYear;
+  const body=`
+    <p>เลือกไว้ <b>${count}</b> โครงการ จากปีงบ <b>${DB.currentYear}</b></p>
+    <div class="form-row"><label>ย้าย/คัดลอกไปเตรียมไว้ที่ปีงบประมาณ</label>
+      <select class="select" id="moveTargetYear">${yearOptions.length? yearOptions.map(y=>`<option value="${y}" ${y===defaultTarget?'selected':''}>${y}</option>`).join('') : `<option value="">ไม่มีปีอื่น — เพิ่มปีงบใหม่ที่เมนูตั้งค่าก่อน</option>`}</select>
+    </div>
+    <div class="form-row">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:500;cursor:pointer;">
+        <input type="checkbox" id="moveRemoveSource"> ย้าย (ลบโครงการออกจากปี ${DB.currentYear} หลังคัดลอก) — ถ้าไม่ติ๊ก จะเป็นการ "คัดลอก" และคงโครงการเดิมไว้ทั้งสองปี
+      </label>
+    </div>
+    <p class="small-muted">โครงการที่คัดลอกไปจะรีเซ็ตสถานะเป็น "ยังไม่เริ่ม" และล้างวันที่เริ่ม-สิ้นสุดให้กำหนดใหม่ (ข้อมูลอื่นคงเดิม) ปรับแก้เพิ่มเติมได้ที่หน้า "ปรับแก้โครงการ (จากปีฐาน)"</p>
+  `;
+  const footer=`<button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" ${yearOptions.length?'':'disabled'} onclick="confirmMoveProjects()">✅ ยืนยัน</button>`;
+  openModal('ย้าย/คัดลอกโครงการไปปีงบอื่น', body, footer);
+}
+function confirmMoveProjects(){
+  const targetYear = Number(document.getElementById('moveTargetYear').value);
+  const removeSource = document.getElementById('moveRemoveSource').checked;
+  if(!targetYear){ showToast('กรุณาเลือกปีงบปลายทาง'); return; }
+  let count=0;
+  UI.projectsSelected.forEach(pid=>{
+    const src=getProject(pid); if(!src) return;
+    const maxSort=Math.max(0,...DB.projects.filter(p=>p.priority===src.priority && p.year===targetYear).map(p=>p.sortOrder||0));
+    DB.projects.push({
+      id:uid('proj'), year:targetYear, name:src.name, categoryId:src.categoryId, ownerPersonId:src.ownerPersonId,
+      priority:src.priority, status:'notstarted', startDate:'', endDate:'', budgetAmount:src.budgetAmount, budgetType:src.budgetType,
+      budgetSource:src.budgetSource, target:src.target||'', indicator:src.indicator||'', description:src.description||'',
+      attachments:[], sortOrder:maxSort+1, createdAt:new Date().toISOString()
+    });
+    if(removeSource){
+      DB.projects = DB.projects.filter(p=>p.id!==pid);
+      DB.tasks = DB.tasks.filter(t=>t.projectId!==pid);
+    }
+    count++;
+  });
+  saveDB();
+  UI.projectsSelected.clear();
+  closeModal();
+  showToast(`${removeSource?'ย้าย':'คัดลอก'} ${count} โครงการไปปีงบ ${targetYear} เรียบร้อย`);
+  render();
+}
+
+/* ---- Project form (create/edit) ---- */
+function openProjectForm(id){
+  const editing = !!id;
+  const p = editing ? getProject(id) : {id:null, year:DB.currentYear, name:'', categoryId:DB.categories[0]?.id||'', ownerPersonId:DB.personnel[0]?.id||'', priority:'mid', status:'notstarted', startDate:'', endDate:'', budgetAmount:0, budgetType:DB.budgetTypes[0]||'', budgetSource:DB.budgetSources[0]||'', target:'', indicator:'', description:'', attachments:[]};
+  const body=`
+    <div class="form-row"><label>ชื่อโครงการ *</label><input class="input" id="f_name" value="${escapeHtml(p.name)}" placeholder="เช่น โครงการอบรม..."></div>
+    <div class="form-2col">
+      <div class="form-row"><label>ปีงบประมาณ</label><select class="select" id="f_year">${DB.fiscalYears.map(y=>`<option value="${y}" ${y===p.year?'selected':''}>${y}</option>`).join('')}</select></div>
+      <div class="form-row"><label>หมวดหมู่โครงการ</label><select class="select" id="f_cat">${DB.categories.map(c=>`<option value="${c.id}" ${c.id===p.categoryId?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-2col">
+      <div class="form-row"><label>ผู้รับผิดชอบหลัก</label><select class="select" id="f_owner">${DB.personnel.map(pe=>`<option value="${pe.id}" ${pe.id===p.ownerPersonId?'selected':''}>${escapeHtml(pe.name)}</option>`).join('')}</select></div>
+      <div class="form-row"><label>ความสำคัญของโครงการ</label><select class="select" id="f_pri">${PRIORITY_LIST.map(pr=>`<option value="${pr.id}" ${pr.id===p.priority?'selected':''}>${pr.label}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-2col">
+      <div class="form-row"><label>วันที่เริ่มต้น</label><input class="input" type="date" id="f_start" value="${p.startDate||''}"></div>
+      <div class="form-row"><label>วันที่สิ้นสุด</label><input class="input" type="date" id="f_end" value="${p.endDate||''}"></div>
+    </div>
+    <div class="form-2col">
+      <div class="form-row"><label>งบประมาณ (บาท)</label><input class="input" type="number" min="0" id="f_budget" value="${p.budgetAmount||0}"></div>
+      <div class="form-row"><label>สถานะ</label><select class="select" id="f_status">${STATUS_LIST.map(s=>`<option value="${s.id}" ${s.id===p.status?'selected':''}>${s.label}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-2col">
+      <div class="form-row"><label>ประเภทงบ</label><select class="select" id="f_btype">${DB.budgetTypes.map(b=>`<option ${b===p.budgetType?'selected':''}>${escapeHtml(b)}</option>`).join('')}</select></div>
+      <div class="form-row"><label>แหล่งงบประมาณ</label><select class="select" id="f_bsource">${DB.budgetSources.map(b=>`<option ${b===p.budgetSource?'selected':''}>${escapeHtml(b)}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-row"><label>เป้าหมาย/หน่วยนับ</label><input class="input" id="f_target" value="${escapeHtml(p.target||'')}" placeholder="เช่น ผู้เข้าอบรม 200 คน (2 รุ่น)"></div>
+    <div class="form-row"><label>ตัวชี้วัดความสำเร็จ</label><input class="input" id="f_indicator" value="${escapeHtml(p.indicator)}"></div>
+    <div class="form-row"><label>รายละเอียดโครงการ</label><textarea class="input" id="f_desc">${escapeHtml(p.description)}</textarea></div>
+  `;
+  const footer=`<button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="saveProjectForm(${editing?`'${id}'`:'null'})">💾 บันทึกโครงการ</button>`;
+  openModal(editing?'แก้ไขโครงการ':'เพิ่มโครงการใหม่', body, footer);
+}
+function saveProjectForm(id){
+  const name=document.getElementById('f_name').value.trim();
+  if(!name){ showToast('กรุณากรอกชื่อโครงการ'); return; }
+  const data={
+    year: Number(document.getElementById('f_year').value),
+    name, categoryId: document.getElementById('f_cat').value,
+    ownerPersonId: document.getElementById('f_owner').value,
+    priority: document.getElementById('f_pri').value,
+    startDate: document.getElementById('f_start').value,
+    endDate: document.getElementById('f_end').value,
+    budgetAmount: Number(document.getElementById('f_budget').value)||0,
+    status: document.getElementById('f_status').value,
+    budgetType: document.getElementById('f_btype').value,
+    budgetSource: document.getElementById('f_bsource').value,
+    target: document.getElementById('f_target').value,
+    indicator: document.getElementById('f_indicator').value,
+    description: document.getElementById('f_desc').value,
+  };
+  if(id){
+    Object.assign(getProject(id), data);
+    showToast('บันทึกการแก้ไขเรียบร้อย');
+  }else{
+    const maxSort = Math.max(0,...DB.projects.filter(p=>p.priority===data.priority && p.year===data.year).map(p=>p.sortOrder||0));
+    DB.projects.push(Object.assign({id:uid('proj'), attachments:[], sortOrder:maxSort+1, createdAt:new Date().toISOString()}, data));
+    showToast('เพิ่มโครงการใหม่เรียบร้อย');
+  }
+  saveDB(); closeModal(); UI.route='projects'; render();
+}
+
+/* ---- Task form (create/edit) ---- */
+function openTaskForm(taskId, projectId){
+  const editing=!!taskId;
+  const t = editing? DB.tasks.find(x=>x.id===taskId) : {id:null, projectId, name:'', assigneeId:DB.personnel[0]?.id||'', dueDate:'', status:'notstarted', priority:'mid', note:''};
+  const body=`
+    <div class="form-row"><label>ชื่องานย่อย *</label><input class="input" id="t_name" value="${escapeHtml(t.name)}"></div>
+    <div class="form-2col">
+      <div class="form-row"><label>ผู้รับผิดชอบ</label><select class="select" id="t_assignee">${DB.personnel.map(p=>`<option value="${p.id}" ${p.id===t.assigneeId?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}</select></div>
+      <div class="form-row"><label>กำหนดเสร็จ</label><input class="input" type="date" id="t_due" value="${t.dueDate||''}"></div>
+    </div>
+    <div class="form-2col">
+      <div class="form-row"><label>สถานะ</label><select class="select" id="t_status">${STATUS_LIST.map(s=>`<option value="${s.id}" ${s.id===t.status?'selected':''}>${s.label}</option>`).join('')}</select></div>
+      <div class="form-row"><label>ความสำคัญ</label><select class="select" id="t_pri">${PRIORITY_LIST.map(p=>`<option value="${p.id}" ${p.id===t.priority?'selected':''}>${p.label}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-row"><label>บันทึกเพิ่มเติม</label><textarea class="input" id="t_note">${escapeHtml(t.note||'')}</textarea></div>
+  `;
+  const footer=`
+    ${editing?`<button class="btn btn-danger" onclick="deleteTask('${taskId}');closeModal();openProjectDetail('${t.projectId}')">ลบงานย่อย</button>`:''}
+    <button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="saveTaskForm(${editing?`'${taskId}'`:'null'},'${t.projectId}')">💾 บันทึก</button>`;
+  openModal(editing?'แก้ไขงานย่อย':'เพิ่มงานย่อย', body, footer);
+}
+function saveTaskForm(taskId, projectId){
+  const name=document.getElementById('t_name').value.trim();
+  if(!name){ showToast('กรุณากรอกชื่องานย่อย'); return; }
+  const data={ name, assigneeId:document.getElementById('t_assignee').value, dueDate:document.getElementById('t_due').value, status:document.getElementById('t_status').value, priority:document.getElementById('t_pri').value, note:document.getElementById('t_note').value };
+  if(taskId){ Object.assign(DB.tasks.find(t=>t.id===taskId), data); }
+  else{ DB.tasks.push(Object.assign({id:uid('tsk'), projectId}, data)); }
+  saveDB(); closeModal();
+  if(UI.route==='projects' || document.querySelector('.modal')){ }
+  openProjectDetail(projectId);
+  refreshBackground();
+}
+
+/* =========================================================================
+   VIEW: Kanban
+   ========================================================================= */
+function viewKanban(){
+  const pids = new Set(yearProjects().map(p=>p.id));
+  const tasks = DB.tasks.filter(t=>pids.has(t.projectId));
+  const cols = STATUS_LIST.filter(s=>s.id!=='cancelled');
+  return `
+  <div class="kanban">
+    ${cols.map(col=>{
+      const items=tasks.filter(t=>t.status===col.id);
+      return `<div class="kanban-col" data-status="${col.id}" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event,'${col.id}')">
+        <div class="kanban-col-head"><span class="kanban-col-title">${col.label}</span><span class="kanban-count">${items.length}</span></div>
+        ${items.map(t=>{
+          const proj=getProject(t.projectId);
+          return `<div class="kanban-card" draggable="true" ondragstart="handleDragStart(event,'${t.id}')" onclick="openTaskForm('${t.id}')" style="border-left-color:${statusObj(t.status).color}">
+            <div class="kc-title">${escapeHtml(t.name)}</div>
+            <div class="small-muted" style="margin-bottom:6px;">${escapeHtml(proj?proj.name:'')}</div>
+            <div class="kc-meta"><span>👤 ${escapeHtml(getPersonName(t.assigneeId))}</span><span>${fmtDateShort(t.dueDate)}</span></div>
+          </div>`;
+        }).join('') || '<div class="small-muted" style="padding:10px 4px;">ไม่มีงาน</div>'}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+let dragTaskId=null;
+function handleDragStart(e,taskId){ dragTaskId=taskId; }
+function handleDrop(e,status){
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+  const t=DB.tasks.find(x=>x.id===dragTaskId); if(!t) return;
+  t.status=status; saveDB();
+  document.getElementById('contentArea').innerHTML=viewKanban();
+  refreshBackground();
+}
+
+/* =========================================================================
+   VIEW: Timeline / Gantt (simple month-grid)
+   ========================================================================= */
+function viewTimeline(){
+  const y=DB.currentYear;
+  const fyStartCE = y-543-1, fyEndCE=y-543;
+  const rangeStart=new Date(fyStartCE,9,1), rangeEnd=new Date(fyEndCE,8,30);
+  const projs=yearProjects().slice().sort((a,b)=>(a.startDate||'').localeCompare(b.startDate||''));
+  function monthIndexOf(dateObj){
+    const m=dateObj.getMonth(); // 0=Jan
+    // FY months order: Oct(9),Nov(10),Dec(11),Jan(0)...Sep(8)
+    return (m+3)%12; // Oct->0, Nov->1 ... Sep->11
+  }
+  return `
+  <div class="card card-pad">
+    <div class="small-muted" style="margin-bottom:12px;">ปีงบประมาณ ${y} (1 ต.ค. ${fyStartCE+543} – 30 ก.ย. ${fyEndCE+543})</div>
+    <div class="gantt-wrap">
+      <div class="gantt-grid">
+        <div class="gantt-head" style="text-align:left;padding-left:10px;">โครงการ</div>
+        ${FY_MONTHS.map(m=>`<div class="gantt-head">${m}</div>`).join('')}
+        ${projs.length? projs.map(p=>{
+          let cells='';
+          for(let i=0;i<12;i++){
+            let active=false;
+            if(p.startDate && p.endDate){
+              const s=new Date(p.startDate+'T00:00:00'), en=new Date(p.endDate+'T00:00:00');
+              // build this cell's month date range
+              const cellMonthOffset=i; // 0=Oct
+              const cellCE = fyStartCE + Math.floor((9+cellMonthOffset)/12);
+              const cellMonth=(9+cellMonthOffset)%12;
+              const cellStart=new Date(cellCE,cellMonth,1), cellEnd=new Date(cellCE,cellMonth+1,0);
+              active = s<=cellEnd && en>=cellStart;
+            }
+            cells += `<div class="gantt-cell">${active?`<div class="gantt-bar" style="background:${statusObj(p.status).color}" title="${escapeHtml(p.name)}"></div>`:''}</div>`;
+          }
+          return `<div class="gantt-name" title="${escapeHtml(p.name)}" style="cursor:pointer" onclick="openProjectDetail('${p.id}')">${escapeHtml(p.name)}</div>${cells}`;
+        }).join('') : `<div class="gantt-name">—</div>${Array(12).fill('<div class="gantt-cell"></div>').join('')}`}
+      </div>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:14px;flex-wrap:wrap;">
+      ${STATUS_LIST.filter(s=>s.id!=='cancelled').map(s=>`<span class="small-muted"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${s.color};margin-right:5px;vertical-align:middle;"></span>${s.label}</span>`).join('')}
+    </div>
+  </div>`;
+}
+
+/* =========================================================================
+   VIEW: Budget
+   ========================================================================= */
+function viewBudget(){
+  const projs = yearProjects();
+  const total = projs.reduce((s,p)=>s+(Number(p.budgetAmount)||0),0);
+  const bySource={}, byType={}, byCat={};
+  projs.forEach(p=>{
+    bySource[p.budgetSource||'ไม่ระบุ']=(bySource[p.budgetSource||'ไม่ระบุ']||0)+(Number(p.budgetAmount)||0);
+    byType[p.budgetType||'ไม่ระบุ']=(byType[p.budgetType||'ไม่ระบุ']||0)+(Number(p.budgetAmount)||0);
+    const cat=getCategory(p.categoryId); const cn=cat?cat.name:'ไม่ระบุ';
+    byCat[cn]=(byCat[cn]||0)+(Number(p.budgetAmount)||0);
+  });
+  window.__budgetData = {bySource, byType};
+  return `
+  <div class="grid grid-3">
+    <div class="card kpi-card"><span class="kpi-icon">💰</span><div class="kpi-label">งบประมาณรวมทั้งกลุ่มงาน</div><div class="kpi-value">${money(total)}</div><div class="kpi-delta up">บาท · ปีงบ ${DB.currentYear}</div></div>
+    <div class="card kpi-card"><span class="kpi-icon">📁</span><div class="kpi-label">จำนวนโครงการที่มีงบ</div><div class="kpi-value">${projs.filter(p=>p.budgetAmount>0).length}</div><div class="kpi-delta up">จากทั้งหมด ${projs.length} โครงการ</div></div>
+    <div class="card kpi-card"><span class="kpi-icon">📊</span><div class="kpi-label">งบเฉลี่ยต่อโครงการ</div><div class="kpi-value">${money(projs.length?Math.round(total/projs.length):0)}</div><div class="kpi-delta up">บาท/โครงการ</div></div>
+  </div>
+  <div class="grid grid-2" style="margin-top:16px;">
+    <div class="card card-pad"><div class="card-title" style="margin-bottom:10px;">งบประมาณตามแหล่งที่มา</div><canvas id="chartBSource2" height="220"></canvas></div>
+    <div class="card card-pad"><div class="card-title" style="margin-bottom:10px;">งบประมาณตามประเภท</div><canvas id="chartBType2" height="220"></canvas></div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-head"><div class="card-title">รายละเอียดงบประมาณรายโครงการ</div></div>
+    <div class="tbl-wrap card-pad" style="padding-top:12px;">
+    <table><thead><tr><th>โครงการ</th><th>หมวดหมู่</th><th>ประเภทงบ</th><th>แหล่งงบ</th><th style="text-align:right;">จำนวนเงิน</th></tr></thead>
+      <tbody>
+        ${projs.map(p=>`<tr class="tbl-row" onclick="openProjectDetail('${p.id}')"><td>${escapeHtml(p.name)}</td><td>${escapeHtml(getCategory(p.categoryId)?.name||'-')}</td><td>${escapeHtml(p.budgetType||'-')}</td><td>${escapeHtml(p.budgetSource||'-')}</td><td style="text-align:right;font-weight:600;">${money(p.budgetAmount)}</td></tr>`).join('') || `<tr><td colspan="5"><div class="empty-state">ไม่มีข้อมูล</div></td></tr>`}
+      </tbody>
+      <tfoot><tr><td colspan="4" style="text-align:right;font-weight:700;">รวมทั้งหมด</td><td style="text-align:right;font-weight:700;color:var(--g-800);">${money(total)}</td></tr></tfoot>
+    </table>
+    </div>
+  </div>
+  `;
+}
+
+/* =========================================================================
+   VIEW: Base-year copy & bulk edit ("ปรับแก้โครงการ จากปีฐาน")
+   ========================================================================= */
+function viewBaseEdit(){
+  const otherYears = DB.fiscalYears.filter(y=>y!==DB.currentYear).sort((a,b)=>b-a);
+  if(!UI.baseEditSourceYear || !otherYears.includes(UI.baseEditSourceYear)){
+    UI.baseEditSourceYear = otherYears[0] || null;
+  }
+  const sourceYear = UI.baseEditSourceYear;
+  const sourceProjs = sourceYear ? DB.projects.filter(p=>p.year===sourceYear) : [];
+  const currentProjs = yearProjects();
+
+  return `
+  <div class="card card-pad" style="margin-bottom:16px;">
+    <div class="card-title" style="margin-bottom:6px;">ขั้นที่ 1 · คัดลอกโครงการจากปีฐาน</div>
+    <div class="small-muted" style="margin-bottom:12px;">เลือกปีฐาน (เช่นปีงบก่อนหน้า) แล้วติ๊กเลือกโครงการที่ต้องการนำมาปรับแก้เป็นปีงบ ${DB.currentYear} — ระบบจะคัดลอกข้อมูลทั้งหมดมาให้ (สถานะจะรีเซ็ตเป็น "ยังไม่เริ่ม" และวันที่จะว่างให้กำหนดใหม่)</div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+      <label class="small-muted" style="font-weight:600;">ปีฐาน:</label>
+      <select class="select" id="baseYearSelect">${otherYears.length? otherYears.map(y=>`<option value="${y}" ${y===sourceYear?'selected':''}>${y}</option>`).join('') : '<option value="">ไม่มีปีอื่น</option>'}</select>
+      <button class="btn btn-ghost btn-sm" id="btnSelectAllBase">เลือกทั้งหมด</button>
+      <button class="btn btn-ghost btn-sm" id="btnDeselectAllBase">ล้างการเลือก</button>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" id="btnCopySelected" ${!sourceProjs.length?'disabled':''}>📋 คัดลอกที่เลือกมาปี ${DB.currentYear}</button>
+    </div>
+    ${sourceProjs.length? `
+    <div class="tbl-wrap">
+    <table><thead><tr><th style="width:36px;"></th><th>โครงการ (ปี ${sourceYear})</th><th>หมวดหมู่</th><th>ผู้รับผิดชอบ</th><th style="text-align:right;">งบประมาณ</th></tr></thead>
+      <tbody>
+        ${sourceProjs.map(p=>`<tr>
+          <td><input type="checkbox" class="baseEditChk" data-id="${p.id}" ${UI.baseEditSelected.has(p.id)?'checked':''}></td>
+          <td>${escapeHtml(p.name)}</td>
+          <td class="small-muted">${escapeHtml(getCategory(p.categoryId)?.name||'-')}</td>
+          <td class="small-muted">${escapeHtml(getPersonName(p.ownerPersonId))}</td>
+          <td style="text-align:right;">${money(p.budgetAmount)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>` : `<div class="empty-state">ไม่มีโครงการในปีอื่นให้คัดลอก (เพิ่มปีงบที่เมนูตั้งค่า หรือสร้างโครงการในปีก่อนหน้าก่อน)</div>`}
+  </div>
+
+  <div class="card card-pad">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div class="card-title">ขั้นที่ 2 · ปรับแก้โครงการปีงบ ${DB.currentYear}</div>
+        <div class="small-muted">แก้ไขข้อมูลในตารางได้โดยตรง แล้วกด "บันทึกการแก้ไขทั้งหมด"</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary btn-sm" id="btnSaveBulkEdit">💾 บันทึกการแก้ไขทั้งหมด</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportProjectsExcel(${DB.currentYear})">⬇️ ส่งออก Excel</button>
+      </div>
+    </div>
+    ${currentProjs.length? `
+    <div class="tbl-wrap">
+    <table><thead><tr>
+      <th style="min-width:200px;">ชื่อโครงการ</th><th style="min-width:150px;">เป้าหมาย/หน่วยนับ</th><th>หมวดหมู่</th><th>ผู้รับผิดชอบ</th>
+      <th>เริ่ม</th><th>สิ้นสุด</th><th>งบ (บาท)</th><th>ประเภทงบ</th><th>แหล่งงบ</th><th>สถานะ</th><th></th>
+    </tr></thead>
+    <tbody>
+      ${currentProjs.map(p=>`<tr data-pid="${p.id}">
+        <td><input class="input be-name" style="min-width:190px;" value="${escapeHtml(p.name)}"></td>
+        <td><input class="input be-target" style="min-width:140px;" value="${escapeHtml(p.target||'')}"></td>
+        <td><select class="select be-cat">${DB.categories.map(c=>`<option value="${c.id}" ${c.id===p.categoryId?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}</select></td>
+        <td><select class="select be-owner">${DB.personnel.map(pe=>`<option value="${pe.id}" ${pe.id===p.ownerPersonId?'selected':''}>${escapeHtml(pe.name)}</option>`).join('')}</select></td>
+        <td><input class="input be-start" type="date" value="${p.startDate||''}" style="min-width:130px;"></td>
+        <td><input class="input be-end" type="date" value="${p.endDate||''}" style="min-width:130px;"></td>
+        <td><input class="input be-budget" type="number" min="0" value="${p.budgetAmount||0}" style="width:100px;"></td>
+        <td><select class="select be-btype">${DB.budgetTypes.map(b=>`<option ${b===p.budgetType?'selected':''}>${escapeHtml(b)}</option>`).join('')}</select></td>
+        <td><select class="select be-bsource">${DB.budgetSources.map(b=>`<option ${b===p.budgetSource?'selected':''}>${escapeHtml(b)}</option>`).join('')}</select></td>
+        <td><select class="select be-status">${STATUS_LIST.map(s=>`<option value="${s.id}" ${s.id===p.status?'selected':''}>${s.label}</option>`).join('')}</select></td>
+        <td><button class="icon-btn" onclick="deleteProject('${p.id}')">🗑️</button></td>
+      </tr>`).join('')}
+    </tbody>
+    </table>
+    </div>` : `<div class="empty-state">ยังไม่มีโครงการในปีงบ ${DB.currentYear} — คัดลอกจากปีฐานด้านบน หรือกดปุ่ม "＋ โครงการใหม่" มุมบนขวา</div>`}
+  </div>
+  `;
+}
+function copySelectedBaseProjects(){
+  if(!UI.baseEditSelected.size){ showToast('กรุณาเลือกอย่างน้อย 1 โครงการ'); return; }
+  let count=0;
+  UI.baseEditSelected.forEach(pid=>{
+    const src=getProject(pid); if(!src) return;
+    const maxSort=Math.max(0,...DB.projects.filter(p=>p.priority===src.priority && p.year===DB.currentYear).map(p=>p.sortOrder||0));
+    DB.projects.push({
+      id:uid('proj'), year:DB.currentYear, name:src.name, categoryId:src.categoryId, ownerPersonId:src.ownerPersonId,
+      priority:src.priority, status:'notstarted', startDate:'', endDate:'', budgetAmount:src.budgetAmount, budgetType:src.budgetType,
+      budgetSource:src.budgetSource, target:src.target||'', indicator:src.indicator||'', description:src.description||'',
+      attachments:[], sortOrder:maxSort+1, createdAt:new Date().toISOString()
+    });
+    count++;
+  });
+  saveDB();
+  UI.baseEditSelected.clear();
+  showToast(`คัดลอก ${count} โครงการมาปี ${DB.currentYear} เรียบร้อย ปรับแก้ในตารางด้านล่างได้เลย`);
+  document.getElementById('contentArea').innerHTML = viewBaseEdit();
+  wireGlobalEvents();
+}
+function saveBulkProjectEdits(){
+  const rows = document.querySelectorAll('#contentArea tr[data-pid]');
+  rows.forEach(row=>{
+    const pid=row.dataset.pid; const p=getProject(pid); if(!p) return;
+    const nameVal=row.querySelector('.be-name').value.trim();
+    p.name = nameVal || p.name;
+    p.target = row.querySelector('.be-target').value;
+    p.categoryId = row.querySelector('.be-cat').value;
+    p.ownerPersonId = row.querySelector('.be-owner').value;
+    p.startDate = row.querySelector('.be-start').value;
+    p.endDate = row.querySelector('.be-end').value;
+    p.budgetAmount = Number(row.querySelector('.be-budget').value)||0;
+    p.budgetType = row.querySelector('.be-btype').value;
+    p.budgetSource = row.querySelector('.be-bsource').value;
+    p.status = row.querySelector('.be-status').value;
+  });
+  saveDB();
+  showToast('บันทึกการแก้ไขทั้งหมดเรียบร้อย');
+  document.getElementById('contentArea').innerHTML = viewBaseEdit();
+  wireGlobalEvents();
+}
+
+/* =========================================================================
+   VIEW: Summary & Excel export (matches original imported-file column layout)
+   ========================================================================= */
+function viewExportSummary(){
+  const year = DB.currentYear;
+  const projs = yearProjects().slice().sort((a,b)=> (a.priority===b.priority? a.sortOrder-b.sortOrder : ({high:0,mid:1,low:2}[a.priority]-{high:0,mid:1,low:2}[b.priority])));
+  const total = projs.reduce((s,p)=>s+(Number(p.budgetAmount)||0),0);
+  let runningIdx=0;
+  const bodyRows = DB.categories.map(cat=>{
+    const catProjs = projs.filter(p=>p.categoryId===cat.id);
+    if(!catProjs.length) return '';
+    const head = `<tr><td colspan="8" style="background:var(--g-50);font-weight:700;color:var(--g-800);">${escapeHtml(cat.name)}</td></tr>`;
+    const rows = catProjs.map(p=>{
+      runningIdx++;
+      const budgetText = p.budgetAmount>0 ? `${escapeHtml(p.budgetType||'')} จำนวน ${money(p.budgetAmount)} บาท` : '-';
+      return `<tr class="tbl-row" onclick="openProjectDetail('${p.id}')">
+        <td>${runningIdx}</td>
+        <td style="max-width:260px;">${escapeHtml(p.name)}</td>
+        <td>${escapeHtml(p.target)||'-'}</td>
+        <td class="small-muted">${fmtDateShort(p.startDate)} – ${fmtDateShort(p.endDate)}</td>
+        <td>${budgetText}</td>
+        <td>${escapeHtml(p.budgetSource)||'-'}</td>
+        <td style="max-width:220px;">${escapeHtml(p.indicator)||'-'}</td>
+        <td>${escapeHtml(getPersonName(p.ownerPersonId))}</td>
+      </tr>`;
+    }).join('');
+    return head+rows;
+  }).join('');
+  return `
+  <div class="card card-pad" style="margin-bottom:16px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+    <div style="flex:1;min-width:240px;">
+      <div class="card-title">ตารางสรุปแผนงาน/โครงการ ปีงบประมาณ ${year}</div>
+      <div class="small-muted">รูปแบบคอลัมน์เดียวกับไฟล์แผนปฏิบัติการที่นำเข้าตอนแรก: ลำดับ · โครงการ/กิจกรรม · เป้าหมาย/หน่วยนับ · ระยะเวลาดำเนินการ · รายละเอียดการใช้จ่ายเงิน · แหล่งงบประมาณ · ตัวชี้วัดความสำเร็จ · ผู้รับผิดชอบ</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-ghost" onclick="exportBudgetSummaryExcel(${year})">⬇️ สรุปงบประมาณตามแหล่งงบ (Excel)</button>
+      <button class="btn btn-primary" onclick="exportProjectsExcel(${year})">⬇️ รายละเอียดแผนงาน (Excel)</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-pad" style="padding-bottom:0;">
+      <div style="text-align:center;font-weight:700;color:var(--g-900);font-size:15px;">แผนปฏิบัติงานด้านสาธารณสุข ปีงบประมาณ พ.ศ. ${year} จังหวัดสมุทรปราการ</div>
+      <div style="text-align:center;font-size:12px;color:var(--ink-soft);margin-bottom:10px;">หน่วยงาน : ${escapeHtml(DB.meta.group)}</div>
+    </div>
+    <div class="tbl-wrap card-pad" style="padding-top:0;">
+      <table>
+        <thead><tr><th>ลำดับ</th><th>โครงการ/กิจกรรม</th><th>เป้าหมาย/หน่วยนับ</th><th>ระยะเวลาดำเนินการ</th><th>รายละเอียดการใช้จ่ายเงิน</th><th>แหล่งงบประมาณ</th><th>ตัวชี้วัดความสำเร็จ</th><th>ผู้รับผิดชอบ</th></tr></thead>
+        <tbody>${bodyRows || `<tr><td colspan="8"><div class="empty-state">ไม่มีโครงการในปีงบนี้</div></td></tr>`}</tbody>
+        <tfoot><tr><td colspan="4" style="text-align:right;font-weight:700;">รวมทั้งแผนงาน/โครงการ</td><td colspan="4" style="font-weight:700;color:var(--g-800);">${money(total)} บาท</td></tr></tfoot>
+      </table>
+    </div>
+  </div>
+  <div class="small-muted" style="margin-top:10px;">* ตารางนี้เรียงตามหมวดหมู่และลำดับความสำคัญของโครงการ (ปรับลำดับได้ที่หน้า "โครงการทั้งหมด") ไฟล์ Excel ที่ส่งออกจะเรียงตามลำดับเดียวกันนี้</div>
+  `;
+}
+
+/* ---- Excel export via SheetJS ---- */
+function buildProjectsAOA(year){
+  const projs = DB.projects.filter(p=>p.year===year).slice().sort((a,b)=> (a.priority===b.priority? a.sortOrder-b.sortOrder : ({high:0,mid:1,low:2}[a.priority]-{high:0,mid:1,low:2}[b.priority])));
+  const aoa=[]; const merges=[];
+  aoa.push([`แผนปฏิบัติงานด้านสาธารณสุข ปีงบประมาณ พ.ศ. ${year} จังหวัดสมุทรปราการ`,'','','','','','','']);
+  merges.push({s:{r:0,c:0},e:{r:0,c:7}});
+  aoa.push(['โครงการตามนโยบายกระทรวงสาธารณสุขและแผนยุทธศาสตร์ที่เกี่ยวข้อง','','','หน่วยงาน :',DB.meta.group,'','','']);
+  merges.push({s:{r:1,c:0},e:{r:1,c:2}});
+  merges.push({s:{r:1,c:4},e:{r:1,c:7}});
+  aoa.push(['ลำดับ','โครงการ/กิจกรรม','เป้าหมาย/หน่วยนับ','ระยะเวลาดำเนินการ','รายละเอียดการใช้จ่ายเงิน','แหล่งงบประมาณ','ตัวชี้วัดความสำเร็จ','ผู้รับผิดชอบ']);
+  let idx=0, totalBudget=0;
+  const grouped = DB.categories.map(cat=>({cat, list: projs.filter(p=>p.categoryId===cat.id)})).filter(g=>g.list.length);
+  const uncatList = projs.filter(p=>!DB.categories.some(c=>c.id===p.categoryId));
+  if(uncatList.length) grouped.push({cat:{name:'อื่นๆ'}, list:uncatList});
+  grouped.forEach(g=>{
+    const rIdx=aoa.length;
+    aoa.push([g.cat.name,'','','','','','','']);
+    merges.push({s:{r:rIdx,c:0},e:{r:rIdx,c:7}});
+    g.list.forEach(p=>{
+      idx++;
+      const budgetText = p.budgetAmount>0 ? `${p.budgetType||''} จำนวน ${money(p.budgetAmount)} บาท` : '-';
+      totalBudget += Number(p.budgetAmount)||0;
+      aoa.push([idx, p.name, p.target||'-', `${fmtDateTH(p.startDate)} - ${fmtDateTH(p.endDate)}`, budgetText, p.budgetSource||'-', p.indicator||'-', getPersonName(p.ownerPersonId)]);
+    });
+  });
+  const totalRow=aoa.length;
+  aoa.push(['','','','','รวมทั้งแผนงาน/โครงการ', money(totalBudget)+' บาท','','']);
+  merges.push({s:{r:totalRow,c:0},e:{r:totalRow,c:3}});
+  merges.push({s:{r:totalRow,c:5},e:{r:totalRow,c:7}});
+  const colWidths=[6,42,26,20,32,22,32,22];
+  return {aoa, merges, colWidths};
+}
+function exportProjectsExcel(year){
+  if(typeof XLSX==='undefined'){ showToast('⚠️ โหลดไลบรารี Excel ไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วลองใหม่'); return; }
+  const {aoa, merges, colWidths} = buildProjectsAOA(year);
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!merges'] = merges;
+  ws['!cols'] = colWidths.map(w=>({wch:w}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'แผนงานโครงการ');
+  XLSX.writeFile(wb, `แผนงานโครงการ_ปีงบ${year}.xlsx`);
+  showToast('ส่งออกไฟล์ Excel เรียบร้อย');
+}
+
+/* ---- "สรุปงบประมาณตามแหล่งที่มา" export — mirrors the Sheet "สรุป" layout of the uploaded template exactly ---- */
+function sourceColumnInfo(source){
+  // Maps our 6 app budget-source labels back onto the template's 5 physical columns + remark note,
+  // the same way the original file buckets "กองทุนภูมิปัญญา" / "สนง.เขตสุขภาพที่ 6" under "อื่นๆ" with a remark.
+  switch(source){
+    case 'เงินบำรุง': return {col:0, remark:''};
+    case 'เงินงบประมาณ': return {col:1, remark:''};
+    case 'งบ UC': return {col:2, remark:''};
+    case 'งบกองทุนส่งเสริมภูมิปัญญา': return {col:4, remark:'กองทุนภูมิปัญญา'};
+    case 'งบสำนักงานเขตสุขภาพที่ 6': return {col:4, remark:'สนง.เขตสุขภาพที่ 6'};
+    default: return {col:4, remark:''}; // 'อื่นๆ' / unrecognized
+  }
+}
+function buildBudgetSummaryAOA(year){
+  const projs = DB.projects.filter(p=>p.year===year).slice().sort((a,b)=> (a.priority===b.priority? a.sortOrder-b.sortOrder : ({high:0,mid:1,low:2}[a.priority]-{high:0,mid:1,low:2}[b.priority])));
+  const aoa=[]; const merges=[];
+  aoa.push([`สรุปโครงการ งบประมาณ และแหล่งงบประมาณ ตามแผนปฏิบัติการด้านสาธารณสุข ปีงบประมาณ พ.ศ. ${year}`]);
+  merges.push({s:{r:0,c:0},e:{r:0,c:12}});
+  aoa.push([`${DB.meta.group} ${DB.meta.org}`]);
+  merges.push({s:{r:1,c:0},e:{r:1,c:12}});
+  aoa.push([]);
+  const headRow1 = aoa.length;
+  aoa.push(['ลำดับ','โครงการ','แหล่งงบประมาณ','','','','','วงเงินทั้งโครงการ (บาท)','ความต้องการการใช้จ่ายเงิน','','','ร้อยละของการเบิกจ่าย','หมายเหตุ']);
+  const headRow2 = aoa.length;
+  aoa.push(['','','เงินบำรุง (บาท)','เงินงบประมาณ (บาท)','งบ UC (บาท)','กองทุนตำบล (บาท)','อื่นๆ (บาท)','','ขออนุมัติ (บาท)','ใช้ไป (บาท)','คงเหลือ (บาท)','','']);
+  merges.push({s:{r:headRow1,c:0},e:{r:headRow2,c:0}}); // ลำดับ
+  merges.push({s:{r:headRow1,c:1},e:{r:headRow2,c:1}}); // โครงการ
+  merges.push({s:{r:headRow1,c:2},e:{r:headRow1,c:6}}); // แหล่งงบประมาณ span
+  merges.push({s:{r:headRow1,c:7},e:{r:headRow2,c:7}}); // วงเงินทั้งโครงการ
+  merges.push({s:{r:headRow1,c:8},e:{r:headRow1,c:10}}); // ความต้องการการใช้จ่ายเงิน span
+  merges.push({s:{r:headRow1,c:11},e:{r:headRow2,c:11}}); // ร้อยละของการเบิกจ่าย
+  merges.push({s:{r:headRow1,c:12},e:{r:headRow2,c:12}}); // หมายเหตุ
+
+  let idx=0;
+  const colSums=[0,0,0,0,0]; let grandTotal=0;
+  const grouped = DB.categories.map((cat,ci)=>({cat, list: projs.filter(p=>p.categoryId===cat.id)})).filter(g=>g.list.length);
+  const uncatList = projs.filter(p=>!DB.categories.some(c=>c.id===p.categoryId));
+  if(uncatList.length) grouped.push({cat:{name:'อื่นๆ'}, list:uncatList});
+
+  grouped.forEach((g,gi)=>{
+    const sectionTotal = g.list.reduce((s,p)=>s+(Number(p.budgetAmount)||0),0);
+    const rIdx=aoa.length;
+    aoa.push([`ส่วนที่ ${gi+1}`, g.cat.name, '','','','','', sectionTotal, '','','','','บาท']);
+    merges.push({s:{r:rIdx,c:1},e:{r:rIdx,c:6}});
+    g.list.forEach(p=>{
+      idx++;
+      const amounts=[0,0,0,0,0];
+      const {col, remark} = sourceColumnInfo(p.budgetSource);
+      amounts[col] = Number(p.budgetAmount)||0;
+      colSums[col]+=amounts[col];
+      grandTotal += Number(p.budgetAmount)||0;
+      aoa.push([idx, p.name, amounts[0]||'', amounts[1]||'', amounts[2]||'', amounts[3]||'', amounts[4]||'', p.budgetAmount||0, '', '', '', '', remark]);
+    });
+  });
+  const totalRow=aoa.length;
+  aoa.push(['งบประมาณทั้งหมด','', colSums[0], colSums[1], colSums[2], colSums[3], colSums[4], grandTotal, '', '', '', '', 'บาท']);
+  const colWidths=[7,40,13,14,11,13,11,15,12,10,12,12,20];
+  return {aoa, merges, colWidths};
+}
+function exportBudgetSummaryExcel(year){
+  if(typeof XLSX==='undefined'){ showToast('⚠️ โหลดไลบรารี Excel ไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วลองใหม่'); return; }
+  const {aoa, merges, colWidths} = buildBudgetSummaryAOA(year);
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!merges'] = merges;
+  ws['!cols'] = colWidths.map(w=>({wch:w}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'สรุป');
+  XLSX.writeFile(wb, `สรุปงบประมาณ_ปีงบ${year}.xlsx`);
+  showToast('ส่งออกไฟล์สรุปงบประมาณ (รูปแบบเดียวกับไฟล์ต้นฉบับ) เรียบร้อย');
+}
+
+/* =========================================================================
+   VIEW: People
+   ========================================================================= */
+function viewPeople(){
+  return `
+  <div class="filter-bar"><div class="spacer"></div><button class="btn btn-primary btn-sm" onclick="openPersonForm()">＋ เพิ่มบุคลากร</button></div>
+  <div class="grid grid-3">
+    ${DB.personnel.map(p=>{
+      const myTasks=DB.tasks.filter(t=>t.assigneeId===p.id);
+      const myProjects=DB.projects.filter(pr=>pr.ownerPersonId===p.id && pr.year===DB.currentYear);
+      const done=myTasks.filter(t=>t.status==='done').length;
+      return `<div class="card person-card" onclick="viewPersonPage('${p.id}')">
+        <div class="avatar" style="background:${colorForId(p.id)}">${initials(p.name)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:14px;">${escapeHtml(p.name)}</div>
+          <div class="small-muted" style="margin-bottom:8px;">${escapeHtml(p.position)}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <span class="tag-chip">📁 ${myProjects.length} โครงการ</span>
+            <span class="tag-chip">✅ ${done}/${myTasks.length} งานย่อย</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('') || `<div class="empty-state">ยังไม่มีข้อมูลบุคลากร</div>`}
+  </div>`;
+}
+function viewPersonPage(id){ UI.route='people'; UI.personDetailId=id; render(); }
+function viewPersonDetail(id){
+  const p=getPerson(id); if(!p){ UI.personDetailId=null; return viewPeople(); }
+  const myTasks=DB.tasks.filter(t=>t.assigneeId===id);
+  const myProjects=DB.projects.filter(pr=>pr.ownerPersonId===id);
+  const done=myTasks.filter(t=>t.status==='done').length;
+  const evals=DB.evaluations.filter(e=>e.personId===id).sort((a,b)=>b.evaluatedAt.localeCompare(a.evaluatedAt));
+  return `
+  <button class="btn btn-ghost btn-sm" style="margin-bottom:14px;" onclick="UI.personDetailId=null;render()">← กลับไปหน้าบุคลากร</button>
+  <div class="card card-pad" style="display:flex;gap:16px;align-items:center;margin-bottom:16px;">
+    <div class="avatar" style="width:56px;height:56px;font-size:18px;background:${colorForId(p.id)}">${initials(p.name)}</div>
+    <div style="flex:1;">
+      <div style="font-weight:700;font-size:18px;">${escapeHtml(p.name)}</div>
+      <div class="small-muted">${escapeHtml(p.position)} ${p.phone?'· ☎ '+escapeHtml(p.phone):''} ${p.email?'· ✉ '+escapeHtml(p.email):''}</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="openPersonForm('${p.id}')">✏️ แก้ไข</button>
+    <button class="btn btn-danger btn-sm" onclick="deletePerson('${p.id}')">ลบ</button>
+  </div>
+  <div class="grid grid-4">
+    ${kpiCard('📁','โครงการที่รับผิดชอบ (ทุกปี)', myProjects.length,'')}
+    ${kpiCard('✅','งานย่อยทั้งหมด', myTasks.length, done+' รายการเสร็จสิ้น')}
+    ${kpiCard('📈','อัตราสำเร็จงาน', myTasks.length?Math.round(done/myTasks.length*100)+'%':'-','')}
+    ${kpiCard('⭐','ผลประเมินล่าสุด', evals.length?evalOverall(evals[0]).toFixed(1):'-', evals.length?evals[0].period:'ยังไม่มีการประเมิน')}
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-head"><div class="card-title">โครงการที่รับผิดชอบ</div></div>
+    <div class="card-pad" style="padding-top:10px;">
+      ${myProjects.length? myProjects.map(pr=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer" onclick="openProjectDetail('${pr.id}')">
+        <div><b>${escapeHtml(pr.name)}</b><div class="small-muted">ปีงบ ${pr.year}</div></div><span class="badge ${statusObj(pr.status).cls}">${statusObj(pr.status).label}</span>
+      </div>`).join('') : '<div class="small-muted">ยังไม่มีโครงการ</div>'}
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-head"><div class="card-title">งานย่อยที่รับผิดชอบ</div></div>
+    <div class="card-pad" style="padding-top:10px;">
+      ${myTasks.length? myTasks.map(t=>`<div class="subtask-row"><span class="chk ${t.status==='done'?'done':''}">${t.status==='done'?'✓':''}</span><div style="flex:1;"><b style="font-size:13px;">${escapeHtml(t.name)}</b><div class="small-muted">${escapeHtml(getProject(t.projectId)?.name||'')} · กำหนดเสร็จ ${fmtDateTH(t.dueDate)}</div></div><span class="badge ${statusObj(t.status).cls}">${statusObj(t.status).label}</span></div>`).join('') : '<div class="small-muted">ยังไม่มีงานย่อย</div>'}
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-head"><div class="card-title">ประวัติการประเมินผลงาน</div><button class="link-btn" onclick="openEvalForm(null,'${id}')">+ ประเมินใหม่</button></div>
+    <div class="card-pad" style="padding-top:10px;">
+      ${evals.length? evals.map(ev=>`<div style="padding:9px 0;border-bottom:1px solid var(--line);">
+        <div style="display:flex;justify-content:space-between;"><b>${escapeHtml(ev.period)}</b><span style="color:var(--g-700);font-weight:700;">${evalOverall(ev).toFixed(1)} / 5</span></div>
+        <div class="small-muted">${escapeHtml(ev.note||'')}</div>
+      </div>`).join('') : '<div class="small-muted">ยังไม่มีประวัติการประเมิน</div>'}
+    </div>
+  </div>`;
+}
+function evalOverall(ev){ const c=ev.criteria; const vals=[c.quantity,c.quality,c.punctuality,c.teamwork]; return vals.reduce((a,b)=>a+b,0)/vals.length; }
+
+function openPersonForm(id){
+  const editing=!!id;
+  const p = editing? getPerson(id) : {id:null,name:'',position:'',phone:'',email:'',startDate:'',note:''};
+  const body=`
+    <div class="form-row"><label>ชื่อ-นามสกุล *</label><input class="input" id="p_name" value="${escapeHtml(p.name)}"></div>
+    <div class="form-row"><label>ตำแหน่ง</label><input class="input" id="p_position" value="${escapeHtml(p.position)}"></div>
+    <div class="form-2col">
+      <div class="form-row"><label>เบอร์โทร</label><input class="input" id="p_phone" value="${escapeHtml(p.phone)}"></div>
+      <div class="form-row"><label>อีเมล</label><input class="input" id="p_email" value="${escapeHtml(p.email)}"></div>
+    </div>
+    <div class="form-row"><label>วันเริ่มงาน</label><input class="input" type="date" id="p_start" value="${p.startDate||''}"></div>
+    <div class="form-row"><label>หมายเหตุ</label><textarea class="input" id="p_note">${escapeHtml(p.note||'')}</textarea></div>
+  `;
+  const footer=`<button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="savePersonForm(${editing?`'${id}'`:'null'})">💾 บันทึก</button>`;
+  openModal(editing?'แก้ไขข้อมูลบุคลากร':'เพิ่มบุคลากรใหม่', body, footer);
+}
+function savePersonForm(id){
+  const name=document.getElementById('p_name').value.trim();
+  if(!name){ showToast('กรุณากรอกชื่อ'); return; }
+  const data={name, position:document.getElementById('p_position').value, phone:document.getElementById('p_phone').value, email:document.getElementById('p_email').value, startDate:document.getElementById('p_start').value, note:document.getElementById('p_note').value};
+  if(id){ Object.assign(getPerson(id), data); }
+  else{ DB.personnel.push(Object.assign({id:uid('p')}, data)); }
+  saveDB(); closeModal(); render();
+  showToast('บันทึกข้อมูลบุคลากรเรียบร้อย');
+}
+function deletePerson(id){
+  if(!confirm('ลบบุคลากรคนนี้หรือไม่? (งานที่มอบหมายไว้จะยังคงอยู่แต่ไม่มีผู้รับผิดชอบ)')) return;
+  DB.personnel = DB.personnel.filter(p=>p.id!==id);
+  saveDB(); UI.personDetailId=null; UI.route='people'; render();
+}
+
+/* =========================================================================
+   VIEW: Performance (compare all)
+   ========================================================================= */
+function viewPerformance(){
+  return `
+  <div class="card card-pad">
+    <div class="card-title" style="margin-bottom:12px;">เปรียบเทียบภาระงานและอัตราความสำเร็จ (ทุกปีงบ)</div>
+    <canvas id="chartPerf" height="110"></canvas>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="tbl-wrap card-pad">
+    <table><thead><tr><th>บุคลากร</th><th>ตำแหน่ง</th><th>โครงการที่รับผิดชอบ</th><th>งานย่อยทั้งหมด</th><th>เสร็จสิ้น</th><th>อัตราสำเร็จ</th><th>คะแนนประเมินล่าสุด</th></tr></thead>
+      <tbody>
+        ${DB.personnel.map(p=>{
+          const myTasks=DB.tasks.filter(t=>t.assigneeId===p.id);
+          const done=myTasks.filter(t=>t.status==='done').length;
+          const myProjects=DB.projects.filter(pr=>pr.ownerPersonId===p.id);
+          const evals=DB.evaluations.filter(e=>e.personId===p.id).sort((a,b)=>b.evaluatedAt.localeCompare(a.evaluatedAt));
+          return `<tr class="tbl-row" onclick="viewPersonPage('${p.id}')">
+            <td style="display:flex;align-items:center;gap:8px;"><span class="avatar" style="width:26px;height:26px;font-size:10px;background:${colorForId(p.id)}">${initials(p.name)}</span>${escapeHtml(p.name)}</td>
+            <td class="small-muted">${escapeHtml(p.position)}</td>
+            <td>${myProjects.length}</td><td>${myTasks.length}</td><td>${done}</td>
+            <td>${myTasks.length? Math.round(done/myTasks.length*100)+'%':'-'}</td>
+            <td>${evals.length? evalOverall(evals[0]).toFixed(1)+' / 5':'-'}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+  </div>`;
+}
+
+/* =========================================================================
+   VIEW: Evaluation
+   ========================================================================= */
+function viewEvaluation(){
+  const evals = DB.evaluations.slice().sort((a,b)=>b.evaluatedAt.localeCompare(a.evaluatedAt));
+  return `
+  <div class="filter-bar"><div class="spacer"></div><button class="btn btn-primary btn-sm" onclick="openEvalForm()">＋ ประเมินผลงานใหม่</button></div>
+  <div class="card">
+    <div class="tbl-wrap card-pad">
+    <table><thead><tr><th>บุคลากร</th><th>รอบการประเมิน</th><th>ปริมาณงาน</th><th>คุณภาพ</th><th>ตรงเวลา</th><th>ทำงานร่วมกัน</th><th>คะแนนรวม</th><th>บันทึก</th><th></th></tr></thead>
+      <tbody>
+        ${evals.length? evals.map(ev=>`<tr>
+          <td style="font-weight:600;">${escapeHtml(getPersonName(ev.personId))}</td>
+          <td>${escapeHtml(ev.period)}</td>
+          <td>${starDisplay(ev.criteria.quantity)}</td><td>${starDisplay(ev.criteria.quality)}</td>
+          <td>${starDisplay(ev.criteria.punctuality)}</td><td>${starDisplay(ev.criteria.teamwork)}</td>
+          <td style="font-weight:700;color:var(--g-800);">${evalOverall(ev).toFixed(1)}</td>
+          <td class="small-muted" style="max-width:180px;">${escapeHtml(ev.note||'-')}</td>
+          <td><button class="icon-btn" onclick="openEvalForm('${ev.id}')">✏️</button></td>
+        </tr>`).join('') : `<tr><td colspan="9"><div class="empty-state">ยังไม่มีข้อมูลการประเมิน</div></td></tr>`}
+      </tbody>
+    </table>
+    </div>
+  </div>`;
+}
+function starDisplay(n){ let s=''; for(let i=1;i<=5;i++) s+= i<=n?'★':'☆'; return `<span style="color:var(--gold);letter-spacing:1px;">${s}</span>`; }
+function openEvalForm(id, presetPerson){
+  const editing=!!id;
+  const ev = editing? DB.evaluations.find(e=>e.id===id) : {id:null, personId:presetPerson||DB.personnel[0]?.id||'', year:DB.currentYear, period:'รอบที่ 1/'+DB.currentYear, criteria:{quantity:3,quality:3,punctuality:3,teamwork:3}, note:''};
+  const body=`
+    <div class="form-2col">
+      <div class="form-row"><label>บุคลากร</label><select class="select" id="e_person">${DB.personnel.map(p=>`<option value="${p.id}" ${p.id===ev.personId?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}</select></div>
+      <div class="form-row"><label>รอบการประเมิน</label><input class="input" id="e_period" value="${escapeHtml(ev.period)}"></div>
+    </div>
+    <div class="section-title" style="margin-top:4px;">ให้คะแนนแต่ละด้าน (1-5 ดาว)<span class="line-flex"></span></div>
+    ${['quantity','quality','punctuality','teamwork'].map((k,i)=>{
+      const labels={quantity:'ปริมาณงาน',quality:'คุณภาพงาน',punctuality:'ความตรงต่อเวลา',teamwork:'การทำงานร่วมกับผู้อื่น'};
+      return `<div class="form-row"><label>${labels[k]}</label><div class="star-row" data-key="${k}">${[1,2,3,4,5].map(n=>`<span class="star ${n<=ev.criteria[k]?'on':''}" data-val="${n}" onclick="setStar('${k}',${n})">★</span>`).join('')}</div></div>`;
+    }).join('')}
+    <div class="form-row"><label>บันทึก/ข้อเสนอแนะ</label><textarea class="input" id="e_note">${escapeHtml(ev.note||'')}</textarea></div>
+  `;
+  const footer=`
+    ${editing?`<button class="btn btn-danger" onclick="deleteEval('${id}')">ลบ</button>`:''}
+    <button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="saveEvalForm(${editing?`'${id}'`:'null'})">💾 บันทึกผลประเมิน</button>`;
+  openModal(editing?'แก้ไขผลการประเมิน':'ประเมินผลงานรายบุคคล', body, footer);
+  window.__currentEvalCriteria = JSON.parse(JSON.stringify(ev.criteria));
+}
+function setStar(key,val){
+  window.__currentEvalCriteria[key]=val;
+  const row=document.querySelector(`.star-row[data-key="${key}"]`);
+  row.querySelectorAll('.star').forEach(s=>{ s.classList.toggle('on', Number(s.dataset.val)<=val); });
+}
+function saveEvalForm(id){
+  const data={ personId:document.getElementById('e_person').value, year:DB.currentYear, period:document.getElementById('e_period').value, criteria:window.__currentEvalCriteria, note:document.getElementById('e_note').value, evaluatedAt:new Date().toISOString() };
+  if(id){ Object.assign(DB.evaluations.find(e=>e.id===id), data); }
+  else{ DB.evaluations.push(Object.assign({id:uid('eval')}, data)); }
+  saveDB(); closeModal(); render();
+  showToast('บันทึกผลการประเมินเรียบร้อย');
+}
+function deleteEval(id){
+  if(!confirm('ลบผลการประเมินนี้หรือไม่?')) return;
+  DB.evaluations = DB.evaluations.filter(e=>e.id!==id);
+  saveDB(); closeModal(); render();
+}
+
+/* =========================================================================
+   VIEW: Settings
+   ========================================================================= */
+function viewSettings(){
+  return `
+  <div class="grid grid-2">
+    <div class="card card-pad">
+      <div class="card-title" style="margin-bottom:12px;">ปีงบประมาณ</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        ${DB.fiscalYears.slice().sort((a,b)=>a-b).map(y=>`<span class="tag-chip">${y} ${DB.fiscalYears.length>1?`<button class="icon-btn" style="width:18px;height:18px;border:none;font-size:10px;" onclick="removeFY(${y})">✕</button>`:''}</span>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px;"><input class="input" id="newFY" type="number" placeholder="เช่น 2572" style="max-width:140px;"><button class="btn btn-ghost btn-sm" onclick="addFY()">+ เพิ่มปีงบ</button></div>
+    </div>
+    <div class="card card-pad">
+      <div class="card-title" style="margin-bottom:12px;">หมวดหมู่โครงการ</div>
+      ${DB.categories.map(c=>`<div class="tag-chip" style="margin:0 6px 8px 0;">${escapeHtml(c.name)} <button class="icon-btn" style="width:18px;height:18px;border:none;font-size:10px;" onclick="removeCategory('${c.id}')">✕</button></div>`).join('')}
+      <div style="display:flex;gap:8px;margin-top:6px;"><input class="input" id="newCat" placeholder="ชื่อหมวดหมู่ใหม่"><button class="btn btn-ghost btn-sm" onclick="addCategory()">+ เพิ่ม</button></div>
+    </div>
+    <div class="card card-pad">
+      <div class="card-title" style="margin-bottom:12px;">แหล่งงบประมาณ</div>
+      ${DB.budgetSources.map((b,i)=>`<div class="tag-chip" style="margin:0 6px 8px 0;">${escapeHtml(b)} <button class="icon-btn" style="width:18px;height:18px;border:none;font-size:10px;" onclick="removeListItem('budgetSources',${i})">✕</button></div>`).join('')}
+      <div style="display:flex;gap:8px;margin-top:6px;"><input class="input" id="newSource" placeholder="แหล่งงบใหม่"><button class="btn btn-ghost btn-sm" onclick="addListItem('budgetSources','newSource')">+ เพิ่ม</button></div>
+    </div>
+    <div class="card card-pad">
+      <div class="card-title" style="margin-bottom:12px;">ประเภทงบประมาณ</div>
+      ${DB.budgetTypes.map((b,i)=>`<div class="tag-chip" style="margin:0 6px 8px 0;">${escapeHtml(b)} <button class="icon-btn" style="width:18px;height:18px;border:none;font-size:10px;" onclick="removeListItem('budgetTypes',${i})">✕</button></div>`).join('')}
+      <div style="display:flex;gap:8px;margin-top:6px;"><input class="input" id="newType" placeholder="ประเภทงบใหม่"><button class="btn btn-ghost btn-sm" onclick="addListItem('budgetTypes','newType')">+ เพิ่ม</button></div>
+    </div>
+  </div>
+
+  <div class="card card-pad" style="margin-top:16px;">
+    <div class="card-title" style="margin-bottom:12px;">สำรอง / นำเข้าข้อมูล</div>
+    <p class="small-muted">ข้อมูลทั้งหมดถูกเก็บไว้ในเบราว์เซอร์นี้เท่านั้น (Local Storage) แนะนำให้ส่งออกไฟล์สำรองเป็นระยะ และก่อนล้างข้อมูลเบราว์เซอร์</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+      <button class="btn btn-primary" onclick="exportJSON()">⬇️ ส่งออกข้อมูลทั้งหมด (JSON)</button>
+      <label class="btn btn-ghost" style="cursor:pointer;">⬆️ นำเข้าข้อมูล (JSON)<input type="file" id="importFile" accept="application/json" style="display:none"></label>
+      <button class="btn btn-danger" onclick="resetAllData()">♻️ ล้างข้อมูลทั้งหมด / เริ่มใหม่</button>
+    </div>
+  </div>
+
+  <div class="card card-pad" style="margin-top:16px;">
+    <div class="card-title" style="margin-bottom:10px;">📋 ไฟล์ที่แนะนำให้เตรียม/ส่งเพิ่มเติม เพื่อให้ระบบสมบูรณ์ยิ่งขึ้น</div>
+    <ol style="margin:0; padding-left:20px; font-size:13px; line-height:1.9;">
+      <li><b>ทำเนียบบุคลากรกลุ่มงาน</b> — รายชื่อ-นามสกุลจริง ตำแหน่ง เบอร์โทร/อีเมล (ถ้ามี) เพื่อแทนที่ข้อมูลตัวอย่าง</li>
+      <li><b>รายชื่อโครงการปีงบปัจจุบันแบบสรุป 1 บรรทัด/โครงการ</b> (ชื่อ, งบประมาณ, ผู้รับผิดชอบ, กำหนดเริ่ม-จบ) — จะช่วยให้แปลงจากไฟล์ Excel เดิม (ที่มีลักษณะเป็นเอกสารข้อความหลายบรรทัดต่อโครงการ) เข้าระบบได้แม่นยำและรวดเร็วกว่า</li>
+      <li><b>เกณฑ์/แบบฟอร์มประเมินผลงานรายบุคคลที่ใช้จริง</b> ของกลุ่มงานหรือ สสจ. (ถ้ามีแบบฟอร์มทางการ จะช่วยปรับหัวข้อ/น้ำหนักคะแนนในระบบให้ตรงมาตรฐาน)</li>
+      <li><b>โครงสร้างงบประมาณที่ใช้จริง</b> — รายชื่อแหล่งงบและประเภทงบทั้งหมดที่กลุ่มงานใช้ (ปัจจุบันใส่ค่าตั้งต้นไว้ให้ แก้ไขเพิ่ม/ลบได้ในหน้านี้)</li>
+      <li><b>(ถ้าต้องการ)</b> ผังโครงสร้างองค์กร/สายบังคับบัญชากลุ่มงาน เพื่อใช้จัดกลุ่มบุคลากรหรือสิทธิ์การเข้าถึงในเวอร์ชันถัดไป</li>
+    </ol>
+    <p class="small-muted" style="margin-top:10px;">ไม่จำเป็นต้องส่งครบทุกข้อในครั้งเดียว — สามารถกรอกข้อมูลเพิ่มเองในแอปนี้ได้เลย (เมนู "บุคลากรทั้งหมด" และ "โครงการทั้งหมด → เพิ่มโครงการใหม่") ไฟล์แผนปฏิบัติการปีล่าสุดที่พี่จีส่งมาถูกใช้เป็นตัวอย่างสร้างหมวดหมู่และโครงการตัวอย่าง 2 รายการในระบบแล้ว</p>
+  </div>
+  <div class="credit-footer">สร้างโดยน้องมายด์ 🌸 ระบบบริหารแผนงานโครงการและบุคลากร · ${DB.meta.group} · ${DB.meta.version}</div>
+  `;
+}
+function addFY(){ const v=Number(document.getElementById('newFY').value); if(!v) return; if(!DB.fiscalYears.includes(v)){ DB.fiscalYears.push(v); saveDB(); render(); } }
+function removeFY(y){ if(DB.fiscalYears.length<=1){ showToast('ต้องมีอย่างน้อย 1 ปีงบ'); return;} DB.fiscalYears=DB.fiscalYears.filter(x=>x!==y); if(DB.currentYear===y) DB.currentYear=DB.fiscalYears[0]; saveDB(); render(); }
+function addCategory(){ const v=document.getElementById('newCat').value.trim(); if(!v) return; DB.categories.push({id:uid('cat'),name:v,color:'#'+Math.floor(Math.random()*16777215).toString(16)}); saveDB(); render(); }
+function removeCategory(id){ DB.categories=DB.categories.filter(c=>c.id!==id); saveDB(); render(); }
+function addListItem(listName, inputId){ const v=document.getElementById(inputId).value.trim(); if(!v) return; DB[listName].push(v); saveDB(); render(); }
+function removeListItem(listName, idx){ DB[listName].splice(idx,1); saveDB(); render(); }
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='WorkPeopleOps_backup_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('ส่งออกไฟล์สำรองเรียบร้อย');
+}
+function resetAllData(){
+  if(!confirm('ยืนยันล้างข้อมูลทั้งหมดและเริ่มต้นใหม่ด้วยข้อมูลตัวอย่าง? การกระทำนี้ไม่สามารถย้อนกลับได้')) return;
+  DB=seedData(); saveDB(); render();
+  showToast('รีเซ็ตข้อมูลเรียบร้อย');
+}
+
+/* =========================================================================
+   Modal system
+   ========================================================================= */
+function openModal(title, bodyHtml, footerHtml, wide){
+  closeModal();
+  const overlay=document.createElement('div');
+  overlay.className='modal-overlay'; overlay.id='modalOverlay';
+  overlay.innerHTML=`<div class="modal ${wide?'modal-wide':''}">
+    <div class="modal-head"><h3>${escapeHtml(title)}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">${bodyHtml}</div>
+    <div class="modal-foot">${footerHtml}</div>
+  </div>`;
+  overlay.addEventListener('mousedown', (e)=>{ if(e.target===overlay) closeModal(); });
+  document.body.appendChild(overlay);
+}
+function closeModal(){ const o=document.getElementById('modalOverlay'); if(o) o.remove(); }
+function openProjectFormQuick(){ openProjectForm(); }
+
+/* =========================================================================
+   Global events + charts
+   ========================================================================= */
+function wireGlobalEvents(){
+  const fy=document.getElementById('fySelect');
+  if(fy) fy.addEventListener('change', e=>{ DB.currentYear=Number(e.target.value); saveDB(); render(); });
+  const qa=document.getElementById('btnQuickAddProject');
+  if(qa) qa.addEventListener('click', ()=>openProjectForm());
+
+  document.querySelectorAll('.nav-item').forEach(el=>{
+    el.addEventListener('click', ()=>{ UI.route=el.dataset.route; UI.personDetailId=null; render(); });
+  });
+
+  if(UI.route==='projects'){
+    const q=document.getElementById('fltQ'); if(q) q.addEventListener('input', e=>{ UI.projectFilter.q=e.target.value; document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
+    const s=document.getElementById('fltStatus'); if(s) s.addEventListener('change', e=>{ UI.projectFilter.status=e.target.value; document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
+    const c=document.getElementById('fltCat'); if(c) c.addEventListener('change', e=>{ UI.projectFilter.cat=e.target.value; document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
+    const pr=document.getElementById('fltPri'); if(pr) pr.addEventListener('change', e=>{ UI.projectFilter.pri=e.target.value; document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
+    const ow=document.getElementById('fltOwner'); if(ow) ow.addEventListener('change', e=>{ UI.projectFilter.owner=e.target.value; document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
+    const src=document.getElementById('fltSource'); if(src) src.addEventListener('change', e=>{ UI.projectFilter.source=e.target.value; document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
+    const clr=document.getElementById('btnClearFilter'); if(clr) clr.addEventListener('click', ()=>{ UI.projectFilter={status:'',cat:'',pri:'',q:'',owner:'',source:''}; document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
+    document.querySelectorAll('.projSelChk').forEach(chk=>{
+      chk.addEventListener('change', e=>{ const id=e.target.dataset.id; if(e.target.checked) UI.projectsSelected.add(id); else UI.projectsSelected.delete(id); document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
+    });
+    const selAllP=document.getElementById('btnSelectAllProj');
+    if(selAllP) selAllP.addEventListener('click', ()=>{ document.querySelectorAll('.projSelChk').forEach(c=>{ UI.projectsSelected.add(c.dataset.id); }); document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
+    const clearSelP=document.getElementById('btnClearSelProj');
+    if(clearSelP) clearSelP.addEventListener('click', ()=>{ UI.projectsSelected.clear(); document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
+    const moveBtn=document.getElementById('btnMoveProjYear');
+    if(moveBtn) moveBtn.addEventListener('click', openMoveProjectsModal);
+  }
+  if(UI.route==='settings'){
+    const imp=document.getElementById('importFile');
+    if(imp) imp.addEventListener('change', handleImportJSON);
+  }
+  if(UI.route==='baseedit'){
+    const by=document.getElementById('baseYearSelect');
+    if(by) by.addEventListener('change', e=>{ UI.baseEditSourceYear=Number(e.target.value)||null; UI.baseEditSelected.clear(); document.getElementById('contentArea').innerHTML=viewBaseEdit(); wireGlobalEvents(); });
+    document.querySelectorAll('.baseEditChk').forEach(chk=>{
+      chk.addEventListener('change', e=>{ const id=e.target.dataset.id; if(e.target.checked) UI.baseEditSelected.add(id); else UI.baseEditSelected.delete(id); });
+    });
+    const selAll=document.getElementById('btnSelectAllBase');
+    if(selAll) selAll.addEventListener('click', ()=>{ document.querySelectorAll('.baseEditChk').forEach(c=>{ c.checked=true; UI.baseEditSelected.add(c.dataset.id); }); });
+    const deselAll=document.getElementById('btnDeselectAllBase');
+    if(deselAll) deselAll.addEventListener('click', ()=>{ document.querySelectorAll('.baseEditChk').forEach(c=>{ c.checked=false; }); UI.baseEditSelected.clear(); });
+    const copyBtn=document.getElementById('btnCopySelected');
+    if(copyBtn) copyBtn.addEventListener('click', copySelectedBaseProjects);
+    const saveBtn=document.getElementById('btnSaveBulkEdit');
+    if(saveBtn) saveBtn.addEventListener('click', saveBulkProjectEdits);
+  }
+}
+function refreshBackground(){
+  // re-render current list-type views quietly to keep counts fresh when modal stays open
+  if(!document.getElementById('modalOverlay')){
+    document.getElementById('contentArea').innerHTML = renderRoute();
+    wireGlobalEvents(); afterRenderHook();
+  }
+}
+function handleImportJSON(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const data=JSON.parse(reader.result);
+      if(!data.projects || !data.personnel){ showToast('ไฟล์ไม่ถูกต้อง'); return; }
+      if(confirm('นำเข้าข้อมูลนี้จะแทนที่ข้อมูลปัจจุบันทั้งหมด ยืนยันหรือไม่?')){
+        DB=data; saveDB(); render(); showToast('นำเข้าข้อมูลเรียบร้อย');
+      }
+    }catch(err){ showToast('อ่านไฟล์ไม่สำเร็จ: ไฟล์ไม่ใช่ JSON ที่ถูกต้อง'); }
+  };
+  reader.readAsText(file);
+}
+
+let chartRefs=[];
+function destroyCharts(){ chartRefs.forEach(c=>c.destroy()); chartRefs=[]; }
+function afterRenderHook(){
+  destroyCharts();
+  if(UI.route==='dashboard') drawDashboardCharts();
+  if(UI.route==='budget') drawBudgetCharts();
+  if(UI.route==='performance') drawPerfChart();
+}
+const CHART_GREEN_PALETTE=['#146C43','#2D6FA5','#C89B3C','#7C4FA0','#D64545','#22A05F','#4FC087','#8A9A92','#3B7BB0','#9C6B0B'];
+
+function drawDashboardCharts(){
+  const projs=yearProjects();
+  const statusCounts=STATUS_LIST.map(s=>projs.filter(p=>p.status===s.id).length);
+  const elS=document.getElementById('chartStatus');
+  if(elS) chartRefs.push(new Chart(elS,{type:'doughnut', data:{labels:STATUS_LIST.map(s=>s.label), datasets:[{data:statusCounts, backgroundColor:STATUS_LIST.map(s=>s.color), borderWidth:0}]}, options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}}, cutout:'62%'}}));
+
+  const bySource={};
+  projs.forEach(p=>{ bySource[p.budgetSource||'ไม่ระบุ']=(bySource[p.budgetSource||'ไม่ระบุ']||0)+(Number(p.budgetAmount)||0); });
+  const elB=document.getElementById('chartBudgetSource');
+  if(elB) chartRefs.push(new Chart(elB,{type:'bar', data:{labels:Object.keys(bySource), datasets:[{data:Object.values(bySource), backgroundColor:CHART_GREEN_PALETTE}]}, options:{plugins:{legend:{display:false}}, scales:{x:{ticks:{font:{size:10}}},y:{beginAtZero:true}}}}));
+
+  const workload={};
+  DB.personnel.forEach(p=>{ workload[p.name]=DB.tasks.filter(t=>t.assigneeId===p.id && projs.some(pr=>pr.id===t.projectId)).length; });
+  const elW=document.getElementById('chartWorkload');
+  if(elW) chartRefs.push(new Chart(elW,{type:'bar', data:{labels:Object.keys(workload), datasets:[{data:Object.values(workload), backgroundColor:'#22A05F'}]}, options:{indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true, ticks:{stepSize:1}}}}}));
+}
+function drawBudgetCharts(){
+  const d=window.__budgetData||{bySource:{},byType:{}};
+  const elS=document.getElementById('chartBSource2');
+  if(elS) chartRefs.push(new Chart(elS,{type:'pie', data:{labels:Object.keys(d.bySource), datasets:[{data:Object.values(d.bySource), backgroundColor:CHART_GREEN_PALETTE, borderWidth:0}]}, options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}}}}));
+  const elT=document.getElementById('chartBType2');
+  if(elT) chartRefs.push(new Chart(elT,{type:'pie', data:{labels:Object.keys(d.byType), datasets:[{data:Object.values(d.byType), backgroundColor:CHART_GREEN_PALETTE.slice().reverse(), borderWidth:0}]}, options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}}}}));
+}
+function drawPerfChart(){
+  const el=document.getElementById('chartPerf'); if(!el) return;
+  const labels=DB.personnel.map(p=>p.name);
+  const totalT=DB.personnel.map(p=>DB.tasks.filter(t=>t.assigneeId===p.id).length);
+  const doneT=DB.personnel.map(p=>DB.tasks.filter(t=>t.assigneeId===p.id && t.status==='done').length);
+  chartRefs.push(new Chart(el,{type:'bar', data:{labels, datasets:[
+    {label:'งานทั้งหมด', data:totalT, backgroundColor:'#CFE3D8'},
+    {label:'เสร็จสิ้น', data:doneT, backgroundColor:'#1A8754'},
+  ]}, options:{plugins:{legend:{position:'bottom'}}, scales:{y:{beginAtZero:true, ticks:{stepSize:1}}}}}));
+}
+
+/* =========================================================================
+   Init
+   ========================================================================= */
+loadDB();
+render();
+</script>
+</body>
+</html>
