@@ -46,6 +46,9 @@ input,select,textarea{font-family:inherit;}
 .brand-sub{font-size:11.5px; color:#9FCBAF; margin-top:4px; line-height:1.5;}
 .nav-scroll{flex:1; overflow-y:auto; padding:10px 12px 18px;}
 .nav-group-label{font-size:10.5px; letter-spacing:.06em; color:#7FB397; text-transform:uppercase; margin:16px 10px 6px; font-weight:600;}
+.nav-substep{display:flex; align-items:center; gap:7px; font-size:10.5px; color:#6FA084; margin:12px 12px 4px; font-weight:600; letter-spacing:.02em;}
+.nav-substep .step-num{width:15px; height:15px; border-radius:50%; background:rgba(255,255,255,.08); display:inline-flex; align-items:center; justify-content:center; font-size:9px; color:#B7E0C8; flex:none;}
+.step-badge{display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:var(--g-600); color:#fff; font-size:12px; font-weight:700;}
 .nav-leg{ margin:6px 8px 4px; padding:8px 10px; border-radius:10px; background:rgba(255,255,255,.05); display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:#CFE9DA;}
 .nav-leg .dot{width:8px;height:8px;border-radius:3px;}
 .nav-item{
@@ -63,6 +66,10 @@ input,select,textarea{font-family:inherit;}
   position:sticky; top:0; z-index:15; background:rgba(245,248,246,.9); backdrop-filter:blur(8px);
   border-bottom:1px solid var(--line); padding:14px 26px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;
 }
+.tab-bar{position:sticky; top:0; z-index:14; display:flex; gap:4px; padding:0 26px; background:#fff; border-bottom:1px solid var(--line); overflow-x:auto;}
+.tab-item{padding:12px 16px; font-size:13px; font-weight:600; color:var(--ink-soft); cursor:pointer; border-bottom:2.5px solid transparent; white-space:nowrap; transition:.15s;}
+.tab-item:hover{color:var(--g-700);}
+.tab-item.active{color:var(--g-800); border-bottom-color:var(--g-600);}
 .page-title{font-size:19px; font-weight:700; color:var(--g-900);}
 .page-sub{font-size:12px; color:var(--ink-soft); margin-top:1px;}
 .spacer{flex:1;}
@@ -238,7 +245,7 @@ textarea.input{resize:vertical; min-height:70px;}
    ========================================================================= */
 
 const STORAGE_KEY = 'thaimed_ops_v1';
-const APP_VERSION = 'v2.4';
+const APP_VERSION = 'v3.1';
 const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const FY_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
 const STATUS_LIST = [
@@ -254,6 +261,64 @@ const PRIORITY_LIST = [
   {id:'low', label:'ต่ำ', cls:'pri-low'},
 ];
 const AVATAR_COLORS = ['#1A8754','#2D6FA5','#C89B3C','#7C4FA0','#D64545','#0F5132','#3B7BB0','#9C6B0B'];
+
+/* อัตราค่าใช้จ่ายมาตรฐานตามระเบียบ สสจ.สมุทรปราการ (อัตราค่าใช้จ่ายสำหรับการดำเนินงานตามแผนงาน/โครงการ ปี 2569 ฉบับแก้ไข) */
+function defaultExpenseRateCard(){
+  return [
+    // หมวด 1: ค่าใช้จ่ายในการจัดประชุมราชการ
+    {id:uid('rate'), category:'1. ประชุมราชการ', name:'ค่าเช่าห้องประชุม/สถานที่ (สถานที่ราชการ)', unit:'บาท/วัน', rate:2000, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'1. ประชุมราชการ', name:'ค่าเช่าห้องประชุม/สถานที่ (สถานที่เอกชน)', unit:'บาท/วัน', rate:10000, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'1. ประชุมราชการ', name:'ค่าอาหารกลางวัน (สถานที่ราชการ)', unit:'บาท/มื้อ/คน', rate:100, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'1. ประชุมราชการ', name:'ค่าอาหารกลางวัน (สถานที่เอกชน)', unit:'บาท/มื้อ/คน', rate:120, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'1. ประชุมราชการ', name:'ค่าอาหารว่างและเครื่องดื่ม (สถานที่ราชการ)', unit:'บาท/มื้อ/คน', rate:35, note:''},
+    {id:uid('rate'), category:'1. ประชุมราชการ', name:'ค่าอาหารว่างและเครื่องดื่ม (สถานที่เอกชน)', unit:'บาท/มื้อ/คน', rate:50, note:''},
+    {id:uid('rate'), category:'1. ประชุมราชการ', name:'ค่าอาหารกลางวัน กรณีรับตรวจราชการ/รับนิเทศ', unit:'บาท/มื้อ/คน', rate:120, note:'ไม่เกิน'},
+    // หมวด 2: เดินทางไปราชการ
+    {id:uid('rate'), category:'2. เดินทางไปราชการ', name:'ค่าเบี้ยเลี้ยงเดินทาง (ทั่วไป-ชำนาญการพิเศษ)', unit:'บาท/วัน/คน', rate:240, note:''},
+    {id:uid('rate'), category:'2. เดินทางไปราชการ', name:'ค่าเบี้ยเลี้ยงเดินทาง (ทักษะพิเศษ-ทรงคุณวุฒิ)', unit:'บาท/วัน/คน', rate:270, note:''},
+    {id:uid('rate'), category:'2. เดินทางไปราชการ', name:'ค่าเบี้ยเลี้ยงเดินทาง 6-12 ชม. (ทั่วไป-ชำนาญการพิเศษ)', unit:'บาท/วัน/คน', rate:120, note:''},
+    {id:uid('rate'), category:'2. เดินทางไปราชการ', name:'ค่าเบี้ยเลี้ยงเดินทาง 6-12 ชม. (ทักษะพิเศษ-ทรงคุณวุฒิ)', unit:'บาท/วัน/คน', rate:135, note:''},
+    {id:uid('rate'), category:'2. เดินทางไปราชการ', name:'ค่าเช่าที่พัก จ่ายจริง ห้องเดี่ยว (ทั่วไป-ชำนาญการพิเศษ)', unit:'บาท/วัน/คน', rate:1500, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'2. เดินทางไปราชการ', name:'ค่าเช่าที่พัก จ่ายจริง ห้องคู่ (ทั่วไป-ชำนาญการพิเศษ)', unit:'บาท/วัน/คน', rate:850, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'2. เดินทางไปราชการ', name:'ค่าเช่าที่พัก เหมาจ่าย (ทั่วไป-ชำนาญการพิเศษ)', unit:'บาท/วัน/คน', rate:800, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'2. เดินทางไปราชการ', name:'ค่าเช่าที่พัก เหมาจ่าย (ทักษะพิเศษ-ทรงคุณวุฒิ)', unit:'บาท/วัน/คน', rate:1000, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'2. เดินทางไปราชการ', name:'ค่าพาหนะรับจ้าง (แท็กซี่/รถรับจ้าง) กทม./ปริมณฑล', unit:'บาท/เที่ยว', rate:500, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'2. เดินทางไปราชการ', name:'ค่าพาหนะส่วนตัว รถยนต์', unit:'บาท/กม.', rate:4, note:''},
+    {id:uid('rate'), category:'2. เดินทางไปราชการ', name:'ค่าพาหนะส่วนตัว รถจักรยานยนต์', unit:'บาท/กม.', rate:2, note:''},
+    // หมวด 3: จัดประชุม อบรม สัมมนา
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าอาหารฝึกอบรม ประเภท ก ครบทุกมื้อ (ราชการ)', unit:'บาท/วัน/คน', rate:600, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าอาหารฝึกอบรม ประเภท ข ครบทุกมื้อ (ราชการ)', unit:'บาท/วัน/คน', rate:500, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าอาหารฝึกอบรม ประเภท ก ครบทุกมื้อ (เอกชน)', unit:'บาท/วัน/คน', rate:1200, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าอาหารฝึกอบรม ประเภท ข ครบทุกมื้อ (เอกชน)', unit:'บาท/วัน/คน', rate:950, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าอาหารว่างและเครื่องดื่มฝึกอบรม (ราชการ)', unit:'บาท/มื้อ/คน', rate:35, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าอาหารว่างและเครื่องดื่มฝึกอบรม (เอกชน)', unit:'บาท/มื้อ/คน', rate:50, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าที่พักฝึกอบรม ประเภท ก ห้องเดี่ยว', unit:'บาท/วัน/คน', rate:2400, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าที่พักฝึกอบรม ประเภท ก ห้องคู่', unit:'บาท/วัน/คน', rate:1300, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าที่พักฝึกอบรม ประเภท ข ห้องเดี่ยว', unit:'บาท/วัน/คน', rate:1450, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าที่พักฝึกอบรม ประเภท ข ห้องคู่', unit:'บาท/วัน/คน', rate:900, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าสมนาคุณวิทยากร ภาครัฐ ประเภท ก', unit:'บาท/ชม.', rate:800, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าสมนาคุณวิทยากร ภาครัฐ ประเภท ข', unit:'บาท/ชม.', rate:600, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าสมนาคุณวิทยากร เอกชน ประเภท ก', unit:'บาท/ชม.', rate:1600, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าสมนาคุณวิทยากร เอกชน ประเภท ข', unit:'บาท/ชม.', rate:1200, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าป้ายไวนิล/โรลอัพ', unit:'บาท/ชุด', rate:2000, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าจ้างพิธีกรเปิด-ปิด', unit:'บาท/ครั้ง', rate:2000, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าประกาศนียบัตร (พิมพ์สี+กรอบ)', unit:'บาท/แผ่น', rate:150, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าของสมนาคุณดูงาน', unit:'บาท/แห่ง', rate:1500, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าจ้างเหมารถบัสปรับอากาศ (ไม่เกิน 100 กม.)', unit:'บาท/คัน/วัน', rate:8000, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'3. ประชุม/อบรม/สัมมนา', name:'ค่าจ้างเหมารถตู้ (ไม่เกิน 200 กม.)', unit:'บาท/คัน/วัน', rate:2800, note:'ไม่เกิน'},
+    // หมวด: จัดงาน/ประกวด
+    {id:uid('rate'), category:'จัดงาน/นิทรรศการ/ประกวด', name:'จัดนิทรรศการ ขนาดไม่เกิน 3x5 ม.', unit:'บาท/บูธ', rate:5000, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'จัดงาน/นิทรรศการ/ประกวด', name:'จัดนิทรรศการประกวด ขนาดไม่เกิน 3x5 ม.', unit:'บาท/บูธ', rate:10000, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'จัดงาน/นิทรรศการ/ประกวด', name:'ค่าจ้างเหมาจัดการแสดง (ไม่เกิน 10 คน)', unit:'บาท/ชุด', rate:5000, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'จัดงาน/นิทรรศการ/ประกวด', name:'ค่าตอบแทนกรรมการตัดสิน (ข้าราชการ)', unit:'บาท/คน/วัน', rate:400, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'จัดงาน/นิทรรศการ/ประกวด', name:'ค่าตอบแทนกรรมการตัดสิน (บุคคลภายนอก)', unit:'บาท/คน/วัน', rate:800, note:'ไม่เกิน'},
+    {id:uid('rate'), category:'จัดงาน/นิทรรศการ/ประกวด', name:'ค่าโล่รางวัล/เกียรติบัตรพร้อมกรอบ', unit:'บาท/อัน', rate:1000, note:'ไม่เกิน'},
+    // หมวด 4-5: ค่าตอบแทนนอกเวลาราชการ
+    {id:uid('rate'), category:'4-5. ค่าตอบแทน OT', name:'ค่าตอบแทน OT วันทำการ (ไม่เกิน 4 ชม.)', unit:'บาท/วัน', rate:200, note:'ไม่เกิน (50 บาท/ชม.)'},
+    {id:uid('rate'), category:'4-5. ค่าตอบแทน OT', name:'ค่าตอบแทน OT วันหยุด (ไม่เกิน 7 ชม.)', unit:'บาท/วัน', rate:420, note:'ไม่เกิน (60 บาท/ชม.)'},
+  ];
+}
+
 
 function uid(p){ return (p||'id')+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 function money(n){ n=Number(n)||0; return n.toLocaleString('th-TH',{maximumFractionDigits:0}); }
@@ -301,7 +366,7 @@ function seedData(){
   const c1=uid('cat'), c2=uid('cat'), c3=uid('cat'), c4=uid('cat');
   const proj1=uid('proj'), proj2=uid('proj'), proj3=uid('proj'), proj4=uid('proj'), proj5=uid('proj'), proj6=uid('proj'), proj7=uid('proj'), proj8=uid('proj'), proj9=uid('proj'), proj10=uid('proj'), proj11=uid('proj'), proj12=uid('proj'), proj13=uid('proj'), proj14=uid('proj'), proj15=uid('proj'), proj16=uid('proj');
   return {
-    meta:{ org:'สำนักงานสาธารณสุขจังหวัดสมุทรปราการ', group:'กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก', version:'v2.4' },
+    meta:{ org:'สำนักงานสาธารณสุขจังหวัดสมุทรปราการ', group:'กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก', version:'v3.1' },
     currentYear: 2569,
     fiscalYears:[2567,2568,2569,2570,2571],
     categories:[
@@ -438,6 +503,13 @@ function seedData(){
     trash:[],
     auditLog:[],
     projectTemplates:[],
+    expenseRateCard: defaultExpenseRateCard(),
+    strategicGoals:[
+      'ยุทธศาสตร์ที่ 1: ส่งเสริมสุขภาพและป้องกันโรคด้วยศาสตร์การแพทย์แผนไทย',
+      'ยุทธศาสตร์ที่ 2: พัฒนาระบบบริการการแพทย์แผนไทยและการแพทย์ทางเลือก',
+      'ยุทธศาสตร์ที่ 3: คุ้มครองและส่งเสริมภูมิปัญญาการแพทย์แผนไทย/สมุนไพร',
+      'ยุทธศาสตร์ที่ 4: พัฒนาระบบบริหารจัดการและบุคลากรกลุ่มงาน',
+    ],
     currentUserName:'',
   };
 }
@@ -455,6 +527,8 @@ function loadDB(){
   if(!DB.trash) DB.trash=[];
   if(!DB.auditLog) DB.auditLog=[];
   if(!DB.projectTemplates) DB.projectTemplates=[];
+  if(!DB.expenseRateCard || !DB.expenseRateCard.length) DB.expenseRateCard=defaultExpenseRateCard();
+  if(!DB.strategicGoals) DB.strategicGoals=[];
   if(DB.currentUserName===undefined) DB.currentUserName='';
   purgeOldTrash();
   window.__versionMismatch = hadStoredData && DB.meta && DB.meta.version !== APP_VERSION;
@@ -481,7 +555,38 @@ function saveDB(){
 }
 
 /* ---------------------------- App / router state ---------------------------- */
-const UI = { route:'dashboard', projectFilter:{status:'',cat:'',pri:'',q:'',owner:'',source:''}, personDetailId:null, projectViewMode:'table', baseEditSourceYear:null, baseEditSelected:new Set(), projectsSelected:new Set() };
+const UI = { route:'dashboard', projectFilter:{status:'',cat:'',pri:'',q:'',owner:'',source:''}, personDetailId:null, projectViewMode:'table', baseEditSourceYear:null, baseEditSelected:new Set(), projectsSelected:new Set(), expensePlan:{year:null, targetProjectId:'', newProjectName:'', items:[]} };
+
+/* Navigation groups: merges related sub-pages into tabs under one sidebar item, to keep the sidebar short */
+const NAV_GROUPS = {
+  projects: {label:'โครงการ', icon:'📁', tabs:[
+    {route:'projects', label:'โครงการทั้งหมด'},
+    {route:'baseedit', label:'ปรับแก้จากปีฐาน'},
+    {route:'expenseplanner', label:'รายละเอียดค่าใช้จ่าย'},
+    {route:'riskregister', label:'ความเสี่ยง'},
+    {route:'lessons', label:'บทเรียนที่ได้รับ'},
+  ]},
+  budget: {label:'งบประมาณ', icon:'💰', tabs:[
+    {route:'budget', label:'ภาพรวมปีนี้'},
+    {route:'strategicalign', label:'ยุทธศาสตร์'},
+    {route:'yearcompare', label:'เทียบข้ามปีงบ'},
+  ]},
+  people: {label:'บุคลากร', icon:'👥', tabs:[
+    {route:'people', label:'ทำเนียบ'},
+    {route:'performance', label:'ผลงาน'},
+    {route:'evaluation', label:'ประเมินผลงาน'},
+    {route:'heatmap', label:'ภาระงาน (Heatmap)'},
+  ]},
+  system: {label:'ระบบ', icon:'⚙️', tabs:[
+    {route:'trash', label:'ถังขยะ'},
+    {route:'auditlog', label:'ประวัติการแก้ไข'},
+    {route:'settings', label:'ตั้งค่า'},
+  ]},
+};
+function groupKeyOfRoute(route){
+  for(const key in NAV_GROUPS){ if(NAV_GROUPS[key].tabs.some(t=>t.route===route)) return key; }
+  return null;
+}
 
 function getPersonName(id){ const p=DB.personnel.find(x=>x.id===id); return p?p.name:'— ไม่ระบุ —'; }
 function getPerson(id){ return DB.personnel.find(x=>x.id===id); }
@@ -577,15 +682,26 @@ function render(){
     ${renderSidebar()}
     <div class="main">
       ${renderTopbar()}
+      ${renderTabBar()}
       <div class="content" id="contentArea">${renderRoute()}</div>
     </div>
   `;
   wireGlobalEvents();
   afterRenderHook();
 }
+function renderTabBar(){
+  const key = groupKeyOfRoute(UI.route);
+  if(!key) return '';
+  const g = NAV_GROUPS[key];
+  return `<div class="tab-bar">${g.tabs.map(t=>`<div class="tab-item ${UI.route===t.route?'active':''}" data-route="${t.route}">${t.label}</div>`).join('')}</div>`;
+}
 
 function renderSidebar(){
   const navItem=(route,ic,label,badge)=>`<div class="nav-item ${UI.route===route?'active':''}" data-route="${route}"><span class="ic">${ic}</span>${label}${badge?`<span class="nav-badge">${badge}</span>`:''}</div>`;
+  const navGroupItem=(key,badge)=>{
+    const g=NAV_GROUPS[key]; const active=groupKeyOfRoute(UI.route)===key; const defRoute=g.tabs[0].route;
+    return `<div class="nav-item ${active?'active':''}" data-route="${defRoute}" data-group="${key}"><span class="ic">${g.icon}</span>${g.label}${badge?`<span class="nav-badge">${badge}</span>`:''}</div>`;
+  };
   const upP = urgentProjectsCount(), upT = urgentTasksCount(), trashN = (DB.trash||[]).length;
   return `
   <div class="sidebar">
@@ -595,25 +711,20 @@ function renderSidebar(){
     </div>
     <div class="nav-scroll">
       ${navItem('dashboard','📊','แดชบอร์ดภาพรวม')}
+      ${navItem('guide','📖','คู่มือการใช้งาน')}
 
       <div class="nav-leg"><span class="dot" style="background:#4FC087"></span>PART 1 · บริหารแผนงาน/โครงการ</div>
-      ${navItem('projects','📁','โครงการทั้งหมด', upP)}
+      ${navGroupItem('projects', upP)}
       ${navItem('kanban','✅','ติดตามงานย่อย (Kanban)', upT)}
       ${navItem('timeline','📅','ปฏิทิน / Timeline')}
-      ${navItem('budget','💰','งบประมาณ', nearDepletedCount())}
-      ${navItem('yearcompare','📈','เปรียบเทียบข้ามปีงบ')}
-      ${navItem('baseedit','🔄','ปรับแก้โครงการ (จากปีฐาน)')}
+      ${navGroupItem('budget', nearDepletedCount())}
       ${navItem('exportsummary','📤','สรุป & ส่งออก Excel')}
 
       <div class="nav-leg"><span class="dot" style="background:#8FC4E8"></span>PART 2 · บริหารบุคลากร</div>
-      ${navItem('people','👥','บุคลากรทั้งหมด')}
-      ${navItem('performance','📈','ผลงานรายบุคคล')}
-      ${navItem('evaluation','⭐','ประเมินผลงาน')}
+      ${navGroupItem('people')}
 
       <div class="nav-group-label">ระบบ</div>
-      ${navItem('trash','🗑️','ถังขยะ', trashN)}
-      ${navItem('auditlog','📜','ประวัติการแก้ไข')}
-      ${navItem('settings','⚙️','ตั้งค่า / นำเข้า-ส่งออก')}
+      ${navGroupItem('system', trashN)}
     </div>
     <div class="sidebar-foot">
       จัดทำโดย ภก.จีรภัทร พลายงาม · 21 สิงหาคม 2569<br>ระบบ ${DB.meta.version} · ข้อมูลเก็บในเครื่องนี้ (Local Storage)
@@ -624,15 +735,21 @@ function renderSidebar(){
 function pageTitleFor(route){
   const map={
     dashboard:['แดชบอร์ดภาพรวม','สรุปภาพรวมแผนงาน โครงการ และบุคลากรของกลุ่มงาน'],
+    guide:['คู่มือการใช้งาน','แนะนำเมนูต่างๆ วิธีใช้งาน และคำถามที่พบบ่อย'],
     projects:['โครงการทั้งหมด','จัดการโครงการ งานย่อย ผู้รับผิดชอบ และไฟล์แนบ'],
     kanban:['ติดตามงานย่อย','ลากการ์ดเพื่ออัปเดตสถานะงานย่อยทั้งหมด'],
     timeline:['ปฏิทิน / Timeline','ภาพรวมช่วงเวลาดำเนินโครงการตามปีงบประมาณ'],
     budget:['งบประมาณ','สรุปงบประมาณตามประเภทและแหล่งที่มา'],
     yearcompare:['เปรียบเทียบข้ามปีงบ','เปรียบเทียบงบประมาณและผลงานย้อนหลังหลายปีงบประมาณ'],
+    strategicalign:['ยุทธศาสตร์','ดูว่างบประมาณและโครงการกระจายไปตามยุทธศาสตร์ใดบ้าง'],
     baseedit:['ปรับแก้โครงการ (จากปีฐาน)','คัดลอกแผนงานโครงการจากปีก่อนหน้า มาปรับแก้เป็นปีงบปัจจุบัน'],
     exportsummary:['สรุป & ส่งออก Excel','ตารางสรุปแผนงานโครงการรูปแบบเดียวกับไฟล์ที่นำเข้า พร้อมส่งออกเป็น .xlsx'],
+    expenseplanner:['รายละเอียดค่าใช้จ่ายโครงการ','จัดทำรายละเอียดค่าใช้จ่ายตามระเบียบ สสจ.สมุทรปราการ แล้วอัพโหลดเข้าแผนงานโครงการปีที่เลือก'],
+    riskregister:['ทะเบียนความเสี่ยงโครงการ','รวมความเสี่ยงของทุกโครงการในปีงบที่เลือก เรียงตามระดับความรุนแรง'],
+    lessons:['บทเรียนที่ได้รับ','คลังบทเรียนจากโครงการที่ผ่านมา ใช้ป้องกันความผิดพลาดซ้ำ'],
     people:['บุคลากรทั้งหมด','ทำเนียบบุคลากรกลุ่มงานและภาระงาน'],
     performance:['ผลงานรายบุคคล','เปรียบเทียบผลงานและภาระงานของบุคลากร'],
+    heatmap:['ภาระงานบุคลากร (Heatmap)','ดูความหนาแน่นของภาระงานแต่ละคนรายเดือน เพื่อกระจายงานได้เหมาะสม'],
     evaluation:['ประเมินผลงาน','บันทึกและติดตามผลการประเมินผลงานรายบุคคล'],
     settings:['ตั้งค่า / นำเข้า-ส่งออก','จัดการปีงบประมาณ หมวดหมู่ แหล่งงบ และสำรองข้อมูล'],
     trash:['ถังขยะ','กู้คืนหรือลบถาวรรายการที่ถูกลบ (เก็บไว้ 7 วัน)'],
@@ -666,15 +783,21 @@ function renderTopbar(){
 function renderRoute(){
   switch(UI.route){
     case 'dashboard': return viewDashboard();
+    case 'guide': return viewGuide();
     case 'projects': return viewProjects();
     case 'kanban': return viewKanban();
     case 'timeline': return viewTimeline();
     case 'budget': return viewBudget();
     case 'yearcompare': return viewYearCompare();
+    case 'strategicalign': return viewStrategicAlignment();
     case 'baseedit': return viewBaseEdit();
     case 'exportsummary': return viewExportSummary();
+    case 'expenseplanner': return viewExpensePlanner();
+    case 'riskregister': return viewRiskRegister();
+    case 'lessons': return viewLessons();
     case 'people': return UI.personDetailId ? viewPersonDetail(UI.personDetailId) : viewPeople();
     case 'performance': return viewPerformance();
+    case 'heatmap': return viewResourceHeatmap();
     case 'evaluation': return viewEvaluation();
     case 'settings': return viewSettings();
     case 'trash': return viewTrash();
@@ -686,6 +809,92 @@ function renderRoute(){
 /* =========================================================================
    VIEW: Dashboard
    ========================================================================= */
+/* =========================================================================
+   VIEW: Guide (คู่มือการใช้งาน)
+   ========================================================================= */
+function viewGuide(){
+  const steps = [
+    {num:'①', title:'📁 โครงการ (3 แท็บย่อย)', items:[
+      ['โครงการทั้งหมด','ดูรายการโครงการทั้งหมดของปีงบที่เลือก เพิ่ม/แก้ไข/ลบโครงการ ใส่งานย่อย จัดลำดับความสำคัญ (▲▼) เลือกหลายโครงการเพื่อย้าย/คัดลอกไปปีงบอื่น และกรองตามแหล่งงบได้'],
+      ['ปรับแก้จากปีฐาน','คัดลอกโครงการจากปีก่อนหน้ามาเตรียมเป็นปีงบใหม่ แล้วปรับแก้ข้อมูลทั้งหมดในตารางเดียว ไม่ต้องเปิดทีละโครงการ'],
+      ['รายละเอียดค่าใช้จ่าย','จัดทำรายละเอียดค่าใช้จ่ายโครงการแบบละเอียด (คน × วัน × อัตรา) อ้างอิงอัตรามาตรฐานตามระเบียบ สสจ.สมุทรปราการ แล้วอัพโหลดเข้าโครงการได้ทันที'],
+      ['ความเสี่ยง','ทะเบียนความเสี่ยงรวมทุกโครงการ เรียงตามคะแนนความรุนแรง (โอกาสเกิด × ผลกระทบ) — เพิ่ม/แก้ไขความเสี่ยงรายโครงการได้ในหน้ารายละเอียดโครงการ'],
+      ['บทเรียนที่ได้รับ','คลังบทเรียนจากทุกโครงการที่ผ่านมา (บันทึกได้ในหน้ารายละเอียดโครงการ) ใช้ป้องกันความผิดพลาดซ้ำในปีถัดไป'],
+    ]},
+    {num:'②', title:'ดำเนินงาน & ติดตาม', items:[
+      ['✅ ติดตามงานย่อย (Kanban)','ลากการ์ดงานย่อยข้ามคอลัมน์เพื่ออัปเดตสถานะ (ยังไม่เริ่ม/กำลังดำเนินการ/เสร็จสิ้น/ล่าช้า)'],
+      ['📅 ปฏิทิน / Timeline','แก้ไขวันที่เริ่ม-สิ้นสุดของแต่ละโครงการ ดูเปอร์เซ็นต์เวลาที่ผ่านไปเทียบกับงานที่เสร็จจริง และดูภาพรวม Gantt chart ทั้งปีงบ'],
+    ]},
+    {num:'③', title:'💰 งบประมาณ (3 แท็บย่อย) & รายงาน', items:[
+      ['ภาพรวมปีนี้','ดูสรุปงบประมาณตามแหล่งที่มา/ประเภท บันทึกการเบิกจ่ายจริง มีแจ้งเตือนเมื่องบใกล้หมด และ "พยากรณ์การเบิกจ่าย" คำนวณจากอัตราเบิกจ่ายเฉลี่ยว่าจะเบิกทันปีงบหรือไม่'],
+      ['ยุทธศาสตร์','ดูว่างบประมาณและโครงการกระจายไปตามยุทธศาสตร์/นโยบายด้านใดบ้าง — กำหนดยุทธศาสตร์ของแต่ละโครงการได้ในฟอร์มแก้ไขโครงการ'],
+      ['เทียบข้ามปีงบ','ดูกราฟเปรียบเทียบงบประมาณ จำนวนโครงการ และอัตราความสำเร็จงานย่อย ย้อนหลังหลายปีงบ'],
+      ['📤 สรุป & ส่งออก Excel','ดูตารางสรุปแผนงานและส่งออกเป็นไฟล์ Excel ได้ 2 รูปแบบ: แบบละเอียดรายโครงการ และแบบสรุปงบประมาณตามแหล่งงบ (รูปแบบเดียวกับไฟล์ที่ สสจ. ใช้)'],
+    ]},
+  ];
+  const part2 = [
+    ['ทำเนียบ','ทำเนียบบุคลากรกลุ่มงาน ดูภาระงานและโครงการที่รับผิดชอบของแต่ละคน'],
+    ['ผลงาน','เปรียบเทียบภาระงานและอัตราความสำเร็จของบุคลากรทุกคนในตารางเดียว'],
+    ['ประเมินผลงาน','ให้คะแนนผลงานรายบุคคล 4 ด้าน (ปริมาณ/คุณภาพ/ตรงเวลา/ทำงานร่วมกัน) พร้อมประวัติย้อนหลัง'],
+    ['ภาระงาน (Heatmap)','แผนที่ความหนาแน่นภาระงานรายบุคคล × รายเดือน สีเข้มแสดงเดือนที่งานหนัก ใช้กระจายงานให้เหมาะสม'],
+  ];
+  const partSys = [
+    ['ถังขยะ','กู้คืนโครงการ/งานย่อยที่ลบไปได้ภายใน 7 วัน (หรือกดปุ่ม "เลิกทำ" ในกล่องแจ้งเตือนทันทีหลังลบ)'],
+    ['ประวัติการแก้ไข','ดูว่าใครแก้ไขอะไรเมื่อไหร่ ตั้งชื่อผู้ใช้งานได้ที่หน้านี้เพื่อให้บันทึกชื่อจริง'],
+    ['ตั้งค่า','จัดการปีงบประมาณ หมวดหมู่ แหล่งงบ ประเภทงบ แม่แบบโครงการ และสำรอง/นำเข้าข้อมูล'],
+  ];
+  return `
+  <div class="card card-pad" style="margin-bottom:16px;">
+    <div class="card-title" style="margin-bottom:8px;">🌿 ยินดีต้อนรับสู่ระบบบริหารแผนงานโครงการและบุคลากร</div>
+    <p style="margin:0;line-height:1.7;">ระบบนี้แบ่งงานเป็น 2 ส่วนใหญ่: <b>PART 1 บริหารแผนงาน/โครงการ</b> และ <b>PART 2 บริหารบุคลากร</b> เมนูฝั่งซ้ายมี 9 รายการหลัก บางเมนู (เช่น "โครงการ", "งบประมาณ", "บุคลากร", "ระบบ") จะมี <b>แท็บย่อย</b> อยู่ด้านบนของหน้าเนื้อหาให้สลับดูได้ เลือก "ปีงบ" ที่มุมบนขวาได้ตลอดเวลา และค้นหาทุกอย่างได้จากช่องค้นหากลาง (🔍) ด้านบน</p>
+    <p style="margin:10px 0 0;line-height:1.7;">ในหน้า <b>รายละเอียดโครงการ</b> แต่ละโครงการมีเครื่องมือบริหารเชิงลึกเพิ่มเติม: <b>✅ สถานะการอนุมัติ</b> (แถบขั้นตอน ร่าง→เสนอ→ตรวจสอบ→อนุมัติ), <b>👤 RACI Matrix</b> (กำหนดผู้รับผิดชอบ/อนุมัติ/ที่ปรึกษา/รับทราบ), <b>🚩 หมุดหมายสำคัญ</b>, <b>⚠️ ความเสี่ยง</b> และ <b>📚 บทเรียนที่ได้รับ</b> — เลื่อนลงไปดูได้ในหน้าเดียวกัน และหน้าแดชบอร์ดมี <b>🎯 Balanced Scorecard</b> สรุป 4 มุมมอง (การเงิน/กระบวนการ/บุคลากร/ผู้รับบริการ) ให้ภาพรวมเชิงบริหารในหน้าเดียว</p>
+  </div>
+
+  ${steps.map(s=>`
+  <div class="section-title" style="margin-top:20px;"><span class="step-badge">${s.num}</span> ${s.title}<span class="line-flex"></span></div>
+  <div class="grid grid-3">
+    ${s.items.map(([t,d])=>`<div class="card card-pad"><div style="font-weight:700;margin-bottom:6px;">${t}</div><div class="small-muted" style="line-height:1.6;">${d}</div></div>`).join('')}
+  </div>`).join('')}
+
+  <div class="section-title" style="margin-top:20px;">👥 บุคลากร (3 แท็บย่อย)<span class="line-flex"></span></div>
+  <div class="grid grid-3">
+    ${part2.map(([t,d])=>`<div class="card card-pad"><div style="font-weight:700;margin-bottom:6px;">${t}</div><div class="small-muted" style="line-height:1.6;">${d}</div></div>`).join('')}
+  </div>
+
+  <div class="section-title" style="margin-top:20px;">⚙️ ระบบ (3 แท็บย่อย)<span class="line-flex"></span></div>
+  <div class="grid grid-3">
+    ${partSys.map(([t,d])=>`<div class="card card-pad"><div style="font-weight:700;margin-bottom:6px;">${t}</div><div class="small-muted" style="line-height:1.6;">${d}</div></div>`).join('')}
+  </div>
+
+  <div class="section-title" style="margin-top:24px;">❓ คำถามที่พบบ่อย<span class="line-flex"></span></div>
+  <div class="card">
+    <div class="card-pad" style="display:flex;flex-direction:column;gap:16px;">
+      <div>
+        <div style="font-weight:700;color:var(--g-900);margin-bottom:4px;">ทำไมข้อมูลที่เห็นดูเก่า/ไม่ตรงกับที่คาดไว้ หลังจากเปิดไฟล์เวอร์ชันใหม่?</div>
+        <div class="small-muted" style="line-height:1.7;">ระบบเก็บข้อมูลไว้ใน "Local Storage" ของเบราว์เซอร์เครื่องนั้นๆ เมื่อเปิดไฟล์เวอร์ชันใหม่ในเบราว์เซอร์ที่เคยเปิดเวอร์ชันเก่ามาก่อน จะมี pop-up เตือนอัตโนมัติให้เลือกว่าจะใช้ข้อมูลเดิมต่อ หรือล้างข้อมูลแล้วโหลดชุดใหม่ — ถ้าอยากได้ข้อมูล/ฟีเจอร์ล่าสุดเสมอ ให้เลือก <b>"♻️ ล้างข้อมูลทั้งหมด/เริ่มใหม่"</b> ที่หน้าตั้งค่า (แนะนำกด "ส่งออกสำรอง" ก่อนทุกครั้งถ้าเคยแก้ไขข้อมูลไว้)</div>
+      </div>
+      <div>
+        <div style="font-weight:700;color:var(--g-900);margin-bottom:4px;">ทีมงาน 11 คน เข้าใช้งานพร้อมกันได้ไหม?</div>
+        <div class="small-muted" style="line-height:1.7;">ระบบนี้เก็บข้อมูลในเครื่อง/เบราว์เซอร์เดียวเท่านั้น ไม่มีฐานข้อมูลกลาง หากต้องการให้หลายคนแก้ไขพร้อมกันแบบเรียลไทม์ ต้องส่งไฟล์ Export/Import JSON (หน้าตั้งค่า) ไปมาระหว่างกัน แนะนำกำหนด "เจ้าของไฟล์หลัก" 1 คนเป็นผู้อัปเดตข้อมูลกลาง แล้วส่งไฟล์ให้ทีมดูเป็นระยะ</div>
+      </div>
+      <div>
+        <div style="font-weight:700;color:var(--g-900);margin-bottom:4px;">ลบโครงการ/งานย่อยผิด ทำอย่างไร?</div>
+        <div class="small-muted" style="line-height:1.7;">กดปุ่ม <b>"↩️ เลิกทำ"</b> ในกล่องแจ้งเตือนมุมล่างขวาได้ทันที (ภายใน ~6 วินาที) หรือไปที่เมนู <b>🗑️ ถังขยะ</b> เพื่อกู้คืนได้ภายใน 7 วัน</div>
+      </div>
+      <div>
+        <div style="font-weight:700;color:var(--g-900);margin-bottom:4px;">Timeline / Gantt chart ไม่ขึ้นสีเลย?</div>
+        <div class="small-muted" style="line-height:1.7;">แปลว่าโครงการนั้นยังไม่มีวันที่เริ่ม-สิ้นสุด ให้กรอกในตาราง "ปรับระยะเวลาดำเนินการ" ที่อยู่เหนือ Gantt chart ในหน้าเดียวกัน บันทึกอัตโนมัติทันทีที่กรอก</div>
+      </div>
+      <div>
+        <div style="font-weight:700;color:var(--g-900);margin-bottom:4px;">ส่งออก Excel กดแล้วไม่มีอะไรเกิดขึ้น?</div>
+        <div class="small-muted" style="line-height:1.7;">ฟีเจอร์นี้ต้องมีอินเทอร์เน็ตตอนกด (โหลดไลบรารีจาก CDN) ถ้าออฟไลน์อยู่จะใช้ไม่ได้ ฟีเจอร์อื่นๆ ในระบบยังใช้งานออฟไลน์ได้ตามปกติ</div>
+      </div>
+    </div>
+  </div>
+  <div class="credit-footer">จัดทำโดย ภก.จีรภัทร พลายงาม · ลงวันที่ 21 สิงหาคม 2569 · ระบบบริหารแผนงานโครงการและบุคลากร · ${DB.meta.group} · ${DB.meta.version}</div>
+  `;
+}
+
 function viewDashboard(){
   const projs = yearProjects();
   const totalBudget = projs.reduce((s,p)=>s+(Number(p.budgetAmount)||0),0);
@@ -696,6 +905,8 @@ function viewDashboard(){
   const upcoming = projs.filter(p=>{const d=daysUntil(p.endDate); return d!==null && d>=0 && d<=21 && p.status!=='done' && p.status!=='cancelled';})
     .sort((a,b)=>daysUntil(a.endDate)-daysUntil(b.endDate));
   const budgetAlerts = projs.filter(p=>(Number(p.budgetAmount)||0)>0 && disbPercent(p)>=90);
+  const milestoneAlerts = allUpcomingMilestones(14);
+  const highRisks = allRisksInYear().filter(x=>riskScore(x.risk)>=15 && x.risk.status!=='closed');
 
   return `
   <div class="two-leg-banner">
@@ -703,8 +914,17 @@ function viewDashboard(){
     <div class="leg-pill people"><span class="leg-ic">👥</span><div><div class="leg-t">PART “คน” — ${DB.personnel.length} คน</div><div class="leg-s">งานย่อยทั้งหมด ${allTasks.length} รายการ</div></div></div>
   </div>
   ${budgetAlerts.length? `
-  <div class="card card-pad" style="margin-bottom:16px; border-left:4px solid var(--amber); background:#FFFBF0;">
+  <div class="card card-pad" style="margin-bottom:12px; border-left:4px solid var(--amber); background:#FFFBF0;">
     <div style="font-weight:700; color:#9C6B0B; margin-bottom:4px;">⚠️ งบประมาณใกล้หมด ${budgetAlerts.length} โครงการ — <span class="link-btn" style="text-decoration:underline;cursor:pointer;font-weight:600;" onclick="UI.route='budget';render()">ดูรายละเอียดที่หน้างบประมาณ</span></div>
+  </div>` : ''}
+  ${highRisks.length? `
+  <div class="card card-pad" style="margin-bottom:12px; border-left:4px solid var(--red); background:#FDF1F1;">
+    <div style="font-weight:700; color:#C23838; margin-bottom:4px;">🔴 ความเสี่ยงระดับสูงมาก ${highRisks.length} รายการ — <span class="link-btn" style="text-decoration:underline;cursor:pointer;font-weight:600;color:#C23838;" onclick="UI.route='riskregister';render()">ดูทะเบียนความเสี่ยง</span></div>
+  </div>` : ''}
+  ${milestoneAlerts.length? `
+  <div class="card card-pad" style="margin-bottom:16px; border-left:4px solid var(--g-500); background:var(--g-50);">
+    <div style="font-weight:700; color:var(--g-800); margin-bottom:6px;">🚩 หมุดหมายสำคัญใกล้ถึง (14 วัน)</div>
+    ${milestoneAlerts.slice(0,5).map(({project,milestone,daysLeft})=>`<div style="font-size:12.5px;padding:3px 0;cursor:pointer;" onclick="openProjectDetail('${project.id}')">${daysLeft<0?'🔴 เลยกำหนด':'🚩'} <b>${escapeHtml(milestone.name)}</b> — ${escapeHtml(project.name)} · ${daysLeft<0?`เลยมา ${Math.abs(daysLeft)} วัน`:`อีก ${daysLeft} วัน`}</div>`).join('')}
   </div>` : ''}
 
   <div class="grid grid-4">
@@ -754,6 +974,51 @@ function viewDashboard(){
       </div>
     </div>
   </div>
+
+  <div class="section-title" style="margin-top:22px;">🎯 Balanced Scorecard<span class="line-flex"></span></div>
+  <div class="grid grid-4">
+    ${(()=>{
+      const f = budgetBurnRateForecast();
+      const disbPct2 = totalBudget>0? Math.round(projs.reduce((s,p)=>s+(Number(p.disbAmount)||0),0)/totalBudget*100) : 0;
+      return `<div class="card card-pad">
+        <div style="font-weight:700;color:var(--g-900);margin-bottom:8px;">💰 มุมการเงิน</div>
+        <div class="small-muted">เบิกจ่ายแล้ว</div><div style="font-size:20px;font-weight:700;">${disbPct2}%</div>
+        <div class="small-muted" style="margin-top:6px;">${f? (f.onTrack? '✅ แนวโน้มเบิกจ่ายทันปีงบ' : '⚠️ แนวโน้มเบิกจ่ายไม่ทัน') : '-'}</div>
+      </div>`;
+    })()}
+    ${(()=>{
+      const doneP = projs.filter(p=>p.status==='done').length;
+      const projPct = projs.length? Math.round(doneP/projs.length*100) : 0;
+      return `<div class="card card-pad">
+        <div style="font-weight:700;color:var(--g-900);margin-bottom:8px;">⚙️ มุมกระบวนการ</div>
+        <div class="small-muted">โครงการเสร็จสมบูรณ์</div><div style="font-size:20px;font-weight:700;">${projPct}%</div>
+        <div class="small-muted" style="margin-top:6px;">${doneP}/${projs.length} โครงการ · ล่าช้า ${delayed} โครงการ</div>
+      </div>`;
+    })()}
+    ${(()=>{
+      const wd = computeHeatmapData();
+      const totalW = Object.values(wd).reduce((s,arr)=>s+arr.reduce((a,b)=>a+b,0),0);
+      const avgW = DB.personnel.length? (totalW/DB.personnel.length).toFixed(1) : '0';
+      const evals = DB.evaluations.filter(e=>e.year===DB.currentYear);
+      const avgEval = evals.length? (evals.reduce((s,e)=>s+evalOverall(e),0)/evals.length).toFixed(1) : null;
+      return `<div class="card card-pad">
+        <div style="font-weight:700;color:var(--g-900);margin-bottom:8px;">👥 มุมบุคลากร</div>
+        <div class="small-muted">ภาระงานเฉลี่ย/คน/ปี</div><div style="font-size:20px;font-weight:700;">${avgW}</div>
+        <div class="small-muted" style="margin-top:6px;">คะแนนประเมินเฉลี่ย ${avgEval? avgEval+' / 5' : '- ยังไม่มีการประเมิน'}</div>
+      </div>`;
+    })()}
+    ${(()=>{
+      const withIndicator = projs.filter(p=>p.indicator && p.indicator.trim());
+      const achieved = withIndicator.filter(p=>p.status==='done').length;
+      const pct = withIndicator.length? Math.round(achieved/withIndicator.length*100) : 0;
+      return `<div class="card card-pad">
+        <div style="font-weight:700;color:var(--g-900);margin-bottom:8px;">🧑‍⚕️ มุมผู้รับบริการ</div>
+        <div class="small-muted">โครงการบรรลุตัวชี้วัด (โดยประมาณ)</div><div style="font-size:20px;font-weight:700;">${pct}%</div>
+        <div class="small-muted" style="margin-top:6px;">${achieved}/${withIndicator.length} โครงการที่มีตัวชี้วัดกำหนดไว้</div>
+      </div>`;
+    })()}
+  </div>
+
   <div class="credit-footer">จัดทำโดย ภก.จีรภัทร พลายงาม · ลงวันที่ 21 สิงหาคม 2569 · ระบบบริหารแผนงานโครงการและบุคลากร · ${DB.meta.group} · ${DB.meta.version}</div>
   `;
 }
@@ -860,10 +1125,27 @@ function openProjectDetail(id){
       <div><span class="small-muted">งบประมาณ</span><div style="font-weight:700;color:var(--g-800);">${money(p.budgetAmount)} บาท</div><div class="small-muted">${escapeHtml(p.budgetType||'-')} · ${escapeHtml(p.budgetSource||'-')}</div></div>
       <div><span class="small-muted">สถานะ / ความสำคัญ</span><div style="margin-top:3px;"><span class="badge ${st.cls}">${st.label}</span> <span class="badge ${pr.cls}">${pr.label}</span></div></div>
     </div>
+    ${p.strategicGoalId? `<div style="margin-top:10px;"><span class="small-muted">ยุทธศาสตร์ที่ตอบสนอง</span><div style="margin-top:2px;"><span class="tag-chip">${escapeHtml(p.strategicGoalId)}</span></div></div>` : ''}
+
+    <div class="section-title">✅ สถานะการอนุมัติ<span class="line-flex"></span></div>
+    ${renderApprovalStepper(p)}
+
     <div class="hr"></div>
     <div><span class="small-muted">เป้าหมาย/หน่วยนับ</span><div style="margin-top:3px;">${escapeHtml(p.target)||'-'}</div></div>
     <div style="margin-top:10px;"><span class="small-muted">ตัวชี้วัดความสำเร็จ</span><div style="margin-top:3px;">${escapeHtml(p.indicator)||'-'}</div></div>
     <div style="margin-top:10px;"><span class="small-muted">รายละเอียด</span><div style="margin-top:3px; white-space:pre-wrap;">${escapeHtml(p.description)||'-'}</div></div>
+
+    <div class="section-title">👤 RACI Matrix<span class="line-flex"></span><button class="link-btn" onclick="openRaciForm('${p.id}')">✏️ กำหนด RACI</button></div>
+    ${renderRaci(p)}
+
+    <div class="section-title">🧾 รายละเอียดค่าใช้จ่าย<span class="line-flex"></span><button class="link-btn" onclick="closeModal();openExpensePlannerForProject('${p.id}')">${p.expenseItems&&p.expenseItems.length?'✏️ แก้ไขรายละเอียด':'+ จัดทำรายละเอียดค่าใช้จ่าย'}</button></div>
+    ${p.expenseItems && p.expenseItems.length? `
+    <div class="tbl-wrap" style="margin-bottom:12px;">
+      <table><thead><tr><th>รายการ</th><th>คน</th><th>วัน/ครั้ง</th><th>อัตรา</th><th style="text-align:right;">รวม</th></tr></thead>
+      <tbody>${p.expenseItems.map(it=>`<tr><td style="font-size:12.5px;">${escapeHtml(it.name)}</td><td class="small-muted">${it.people||1}</td><td class="small-muted">${it.days||1}</td><td class="small-muted">${money(it.rate)}</td><td style="text-align:right;font-weight:600;">${money(expenseItemSubtotal(it))}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="4" style="text-align:right;font-weight:700;">รวม</td><td style="text-align:right;font-weight:700;color:var(--g-800);">${money(p.expenseItems.reduce((s,it)=>s+expenseItemSubtotal(it),0))}</td></tr></tfoot>
+      </table>
+    </div>` : `<div class="small-muted" style="margin-bottom:12px;">ยังไม่มีรายละเอียดค่าใช้จ่ายแบบแยกรายการ — จัดทำได้จากปุ่มด้านบน (อ้างอิงอัตรามาตรฐาน สสจ.สป.)</div>`}
 
     <div class="section-title">💰 การเบิกจ่ายงบประมาณ<span class="line-flex"></span><span class="badge ${disbStatusLabel(p).cls}">${disbStatusLabel(p).label}</span></div>
     <div class="progress-bar" style="margin-bottom:4px;"><div class="progress-fill" style="width:${disbPercent(p)}%"></div></div>
@@ -879,6 +1161,12 @@ function openProjectDetail(id){
     <div class="form-row"><label>หมายเหตุ (การโยกย้าย/ใช้จ่ายในโครงการอื่นๆ)</label><textarea class="input" id="disb_note" placeholder="เช่น โยกงบส่วนที่เหลือ 5,000 บาท ไปสมทบโครงการ...">${escapeHtml(p.disbNote||'')}</textarea></div>
     <button class="btn btn-ghost btn-sm" onclick="saveDisbursement('${p.id}')">💾 บันทึกข้อมูลการเบิกจ่าย</button>
 
+    <div class="section-title">🚩 หมุดหมายสำคัญ (Milestones)<span class="line-flex"></span><button class="link-btn" onclick="openMilestoneForm('${p.id}')">+ เพิ่มหมุดหมาย</button></div>
+    <div id="milestoneList">${renderMilestones(p)}</div>
+
+    <div class="section-title">⚠️ ความเสี่ยงโครงการ<span class="line-flex"></span><button class="link-btn" onclick="openRiskForm('${p.id}')">+ เพิ่มความเสี่ยง</button></div>
+    <div id="riskList">${renderRisks(p)}</div>
+
     <div class="section-title">งานย่อย ${prog!==null?'· ความคืบหน้า '+prog+'%':''}<span class="line-flex"></span><button class="link-btn" onclick="openTaskForm(null,'${p.id}')">+ เพิ่มงานย่อย</button></div>
     ${prog!==null?`<div class="progress-bar" style="margin-bottom:10px;"><div class="progress-fill" style="width:${prog}%"></div></div>`:''}
     <div id="subtaskList">
@@ -889,6 +1177,10 @@ function openProjectDetail(id){
       <label class="link-btn" style="cursor:pointer;">+ แนบไฟล์<input type="file" id="fileInputProject" style="display:none" multiple></label>
     </div>
     <div id="attachmentList">${renderAttachments(p)}</div>
+
+    <div class="section-title">📚 บทเรียนที่ได้รับ<span class="line-flex"></span></div>
+    <textarea class="input" id="lesson_text" placeholder="สิ่งที่ทำได้ดี / ปัญหาที่เจอ / ข้อควรระวังสำหรับปีถัดไป...">${escapeHtml(p.lessonLearned||'')}</textarea>
+    <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="saveLessonLearned('${p.id}')">💾 บันทึกบทเรียน</button>
   `;
   const footer=`<button class="btn btn-ghost" onclick="saveAsTemplate('${p.id}')">💾 บันทึกเป็นแม่แบบ</button><button class="btn btn-ghost" onclick="openProjectForm('${p.id}')">✏️ แก้ไขโครงการ</button><button class="btn btn-primary" onclick="closeModal()">ปิด</button>`;
   openModal(p.name, body, footer, true);
@@ -956,6 +1248,289 @@ function saveDisbursement(projectId){
   openProjectDetail(projectId);
   refreshBackground();
 }
+
+/* ---- Milestones (หมุดหมายสำคัญ) ---- */
+function renderMilestones(p){
+  const ms = (p.milestones||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(!ms.length) return '<div class="small-muted">ยังไม่มีหมุดหมายสำคัญ</div>';
+  return ms.map(m=>{
+    const d = daysUntil(m.date);
+    let dueLabel='';
+    if(!m.done && d!==null){
+      if(d<0) dueLabel=`<span class="badge b-delayed">เลยกำหนด ${Math.abs(d)} วัน</span>`;
+      else if(d<=7) dueLabel=`<span class="badge b-inprogress">อีก ${d} วัน</span>`;
+    }
+    return `<div class="subtask-row">
+      <span class="chk ${m.done?'done':''}" onclick="toggleMilestoneDone('${p.id}','${m.id}')">${m.done?'✓':''}</span>
+      <div style="flex:1;cursor:pointer;" onclick="openMilestoneForm('${p.id}','${m.id}')">
+        <div style="font-weight:600;font-size:13px;${m.done?'text-decoration:line-through;color:var(--ink-soft);':''}">🚩 ${escapeHtml(m.name)}</div>
+        <div class="small-muted">วันที่ ${fmtDateTH(m.date)}</div>
+      </div>
+      ${dueLabel}
+      <button class="icon-btn" onclick="event.stopPropagation();deleteMilestone('${p.id}','${m.id}')">🗑️</button>
+    </div>`;
+  }).join('');
+}
+function openMilestoneForm(projectId, milestoneId){
+  const p=getProject(projectId); if(!p) return;
+  if(!p.milestones) p.milestones=[];
+  const editing = !!milestoneId;
+  const m = editing? p.milestones.find(x=>x.id===milestoneId) : {id:null, name:'', date:'', done:false};
+  const body=`
+    <div class="form-row"><label>ชื่อหมุดหมาย *</label><input class="input" id="ms_name" value="${escapeHtml(m.name)}" placeholder="เช่น วันอนุมัติงบประมาณ, วันเปิดอบรม"></div>
+    <div class="form-row"><label>วันที่ *</label><input class="input" type="date" id="ms_date" value="${m.date||''}"></div>
+  `;
+  const footer=`
+    ${editing?`<button class="btn btn-danger" onclick="deleteMilestone('${projectId}','${milestoneId}');closeModal();openProjectDetail('${projectId}')">ลบ</button>`:''}
+    <button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="saveMilestoneForm('${projectId}',${editing?`'${milestoneId}'`:'null'})">💾 บันทึก</button>`;
+  openModal(editing?'แก้ไขหมุดหมาย':'เพิ่มหมุดหมายสำคัญ', body, footer);
+}
+function saveMilestoneForm(projectId, milestoneId){
+  const p=getProject(projectId); if(!p) return;
+  if(!p.milestones) p.milestones=[];
+  const name=document.getElementById('ms_name').value.trim();
+  const date=document.getElementById('ms_date').value;
+  if(!name || !date){ showToast('กรุณากรอกชื่อและวันที่'); return; }
+  if(milestoneId){ Object.assign(p.milestones.find(x=>x.id===milestoneId), {name,date}); }
+  else{ p.milestones.push({id:uid('ms'), name, date, done:false}); }
+  logAction('บันทึกหมุดหมาย', `โครงการ "${p.name}" · "${name}"`);
+  saveDB(); closeModal();
+  openProjectDetail(projectId);
+  refreshBackground();
+}
+function toggleMilestoneDone(projectId, milestoneId){
+  const p=getProject(projectId); if(!p) return;
+  const m=(p.milestones||[]).find(x=>x.id===milestoneId); if(!m) return;
+  m.done = !m.done;
+  saveDB();
+  const el=document.getElementById('milestoneList'); if(el) el.innerHTML=renderMilestones(p);
+  refreshBackground();
+}
+function deleteMilestone(projectId, milestoneId){
+  const p=getProject(projectId); if(!p) return;
+  p.milestones = (p.milestones||[]).filter(x=>x.id!==milestoneId);
+  saveDB();
+  const el=document.getElementById('milestoneList'); if(el) el.innerHTML=renderMilestones(p);
+  refreshBackground();
+}
+function allUpcomingMilestones(daysAhead){
+  const projs = yearProjects();
+  const list=[];
+  projs.forEach(p=>{
+    (p.milestones||[]).forEach(m=>{
+      if(m.done) return;
+      const d = daysUntil(m.date);
+      if(d===null) return;
+      if(daysAhead===undefined || d<=daysAhead){ list.push({project:p, milestone:m, daysLeft:d}); }
+    });
+  });
+  return list.sort((a,b)=>a.daysLeft-b.daysLeft);
+}
+
+/* ---- Risk Register (ความเสี่ยงโครงการ) ---- */
+function riskScore(r){ return (Number(r.probability)||0)*(Number(r.impact)||0); }
+function riskLevel(score){
+  if(score>=15) return {label:'สูงมาก', cls:'b-delayed', color:'#D64545'};
+  if(score>=8) return {label:'ปานกลาง', cls:'b-inprogress', color:'#DE9A1F'};
+  return {label:'ต่ำ', cls:'b-done', color:'#1A8754'};
+}
+const RISK_STATUS = [
+  {id:'open', label:'เปิดอยู่'},
+  {id:'monitoring', label:'ติดตามอยู่'},
+  {id:'closed', label:'ปิดแล้ว'},
+];
+function renderRisks(p){
+  const risks = (p.risks||[]).slice().sort((a,b)=>riskScore(b)-riskScore(a));
+  if(!risks.length) return '<div class="small-muted">ยังไม่มีการบันทึกความเสี่ยง</div>';
+  return risks.map(r=>{
+    const score=riskScore(r); const lvl=riskLevel(score);
+    const st = RISK_STATUS.find(s=>s.id===r.status)||RISK_STATUS[0];
+    return `<div class="subtask-row" style="align-items:flex-start;">
+      <span class="badge ${lvl.cls}" style="margin-top:2px;">${score}</span>
+      <div style="flex:1;cursor:pointer;" onclick="openRiskForm('${p.id}','${r.id}')">
+        <div style="font-weight:600;font-size:13px;">${escapeHtml(r.name)}</div>
+        <div class="small-muted">โอกาสเกิด ${r.probability}/5 × ผลกระทบ ${r.impact}/5 = ${score} (${lvl.label}) · ${st.label}</div>
+        ${r.mitigation?`<div class="small-muted" style="margin-top:2px;">🛡️ ${escapeHtml(r.mitigation)}</div>`:''}
+      </div>
+      <button class="icon-btn" onclick="event.stopPropagation();deleteRisk('${p.id}','${r.id}')">🗑️</button>
+    </div>`;
+  }).join('');
+}
+function openRiskForm(projectId, riskId){
+  const p=getProject(projectId); if(!p) return;
+  if(!p.risks) p.risks=[];
+  const editing = !!riskId;
+  const r = editing? p.risks.find(x=>x.id===riskId) : {id:null, name:'', probability:3, impact:3, mitigation:'', status:'open'};
+  const body=`
+    <div class="form-row"><label>ความเสี่ยง *</label><input class="input" id="rk_name" value="${escapeHtml(r.name)}" placeholder="เช่น วิทยากรยกเลิกกะทันหัน"></div>
+    <div class="form-2col">
+      <div class="form-row"><label>โอกาสเกิด (1=น้อย, 5=มาก)</label><select class="select" id="rk_prob">${[1,2,3,4,5].map(n=>`<option value="${n}" ${n===r.probability?'selected':''}>${n}</option>`).join('')}</select></div>
+      <div class="form-row"><label>ผลกระทบ (1=น้อย, 5=มาก)</label><select class="select" id="rk_impact">${[1,2,3,4,5].map(n=>`<option value="${n}" ${n===r.impact?'selected':''}>${n}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-row"><label>สถานะ</label><select class="select" id="rk_status">${RISK_STATUS.map(s=>`<option value="${s.id}" ${s.id===r.status?'selected':''}>${s.label}</option>`).join('')}</select></div>
+    <div class="form-row"><label>มาตรการรองรับ/แผนบรรเทา</label><textarea class="input" id="rk_mitigation" placeholder="เช่น เตรียมวิทยากรสำรอง 1 คน">${escapeHtml(r.mitigation||'')}</textarea></div>
+  `;
+  const footer=`
+    ${editing?`<button class="btn btn-danger" onclick="deleteRisk('${projectId}','${riskId}');closeModal();openProjectDetail('${projectId}')">ลบ</button>`:''}
+    <button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="saveRiskForm('${projectId}',${editing?`'${riskId}'`:'null'})">💾 บันทึก</button>`;
+  openModal(editing?'แก้ไขความเสี่ยง':'เพิ่มความเสี่ยงโครงการ', body, footer);
+}
+function saveRiskForm(projectId, riskId){
+  const p=getProject(projectId); if(!p) return;
+  if(!p.risks) p.risks=[];
+  const name=document.getElementById('rk_name').value.trim();
+  if(!name){ showToast('กรุณากรอกชื่อความเสี่ยง'); return; }
+  const data={
+    name, probability:Number(document.getElementById('rk_prob').value),
+    impact:Number(document.getElementById('rk_impact').value),
+    status:document.getElementById('rk_status').value,
+    mitigation:document.getElementById('rk_mitigation').value,
+  };
+  if(riskId){ Object.assign(p.risks.find(x=>x.id===riskId), data); }
+  else{ p.risks.push(Object.assign({id:uid('risk')}, data)); }
+  logAction('บันทึกความเสี่ยงโครงการ', `โครงการ "${p.name}" · "${name}"`);
+  saveDB(); closeModal();
+  openProjectDetail(projectId);
+  refreshBackground();
+}
+function deleteRisk(projectId, riskId){
+  const p=getProject(projectId); if(!p) return;
+  p.risks = (p.risks||[]).filter(x=>x.id!==riskId);
+  saveDB();
+  const el=document.getElementById('riskList'); if(el) el.innerHTML=renderRisks(p);
+  refreshBackground();
+}
+function allRisksInYear(){
+  const projs = yearProjects();
+  const list=[];
+  projs.forEach(p=>{ (p.risks||[]).forEach(r=>{ list.push({project:p, risk:r}); }); });
+  return list.sort((a,b)=>riskScore(b.risk)-riskScore(a.risk));
+}
+
+/* ---- Approval Workflow (เสนอ → ตรวจสอบ → เห็นชอบ → อนุมัติ) ---- */
+const APPROVAL_STAGES = [
+  {id:'draft', label:'ร่าง'},
+  {id:'proposed', label:'เสนอแล้ว'},
+  {id:'reviewed', label:'ตรวจสอบแล้ว'},
+  {id:'approved', label:'อนุมัติแล้ว'},
+];
+function approvalStageIndex(p){
+  const idx = APPROVAL_STAGES.findIndex(s=>s.id===(p.approvalStage||'draft'));
+  return idx<0?0:idx;
+}
+function renderApprovalStepper(p){
+  const idx = approvalStageIndex(p);
+  const history = p.approvalHistory||[];
+  return `
+  <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+    ${APPROVAL_STAGES.map((s,i)=>`<div style="display:flex;align-items:center;gap:6px;">
+      <span style="width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:${i<=idx?'var(--g-600)':'#EAF0EC'};color:${i<=idx?'#fff':'var(--ink-soft)'};">${i+1}</span>
+      <span style="font-size:12px;font-weight:${i===idx?700:500};color:${i<=idx?'var(--g-800)':'var(--ink-soft)'};">${s.label}</span>
+      ${i<APPROVAL_STAGES.length-1?'<span style="color:var(--line);">→</span>':''}
+    </div>`).join('')}
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+    ${idx<APPROVAL_STAGES.length-1?`<button class="btn btn-primary btn-sm" onclick="advanceApproval('${p.id}')">➡️ ส่งต่อขั้นถัดไป: ${APPROVAL_STAGES[idx+1].label}</button>`:'<span class="badge b-done">อนุมัติครบทุกขั้นตอนแล้ว</span>'}
+    ${idx>0?`<button class="btn btn-ghost btn-sm" onclick="revertApproval('${p.id}')">↩️ ย้อนกลับขั้นก่อนหน้า</button>`:''}
+  </div>
+  ${history.length? `<div class="small-muted">${history.slice().reverse().slice(0,5).map(h=>{
+    const stg = APPROVAL_STAGES.find(s=>s.id===h.stage);
+    return `<div>• ${escapeHtml(stg?stg.label:h.stage)} โดย ${escapeHtml(h.by)} · ${fmtDateTimeTH(h.at)}${h.note?' · '+escapeHtml(h.note):''}</div>`;
+  }).join('')}</div>` : ''}
+  `;
+}
+function advanceApproval(projectId){
+  const p=getProject(projectId); if(!p) return;
+  const idx = approvalStageIndex(p);
+  if(idx>=APPROVAL_STAGES.length-1) return;
+  const nextStage = APPROVAL_STAGES[idx+1];
+  const body=`
+    <div class="form-row"><label>ผู้ดำเนินการ</label><input class="input" id="apr_by" value="${escapeHtml(DB.currentUserName||'')}" placeholder="ชื่อผู้ดำเนินการ"></div>
+    <div class="form-row"><label>หมายเหตุ (ถ้ามี)</label><textarea class="input" id="apr_note"></textarea></div>
+  `;
+  const footer = `<button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="confirmAdvanceApproval('${projectId}')">✅ ยืนยัน: ${nextStage.label}</button>`;
+  openModal(`ส่งต่อขั้น: ${nextStage.label}`, body, footer);
+}
+function confirmAdvanceApproval(projectId){
+  const p=getProject(projectId); if(!p) return;
+  const idx = approvalStageIndex(p);
+  const nextStage = APPROVAL_STAGES[idx+1];
+  const by = document.getElementById('apr_by').value.trim() || 'ไม่ระบุ';
+  const note = document.getElementById('apr_note').value;
+  p.approvalStage = nextStage.id;
+  if(!p.approvalHistory) p.approvalHistory=[];
+  p.approvalHistory.push({stage:nextStage.id, by, at:new Date().toISOString(), note});
+  logAction('เปลี่ยนขั้นอนุมัติโครงการ', `โครงการ "${p.name}" → ${nextStage.label} โดย ${by}`);
+  saveDB(); closeModal();
+  openProjectDetail(projectId);
+  refreshBackground();
+}
+function revertApproval(projectId){
+  const p=getProject(projectId); if(!p) return;
+  const idx = approvalStageIndex(p);
+  if(idx<=0) return;
+  if(!confirm('ย้อนกลับไปขั้นก่อนหน้าหรือไม่?')) return;
+  p.approvalStage = APPROVAL_STAGES[idx-1].id;
+  logAction('ย้อนกลับขั้นอนุมัติ', `โครงการ "${p.name}" → ${APPROVAL_STAGES[idx-1].label}`);
+  saveDB();
+  openProjectDetail(projectId);
+  refreshBackground();
+}
+
+/* ---- RACI Matrix ---- */
+function renderRaci(p){
+  const r = getPersonName(p.ownerPersonId);
+  const a = p.raciAccountable ? getPersonName(p.raciAccountable) : '-';
+  const c = (p.raciConsulted||[]).map(id=>getPersonName(id)).join(', ') || '-';
+  const i = (p.raciInformed||[]).map(id=>getPersonName(id)).join(', ') || '-';
+  return `
+  <div class="grid grid-2" style="gap:10px;">
+    <div class="tag-chip" style="justify-content:flex-start;"><b>R</b>&nbsp;ผู้รับผิดชอบหลัก: ${escapeHtml(r)}</div>
+    <div class="tag-chip" style="justify-content:flex-start;"><b>A</b>&nbsp;ผู้อนุมัติ: ${escapeHtml(a)}</div>
+    <div class="tag-chip" style="justify-content:flex-start;"><b>C</b>&nbsp;ที่ปรึกษา: ${escapeHtml(c)}</div>
+    <div class="tag-chip" style="justify-content:flex-start;"><b>I</b>&nbsp;รับทราบ: ${escapeHtml(i)}</div>
+  </div>`;
+}
+function openRaciForm(projectId){
+  const p=getProject(projectId); if(!p) return;
+  const body=`
+    <div class="form-row"><label>R - ผู้รับผิดชอบหลัก (Responsible)</label><input class="input" value="${escapeHtml(getPersonName(p.ownerPersonId))}" disabled style="background:#F5F8F6;"></div>
+    <div class="form-row"><label>A - ผู้อนุมัติ (Accountable)</label><select class="select" id="raci_a"><option value="">— ไม่ระบุ —</option>${DB.personnel.map(pe=>`<option value="${pe.id}" ${pe.id===p.raciAccountable?'selected':''}>${escapeHtml(pe.name)}</option>`).join('')}</select></div>
+    <div class="form-row"><label>C - ที่ปรึกษา (Consulted) — เลือกได้หลายคน</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">${DB.personnel.map(pe=>`<label style="display:flex;align-items:center;gap:5px;font-size:12.5px;background:#F5F8F6;padding:5px 10px;border-radius:8px;"><input type="checkbox" class="raci-c-chk" value="${pe.id}" ${(p.raciConsulted||[]).includes(pe.id)?'checked':''}>${escapeHtml(pe.name)}</label>`).join('')}</div>
+    </div>
+    <div class="form-row"><label>I - รับทราบ (Informed) — เลือกได้หลายคน</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">${DB.personnel.map(pe=>`<label style="display:flex;align-items:center;gap:5px;font-size:12.5px;background:#F5F8F6;padding:5px 10px;border-radius:8px;"><input type="checkbox" class="raci-i-chk" value="${pe.id}" ${(p.raciInformed||[]).includes(pe.id)?'checked':''}>${escapeHtml(pe.name)}</label>`).join('')}</div>
+    </div>
+  `;
+  const footer=`<button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="saveRaciForm('${projectId}')">💾 บันทึก RACI</button>`;
+  openModal('กำหนด RACI Matrix', body, footer, true);
+}
+function saveRaciForm(projectId){
+  const p=getProject(projectId); if(!p) return;
+  p.raciAccountable = document.getElementById('raci_a').value;
+  p.raciConsulted = Array.from(document.querySelectorAll('.raci-c-chk:checked')).map(el=>el.value);
+  p.raciInformed = Array.from(document.querySelectorAll('.raci-i-chk:checked')).map(el=>el.value);
+  logAction('กำหนด RACI', `โครงการ "${p.name}"`);
+  saveDB(); closeModal();
+  openProjectDetail(projectId);
+  refreshBackground();
+}
+
+/* ---- Lesson Learned ---- */
+function saveLessonLearned(projectId){
+  const p=getProject(projectId); if(!p) return;
+  const el = document.getElementById('lesson_text');
+  if(!el) return;
+  p.lessonLearned = el.value;
+  logAction('บันทึกบทเรียนที่ได้รับ', `โครงการ "${p.name}"`);
+  saveDB();
+  showToast('บันทึกบทเรียนเรียบร้อย');
+  refreshBackground();
+}
+
 function toggleTaskDone(taskId){
   const t=DB.tasks.find(x=>x.id===taskId); if(!t) return;
   t.status = t.status==='done' ? 'inprogress' : 'done';
@@ -1142,6 +1717,7 @@ function openProjectForm(id){
     </div>
     <div class="form-row"><label>เป้าหมาย/หน่วยนับ</label><input class="input" id="f_target" value="${escapeHtml(p.target||'')}" placeholder="เช่น ผู้เข้าอบรม 200 คน (2 รุ่น)"></div>
     <div class="form-row"><label>ตัวชี้วัดความสำเร็จ</label><input class="input" id="f_indicator" value="${escapeHtml(p.indicator)}"></div>
+    <div class="form-row"><label>ยุทธศาสตร์ที่ตอบสนอง</label><select class="select" id="f_strategic"><option value="">— ไม่ระบุ —</option>${DB.strategicGoals.map(g=>`<option value="${escapeHtml(g)}" ${g===p.strategicGoalId?'selected':''}>${escapeHtml(g)}</option>`).join('')}</select></div>
     <div class="form-row"><label>รายละเอียดโครงการ</label><textarea class="input" id="f_desc">${escapeHtml(p.description)}</textarea></div>
   `;
   const footer=`<button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="saveProjectForm(${editing?`'${id}'`:'null'})">💾 บันทึกโครงการ</button>`;
@@ -1163,6 +1739,7 @@ function saveProjectForm(id){
     budgetSource: document.getElementById('f_bsource').value,
     target: document.getElementById('f_target').value,
     indicator: document.getElementById('f_indicator').value,
+    strategicGoalId: document.getElementById('f_strategic').value,
     description: document.getElementById('f_desc').value,
   };
   if(id){
@@ -1297,11 +1874,70 @@ function drawYearCompareCharts(){
   if(elT) chartRefs.push(new Chart(elT,{type:'line', data:{labels:years, datasets:[{data:taskRates, borderColor:'#C89B3C', backgroundColor:'#C89B3C33', fill:true, tension:.3}]}, options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, max:100}}}}));
 }
 
+/* =========================================================================
+   VIEW: Strategic Alignment (เชื่อมโครงการกับยุทธศาสตร์)
+   ========================================================================= */
+function viewStrategicAlignment(){
+  const projs = yearProjects();
+  const byGoal = {};
+  DB.strategicGoals.forEach(g=>{ byGoal[g] = {budget:0, count:0, projects:[]}; });
+  let unassigned = {budget:0, count:0, projects:[]};
+  projs.forEach(p=>{
+    const g = p.strategicGoalId;
+    const bucket = (g && byGoal[g]) ? byGoal[g] : unassigned;
+    bucket.budget += Number(p.budgetAmount)||0;
+    bucket.count += 1;
+    bucket.projects.push(p);
+  });
+  window.__strategicData = {labels:[...DB.strategicGoals, ...(unassigned.count?['ยังไม่ระบุ']:[])], values:[...DB.strategicGoals.map(g=>byGoal[g].budget), ...(unassigned.count?[unassigned.budget]:[])]};
+  return `
+  <div class="card card-pad" style="margin-bottom:16px;">
+    <div class="card-title" style="margin-bottom:4px;">งบประมาณและโครงการแยกตามยุทธศาสตร์ ปีงบ ${DB.currentYear}</div>
+    <div class="small-muted">ดูว่างบประมาณและจำนวนโครงการกระจายไปตามยุทธศาสตร์/นโยบายด้านใดบ้าง — กำหนดยุทธศาสตร์ของแต่ละโครงการได้จากฟอร์ม "แก้ไขโครงการ" จัดการรายการยุทธศาสตร์ได้ที่หน้าตั้งค่า</div>
+  </div>
+  <div class="card card-pad" style="margin-bottom:16px;">
+    <canvas id="chartStrategic" height="180"></canvas>
+  </div>
+  ${DB.strategicGoals.map(g=>{
+    const b = byGoal[g];
+    if(!b.count) return `<div class="card" style="margin-bottom:10px;"><div class="card-pad" style="display:flex;justify-content:space-between;align-items:center;"><div style="font-weight:600;">${escapeHtml(g)}</div><span class="small-muted">ยังไม่มีโครงการ</span></div></div>`;
+    return `<div class="card" style="margin-bottom:10px;">
+      <div class="card-head"><div class="card-title">${escapeHtml(g)}</div><span class="tag-chip">${b.count} โครงการ · ${money(b.budget)} บาท</span></div>
+      <div class="card-pad" style="padding-top:10px;">
+        ${b.projects.map(p=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);cursor:pointer;font-size:12.5px;" onclick="openProjectDetail('${p.id}')"><span>${escapeHtml(p.name)}</span><span class="small-muted">${money(p.budgetAmount)} บาท</span></div>`).join('')}
+      </div>
+    </div>`;
+  }).join('')}
+  ${unassigned.count? `<div class="card" style="margin-bottom:10px;border-left:3px solid var(--gray);">
+      <div class="card-head"><div class="card-title" style="color:var(--ink-soft);">ยังไม่ระบุยุทธศาสตร์</div><span class="tag-chip">${unassigned.count} โครงการ · ${money(unassigned.budget)} บาท</span></div>
+      <div class="card-pad" style="padding-top:10px;">
+        ${unassigned.projects.map(p=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);cursor:pointer;font-size:12.5px;" onclick="openProjectDetail('${p.id}')"><span>${escapeHtml(p.name)}</span><span class="small-muted">${money(p.budgetAmount)} บาท</span></div>`).join('')}
+      </div>
+    </div>` : ''}
+  `;
+}
+function drawStrategicChart(){
+  const d = window.__strategicData || {labels:[],values:[]};
+  const el = document.getElementById('chartStrategic');
+  if(el) chartRefs.push(new Chart(el,{type:'pie', data:{labels:d.labels, datasets:[{data:d.values, backgroundColor:CHART_GREEN_PALETTE, borderWidth:0}]}, options:{plugins:{legend:{position:'bottom', labels:{boxWidth:10, font:{size:11}}}}}}));
+}
+
+function timeElapsedPercent(p){
+  if(!p.startDate || !p.endDate) return null;
+  const s=new Date(p.startDate+'T00:00:00'), e=new Date(p.endDate+'T00:00:00');
+  const now=new Date(); now.setHours(0,0,0,0);
+  if(isNaN(s)||isNaN(e)||e<=s) return null;
+  if(now<=s) return 0;
+  if(now>=e) return 100;
+  return Math.round((now-s)/(e-s)*100);
+}
 function viewTimeline(){
   const y=DB.currentYear;
   const fyStartCE = y-543-1, fyEndCE=y-543;
   const rangeStart=new Date(fyStartCE,9,1), rangeEnd=new Date(fyEndCE,8,30);
   const projs=yearProjects().slice().sort((a,b)=>(a.startDate||'').localeCompare(b.startDate||''));
+  const today=new Date(); today.setHours(0,0,0,0);
+  const currentFyMonthIdx = (today>=rangeStart && today<=rangeEnd) ? (today.getMonth()+3)%12 : -1;
   function monthIndexOf(dateObj){
     const m=dateObj.getMonth(); // 0=Jan
     // FY months order: Oct(9),Nov(10),Dec(11),Jan(0)...Sep(8)
@@ -1312,24 +1948,37 @@ function viewTimeline(){
     <div class="card-title" style="margin-bottom:4px;">ปรับระยะเวลาดำเนินการ</div>
     <div class="small-muted" style="margin-bottom:12px;">แก้ไขวันที่เริ่ม-สิ้นสุดของแต่ละโครงการได้โดยตรง ให้ตรงกับการดำเนินงานจริง — บันทึกอัตโนมัติทันทีที่เปลี่ยนวันที่ และแผนภูมิด้านล่างจะอัปเดตให้เอง</div>
     <div class="tbl-wrap">
-    <table><thead><tr><th style="min-width:220px;">โครงการ</th><th>วันที่เริ่มต้น</th><th>วันที่สิ้นสุด</th><th>สถานะ</th></tr></thead>
+    <table><thead><tr><th style="min-width:200px;">โครงการ</th><th>วันที่เริ่มต้น</th><th>วันที่สิ้นสุด</th><th style="min-width:190px;">ระยะเวลาที่ผ่านไป (%)</th><th style="min-width:190px;">งานย่อยที่เสร็จแล้ว (%)</th><th>สถานะ</th></tr></thead>
       <tbody>
-        ${projs.length? projs.map(p=>`<tr data-tpid="${p.id}">
-          <td style="cursor:pointer;max-width:260px;" onclick="openProjectDetail('${p.id}')">${escapeHtml(p.name)}</td>
+        ${projs.length? projs.map(p=>{
+          const timePct = timeElapsedPercent(p);
+          const workPct = projectProgress(p.id);
+          let compareNote = '', compareCls='small-muted';
+          if(timePct!==null && workPct!==null){
+            const gap = timePct - workPct;
+            if(gap >= 20){ compareNote='ล่าช้ากว่ากำหนดเวลา'; compareCls='small-muted'; }
+            else if(gap <= -20){ compareNote='เร็วกว่ากำหนดเวลา'; compareCls='small-muted'; }
+            else{ compareNote='ใกล้เคียงแผน'; compareCls='small-muted'; }
+          }
+          return `<tr data-tpid="${p.id}">
+          <td style="cursor:pointer;max-width:220px;" onclick="openProjectDetail('${p.id}')">${escapeHtml(p.name)}</td>
           <td><input class="input tl-start" type="date" value="${p.startDate||''}" onchange="updateProjectTimelineDate('${p.id}','startDate',this.value)"></td>
           <td><input class="input tl-end" type="date" value="${p.endDate||''}" onchange="updateProjectTimelineDate('${p.id}','endDate',this.value)"></td>
+          <td>${timePct===null? '<span class="small-muted">— ยังไม่ระบุวันที่ —</span>' : `<div class="progress-bar"><div class="progress-fill" style="width:${timePct}%;background:linear-gradient(90deg,#2D6FA5,#3B7BB0);"></div></div><div class="small-muted" style="margin-top:3px;">${timePct}% ของระยะเวลาโครงการ</div>`}</td>
+          <td>${workPct===null? '<span class="small-muted">ไม่มีงานย่อย</span>' : `<div class="progress-bar"><div class="progress-fill" style="width:${workPct}%"></div></div><div class="${compareCls}" style="margin-top:3px;">${workPct}% เสร็จแล้ว${compareNote?' · '+compareNote:''}</div>`}</td>
           <td><span class="badge ${statusObj(p.status).cls}">${statusObj(p.status).label}</span></td>
-        </tr>`).join('') : `<tr><td colspan="4"><div class="empty-state">ยังไม่มีโครงการในปีงบนี้</div></td></tr>`}
+        </tr>`;
+        }).join('') : `<tr><td colspan="6"><div class="empty-state">ยังไม่มีโครงการในปีงบนี้</div></td></tr>`}
       </tbody>
     </table>
     </div>
   </div>
   <div class="card card-pad">
-    <div class="small-muted" style="margin-bottom:12px;">ปีงบประมาณ ${y} (1 ต.ค. ${fyStartCE+543} – 30 ก.ย. ${fyEndCE+543})</div>
+    <div class="small-muted" style="margin-bottom:12px;">ปีงบประมาณ ${y} (1 ต.ค. ${fyStartCE+543} – 30 ก.ย. ${fyEndCE+543}) ${currentFyMonthIdx>=0?' · เดือนปัจจุบันไฮไลต์สีทอง':''}</div>
     <div class="gantt-wrap">
       <div class="gantt-grid">
         <div class="gantt-head" style="text-align:left;padding-left:10px;">โครงการ</div>
-        ${FY_MONTHS.map(m=>`<div class="gantt-head">${m}</div>`).join('')}
+        ${FY_MONTHS.map((m,i)=>`<div class="gantt-head" style="${i===currentFyMonthIdx?'background:#FFF3DC;color:#9C6B0B;border-radius:6px 6px 0 0;':''}">${m}${i===currentFyMonthIdx?' •':''}</div>`).join('')}
         ${projs.length? projs.map(p=>{
           let cells='';
           for(let i=0;i<12;i++){
@@ -1343,7 +1992,8 @@ function viewTimeline(){
               const cellStart=new Date(cellCE,cellMonth,1), cellEnd=new Date(cellCE,cellMonth+1,0);
               active = s<=cellEnd && en>=cellStart;
             }
-            cells += `<div class="gantt-cell">${active?`<div class="gantt-bar" style="background:${statusObj(p.status).color}" title="${escapeHtml(p.name)}"></div>`:''}</div>`;
+            const isCurCol = i===currentFyMonthIdx;
+            cells += `<div class="gantt-cell" style="${isCurCol?'background:#FFFBF0;':''}">${active?`<div class="gantt-bar" style="background:${statusObj(p.status).color}" title="${escapeHtml(p.name)}"></div>`:''}</div>`;
           }
           return `<div class="gantt-name" title="${escapeHtml(p.name)}" style="cursor:pointer" onclick="openProjectDetail('${p.id}')">${escapeHtml(p.name)}</div>${cells}`;
         }).join('') : `<div class="gantt-name">—</div>${Array(12).fill('<div class="gantt-cell"></div>').join('')}`}
@@ -1351,6 +2001,7 @@ function viewTimeline(){
     </div>
     <div style="margin-top:14px;display:flex;gap:14px;flex-wrap:wrap;">
       ${STATUS_LIST.filter(s=>s.id!=='cancelled').map(s=>`<span class="small-muted"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${s.color};margin-right:5px;vertical-align:middle;"></span>${s.label}</span>`).join('')}
+      <span class="small-muted">🟡 เดือนปัจจุบัน</span>
     </div>
   </div>`;
 }
@@ -1366,6 +2017,24 @@ function updateProjectTimelineDate(pid, field, value){
 /* =========================================================================
    VIEW: Budget
    ========================================================================= */
+function budgetBurnRateForecast(){
+  const y = DB.currentYear;
+  const fyStartCE = y-543-1, fyEndCE=y-543;
+  const fyStart = new Date(fyStartCE,9,1), fyEnd = new Date(fyEndCE,8,30);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const totalFYDays = Math.round((fyEnd-fyStart)/86400000)+1;
+  let daysElapsed = Math.round((today-fyStart)/86400000)+1;
+  daysElapsed = Math.max(0, Math.min(daysElapsed, totalFYDays));
+  const projs = yearProjects();
+  const total = projs.reduce((s,p)=>s+(Number(p.budgetAmount)||0),0);
+  const disb = projs.reduce((s,p)=>s+(Number(p.disbAmount)||0),0);
+  if(daysElapsed<=0 || total<=0) return null;
+  const dailyRate = disb/daysElapsed;
+  const projectedFinal = dailyRate*totalFYDays;
+  const projectedPct = Math.min(999, Math.round(projectedFinal/total*100));
+  const onTrack = projectedPct >= 95;
+  return {daysElapsed, totalFYDays, dailyRate, projectedFinal, projectedPct, onTrack, total, disb};
+}
 function viewBudget(){
   const projs = yearProjects();
   const total = projs.reduce((s,p)=>s+(Number(p.budgetAmount)||0),0);
@@ -1401,6 +2070,16 @@ function viewBudget(){
     <div class="card kpi-card"><span class="kpi-icon">🏦</span><div class="kpi-label">คงเหลือ</div><div class="kpi-value">${money(totalRemain)}</div><div class="kpi-delta up">บาท ยังไม่เบิกจ่าย</div></div>
     <div class="card kpi-card"><span class="kpi-icon">📁</span><div class="kpi-label">จำนวนโครงการที่มีงบ</div><div class="kpi-value">${projs.filter(p=>p.budgetAmount>0).length}</div><div class="kpi-delta up">จากทั้งหมด ${projs.length} โครงการ</div></div>
   </div>
+  ${(()=>{ const f=budgetBurnRateForecast(); if(!f) return ''; return `
+  <div class="card card-pad" style="margin-top:16px; border-left:4px solid ${f.onTrack?'var(--g-500)':'var(--red)'};">
+    <div class="card-title" style="margin-bottom:8px;">📈 พยากรณ์การเบิกจ่าย (Burn-rate Forecast)</div>
+    <div class="small-muted" style="margin-bottom:8px;">ผ่านไปแล้ว ${f.daysElapsed} จาก ${f.totalFYDays} วันของปีงบ (${Math.round(f.daysElapsed/f.totalFYDays*100)}%) · อัตราเบิกจ่ายเฉลี่ย ${money(Math.round(f.dailyRate))} บาท/วัน</div>
+    <div style="font-size:14.5px;line-height:1.7;">
+      ${f.onTrack
+        ? `✅ หากเบิกจ่ายในอัตรานี้ต่อเนื่อง คาดว่าจะเบิกจ่ายได้ประมาณ <b>${money(Math.round(f.projectedFinal))} บาท (${f.projectedPct}%)</b> ภายในสิ้นปีงบ — อยู่ในเกณฑ์ปกติ`
+        : `⚠️ หากเบิกจ่ายในอัตรานี้ต่อเนื่อง คาดว่าจะเบิกจ่ายได้เพียงประมาณ <b>${money(Math.round(f.projectedFinal))} บาท (${f.projectedPct}%)</b> ของงบทั้งหมดภายในสิ้นปีงบ — มีแนวโน้ม<b>เบิกจ่ายไม่ทัน</b> ควรเร่งรัดดำเนินการเบิกจ่าย`}
+    </div>
+  </div>`; })()}
   <div class="grid grid-2" style="margin-top:16px;">
     <div class="card card-pad"><div class="card-title" style="margin-bottom:10px;">งบประมาณตามแหล่งที่มา</div><canvas id="chartBSource2" height="220"></canvas></div>
     <div class="card card-pad"><div class="card-title" style="margin-bottom:10px;">งบประมาณตามประเภท</div><canvas id="chartBType2" height="220"></canvas></div>
@@ -1736,6 +2415,252 @@ function exportBudgetSummaryExcel(year){
 }
 
 /* =========================================================================
+   VIEW: Expense Planner (รายละเอียดค่าใช้จ่ายโครงการ ตามระเบียบ สสจ.สป.)
+   ========================================================================= */
+function expenseItemSubtotal(it){ return (Number(it.people)||0) * (Number(it.days)||0) * (Number(it.rate)||0); }
+function expensePlanTotal(){ return UI.expensePlan.items.reduce((s,it)=>s+expenseItemSubtotal(it),0); }
+function openExpensePlannerForProject(projectId){
+  const p = getProject(projectId); if(!p) return;
+  UI.expensePlan = {
+    year: p.year,
+    targetProjectId: p.id,
+    newProjectName: '',
+    items: (p.expenseItems||[]).map(it=>({...it}))
+  };
+  UI.route = 'expenseplanner';
+  render();
+}
+function newExpensePlan(){
+  UI.expensePlan = { year: DB.currentYear, targetProjectId:'', newProjectName:'', items:[] };
+}
+function viewExpensePlanner(){
+  if(!UI.expensePlan.year) UI.expensePlan.year = DB.currentYear;
+  const ep = UI.expensePlan;
+  const yearProjs = DB.projects.filter(p=>p.year===ep.year);
+  const total = expensePlanTotal();
+  const byCategory = {};
+  DB.expenseRateCard.forEach(r=>{ (byCategory[r.category] = byCategory[r.category]||[]).push(r); });
+
+  return `
+  <div class="card card-pad" style="margin-bottom:16px;">
+    <div class="card-title" style="margin-bottom:10px;">ขั้นที่ 1 · เลือกปีงบและปลายทางที่จะอัพโหลด</div>
+    <div class="form-2col">
+      <div class="form-row"><label>ปีงบประมาณ</label><select class="select" id="ep_year">${DB.fiscalYears.map(y=>`<option value="${y}" ${y===ep.year?'selected':''}>${y}</option>`).join('')}</select></div>
+      <div class="form-row"><label>อัพโหลดเข้าโครงการ</label>
+        <select class="select" id="ep_target">
+          <option value="" ${!ep.targetProjectId?'selected':''}>— สร้างโครงการใหม่ —</option>
+          ${yearProjs.map(p=>`<option value="${p.id}" ${p.id===ep.targetProjectId?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    ${!ep.targetProjectId? `<div class="form-row"><label>ชื่อโครงการใหม่ *</label><input class="input" id="ep_newname" value="${escapeHtml(ep.newProjectName||'')}" placeholder="เช่น โครงการอบรม..."></div>` : ''}
+  </div>
+
+  <div class="card card-pad" style="margin-bottom:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px;">
+      <div class="card-title">ขั้นที่ 2 · รายละเอียดค่าใช้จ่าย (อ้างอิงระเบียบ สสจ.สมุทรปราการ ปี 2569)</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="openAddRateItemModal()">📋 เพิ่มจากอัตรามาตรฐาน</button>
+        <button class="btn btn-ghost btn-sm" onclick="addCustomExpenseRow()">✏️ เพิ่มรายการเอง</button>
+      </div>
+    </div>
+    ${ep.items.length? `
+    <div class="tbl-wrap">
+    <table><thead><tr><th style="min-width:220px;">รายการ</th><th>หน่วย</th><th style="width:70px;">คน</th><th style="width:70px;">วัน/ครั้ง</th><th style="width:100px;">อัตรา (บาท)</th><th style="text-align:right;">รวม (บาท)</th><th>หมายเหตุ</th><th></th></tr></thead>
+      <tbody>
+        ${ep.items.map((it,idx)=>`<tr data-idx="${idx}">
+          <td><input class="input ep-name" value="${escapeHtml(it.name)}" onchange="updateExpenseItem(${idx},'name',this.value)"></td>
+          <td class="small-muted">${escapeHtml(it.unit||'-')}</td>
+          <td><input class="input" type="number" min="0" value="${it.people||1}" onchange="updateExpenseItem(${idx},'people',this.value)"></td>
+          <td><input class="input" type="number" min="0" value="${it.days||1}" onchange="updateExpenseItem(${idx},'days',this.value)"></td>
+          <td><input class="input" type="number" min="0" value="${it.rate||0}" onchange="updateExpenseItem(${idx},'rate',this.value)"></td>
+          <td style="text-align:right;font-weight:700;color:var(--g-800);">${money(expenseItemSubtotal(it))}</td>
+          <td><input class="input" value="${escapeHtml(it.note||'')}" onchange="updateExpenseItem(${idx},'note',this.value)" placeholder="หมายเหตุ"></td>
+          <td><button class="icon-btn" onclick="removeExpenseItem(${idx})">🗑️</button></td>
+        </tr>`).join('')}
+      </tbody>
+      <tfoot><tr><td colspan="5" style="text-align:right;font-weight:700;">รวมทั้งสิ้น</td><td style="text-align:right;font-weight:700;color:var(--g-800);font-size:15px;">${money(total)}</td><td colspan="2"></td></tr></tfoot>
+    </table>
+    </div>` : `<div class="empty-state">ยังไม่มีรายการค่าใช้จ่าย — กด "เพิ่มจากอัตรามาตรฐาน" หรือ "เพิ่มรายการเอง" ด้านบน</div>`}
+  </div>
+
+  <div class="card card-pad" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+    <div>
+      <div class="small-muted">งบประมาณรวมจากรายการทั้งหมด</div>
+      <div style="font-size:22px;font-weight:700;color:var(--g-900);">${money(total)} บาท</div>
+    </div>
+    <button class="btn btn-primary" onclick="uploadExpensePlanToProject()">📤 บันทึกและอัพโหลดเข้าแผนงานโครงการปี ${ep.year}</button>
+  </div>
+
+  <div class="section-title" style="margin-top:24px;">📖 ตารางอัตราค่าใช้จ่ายมาตรฐาน (อ้างอิง)<span class="line-flex"></span></div>
+  ${Object.keys(byCategory).map(cat=>`
+    <div class="card" style="margin-bottom:12px;">
+      <div class="card-head"><div class="card-title">${escapeHtml(cat)}</div></div>
+      <div class="tbl-wrap card-pad" style="padding-top:10px;">
+        <table><thead><tr><th>รายการ</th><th>หน่วย</th><th style="text-align:right;">อัตรา (บาท)</th><th>หมายเหตุ</th></tr></thead>
+        <tbody>${byCategory[cat].map(r=>`<tr><td>${escapeHtml(r.name)}</td><td class="small-muted">${escapeHtml(r.unit)}</td><td style="text-align:right;font-weight:600;">${money(r.rate)}</td><td class="small-muted">${escapeHtml(r.note)}</td></tr>`).join('')}</tbody></table>
+      </div>
+    </div>`).join('')}
+  <p class="small-muted">* อ้างอิงจากบันทึกข้อความ สป.0033.001/544 เรื่อง ขออนุมัติแก้ไขรายละเอียดอัตราค่าใช้จ่ายฯ ประจำปี พ.ศ. 2569 (ฉบับแก้ไข) ลงวันที่ 18 ก.พ. 2569 — อัตรานี้เป็นเพดานสูงสุด การเบิกจ่ายจริงให้เป็นไปตามความจำเป็น เหมาะสม และประหยัด</p>
+  `;
+}
+function openAddRateItemModal(){
+  const byCategory = {};
+  DB.expenseRateCard.forEach(r=>{ (byCategory[r.category] = byCategory[r.category]||[]).push(r); });
+  const body = `
+    <div class="form-row"><label>เลือกรายการจากอัตรามาตรฐาน</label>
+      <select class="select" id="rateItemSelect">
+        ${Object.keys(byCategory).map(cat=>`<optgroup label="${escapeHtml(cat)}">${byCategory[cat].map(r=>`<option value="${r.id}">${escapeHtml(r.name)} (${money(r.rate)} ${escapeHtml(r.unit)})</option>`).join('')}</optgroup>`).join('')}
+      </select>
+    </div>
+    <div class="form-2col">
+      <div class="form-row"><label>จำนวนคน</label><input class="input" type="number" min="0" id="rateItemPeople" value="1"></div>
+      <div class="form-row"><label>จำนวนวัน/ครั้ง</label><input class="input" type="number" min="0" id="rateItemDays" value="1"></div>
+    </div>
+  `;
+  const footer = `<button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="confirmAddRateItem()">＋ เพิ่มรายการ</button>`;
+  openModal('เพิ่มรายการจากอัตรามาตรฐาน', body, footer);
+}
+function confirmAddRateItem(){
+  const rateId = document.getElementById('rateItemSelect').value;
+  const rate = DB.expenseRateCard.find(r=>r.id===rateId); if(!rate) return;
+  const people = Number(document.getElementById('rateItemPeople').value)||1;
+  const days = Number(document.getElementById('rateItemDays').value)||1;
+  UI.expensePlan.items.push({id:uid('epi'), name:rate.name, unit:rate.unit, people, days, rate:rate.rate, note:''});
+  closeModal();
+  document.getElementById('contentArea').innerHTML = viewExpensePlanner();
+  wireGlobalEvents();
+}
+function addCustomExpenseRow(){
+  UI.expensePlan.items.push({id:uid('epi'), name:'', unit:'บาท', people:1, days:1, rate:0, note:''});
+  document.getElementById('contentArea').innerHTML = viewExpensePlanner();
+  wireGlobalEvents();
+}
+function updateExpenseItem(idx, field, value){
+  const it = UI.expensePlan.items[idx]; if(!it) return;
+  it[field] = (field==='people'||field==='days'||field==='rate') ? Number(value)||0 : value;
+  // update only the affected row's subtotal + footer total, without full re-render (keeps focus while typing)
+  const row = document.querySelector(`#contentArea tr[data-idx="${idx}"]`);
+  if(row){ const cell = row.children[5]; if(cell) cell.textContent = money(expenseItemSubtotal(it)); }
+  const totalCells = document.querySelectorAll('#contentArea .card-pad div[style*="font-size:22px"]');
+  if(totalCells[0]) totalCells[0].textContent = money(expensePlanTotal())+' บาท';
+  const footTotal = document.querySelector('#contentArea tfoot td[style*="font-size:15px"]');
+  if(footTotal) footTotal.textContent = money(expensePlanTotal());
+}
+function removeExpenseItem(idx){
+  UI.expensePlan.items.splice(idx,1);
+  document.getElementById('contentArea').innerHTML = viewExpensePlanner();
+  wireGlobalEvents();
+}
+function uploadExpensePlanToProject(){
+  const ep = UI.expensePlan;
+  if(!ep.items.length){ showToast('ยังไม่มีรายการค่าใช้จ่าย'); return; }
+  const total = expensePlanTotal();
+  if(ep.targetProjectId){
+    const p = getProject(ep.targetProjectId); if(!p){ showToast('ไม่พบโครงการปลายทาง'); return; }
+    p.expenseItems = ep.items.map(it=>({...it}));
+    p.budgetAmount = total;
+    logAction('อัพโหลดรายละเอียดค่าใช้จ่าย', `เข้าโครงการ "${p.name}" รวม ${money(total)} บาท (${ep.items.length} รายการ)`);
+    saveDB();
+    showToast('อัพโหลดรายละเอียดค่าใช้จ่ายเข้าโครงการเรียบร้อย');
+    DB.currentYear = p.year; saveDB();
+    UI.route='projects'; render();
+    openProjectDetail(p.id);
+  }else{
+    const name = document.getElementById('ep_newname').value.trim();
+    if(!name){ showToast('กรุณากรอกชื่อโครงการใหม่'); return; }
+    const maxSort = Math.max(0,...DB.projects.filter(p=>p.priority==='mid' && p.year===ep.year).map(p=>p.sortOrder||0));
+    const newProj = {
+      id:uid('proj'), year:ep.year, name, categoryId:DB.categories[0]?.id||'', ownerPersonId:DB.personnel[0]?.id||'',
+      priority:'mid', status:'notstarted', startDate:'', endDate:'', budgetAmount:total, budgetType:DB.budgetTypes[0]||'',
+      budgetSource:DB.budgetSources[0]||'', target:'', indicator:'', description:'จัดทำรายละเอียดค่าใช้จ่ายจากหน้า "รายละเอียดค่าใช้จ่าย" อ้างอิงระเบียบ สสจ.สป.',
+      attachments:[], disbRequestDate:'', disbCompleteDate:'', disbAmount:0, disbNote:'',
+      expenseItems: ep.items.map(it=>({...it})), sortOrder:maxSort+1, createdAt:new Date().toISOString()
+    };
+    DB.projects.push(newProj);
+    logAction('สร้างโครงการจากรายละเอียดค่าใช้จ่าย', `"${name}" รวม ${money(total)} บาท`);
+    saveDB();
+    showToast('สร้างโครงการใหม่พร้อมรายละเอียดค่าใช้จ่ายเรียบร้อย');
+    DB.currentYear = ep.year; saveDB();
+    UI.route='projects'; render();
+    openProjectDetail(newProj.id);
+  }
+  UI.expensePlan = { year: DB.currentYear, targetProjectId:'', newProjectName:'', items:[] };
+}
+
+/* =========================================================================
+   VIEW: Risk Register (ทะเบียนความเสี่ยงโครงการ)
+   ========================================================================= */
+function viewRiskRegister(){
+  const all = allRisksInYear();
+  const high = all.filter(x=>riskScore(x.risk)>=15).length;
+  const mid = all.filter(x=>{const s=riskScore(x.risk); return s>=8 && s<15;}).length;
+  const low = all.filter(x=>riskScore(x.risk)<8).length;
+  const openCount = all.filter(x=>x.risk.status!=='closed').length;
+  return `
+  <div class="grid grid-4">
+    ${kpiCard('⚠️','ความเสี่ยงทั้งหมด', all.length, `${openCount} ยังไม่ปิด`)}
+    ${kpiCard('🔴','ระดับสูงมาก', high, 'คะแนน 15 ขึ้นไป')}
+    ${kpiCard('🟡','ระดับปานกลาง', mid, 'คะแนน 8-14')}
+    ${kpiCard('🟢','ระดับต่ำ', low, 'คะแนนต่ำกว่า 8')}
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-head"><div class="card-title">ทะเบียนความเสี่ยง ปีงบ ${DB.currentYear} — เรียงตามระดับความรุนแรง</div></div>
+    <div class="tbl-wrap card-pad" style="padding-top:12px;">
+    <table><thead><tr><th>โครงการ</th><th>ความเสี่ยง</th><th style="text-align:center;">โอกาส</th><th style="text-align:center;">ผลกระทบ</th><th style="text-align:center;">คะแนน</th><th>ระดับ</th><th>สถานะ</th><th>มาตรการรองรับ</th></tr></thead>
+      <tbody>
+        ${all.length? all.map(({project,risk})=>{
+          const score=riskScore(risk); const lvl=riskLevel(score);
+          const st = RISK_STATUS.find(s=>s.id===risk.status)||RISK_STATUS[0];
+          return `<tr class="tbl-row" onclick="openProjectDetail('${project.id}')">
+            <td style="max-width:200px;">${escapeHtml(project.name)}</td>
+            <td style="font-weight:600;max-width:200px;">${escapeHtml(risk.name)}</td>
+            <td style="text-align:center;">${risk.probability}/5</td>
+            <td style="text-align:center;">${risk.impact}/5</td>
+            <td style="text-align:center;font-weight:700;">${score}</td>
+            <td><span class="badge ${lvl.cls}">${lvl.label}</span></td>
+            <td class="small-muted">${st.label}</td>
+            <td class="small-muted" style="max-width:220px;">${escapeHtml(risk.mitigation)||'-'}</td>
+          </tr>`;
+        }).join('') : `<tr><td colspan="8"><div class="empty-state"><div class="ic">✅</div>ยังไม่มีการบันทึกความเสี่ยงในปีงบนี้<br><span class="small-muted">เพิ่มได้จากหน้ารายละเอียดโครงการแต่ละโครงการ</span></div></td></tr>`}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <p class="small-muted" style="margin-top:10px;">* คะแนนความเสี่ยง = โอกาสเกิด × ผลกระทบ (1-5 คูณกัน ได้ 1-25) · 15 ขึ้นไป = สูงมาก, 8-14 = ปานกลาง, ต่ำกว่า 8 = ต่ำ</p>
+  `;
+}
+
+/* =========================================================================
+   VIEW: Lessons Learned Repository (คลังบทเรียนที่ได้รับ)
+   ========================================================================= */
+function viewLessons(){
+  const withLessons = DB.projects.filter(p=>p.lessonLearned && p.lessonLearned.trim()).sort((a,b)=>b.year-a.year || (a.name||'').localeCompare(b.name||''));
+  return `
+  <div class="card card-pad" style="margin-bottom:16px;">
+    <div class="card-title" style="margin-bottom:4px;">📚 คลังบทเรียนที่ได้รับ (ทุกปีงบ)</div>
+    <div class="small-muted">รวบรวมจากช่อง "บทเรียนที่ได้รับ" ในหน้ารายละเอียดของแต่ละโครงการ — บันทึกไว้เพื่อไม่ให้พลาดซ้ำในโครงการปีถัดไป แล้วนำไปผูกกับ "แม่แบบโครงการ" ได้จากหน้าโครงการ</div>
+  </div>
+  ${withLessons.length? withLessons.map(p=>{
+    const cat = getCategory(p.categoryId);
+    return `<div class="card" style="margin-bottom:12px;">
+      <div class="card-pad">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+          <div style="cursor:pointer;" onclick="openProjectDetail('${p.id}')">
+            <div style="font-weight:700;">${escapeHtml(p.name)}</div>
+            <div class="small-muted">ปีงบ ${p.year} · ${cat?escapeHtml(cat.name):'-'} · ${escapeHtml(getPersonName(p.ownerPersonId))}</div>
+          </div>
+          <span class="badge ${statusObj(p.status).cls}">${statusObj(p.status).label}</span>
+        </div>
+        <div class="hr"></div>
+        <div style="white-space:pre-wrap;line-height:1.7;">${escapeHtml(p.lessonLearned)}</div>
+      </div>
+    </div>`;
+  }).join('') : `<div class="card"><div class="card-pad"><div class="empty-state"><div class="ic">📚</div>ยังไม่มีการบันทึกบทเรียน<br><span class="small-muted">เปิดโครงการที่เสร็จสิ้นแล้ว แล้วกรอกในช่อง "บทเรียนที่ได้รับ" ได้เลย</span></div></div></div>`}
+  `;
+}
+
+/* =========================================================================
    VIEW: People
    ========================================================================= */
 function viewPeople(){
@@ -1846,6 +2771,80 @@ function deletePerson(id){
 /* =========================================================================
    VIEW: Performance (compare all)
    ========================================================================= */
+/* =========================================================================
+   VIEW: Resource Heatmap (แผนที่ความหนาแน่นภาระงานบุคลากร)
+   ========================================================================= */
+function computeHeatmapData(){
+  const y = DB.currentYear;
+  const fyStartCE = y-543-1, fyEndCE=y-543;
+  const projs = yearProjects();
+  const pids = new Set(projs.map(p=>p.id));
+  const tasksInYear = DB.tasks.filter(t=>pids.has(t.projectId));
+  const data = {};
+  DB.personnel.forEach(p=>{ data[p.id] = Array(12).fill(0); });
+  function monthCellRange(i){
+    const cellCE = fyStartCE + Math.floor((9+i)/12);
+    const cellMonth = (9+i)%12;
+    return {start:new Date(cellCE,cellMonth,1), end:new Date(cellCE,cellMonth+1,0)};
+  }
+  projs.forEach(p=>{
+    if(!p.startDate || !p.endDate || !data[p.ownerPersonId]) return;
+    const s = new Date(p.startDate+'T00:00:00'), e = new Date(p.endDate+'T00:00:00');
+    for(let i=0;i<12;i++){
+      const {start,end} = monthCellRange(i);
+      if(s<=end && e>=start) data[p.ownerPersonId][i]++;
+    }
+  });
+  tasksInYear.forEach(t=>{
+    if(!t.dueDate || !data[t.assigneeId]) return;
+    const d = new Date(t.dueDate+'T00:00:00');
+    for(let i=0;i<12;i++){
+      const {start,end} = monthCellRange(i);
+      if(d>=start && d<=end){ data[t.assigneeId][i]++; break; }
+    }
+  });
+  return data;
+}
+function heatColor(n){
+  if(n<=0) return '#F5F8F6';
+  if(n===1) return '#DCEFE2';
+  if(n===2) return '#AEDFC0';
+  if(n===3) return '#F7DDA0';
+  if(n===4) return '#F0B25E';
+  return '#E8746B';
+}
+function viewResourceHeatmap(){
+  const data = computeHeatmapData();
+  const y = DB.currentYear;
+  return `
+  <div class="card card-pad" style="margin-bottom:16px;">
+    <div class="card-title" style="margin-bottom:4px;">แผนที่ความหนาแน่นภาระงาน ปีงบ ${y}</div>
+    <div class="small-muted">นับจากจำนวนโครงการที่รับผิดชอบ (ตามช่วงวันที่ดำเนินการ) รวมกับจำนวนงานย่อยที่ครบกำหนดในเดือนนั้น ยิ่งสีเข้ม ยิ่งภาระงานหนักในเดือนนั้น ใช้ดูเพื่อกระจายงานให้เหมาะสม</div>
+  </div>
+  <div class="card">
+    <div class="tbl-wrap card-pad">
+    <table><thead><tr><th style="min-width:180px;">บุคลากร</th>${FY_MONTHS.map(m=>`<th style="text-align:center;">${m}</th>`).join('')}<th style="text-align:center;">รวม</th></tr></thead>
+      <tbody>
+        ${DB.personnel.map(p=>{
+          const row = data[p.id]||Array(12).fill(0);
+          const total = row.reduce((a,b)=>a+b,0);
+          return `<tr>
+            <td style="font-weight:600;cursor:pointer;" onclick="viewPersonPage('${p.id}')">${escapeHtml(p.name)}</td>
+            ${row.map(n=>`<td style="text-align:center;background:${heatColor(n)};font-weight:${n>0?700:400};color:${n>=4?'#fff':'var(--ink)'};">${n||''}</td>`).join('')}
+            <td style="text-align:center;font-weight:700;">${total}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <div style="margin-top:14px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
+    <span class="small-muted">ระดับภาระงาน:</span>
+    ${[0,1,2,3,4,5].map(n=>`<span class="small-muted"><span style="display:inline-block;width:16px;height:16px;border-radius:4px;background:${heatColor(n)};margin-right:4px;vertical-align:middle;border:1px solid #eee;"></span>${n===0?'ว่าง':n===5?'5+':n}</span>`).join('')}
+  </div>
+  `;
+}
+
 function viewPerformance(){
   return `
   <div class="card card-pad">
@@ -2037,6 +3036,11 @@ function viewSettings(){
       <div class="card-title" style="margin-bottom:12px;">แม่แบบโครงการ (Templates)</div>
       ${DB.projectTemplates.length? DB.projectTemplates.map(t=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);"><span style="font-size:12.5px;">${escapeHtml(t.name)}</span><button class="icon-btn" onclick="deleteTemplate('${t.id}')">🗑️</button></div>`).join('') : `<div class="small-muted">ยังไม่มีแม่แบบ — เปิดโครงการใดก็ได้แล้วกด "บันทึกเป็นแม่แบบ"</div>`}
     </div>
+    <div class="card card-pad">
+      <div class="card-title" style="margin-bottom:12px;">ยุทธศาสตร์/นโยบาย</div>
+      ${DB.strategicGoals.map((g,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);"><span style="font-size:12.5px;">${escapeHtml(g)}</span><button class="icon-btn" onclick="removeListItem('strategicGoals',${i})">🗑️</button></div>`).join('') || '<div class="small-muted">ยังไม่มียุทธศาสตร์</div>'}
+      <div style="display:flex;gap:8px;margin-top:10px;"><input class="input" id="newStrategic" placeholder="ยุทธศาสตร์ใหม่"><button class="btn btn-ghost btn-sm" onclick="addListItem('strategicGoals','newStrategic')">+ เพิ่ม</button></div>
+    </div>
   </div>
 
   <div class="card card-pad" style="margin-top:16px;">
@@ -2130,6 +3134,13 @@ function wireGlobalEvents(){
   }
 
   document.querySelectorAll('.nav-item').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const grp = el.dataset.group;
+      if(grp && groupKeyOfRoute(UI.route)===grp){ return; } // already viewing this section, keep current tab
+      UI.route=el.dataset.route; UI.personDetailId=null; render();
+    });
+  });
+  document.querySelectorAll('.tab-item').forEach(el=>{
     el.addEventListener('click', ()=>{ UI.route=el.dataset.route; UI.personDetailId=null; render(); });
   });
 
@@ -2174,6 +3185,14 @@ function wireGlobalEvents(){
     const saveUserBtn=document.getElementById('btnSaveUserName');
     if(saveUserBtn) saveUserBtn.addEventListener('click', saveCurrentUserName);
   }
+  if(UI.route==='expenseplanner'){
+    const epy=document.getElementById('ep_year');
+    if(epy) epy.addEventListener('change', e=>{ UI.expensePlan.year=Number(e.target.value); UI.expensePlan.targetProjectId=''; document.getElementById('contentArea').innerHTML=viewExpensePlanner(); wireGlobalEvents(); });
+    const ept=document.getElementById('ep_target');
+    if(ept) ept.addEventListener('change', e=>{ UI.expensePlan.targetProjectId=e.target.value; document.getElementById('contentArea').innerHTML=viewExpensePlanner(); wireGlobalEvents(); });
+    const epn=document.getElementById('ep_newname');
+    if(epn) epn.addEventListener('input', e=>{ UI.expensePlan.newProjectName=e.target.value; });
+  }
 }
 function refreshBackground(){
   // re-render current list-type views quietly to keep counts fresh when modal stays open
@@ -2205,6 +3224,7 @@ function afterRenderHook(){
   if(UI.route==='budget') drawBudgetCharts();
   if(UI.route==='performance') drawPerfChart();
   if(UI.route==='yearcompare') drawYearCompareCharts();
+  if(UI.route==='strategicalign') drawStrategicChart();
 }
 const CHART_GREEN_PALETTE=['#146C43','#2D6FA5','#C89B3C','#7C4FA0','#D64545','#22A05F','#4FC087','#8A9A92','#3B7BB0','#9C6B0B'];
 
