@@ -245,7 +245,7 @@ textarea.input{resize:vertical; min-height:70px;}
    ========================================================================= */
 
 const STORAGE_KEY = 'thaimed_ops_v1';
-const APP_VERSION = 'v3.2';
+const APP_VERSION = 'v3.4';
 const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const FY_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
 const STATUS_LIST = [
@@ -366,7 +366,7 @@ function seedData(){
   const c1=uid('cat'), c2=uid('cat'), c3=uid('cat'), c4=uid('cat');
   const proj1=uid('proj'), proj2=uid('proj'), proj3=uid('proj'), proj4=uid('proj'), proj5=uid('proj'), proj6=uid('proj'), proj7=uid('proj'), proj8=uid('proj'), proj9=uid('proj'), proj10=uid('proj'), proj11=uid('proj'), proj12=uid('proj'), proj13=uid('proj'), proj14=uid('proj'), proj15=uid('proj'), proj16=uid('proj');
   return {
-    meta:{ org:'สำนักงานสาธารณสุขจังหวัดสมุทรปราการ', group:'กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก', version:'v3.2' },
+    meta:{ org:'สำนักงานสาธารณสุขจังหวัดสมุทรปราการ', group:'กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก', version:'v3.4' },
     currentYear: 2569,
     fiscalYears:[2567,2568,2569,2570,2571],
     categories:[
@@ -1063,6 +1063,7 @@ function viewProjects(){
     <button class="btn btn-ghost btn-sm" id="btnSelectAllProj">เลือกทั้งหมดในตาราง</button>
     <button class="btn btn-ghost btn-sm" id="btnClearSelProj">ล้างการเลือก</button>
     <div class="spacer"></div>
+    <button class="btn btn-ghost btn-sm" onclick="runComplianceCheckAll()">🔍 ตรวจสอบตามระเบียบ (ทั้งหมด)</button>
     <button class="btn btn-ghost btn-sm" onclick="exportBudgetSummaryExcel(${DB.currentYear})">⬇️ ส่งออกสรุปงบประมาณ (Excel ตามแหล่งงบ)</button>
     <button class="btn btn-primary btn-sm" id="btnMoveProjYear" ${selCount?'':'disabled'}>📋 ย้าย/คัดลอกที่เลือกไปปีงบอื่น</button>
   </div>
@@ -1146,6 +1147,7 @@ function openProjectDetail(id){
       <tfoot><tr><td colspan="4" style="text-align:right;font-weight:700;">รวม</td><td style="text-align:right;font-weight:700;color:var(--g-800);">${money(p.expenseItems.reduce((s,it)=>s+expenseItemSubtotal(it),0))}</td></tr></tfoot>
       </table>
     </div>` : `<div class="small-muted" style="margin-bottom:12px;">ยังไม่มีรายละเอียดค่าใช้จ่ายแบบแยกรายการ — จัดทำได้จากปุ่มด้านบน (อ้างอิงอัตรามาตรฐาน สสจ.สป.)</div>`}
+    <button class="btn btn-ghost btn-sm" style="margin-bottom:16px;" onclick="runComplianceCheck('${p.id}')">🔍 ตรวจสอบตามระเบียบการเบิกจ่าย</button>
 
     <div class="section-title">💰 การเบิกจ่ายงบประมาณ<span class="line-flex"></span><span class="badge ${disbStatusLabel(p).cls}">${disbStatusLabel(p).label}</span></div>
     <div class="progress-bar" style="margin-bottom:4px;"><div class="progress-fill" style="width:${disbPercent(p)}%"></div></div>
@@ -2118,7 +2120,11 @@ function viewBudget(){
 function viewBaseEdit(){
   const otherYears = DB.fiscalYears.filter(y=>y!==DB.currentYear).sort((a,b)=>b-a);
   if(!UI.baseEditSourceYear || !otherYears.includes(UI.baseEditSourceYear)){
-    UI.baseEditSourceYear = otherYears[0] || null;
+    // Prefer the closest PAST year that actually has projects (a "base year" should be a prior year to copy from,
+    // not a future empty year) — falls back to closest past year, then any other year, if none have projects.
+    const pastYearsDesc = otherYears.filter(y=>y<DB.currentYear).sort((a,b)=>b-a);
+    const pastWithProjects = pastYearsDesc.find(y=>DB.projects.some(p=>p.year===y));
+    UI.baseEditSourceYear = pastWithProjects || pastYearsDesc[0] || otherYears[0] || null;
   }
   const sourceYear = UI.baseEditSourceYear;
   const sourceProjs = sourceYear ? DB.projects.filter(p=>p.year===sourceYear) : [];
@@ -2419,6 +2425,95 @@ function exportBudgetSummaryExcel(year){
    ========================================================================= */
 function expenseItemSubtotal(it){ return (Number(it.people)||0) * (Number(it.days)||0) * (Number(it.rate)||0); }
 function expensePlanTotal(){ return UI.expensePlan.items.reduce((s,it)=>s+expenseItemSubtotal(it),0); }
+
+/* =========================================================================
+   Compliance Checker (ตรวจสอบตามระเบียบ สสจ.สมุทรปราการ) — rule-based, offline
+   ========================================================================= */
+function findClosestRateCardItem(itemName){
+  if(!itemName) return null;
+  const exact = DB.expenseRateCard.find(r=>r.name===itemName);
+  if(exact) return exact;
+  const candidates = DB.expenseRateCard.filter(r=>{
+    const core = r.name.split(/[\/\(]/)[0].trim();
+    return core.length>=6 && (itemName.includes(core) || core.includes(itemName));
+  });
+  return candidates[0] || null;
+}
+function checkProjectCompliance(p){
+  const issues = [];
+  if(!p.budgetType) issues.push({level:'warning', msg:'ยังไม่ระบุ "ประเภทงบ" ของโครงการ'});
+  if(!p.budgetSource) issues.push({level:'warning', msg:'ยังไม่ระบุ "แหล่งงบประมาณ" ของโครงการ'});
+  if(!p.startDate || !p.endDate) issues.push({level:'warning', msg:'ยังไม่ระบุวันที่เริ่มต้น-สิ้นสุดโครงการ (มีผลต่อการคำนวณระยะเวลาและกำหนดรายงานผล)'});
+
+  const items = p.expenseItems||[];
+  if(!items.length && (Number(p.budgetAmount)||0)>0){
+    issues.push({level:'info', msg:'ยังไม่มีรายละเอียดค่าใช้จ่ายแบบแยกรายการ แนะนำจัดทำที่เมนู "รายละเอียดค่าใช้จ่าย" เพื่อให้ตรวจสอบตามระเบียบได้ละเอียดขึ้น'});
+  }
+  items.forEach(it=>{
+    const rc = findClosestRateCardItem(it.name);
+    if(!rc){
+      issues.push({level:'warning', msg:`รายการ "${it.name}" ไม่พบในตารางอัตรามาตรฐาน 46 รายการของระเบียบ สสจ. — ควรตรวจสอบว่าเบิกจ่ายตามระเบียบข้อใด`});
+    }else if(Number(it.rate) > Number(rc.rate)){
+      issues.push({level:'error', msg:`รายการ "${it.name}" ตั้งอัตรา ${money(it.rate)} บาท สูงกว่าอัตรามาตรฐาน ${money(rc.rate)} บาท/${rc.unit} ตามระเบียบ (หมวด ${rc.category})`});
+    }
+  });
+
+  if(items.length){
+    const sum = items.reduce((s,it)=>s+expenseItemSubtotal(it),0);
+    if(Math.abs(sum-(Number(p.budgetAmount)||0)) > 1){
+      issues.push({level:'warning', msg:`ยอดรวมรายการค่าใช้จ่าย (${money(sum)} บาท) ไม่ตรงกับงบประมาณโครงการที่ตั้งไว้ (${money(p.budgetAmount)} บาท)`});
+    }
+  }
+
+  if((Number(p.disbAmount)||0) > (Number(p.budgetAmount)||0)){
+    issues.push({level:'error', msg:'จำนวนเงินที่เบิกจ่ายแล้วมากกว่างบประมาณที่ตั้งไว้'});
+  }
+
+  const d = daysUntil(p.endDate);
+  if(d!==null && d<0 && !(p.lessonLearned && p.lessonLearned.trim())){
+    issues.push({level:'warning', msg:`โครงการสิ้นสุดไปแล้ว ${Math.abs(d)} วัน แต่ยังไม่ได้บันทึก "บทเรียนที่ได้รับ/รายงานสรุปผล" — ตามระเบียบควรจัดทำรายงานภายใน 15-30 วันหลังสิ้นสุดโครงการ`});
+  }
+
+  if((p.approvalStage||'draft')==='draft' && (Number(p.budgetAmount)||0)>0){
+    issues.push({level:'info', msg:'โครงการยังอยู่ในสถานะ "ร่าง" — หากจะเบิกจ่ายจริงต้องผ่านขั้นตอนการอนุมัติในระบบก่อน'});
+  }
+  return issues;
+}
+function issueBadgeCls(level){ return level==='error'?'b-delayed':level==='warning'?'b-inprogress':'b-notstarted'; }
+function issueIcon(level){ return level==='error'?'🔴':level==='warning'?'🟡':'🔵'; }
+function issueLabel(level){ return level==='error'?'ต้องแก้ไข':level==='warning'?'ควรตรวจสอบ':'ข้อแนะนำ'; }
+function runComplianceCheck(projectId){
+  const p=getProject(projectId); if(!p) return;
+  const issues = checkProjectCompliance(p);
+  const body = issues.length? `
+    <div class="small-muted" style="margin-bottom:12px;">พบ ${issues.length} ข้อที่ควรตรวจสอบ/ปรับปรุง — ตรวจอัตโนมัติจากอัตรามาตรฐาน 46 รายการและความครบถ้วนของข้อมูลในระบบ ไม่ใช่คำวินิจฉัยทางกฎหมาย โปรดใช้วิจารณญาณประกอบ</div>
+    ${issues.map(i=>`<div style="padding:10px 0;border-bottom:1px solid var(--line);">
+      <span class="badge ${issueBadgeCls(i.level)}">${issueIcon(i.level)} ${issueLabel(i.level)}</span>
+      <div style="margin-top:5px;font-size:13px;line-height:1.6;">${escapeHtml(i.msg)}</div>
+    </div>`).join('')}
+  ` : `<div class="empty-state"><div class="ic">✅</div>ไม่พบข้อผิดปกติจากการตรวจสอบอัตโนมัติ<br><span class="small-muted">ตรวจจากอัตรามาตรฐาน ความครบถ้วนของข้อมูล และกำหนดเวลารายงานผล</span></div>`;
+  const footer = `<button class="btn btn-primary" onclick="closeModal()">ปิด</button>`;
+  openModal(`🔍 ผลตรวจสอบตามระเบียบ: ${p.name}`, body, footer, true);
+  logAction('ตรวจสอบตามระเบียบ', `โครงการ "${p.name}" — พบ ${issues.length} ข้อ`);
+}
+function runComplianceCheckAll(){
+  const projs = yearProjects();
+  const results = projs.map(p=>({project:p, issues:checkProjectCompliance(p)})).filter(r=>r.issues.length);
+  const body = results.length? `
+    <div class="small-muted" style="margin-bottom:12px;">พบ ${results.length} จาก ${projs.length} โครงการในปีงบ ${DB.currentYear} ที่มีข้อควรตรวจสอบ — คลิกแต่ละรายการเพื่อเปิดโครงการ</div>
+    ${results.map(r=>{
+      const errCount = r.issues.filter(i=>i.level==='error').length;
+      const warnCount = r.issues.filter(i=>i.level==='warning').length;
+      const infoCount = r.issues.filter(i=>i.level==='info').length;
+      return `<div style="padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer;" onclick="closeModal();openProjectDetail('${r.project.id}')">
+        <div style="font-weight:600;font-size:13px;">${escapeHtml(r.project.name)}</div>
+        <div class="small-muted">${errCount?`🔴 ${errCount} ต้องแก้ไข  `:''}${warnCount?`🟡 ${warnCount} ควรตรวจสอบ  `:''}${infoCount?`🔵 ${infoCount} ข้อแนะนำ`:''}</div>
+      </div>`;
+    }).join('')}
+  ` : `<div class="empty-state"><div class="ic">✅</div>ทุกโครงการในปีงบ ${DB.currentYear} ผ่านการตรวจสอบอัตโนมัติเบื้องต้น</div>`;
+  openModal(`🔍 ผลตรวจสอบตามระเบียบ — ปีงบ ${DB.currentYear} (ทุกโครงการ)`, body, `<button class="btn btn-primary" onclick="closeModal()">ปิด</button>`, true);
+  logAction('ตรวจสอบตามระเบียบ (ทั้งหมด)', `ปีงบ ${DB.currentYear} — พบ ${results.length}/${projs.length} โครงการที่มีข้อควรตรวจสอบ`);
+}
 function openExpensePlannerForProject(projectId){
   const p = getProject(projectId); if(!p) return;
   UI.expensePlan = {
