@@ -245,7 +245,7 @@ textarea.input{resize:vertical; min-height:70px;}
    ========================================================================= */
 
 const STORAGE_KEY = 'thaimed_ops_v1';
-const APP_VERSION = 'v3.4';
+const APP_VERSION = 'v3.5';
 const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const FY_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
 const STATUS_LIST = [
@@ -366,7 +366,7 @@ function seedData(){
   const c1=uid('cat'), c2=uid('cat'), c3=uid('cat'), c4=uid('cat');
   const proj1=uid('proj'), proj2=uid('proj'), proj3=uid('proj'), proj4=uid('proj'), proj5=uid('proj'), proj6=uid('proj'), proj7=uid('proj'), proj8=uid('proj'), proj9=uid('proj'), proj10=uid('proj'), proj11=uid('proj'), proj12=uid('proj'), proj13=uid('proj'), proj14=uid('proj'), proj15=uid('proj'), proj16=uid('proj');
   return {
-    meta:{ org:'สำนักงานสาธารณสุขจังหวัดสมุทรปราการ', group:'กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก', version:'v3.4' },
+    meta:{ org:'สำนักงานสาธารณสุขจังหวัดสมุทรปราการ', group:'กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก', version:'v3.5' },
     currentYear: 2569,
     fiscalYears:[2567,2568,2569,2570,2571],
     categories:[
@@ -2013,7 +2013,7 @@ function updateProjectTimelineDate(pid, field, value){
   saveDB();
   showToast('บันทึกวันที่เรียบร้อย');
   document.getElementById('contentArea').innerHTML = viewTimeline();
-  wireGlobalEvents();
+  wireRouteEvents();
 }
 
 /* =========================================================================
@@ -2214,7 +2214,7 @@ function copySelectedBaseProjects(){
   logAction('คัดลอกโครงการจากปีฐาน', `${count} โครงการ มาปีงบ ${DB.currentYear}`);
   showToast(`คัดลอก ${count} โครงการมาปี ${DB.currentYear} เรียบร้อย ปรับแก้ในตารางด้านล่างได้เลย`);
   document.getElementById('contentArea').innerHTML = viewBaseEdit();
-  wireGlobalEvents();
+  wireRouteEvents();
 }
 function saveBulkProjectEdits(){
   const rows = document.querySelectorAll('#contentArea tr[data-pid]');
@@ -2238,7 +2238,7 @@ function saveBulkProjectEdits(){
   saveDB();
   showToast('บันทึกการแก้ไขทั้งหมดเรียบร้อย');
   document.getElementById('contentArea').innerHTML = viewBaseEdit();
-  wireGlobalEvents();
+  wireRouteEvents();
 }
 
 /* =========================================================================
@@ -2624,12 +2624,12 @@ function confirmAddRateItem(){
   UI.expensePlan.items.push({id:uid('epi'), name:rate.name, unit:rate.unit, people, days, rate:rate.rate, note:''});
   closeModal();
   document.getElementById('contentArea').innerHTML = viewExpensePlanner();
-  wireGlobalEvents();
+  wireRouteEvents();
 }
 function addCustomExpenseRow(){
   UI.expensePlan.items.push({id:uid('epi'), name:'', unit:'บาท', people:1, days:1, rate:0, note:''});
   document.getElementById('contentArea').innerHTML = viewExpensePlanner();
-  wireGlobalEvents();
+  wireRouteEvents();
 }
 function updateExpenseItem(idx, field, value){
   const it = UI.expensePlan.items[idx]; if(!it) return;
@@ -2645,7 +2645,7 @@ function updateExpenseItem(idx, field, value){
 function removeExpenseItem(idx){
   UI.expensePlan.items.splice(idx,1);
   document.getElementById('contentArea').innerHTML = viewExpensePlanner();
-  wireGlobalEvents();
+  wireRouteEvents();
 }
 function uploadExpensePlanToProject(){
   const ep = UI.expensePlan;
@@ -3203,6 +3203,14 @@ function openProjectFormQuick(){ openProjectForm(); }
    Global events + charts
    ========================================================================= */
 function wireGlobalEvents(){
+  wireTopbarEvents();
+  wireSidebarEvents();
+  wireRouteEvents();
+}
+/* wireTopbarEvents(): fySelect / quick-add / global search — these elements are only ever recreated by a
+   FULL render() (topbar HTML). Never call this from a partial refresh (contentArea/sidebar-only), or the
+   same persisting topbar elements will accumulate duplicate listeners. */
+function wireTopbarEvents(){
   const fy=document.getElementById('fySelect');
   if(fy) fy.addEventListener('change', e=>{ DB.currentYear=Number(e.target.value); saveDB(); render(); });
   const qa=document.getElementById('btnQuickAddProject');
@@ -3227,7 +3235,12 @@ function wireGlobalEvents(){
       if(panel && inp && !panel.contains(e.target) && e.target!==inp){ panel.style.display='none'; }
     });
   }
-
+}
+/* wireSidebarEvents(): nav-item / tab-item clicks. Safe to call whenever the sidebar (or tab bar) DOM was
+   actually replaced — e.g. full render(), or refreshBackground() which also refreshes the sidebar for
+   up-to-date badge counts. Never call on a contentArea-only refresh, since the (unchanged) sidebar nodes
+   would accumulate duplicate listeners. */
+function wireSidebarEvents(){
   document.querySelectorAll('.nav-item').forEach(el=>{
     el.addEventListener('click', ()=>{
       const grp = el.dataset.group;
@@ -3238,22 +3251,26 @@ function wireGlobalEvents(){
   document.querySelectorAll('.tab-item').forEach(el=>{
     el.addEventListener('click', ()=>{ UI.route=el.dataset.route; UI.personDetailId=null; render(); });
   });
-
+}
+/* wireRouteEvents(): wires interactions WITHIN #contentArea only (filters, inline forms, etc).
+   Safe to call on its own after ANY partial #contentArea refresh — it never touches the
+   sidebar/topbar/search DOM, so it can never accumulate duplicate listeners on those elements. */
+function wireRouteEvents(){
   if(UI.route==='projects'){
-    const q=document.getElementById('fltQ'); if(q) q.addEventListener('input', e=>{ UI.projectFilter.q=e.target.value; document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
-    const s=document.getElementById('fltStatus'); if(s) s.addEventListener('change', e=>{ UI.projectFilter.status=e.target.value; document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
-    const c=document.getElementById('fltCat'); if(c) c.addEventListener('change', e=>{ UI.projectFilter.cat=e.target.value; document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
-    const pr=document.getElementById('fltPri'); if(pr) pr.addEventListener('change', e=>{ UI.projectFilter.pri=e.target.value; document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
-    const ow=document.getElementById('fltOwner'); if(ow) ow.addEventListener('change', e=>{ UI.projectFilter.owner=e.target.value; document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
-    const src=document.getElementById('fltSource'); if(src) src.addEventListener('change', e=>{ UI.projectFilter.source=e.target.value; document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
-    const clr=document.getElementById('btnClearFilter'); if(clr) clr.addEventListener('click', ()=>{ UI.projectFilter={status:'',cat:'',pri:'',q:'',owner:'',source:''}; document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
+    const q=document.getElementById('fltQ'); if(q) q.addEventListener('input', e=>{ UI.projectFilter.q=e.target.value; document.getElementById('contentArea').innerHTML=viewProjects(); wireRouteEvents(); });
+    const s=document.getElementById('fltStatus'); if(s) s.addEventListener('change', e=>{ UI.projectFilter.status=e.target.value; document.getElementById('contentArea').innerHTML=viewProjects(); wireRouteEvents(); });
+    const c=document.getElementById('fltCat'); if(c) c.addEventListener('change', e=>{ UI.projectFilter.cat=e.target.value; document.getElementById('contentArea').innerHTML=viewProjects(); wireRouteEvents(); });
+    const pr=document.getElementById('fltPri'); if(pr) pr.addEventListener('change', e=>{ UI.projectFilter.pri=e.target.value; document.getElementById('contentArea').innerHTML=viewProjects(); wireRouteEvents(); });
+    const ow=document.getElementById('fltOwner'); if(ow) ow.addEventListener('change', e=>{ UI.projectFilter.owner=e.target.value; document.getElementById('contentArea').innerHTML=viewProjects(); wireRouteEvents(); });
+    const src=document.getElementById('fltSource'); if(src) src.addEventListener('change', e=>{ UI.projectFilter.source=e.target.value; document.getElementById('contentArea').innerHTML=viewProjects(); wireRouteEvents(); });
+    const clr=document.getElementById('btnClearFilter'); if(clr) clr.addEventListener('click', ()=>{ UI.projectFilter={status:'',cat:'',pri:'',q:'',owner:'',source:''}; document.getElementById('contentArea').innerHTML=viewProjects(); wireRouteEvents(); });
     document.querySelectorAll('.projSelChk').forEach(chk=>{
-      chk.addEventListener('change', e=>{ const id=e.target.dataset.id; if(e.target.checked) UI.projectsSelected.add(id); else UI.projectsSelected.delete(id); document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
+      chk.addEventListener('change', e=>{ const id=e.target.dataset.id; if(e.target.checked) UI.projectsSelected.add(id); else UI.projectsSelected.delete(id); document.getElementById('contentArea').innerHTML=viewProjects(); wireRouteEvents(); });
     });
     const selAllP=document.getElementById('btnSelectAllProj');
-    if(selAllP) selAllP.addEventListener('click', ()=>{ document.querySelectorAll('.projSelChk').forEach(c=>{ UI.projectsSelected.add(c.dataset.id); }); document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
+    if(selAllP) selAllP.addEventListener('click', ()=>{ document.querySelectorAll('.projSelChk').forEach(c=>{ UI.projectsSelected.add(c.dataset.id); }); document.getElementById('contentArea').innerHTML=viewProjects(); wireRouteEvents(); });
     const clearSelP=document.getElementById('btnClearSelProj');
-    if(clearSelP) clearSelP.addEventListener('click', ()=>{ UI.projectsSelected.clear(); document.getElementById('contentArea').innerHTML=viewProjects(); wireGlobalEvents(); });
+    if(clearSelP) clearSelP.addEventListener('click', ()=>{ UI.projectsSelected.clear(); document.getElementById('contentArea').innerHTML=viewProjects(); wireRouteEvents(); });
     const moveBtn=document.getElementById('btnMoveProjYear');
     if(moveBtn) moveBtn.addEventListener('click', openMoveProjectsModal);
   }
@@ -3263,7 +3280,7 @@ function wireGlobalEvents(){
   }
   if(UI.route==='baseedit'){
     const by=document.getElementById('baseYearSelect');
-    if(by) by.addEventListener('change', e=>{ UI.baseEditSourceYear=Number(e.target.value)||null; UI.baseEditSelected.clear(); document.getElementById('contentArea').innerHTML=viewBaseEdit(); wireGlobalEvents(); });
+    if(by) by.addEventListener('change', e=>{ UI.baseEditSourceYear=Number(e.target.value)||null; UI.baseEditSelected.clear(); document.getElementById('contentArea').innerHTML=viewBaseEdit(); wireRouteEvents(); });
     document.querySelectorAll('.baseEditChk').forEach(chk=>{
       chk.addEventListener('change', e=>{ const id=e.target.dataset.id; if(e.target.checked) UI.baseEditSelected.add(id); else UI.baseEditSelected.delete(id); });
     });
@@ -3282,18 +3299,22 @@ function wireGlobalEvents(){
   }
   if(UI.route==='expenseplanner'){
     const epy=document.getElementById('ep_year');
-    if(epy) epy.addEventListener('change', e=>{ UI.expensePlan.year=Number(e.target.value); UI.expensePlan.targetProjectId=''; document.getElementById('contentArea').innerHTML=viewExpensePlanner(); wireGlobalEvents(); });
+    if(epy) epy.addEventListener('change', e=>{ UI.expensePlan.year=Number(e.target.value); UI.expensePlan.targetProjectId=''; document.getElementById('contentArea').innerHTML=viewExpensePlanner(); wireRouteEvents(); });
     const ept=document.getElementById('ep_target');
-    if(ept) ept.addEventListener('change', e=>{ UI.expensePlan.targetProjectId=e.target.value; document.getElementById('contentArea').innerHTML=viewExpensePlanner(); wireGlobalEvents(); });
+    if(ept) ept.addEventListener('change', e=>{ UI.expensePlan.targetProjectId=e.target.value; document.getElementById('contentArea').innerHTML=viewExpensePlanner(); wireRouteEvents(); });
     const epn=document.getElementById('ep_newname');
     if(epn) epn.addEventListener('input', e=>{ UI.expensePlan.newProjectName=e.target.value; });
   }
 }
 function refreshBackground(){
-  // re-render current list-type views quietly to keep counts fresh when modal stays open
+  // re-render current list-type views quietly to keep counts (incl. sidebar badges) fresh when modal stays open
   if(!document.getElementById('modalOverlay')){
+    const sidebarEl = document.querySelector('.sidebar');
+    if(sidebarEl) sidebarEl.outerHTML = renderSidebar(); // sidebar replaced fresh -> safe to rewire its listeners
     document.getElementById('contentArea').innerHTML = renderRoute();
-    wireGlobalEvents(); afterRenderHook();
+    wireSidebarEvents(); wireRouteEvents(); afterRenderHook();
+    // NOTE: topbar is untouched here on purpose — never call wireTopbarEvents()/wireGlobalEvents() from a
+    // partial refresh like this one, or the persisting topbar elements accumulate duplicate listeners.
   }
 }
 function handleImportJSON(e){
