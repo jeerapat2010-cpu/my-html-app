@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สร้างข่าวประชาสัมพันธ์ — กลุ่มงานการแพทย์แผนไทยฯ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --brand-blue-dark:#124a80;
+    --brand-blue:#1c66a8;
+    --brand-blue-light:#4fa8d8;
+    --brand-teal:#0e8a8c;
+    --brand-teal-dark:#0a6668;
+    --ink:#1a2b34;
+    --paper:#ffffff;
+    --muted:#6b7b83;
+    --line:#d7e2e6;
+    --canvas-bg:#eef3f5;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Sarabun',sans-serif;
+    background:var(--canvas-bg);
+    color:var(--ink);
+    min-height:100vh;
+  }
+  /* ---------- App shell ---------- */
+  .app{
+    display:flex;
+    min-height:100vh;
+  }
+  .toolbar{
+    width:300px;
+    flex:none;
+    background:var(--paper);
+    border-right:1px solid var(--line);
+    padding:20px 18px 40px;
+    position:sticky;
+    top:0;
+    height:100vh;
+    overflow-y:auto;
+  }
+  .toolbar h1{
+    font-family:'Kanit',sans-serif;
+    font-size:17px;
+    font-weight:600;
+    color:var(--brand-blue-dark);
+    margin:0 0 4px;
+  }
+  .toolbar .sub{
+    font-size:12.5px;
+    color:var(--muted);
+    margin:0 0 20px;
+    line-height:1.5;
+  }
+  .tb-section{
+    margin-bottom:20px;
+    padding-bottom:18px;
+    border-bottom:1px solid var(--line);
+  }
+  .tb-section:last-child{border-bottom:none;}
+  .tb-label{
+    font-size:11.5px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    color:var(--brand-teal-dark);
+    margin:0 0 10px;
+  }
+  .tb-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-bottom:8px;
+    font-size:13px;
+  }
+  .count-control{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .count-control button{
+    width:26px;height:26px;
+    border-radius:6px;
+    border:1px solid var(--line);
+    background:#f4f8f9;
+    color:var(--brand-blue-dark);
+    font-size:15px;
+    line-height:1;
+    cursor:pointer;
+  }
+  .count-control button:disabled{opacity:.35;cursor:not-allowed;}
+  .count-control span{min-width:14px;text-align:center;font-weight:600;}
+  .hint{
+    font-size:11.5px;
+    color:var(--muted);
+    margin-top:2px;
+    line-height:1.5;
+  }
+  .date-row{
+    display:flex;
+    gap:6px;
+    margin-bottom:8px;
+  }
+  .date-row input[type=date]{
+    flex:1;
+    font-family:'Sarabun',sans-serif;
+    font-size:12.5px;
+    padding:6px 6px;
+    border:1px solid var(--line);
+    border-radius:6px;
+  }
+  .btn{
+    width:100%;
+    padding:9px 10px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:#f4f8f9;
+    color:var(--brand-blue-dark);
+    font-family:'Sarabun',sans-serif;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    margin-top:6px;
+  }
+  .btn:hover{background:#e7f0f2;}
+  .btn.primary{
+    background:linear-gradient(135deg,var(--brand-blue),var(--brand-blue-dark));
+    color:#fff;
+    border:none;
+  }
+  .btn.primary:hover{filter:brightness(1.06);}
+  .btn.teal{
+    background:linear-gradient(135deg,var(--brand-teal),var(--brand-teal-dark));
+    color:#fff;
+    border:none;
+  }
+  .btn.ghost{background:transparent;}
+  .status-msg{
+    font-size:12px;
+    color:var(--brand-teal-dark);
+    min-height:16px;
+    margin-top:8px;
+  }
+
+  /* ---------- Canvas / preview area ---------- */
+  .canvas-wrap{
+    flex:1;
+    display:flex;
+    justify-content:center;
+    padding:40px 20px 80px;
+  }
+  #poster{
+    width:900px;
+    background:var(--paper);
+    box-shadow:0 10px 40px rgba(20,50,70,.18);
+    overflow:hidden;
+  }
+
+  /* Header */
+  .header{
+    position:relative;
+    height:170px;
+    background:linear-gradient(120deg,#1c3f57,#2c5f7c);
+    overflow:hidden;
+  }
+  .header-bg{
+    position:absolute;inset:0;
+    background-size:cover;
+    background-position:center;
+    opacity:.85;
+  }
+  /* Background pattern templates (react live to theme colors via CSS vars) */
+  .bg-tpl-1{ background-image:linear-gradient(120deg, var(--brand-blue-dark) 0%, var(--brand-blue) 55%, var(--brand-blue-light) 100%); }
+  .bg-tpl-2{ background-image:linear-gradient(135deg, var(--brand-teal-dark) 0%, var(--brand-teal) 55%, var(--brand-blue-light) 100%); }
+  .bg-tpl-3{ background-image:radial-gradient(circle at 18% 30%, var(--brand-blue-light) 0%, var(--brand-blue) 45%, var(--brand-blue-dark) 100%); }
+  .bg-tpl-4{ background-image:repeating-linear-gradient(115deg, var(--brand-blue-dark) 0px, var(--brand-blue-dark) 46px, var(--brand-blue) 46px, var(--brand-blue) 92px); }
+  .bg-tpl-5{ background-image:radial-gradient(at 22% 15%, var(--brand-teal) 0%, transparent 55%), radial-gradient(at 82% 5%, var(--brand-blue-light) 0%, transparent 50%), linear-gradient(var(--brand-blue-dark), var(--brand-blue-dark)); }
+
+  /* Toolbar swatches */
+  .swatch-row{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+    margin-bottom:6px;
+  }
+  .bg-swatch{
+    height:38px;
+    border-radius:7px;
+    cursor:pointer;
+    border:2px solid transparent;
+    position:relative;
+  }
+  .bg-swatch.selected{border-color:var(--brand-blue-dark);box-shadow:0 0 0 2px rgba(28,102,168,.25);}
+  .bg-swatch.upload-swatch{
+    background:#f4f8f9;
+    border:2px dashed var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-size:15px;
+    color:#7f939b;
+  }
+  .theme-row{
+    display:flex;
+    gap:9px;
+    margin-bottom:4px;
+    flex-wrap:wrap;
+  }
+  .theme-swatch{
+    width:30px;height:30px;
+    border-radius:50%;
+    cursor:pointer;
+    border:2px solid transparent;
+    position:relative;
+  }
+  .theme-swatch.selected{border-color:#1a2b34;box-shadow:0 0 0 2px rgba(0,0,0,.12);}
+  .header-tint{
+    position:absolute;inset:0;
+    background:linear-gradient(100deg,rgba(10,30,45,.55) 0%, rgba(10,40,60,.15) 55%, rgba(10,40,60,.05) 100%);
+  }
+  .header-content{
+    position:relative;
+    height:100%;
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    padding:16px 20px;
+  }
+  .org-mark{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .logo-slot{
+    width:56px;height:56px;
+    border-radius:50%;
+    background:#fff;
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;
+    cursor:pointer;
+    flex:none;
+    border:2px solid rgba(255,255,255,.8);
+  }
+  .logo-slot img{width:100%;height:100%;object-fit:cover;}
+  .logo-slot .ph-icon{font-size:20px;color:#9db3bd;}
+  .province-title{
+    font-family:'Kanit',sans-serif;
+    font-weight:600;
+    font-size:19px;
+    letter-spacing:.06em;
+    color:#fff;
+    text-shadow:0 2px 6px rgba(0,0,0,.35);
+    outline:none;
+    max-width:420px;
+  }
+  .doctor-block{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    text-align:right;
+    gap:6px;
+  }
+  .doctor-photo-slot{
+    width:96px;height:96px;
+    border-radius:10px;
+    background:#dfe9ec;
+    border:3px solid #fff;
+    overflow:hidden;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 4px 10px rgba(0,0,0,.25);
+  }
+  .doctor-photo-slot img{width:100%;height:100%;object-fit:cover;}
+  .doctor-photo-slot .ph-icon{font-size:26px;color:#9aa;}
+  .doctor-name{
+    font-family:'Kanit',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    color:#fff;
+    text-shadow:0 1px 4px rgba(0,0,0,.4);
+    outline:none;
+  }
+  .doctor-title{
+    font-size:11px;
+    color:#e6f1f5;
+    text-shadow:0 1px 4px rgba(0,0,0,.4);
+    outline:none;
+    max-width:220px;
+  }
+
+  /* Title ribbon */
+  .title-ribbon{
+    display:flex;
+    align-items:stretch;
+  }
+  .title-ribbon .tag{
+    background:#fff;
+    color:var(--brand-blue-dark);
+    font-family:'Kanit',sans-serif;
+    font-weight:600;
+    font-size:19px;
+    padding:12px 26px;
+    outline:none;
+    clip-path:polygon(0 0,100% 0,92% 100%,0% 100%);
+    margin-right:-30px;
+    z-index:1;
+  }
+  .title-ribbon .filler{
+    flex:1;
+    background:linear-gradient(90deg,#eaf3f6,#cfe3ea);
+  }
+
+  /* Headline band */
+  .headline-band{
+    background:linear-gradient(100deg,var(--brand-blue) 0%, var(--brand-blue-light) 100%);
+    padding:14px 26px 16px;
+    text-align:center;
+  }
+  .headline-band [contenteditable]{
+    outline:none;
+    color:#fff;
+    font-family:'Kanit',sans-serif;
+    font-weight:500;
+    font-size:16.5px;
+    line-height:1.55;
+    text-shadow:0 1px 3px rgba(0,0,0,.15);
+  }
+
+  /* Photo galleries */
+  .gallery{
+    display:grid;
+    gap:6px;
+    padding:8px;
+    background:#0f2f3d;
+  }
+  .photo-slot{
+    position:relative;
+    aspect-ratio:4/3;
+    background:#dbe6ea;
+    overflow:hidden;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .photo-slot img{
+    width:100%;height:100%;object-fit:cover;display:block;
+  }
+  .photo-slot .ph-inner{
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+    color:#7f939b;
+    font-size:12px;
+    text-align:center;
+    padding:6px;
+  }
+  .photo-slot .ph-inner .ic{font-size:26px;}
+  .photo-slot .remove-x{
+    position:absolute;top:4px;right:4px;
+    width:22px;height:22px;
+    border-radius:50%;
+    background:rgba(20,30,35,.6);
+    color:#fff;
+    border:none;
+    font-size:13px;
+    line-height:1;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  /* Text block */
+  .text-block{
+    padding:18px 26px 20px;
+    background:#fff;
+  }
+  .date-line{
+    font-weight:600;
+    color:var(--brand-blue-dark);
+    outline:none;
+    margin-right:4px;
+  }
+  .body-text{
+    outline:none;
+    font-size:14.5px;
+    line-height:1.9;
+    color:#2c3a40;
+    text-align:justify;
+  }
+
+  /* Footer */
+  .footer-bar{
+    background:linear-gradient(100deg,var(--brand-teal),var(--brand-teal-dark));
+    color:#fff;
+    text-align:center;
+    padding:12px 20px;
+    font-family:'Kanit',sans-serif;
+    font-weight:500;
+    font-size:14px;
+    outline:none;
+  }
+
+  /* Content AI tools (hidden during export) */
+  .content-tools{
+    display:flex;
+    gap:8px;
+    margin:12px 0 4px;
+    flex-wrap:wrap;
+  }
+  .ai-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:8px 14px;
+    border-radius:20px;
+    border:1px solid var(--brand-blue);
+    background:#fff;
+    color:var(--brand-blue-dark);
+    font-family:'Sarabun',sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .ai-btn:hover{background:#eef6f9;}
+  .ai-btn:disabled{opacity:.5;cursor:default;}
+  .ai-btn.polish{border-color:var(--brand-teal);color:var(--brand-teal-dark);}
+  .ai-btn.polish:hover{background:#eaf8f6;}
+  .spinner{
+    width:12px;height:12px;
+    border:2px solid rgba(0,0,0,.15);
+    border-top-color:currentColor;
+    border-radius:50%;
+    animation:spin .7s linear infinite;
+    display:inline-block;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .ai-result-panel{
+    margin-top:10px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:#f7fafb;
+    padding:14px 16px;
+    font-size:13px;
+  }
+  .ai-result-panel.hidden{display:none;}
+  .ai-result-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+  }
+  .ai-result-head strong{
+    font-family:'Kanit',sans-serif;
+    font-size:13.5px;
+    color:var(--brand-blue-dark);
+  }
+  .ai-close-x{
+    border:none;background:none;cursor:pointer;
+    font-size:15px;color:var(--muted);
+  }
+  .w-row{
+    display:flex;
+    gap:8px;
+    padding:6px 0;
+    border-bottom:1px dashed var(--line);
+    align-items:flex-start;
+  }
+  .w-row:last-child{border-bottom:none;}
+  .w-icon{flex:none;font-size:14px;line-height:1.5;}
+  .w-body .w-label{font-weight:600;color:var(--ink);}
+  .w-body .w-comment{color:var(--muted);font-size:12.5px;line-height:1.5;}
+  .w-overall{
+    margin-top:10px;
+    padding-top:10px;
+    border-top:1px solid var(--line);
+    font-size:12.5px;
+    color:var(--brand-teal-dark);
+    line-height:1.6;
+  }
+  .polish-text{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 12px;
+    font-size:13.5px;
+    line-height:1.8;
+    color:#2c3a40;
+    max-height:260px;
+    overflow-y:auto;
+    text-align:justify;
+  }
+  .ai-actions{
+    display:flex;
+    gap:8px;
+    margin-top:10px;
+  }
+  .ai-actions button{
+    padding:7px 13px;
+    border-radius:7px;
+    font-size:12.5px;
+    font-weight:600;
+    cursor:pointer;
+    border:1px solid var(--line);
+    background:#fff;
+  }
+  .ai-actions .apply-btn{background:var(--brand-teal);border-color:var(--brand-teal);color:#fff;}
+  .ai-error{color:#b3261e;font-size:12.5px;}
+  #poster.exporting .content-tools,
+  #poster.exporting .ai-result-panel{display:none !important;}
+  #poster.exporting .remove-x,
+  #poster.exporting .ph-inner .ic-hint,
+  #poster.exporting [contenteditable]{
+    cursor:default;
+  }
+  #poster.exporting .remove-x{display:none;}
+  #poster.exporting .photo-slot,
+  #poster.exporting .logo-slot,
+  #poster.exporting .doctor-photo-slot{cursor:default;}
+
+  [contenteditable]:empty:before{
+    content:attr(data-placeholder);
+    color:rgba(255,255,255,.65);
+  }
+  .text-block [contenteditable]:empty:before{color:#9db0b6;}
+  .province-title:empty:before{color:rgba(255,255,255,.6);}
+
+  @media (max-width:1000px){
+    .app{flex-direction:column;}
+    .toolbar{width:100%;height:auto;position:relative;}
+    .canvas-wrap{padding:20px 10px 60px;overflow-x:auto;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ============ TOOLBAR ============ -->
+  <div class="toolbar">
+    <h1>สร้างข่าวประชาสัมพันธ์</h1>
+    <p class="sub">แก้ไขข้อความและรูปภาพได้โดยตรงบนตัวอย่างด้านขวา คลิกที่กรอบรูปเพื่ออัปโหลด</p>
+
+    <div class="tb-section">
+      <div class="tb-label">เพิ่มชื่อประธาน (อัจฉริยะ)</div>
+      <select id="personSelect" style="width:100%;padding:7px 8px;border-radius:7px;border:1px solid var(--line);font-family:'Sarabun',sans-serif;font-size:12.5px;margin-bottom:8px;">
+        <option value="ssj">นพ.สสจ. — นายแพทย์สาธารณสุขจังหวัดสมุทรปราการ</option>
+        <option value="head">หัวหน้ากลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก</option>
+        <option value="target">กลุ่มเป้าหมาย / ผู้เข้าร่วมกิจกรรม</option>
+      </select>
+      <button class="btn" id="addPersonBtn" style="margin-top:0;">👤➕ เพิ่มคนอัจฉริยะ</button>
+      <p class="hint">ระบบจะกรอกชื่อ-ตำแหน่งในมุมขวาบนของโปสเตอร์ให้อัตโนมัติ แก้ไขเพิ่มเติมได้ภายหลัง</p>
+    </div>
+
+    <div class="tb-section">
+      <div class="tb-label">เนื้อหากิจกรรม (5W → เรียบเรียงอัตโนมัติ)</div>
+      <p class="hint" style="margin-top:0;">พิมพ์ประเด็นทีละข้อ (ขึ้นบรรทัดใหม่ต่อ 1 ประเด็น) แล้วให้ AI เรียบเรียงเป็นคำบรรยาย</p>
+      <p class="hint" style="margin:6px 0 2px;font-weight:600;color:var(--ink);">👤 ใคร (Who)</p>
+      <textarea id="wWho" rows="2" style="width:100%;font-family:'Sarabun',sans-serif;font-size:12.5px;padding:6px;border:1px solid var(--line);border-radius:6px;"></textarea>
+      <p class="hint" style="margin:6px 0 2px;font-weight:600;color:var(--ink);">📋 ทำอะไร (What)</p>
+      <textarea id="wWhat" rows="2" style="width:100%;font-family:'Sarabun',sans-serif;font-size:12.5px;padding:6px;border:1px solid var(--line);border-radius:6px;"></textarea>
+      <p class="hint" style="margin:6px 0 2px;font-weight:600;color:var(--ink);">📍 ที่ไหน (Where)</p>
+      <textarea id="wWhere" rows="2" style="width:100%;font-family:'Sarabun',sans-serif;font-size:12.5px;padding:6px;border:1px solid var(--line);border-radius:6px;"></textarea>
+      <p class="hint" style="margin:6px 0 2px;font-weight:600;color:var(--ink);">📅 เมื่อไหร่ (When)</p>
+      <textarea id="wWhen" rows="2" style="width:100%;font-family:'Sarabun',sans-serif;font-size:12.5px;padding:6px;border:1px solid var(--line);border-radius:6px;"></textarea>
+      <p class="hint" style="margin:6px 0 2px;font-weight:600;color:var(--ink);">🎯 ทำไม (Why)</p>
+      <textarea id="wWhy" rows="2" style="width:100%;font-family:'Sarabun',sans-serif;font-size:12.5px;padding:6px;border:1px solid var(--line);border-radius:6px;"></textarea>
+      <button class="btn teal" id="composeBtn">🪄 เรียบเรียงเป็นคำบรรยาย</button>
+      <div class="ai-result-panel hidden" id="composePanel" style="margin-top:10px;">
+        <div class="ai-result-head">
+          <strong>ร่างคำบรรยาย</strong>
+          <button class="ai-close-x" data-close="composePanel">✕</button>
+        </div>
+        <div id="composeBody"></div>
+      </div>
+    </div>
+
+    <div class="tb-section">
+      <div class="tb-label">ธีมสี</div>
+      <div class="theme-row" id="themeRow"></div>
+      <p class="hint">สีธีมจะปรับพาดหัว แถบท้าย และลายพื้นหลังให้เข้าชุดกันอัตโนมัติ</p>
+    </div>
+
+    <div class="tb-section">
+      <div class="tb-label">พื้นหลังหัวข่าว (ลายกราฟิก)</div>
+      <div class="swatch-row" id="bgTplRow"></div>
+      <p class="hint">หรือคลิกที่พื้นหลังด้านบนของโปสเตอร์เพื่ออัปโหลดภาพถ่ายจริงแทนลาย</p>
+    </div>
+
+    <div class="tb-section">
+      <div class="tb-label">พื้นหลังภาพถ่ายจริง</div>
+      <div class="swatch-row" id="bgPhotoRow"></div>
+      <p class="hint">ภาพตัวอย่างจากคลังฟรี — หากใช้เผยแพร่จริงแนะนำอัปโหลดภาพของหน่วยงานเองแทน</p>
+    </div>
+
+    <div class="tb-section">
+      <div class="tb-label">ชุดรูปที่ 1 (ก่อนเนื้อหา)</div>
+      <div class="tb-row">
+        <span>จำนวนรูป</span>
+        <div class="count-control">
+          <button id="galA-minus">−</button>
+          <span id="galA-count">2</span>
+          <button id="galA-plus">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tb-section">
+      <div class="tb-label">ชุดรูปที่ 2 (หลังเนื้อหา)</div>
+      <div class="tb-row">
+        <span>จำนวนรูป</span>
+        <div class="count-control">
+          <button id="galB-minus">−</button>
+          <span id="galB-count">3</span>
+          <button id="galB-plus">+</button>
+        </div>
+      </div>
+      <p class="hint">รวมรูปทั้งหมดได้ 4–10 รูป (ปัจจุบัน: <span id="totalCount">5</span>)</p>
+    </div>
+
+    <div class="tb-section">
+      <div class="tb-label">แทรกวันที่</div>
+      <div class="date-row">
+        <input type="date" id="datePicker">
+        <button class="btn" id="insertDateBtn" style="margin:0;width:auto;white-space:nowrap;">แทรก</button>
+      </div>
+      <p class="hint">แปลงเป็นรูปแบบวันที่ไทย (พ.ศ.) แทรกที่บรรทัดวันที่อัตโนมัติ</p>
+    </div>
+
+    <div class="tb-section">
+      <div class="tb-label">ส่งออกไฟล์</div>
+      <button class="btn primary" id="exportJpeg">📷 ส่งออกเป็น JPEG</button>
+      <button class="btn primary" id="exportPdf">📄 ส่งออกเป็น PDF</button>
+      <button class="btn teal" id="exportPptx">📊 ส่งออกเป็น PPTX</button>
+      <div class="status-msg" id="statusMsg"></div>
+    </div>
+
+    <div class="tb-section">
+      <button class="btn ghost" id="resetBtn">↺ ล้างและเริ่มใหม่</button>
+    </div>
+  </div>
+
+  <!-- ============ POSTER ============ -->
+  <div class="canvas-wrap">
+    <div id="poster">
+
+      <!-- Header -->
+      <div class="header">
+        <div class="header-bg bg-tpl-1" id="headerBg" style="cursor:pointer;" title="คลิกเพื่ออัปโหลดภาพพื้นหลังของฉัน"></div>
+        <div class="header-tint"></div>
+        <div class="header-content">
+          <div class="org-mark">
+            <div class="logo-slot" id="logoSlot"><span class="ph-icon">🏥</span></div>
+            <div class="province-title" contenteditable="true" data-placeholder="ชื่อจังหวัด / หน่วยงาน">SAMUT PRAKAN PROVINCE</div>
+          </div>
+          <div class="doctor-block">
+            <div class="doctor-photo-slot" id="doctorSlot"><span class="ph-icon">👤</span></div>
+            <div class="doctor-name" contenteditable="true" data-placeholder="ชื่อ-นามสกุล">นายแพทย์ประภาส ผูกดวง</div>
+            <div class="doctor-title" contenteditable="true" data-placeholder="ตำแหน่ง">นายแพทย์สาธารณสุขจังหวัดสมุทรปราการ</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Title ribbon -->
+      <div class="title-ribbon">
+        <div class="tag" contenteditable="true" data-placeholder="หัวเรื่อง">ข่าวประชาสัมพันธ์</div>
+        <div class="filler"></div>
+      </div>
+
+      <!-- Headline -->
+      <div class="headline-band">
+        <div contenteditable="true" data-placeholder="พาดหัวกิจกรรม (2 บรรทัด)">ลงพื้นที่สำรวจ รวบรวมตำราการแพทย์แผนไทย และจัดทำทะเบียนภูมิปัญญาด้านการแพทย์แผนไทย อำเภอพระประแดง จังหวัดสมุทรปราการ ปีงบประมาณ พ.ศ. 2569</div>
+      </div>
+
+      <!-- Gallery A -->
+      <div class="gallery" id="galleryA"></div>
+
+      <!-- Text block -->
+      <div class="text-block">
+        <span class="date-line" contenteditable="true" id="dateSpan">วันที่ 24 สิงหาคม 2569</span><span class="body-text" contenteditable="true" id="bodyText" data-placeholder="รายละเอียดกิจกรรม...">กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สำนักงานสาธารณสุขจังหวัดสมุทรปราการ นำโดยหัวหน้ากลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก ลงพื้นที่สำรวจรวบรวมตำราการแพทย์แผนไทย และจัดทำทะเบียนภูมิปัญญาด้านการแพทย์แผนไทย อำเภอพระประแดง จังหวัดสมุทรปราการ ปีงบประมาณ พ.ศ. 2569 เพื่อจัดทำฐานข้อมูลภูมิปัญญาการแพทย์แผนไทยตาม พ.ร.บ.คุ้มครองและส่งเสริมภูมิปัญญาการแพทย์แผนไทย พ.ศ. 2542 ภายใต้โครงการคุ้มครองและส่งเสริมภูมิปัญญาการแพทย์แผนไทยและสมุนไพร จังหวัดสมุทรปราการ ซึ่งได้รับความร่วมมือจากหน่วยงานและเจ้าหน้าที่ที่เกี่ยวข้องเป็นอย่างดี</span>
+
+        <div class="content-tools">
+          <button class="ai-btn check5w" id="check5wBtn">🔍 ตรวจสอบ 5W</button>
+          <button class="ai-btn polish" id="polishBtn">✨ แนะนำปรับสำนวน</button>
+        </div>
+
+        <div class="ai-result-panel hidden" id="fiveWPanel">
+          <div class="ai-result-head">
+            <strong>ผลตรวจสอบ 5W</strong>
+            <button class="ai-close-x" data-close="fiveWPanel">✕</button>
+          </div>
+          <div id="fiveWBody"></div>
+        </div>
+
+        <div class="ai-result-panel hidden" id="polishPanel">
+          <div class="ai-result-head">
+            <strong>คำแนะนำสำนวนที่สละสลวยขึ้น</strong>
+            <button class="ai-close-x" data-close="polishPanel">✕</button>
+          </div>
+          <div id="polishBody"></div>
+        </div>
+      </div>
+
+      <!-- Gallery B -->
+      <div class="gallery" id="galleryB"></div>
+
+      <!-- Footer -->
+      <div class="footer-bar" contenteditable="true" data-placeholder="ชื่อกลุ่มงาน">กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สำนักงานสาธารณสุขจังหวัดสมุทรปราการ</div>
+
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" style="display:none;">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
+
+<script>
+(function(){
+  const MIN_TOTAL = 4, MAX_TOTAL = 10;
+  const galleries = {
+    A: { count: 2, min: 1, el: document.getElementById('galleryA'), images: {} },
+    B: { count: 3, min: 1, el: document.getElementById('galleryB'), images: {} }
+  };
+
+  const fileInput = document.getElementById('fileInput');
+  let pendingTarget = null; // {type:'photo', gal:'A', idx:0} | {type:'logo'} | {type:'doctor'} | {type:'header'}
+
+  // ---- Themes ----
+  const themes = [
+    { name:'ฟ้า-เขียวราชการ', blueDark:'#124a80', blue:'#1c66a8', blueLight:'#4fa8d8', teal:'#0e8a8c', tealDark:'#0a6668' },
+    { name:'เขียวสมุนไพร',     blueDark:'#175c3f', blue:'#238a5c', blueLight:'#6fc79a', teal:'#3a8f3f', tealDark:'#1f5c26' },
+    { name:'ทองอัมพวัน',       blueDark:'#7a4a12', blue:'#b3791f', blueLight:'#e8b85c', teal:'#8a5a0e', tealDark:'#5c3a08' },
+    { name:'แดงเลือดหมู',      blueDark:'#6e1420', blue:'#a3253a', blueLight:'#d97385', teal:'#7c2030', tealDark:'#4d0f18' },
+    { name:'กรมท่าเข้ม',       blueDark:'#0c2340', blue:'#1f3f66', blueLight:'#5a7fa8', teal:'#22506b', tealDark:'#122e40' }
+  ];
+  let currentThemeIdx = 0;
+
+  function applyTheme(idx){
+    const t = themes[idx];
+    const root = document.documentElement.style;
+    root.setProperty('--brand-blue-dark', t.blueDark);
+    root.setProperty('--brand-blue', t.blue);
+    root.setProperty('--brand-blue-light', t.blueLight);
+    root.setProperty('--brand-teal', t.teal);
+    root.setProperty('--brand-teal-dark', t.tealDark);
+    currentThemeIdx = idx;
+    document.querySelectorAll('.theme-swatch').forEach((el,i)=>{
+      el.classList.toggle('selected', i===idx);
+    });
+  }
+
+  function renderThemeRow(){
+    const row = document.getElementById('themeRow');
+    row.innerHTML = '';
+    themes.forEach((t,i)=>{
+      const sw = document.createElement('div');
+      sw.className = 'theme-swatch' + (i===0 ? ' selected' : '');
+      sw.style.background = 'linear-gradient(135deg,' + t.blueDark + ',' + t.blue + ' 55%,' + t.teal + ')';
+      sw.title = t.name;
+      sw.addEventListener('click', ()=>applyTheme(i));
+      row.appendChild(sw);
+    });
+  }
+
+  // ---- Background templates ----
+  const bgTemplateCount = 5;
+
+  function clearBgSelectionClasses(){
+    document.querySelectorAll('.bg-swatch').forEach(el=>el.classList.remove('selected'));
+  }
+
+  function selectBgTemplate(n){
+    const hb = document.getElementById('headerBg');
+    hb.style.backgroundImage = ''; // clear any uploaded/real photo
+    for(let i=1;i<=bgTemplateCount;i++){ hb.classList.remove('bg-tpl-'+i); }
+    hb.classList.add('bg-tpl-'+n);
+    clearBgSelectionClasses();
+    const sw = document.querySelector('.bg-swatch[data-tpl="'+n+'"]');
+    if(sw) sw.classList.add('selected');
+  }
+
+  function renderBgTplRow(){
+    const row = document.getElementById('bgTplRow');
+    row.innerHTML = '';
+    for(let n=1;n<=bgTemplateCount;n++){
+      const sw = document.createElement('div');
+      sw.className = 'bg-swatch bg-tpl-' + n + (n===1 ? ' selected' : '');
+      sw.dataset.tpl = n;
+      sw.title = 'ลายพื้นหลัง ' + n;
+      sw.addEventListener('click', ()=>selectBgTemplate(n));
+      row.appendChild(sw);
+    }
+    const uploadSw = document.createElement('div');
+    uploadSw.className = 'bg-swatch upload-swatch';
+    uploadSw.dataset.upload = '1';
+    uploadSw.innerHTML = '📷';
+    uploadSw.title = 'อัปโหลดภาพของฉัน';
+    uploadSw.addEventListener('click', function(){
+      pendingTarget = {type:'header'};
+      fileInput.click();
+    });
+    row.appendChild(uploadSw);
+  }
+
+  // ---- Real photo backgrounds (royalty-free stock, decorative) ----
+  const realPhotoThemes = [
+    { key:'nature1', label:'ธรรมชาติ / ขุนเขา', url:'https://picsum.photos/id/1018/900/320' },
+    { key:'nature2', label:'สายน้ำ / หุบเขา',    url:'https://picsum.photos/id/1015/900/320' },
+    { key:'green',   label:'โทนเขียว / ใบไม้',   url:'https://picsum.photos/id/1039/900/320' },
+    { key:'sky',     label:'ท้องฟ้ากว้าง',       url:'https://picsum.photos/id/1043/900/320' },
+    { key:'building',label:'สถาปัตยกรรม',        url:'https://picsum.photos/id/1049/900/320' }
+  ];
+
+  function selectRealPhoto(url, key){
+    const hb = document.getElementById('headerBg');
+    for(let i=1;i<=bgTemplateCount;i++){ hb.classList.remove('bg-tpl-'+i); }
+    hb.style.backgroundImage = 'url(' + url + ')';
+    clearBgSelectionClasses();
+    const sw = document.querySelector('.bg-swatch[data-photo="'+key+'"]');
+    if(sw) sw.classList.add('selected');
+  }
+
+  function renderBgPhotoRow(){
+    const row = document.getElementById('bgPhotoRow');
+    row.innerHTML = '';
+    realPhotoThemes.forEach(function(t){
+      const sw = document.createElement('div');
+      sw.className = 'bg-swatch';
+      sw.style.backgroundImage = 'url(' + t.url + ')';
+      sw.style.backgroundSize = 'cover';
+      sw.style.backgroundPosition = 'center';
+      sw.dataset.photo = t.key;
+      sw.title = t.label;
+      sw.addEventListener('click', ()=>selectRealPhoto(t.url, t.key));
+      row.appendChild(sw);
+    });
+  }
+
+  function totalCount(){ return galleries.A.count + galleries.B.count; }
+
+  function renderGallery(key){
+    const g = galleries[key];
+    const cols = g.count <= 2 ? g.count : (g.count === 3 ? 3 : (g.count <= 4 ? 4 : (g.count <=6 ? 3 : (g.count<=8?4:5))));
+    g.el.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+    g.el.innerHTML = '';
+    for(let i=0;i<g.count;i++){
+      const slot = document.createElement('div');
+      slot.className = 'photo-slot';
+      slot.dataset.gal = key;
+      slot.dataset.idx = i;
+      const imgSrc = g.images[i];
+      if(imgSrc){
+        slot.innerHTML = '<img src="'+imgSrc+'" alt="photo"><button class="remove-x" data-remove="1">✕</button>';
+      } else {
+        slot.innerHTML = '<div class="ph-inner"><span class="ic">🖼️</span><span>คลิกเพื่อเพิ่มรูป '+(i+1)+'</span></div>';
+      }
+      slot.addEventListener('click', function(e){
+        if(e.target.dataset.remove){
+          e.stopPropagation();
+          delete g.images[i];
+          renderGallery(key);
+          return;
+        }
+        pendingTarget = {type:'photo', gal:key, idx:i};
+        fileInput.click();
+      });
+      g.el.appendChild(slot);
+    }
+  }
+
+  function refreshCounters(){
+    document.getElementById('galA-count').textContent = galleries.A.count;
+    document.getElementById('galB-count').textContent = galleries.B.count;
+    document.getElementById('totalCount').textContent = totalCount();
+    document.getElementById('galA-minus').disabled = galleries.A.count <= galleries.A.min || totalCount() <= MIN_TOTAL;
+    document.getElementById('galB-minus').disabled = galleries.B.count <= galleries.B.min || totalCount() <= MIN_TOTAL;
+    document.getElementById('galA-plus').disabled = totalCount() >= MAX_TOTAL;
+    document.getElementById('galB-plus').disabled = totalCount() >= MAX_TOTAL;
+  }
+
+  function changeCount(key, delta){
+    const g = galleries[key];
+    const newCount = g.count + delta;
+    if(newCount < g.min) return;
+    if(delta > 0 && totalCount() >= MAX_TOTAL) return;
+    if(delta < 0 && totalCount() <= MIN_TOTAL) return;
+    g.count = newCount;
+    renderGallery(key);
+    refreshCounters();
+  }
+
+  document.getElementById('galA-plus').addEventListener('click', ()=>changeCount('A',1));
+  document.getElementById('galA-minus').addEventListener('click', ()=>changeCount('A',-1));
+  document.getElementById('galB-plus').addEventListener('click', ()=>changeCount('B',1));
+  document.getElementById('galB-minus').addEventListener('click', ()=>changeCount('B',-1));
+
+  // Logo / doctor / header background uploads
+  document.getElementById('logoSlot').addEventListener('click', function(){
+    pendingTarget = {type:'logo'};
+    fileInput.click();
+  });
+  document.getElementById('doctorSlot').addEventListener('click', function(){
+    pendingTarget = {type:'doctor'};
+    fileInput.click();
+  });
+  document.getElementById('headerBg').addEventListener('click', function(){
+    pendingTarget = {type:'header'};
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', function(){
+    const file = fileInput.files[0];
+    if(!file || !pendingTarget) return;
+    const reader = new FileReader();
+    reader.onload = function(e){
+      const dataUrl = e.target.result;
+      if(pendingTarget.type === 'photo'){
+        galleries[pendingTarget.gal].images[pendingTarget.idx] = dataUrl;
+        renderGallery(pendingTarget.gal);
+      } else if(pendingTarget.type === 'logo'){
+        document.getElementById('logoSlot').innerHTML = '<img src="'+dataUrl+'" alt="logo">';
+      } else if(pendingTarget.type === 'doctor'){
+        document.getElementById('doctorSlot').innerHTML = '<img src="'+dataUrl+'" alt="doctor">';
+      } else if(pendingTarget.type === 'header'){
+        const hb = document.getElementById('headerBg');
+        for(let i=1;i<=bgTemplateCount;i++){ hb.classList.remove('bg-tpl-'+i); }
+        hb.style.backgroundImage = 'url(' + dataUrl + ')';
+        clearBgSelectionClasses();
+        const uploadSw = document.querySelector('.bg-swatch[data-upload]');
+        if(uploadSw) uploadSw.classList.add('selected');
+      }
+      pendingTarget = null;
+      fileInput.value = '';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // ---- Thai date insert ----
+  const thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  document.getElementById('insertDateBtn').addEventListener('click', function(){
+    const val = document.getElementById('datePicker').value;
+    if(!val){
+      setStatus('กรุณาเลือกวันที่ก่อน');
+      return;
+    }
+    const d = new Date(val + 'T00:00:00');
+    const thaiYear = d.getFullYear() + 543;
+    const text = 'วันที่ ' + d.getDate() + ' ' + thaiMonths[d.getMonth()] + ' ' + thaiYear;
+    document.getElementById('dateSpan').textContent = text;
+    setStatus('แทรกวันที่เรียบร้อย');
+  });
+
+  // ---- Reset ----
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    if(!confirm('ล้างรูปภาพและข้อความทั้งหมด?')) return;
+    galleries.A.images = {};
+    galleries.B.images = {};
+    renderGallery('A'); renderGallery('B');
+    document.getElementById('logoSlot').innerHTML = '<span class="ph-icon">🏥</span>';
+    document.getElementById('doctorSlot').innerHTML = '<span class="ph-icon">👤</span>';
+    selectBgTemplate(1);
+    applyTheme(0);
+    ['wWho','wWhat','wWhere','wWhen','wWhy'].forEach(id=>{ document.getElementById(id).value=''; });
+    document.getElementById('composePanel').classList.add('hidden');
+    document.getElementById('fiveWPanel').classList.add('hidden');
+    document.getElementById('polishPanel').classList.add('hidden');
+    document.querySelectorAll('[contenteditable]').forEach(el=>{ el.textContent = ''; });
+  });
+
+  // ---- Status ----
+  function setStatus(msg){
+    document.getElementById('statusMsg').textContent = msg;
+    setTimeout(()=>{ document.getElementById('statusMsg').textContent=''; }, 3500);
+  }
+
+  // ---- Export helpers ----
+  async function captureCanvas(){
+    const poster = document.getElementById('poster');
+    poster.classList.add('exporting');
+    try{
+      if(document.fonts && document.fonts.ready){ await document.fonts.ready; }
+      const canvas = await html2canvas(poster, {scale:2, useCORS:true, backgroundColor:'#ffffff'});
+      return canvas;
+    } finally {
+      poster.classList.remove('exporting');
+    }
+  }
+
+  document.getElementById('exportJpeg').addEventListener('click', async function(){
+    setStatus('กำลังสร้างไฟล์ JPEG...');
+    try{
+      const canvas = await captureCanvas();
+      const url = canvas.toDataURL('image/jpeg', 0.95);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'ข่าวประชาสัมพันธ์.jpg';
+      a.click();
+      setStatus('ดาวน์โหลด JPEG สำเร็จ');
+    } catch(err){
+      console.error(err);
+      setStatus('เกิดข้อผิดพลาด: ' + err.message);
+    }
+  });
+
+  document.getElementById('exportPdf').addEventListener('click', async function(){
+    setStatus('กำลังสร้างไฟล์ PDF...');
+    try{
+      const canvas = await captureCanvas();
+      const { jsPDF } = window.jspdf;
+      const ratio = canvas.height / canvas.width;
+      const pageWidthMm = 210; // A4 width
+      const pageHeightMm = pageWidthMm * ratio;
+      const pdf = new jsPDF({
+        orientation: ratio > 1 ? 'portrait' : 'landscape',
+        unit: 'mm',
+        format: [pageWidthMm, pageHeightMm]
+      });
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      pdf.addImage(imgData, 'JPEG', 0, 0, pageWidthMm, pageHeightMm);
+      pdf.save('ข่าวประชาสัมพันธ์.pdf');
+      setStatus('ดาวน์โหลด PDF สำเร็จ');
+    } catch(err){
+      console.error(err);
+      setStatus('เกิดข้อผิดพลาด: ' + err.message);
+    }
+  });
+
+  document.getElementById('exportPptx').addEventListener('click', async function(){
+    setStatus('กำลังสร้างไฟล์ PPTX...');
+    try{
+      const canvas = await captureCanvas();
+      const ratio = canvas.height / canvas.width;
+      const widthIn = 7.5;
+      const heightIn = widthIn * ratio;
+      const pptx = new window.PptxGenJS();
+      pptx.defineLayout({ name:'CUSTOM', width: widthIn, height: heightIn });
+      pptx.layout = 'CUSTOM';
+      const slide = pptx.addSlide();
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      slide.addImage({ data: imgData, x:0, y:0, w: widthIn, h: heightIn });
+      await pptx.writeFile({ fileName: 'ข่าวประชาสัมพันธ์.pptx' });
+      setStatus('ดาวน์โหลด PPTX สำเร็จ');
+    } catch(err){
+      console.error(err);
+      setStatus('เกิดข้อผิดพลาด: ' + err.message);
+    }
+  });
+
+  // ---- AI content tools: 5W check + polish suggestion ----
+  const CLAUDE_MODEL = 'claude-sonnet-4-6';
+
+  async function callClaude(promptText){
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: CLAUDE_MODEL,
+        max_tokens: 1000,
+        messages: [{ role:'user', content: promptText }]
+      })
+    });
+    if(!resp.ok){ throw new Error('เรียก API ไม่สำเร็จ (' + resp.status + ')'); }
+    const data = await resp.json();
+    const textBlocks = (data.content || []).filter(b => b.type === 'text').map(b => b.text);
+    return textBlocks.join('\n').trim();
+  }
+
+  function stripCodeFence(s){
+    return s.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
+  }
+
+  const wLabels = {
+    who:{icon:'👤', label:'ใคร (Who)'},
+    what:{icon:'📋', label:'ทำอะไร (What)'},
+    when:{icon:'📅', label:'เมื่อไหร่ (When)'},
+    where:{icon:'📍', label:'ที่ไหน (Where)'},
+    why:{icon:'🎯', label:'ทำไม (Why)'}
+  };
+
+  document.getElementById('check5wBtn').addEventListener('click', async function(){
+    const btn = this;
+    const panel = document.getElementById('fiveWPanel');
+    const body = document.getElementById('fiveWBody');
+    const combinedText = document.getElementById('dateSpan').textContent + ' ' + document.getElementById('bodyText').textContent;
+    if(!document.getElementById('bodyText').textContent.trim()){
+      setStatus('กรุณาใส่เนื้อหาก่อนตรวจสอบ');
+      return;
+    }
+    btn.disabled = true;
+    const origLabel = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner"></span> กำลังตรวจสอบ...';
+    panel.classList.remove('hidden');
+    body.innerHTML = '<div class="ai-error" style="color:var(--muted)">กำลังวิเคราะห์เนื้อหา...</div>';
+    try{
+      const prompt = 'คุณคือผู้ช่วยตรวจสอบเนื้อหาข่าวประชาสัมพันธ์ของหน่วยงานราชการไทย ตรวจสอบว่าข้อความต่อไปนี้มีองค์ประกอบครบ 5W หรือไม่ ได้แก่ Who(ใครเป็นผู้ดำเนินการ) What(ทำกิจกรรมอะไร) When(เมื่อไหร่) Where(ที่ไหน) Why(วัตถุประสงค์/เพื่ออะไร) '
+        + 'ตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความอื่นนอกเหนือจาก JSON ห้ามใช้ code fence รูปแบบ: '
+        + '{"who":{"found":true,"comment":"คำอธิบายสั้นๆ ภาษาไทย"},"what":{"found":true,"comment":"..."},"when":{"found":true,"comment":"..."},"where":{"found":true,"comment":"..."},"why":{"found":true,"comment":"..."},"overall":"สรุปคำแนะนำโดยรวมสั้นๆ ภาษาไทย"} '
+        + 'ข้อความที่ต้องตรวจสอบ: ' + combinedText;
+      const raw = await callClaude(prompt);
+      const json = JSON.parse(stripCodeFence(raw));
+      let html = '';
+      ['who','what','when','where','why'].forEach(k=>{
+        const item = json[k] || {found:false, comment:''};
+        const icon = item.found ? '✅' : '⚠️';
+        html += '<div class="w-row"><div class="w-icon">'+icon+'</div><div class="w-body"><div class="w-label">'+wLabels[k].icon+' '+wLabels[k].label+'</div><div class="w-comment">'+(item.comment||'')+'</div></div></div>';
+      });
+      if(json.overall){
+        html += '<div class="w-overall">💡 '+json.overall+'</div>';
+      }
+      body.innerHTML = html;
+    } catch(err){
+      console.error(err);
+      body.innerHTML = '<div class="ai-error">เกิดข้อผิดพลาด: ' + err.message + '</div>';
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = origLabel;
+    }
+  });
+
+  document.getElementById('polishBtn').addEventListener('click', async function(){
+    const btn = this;
+    const panel = document.getElementById('polishPanel');
+    const body = document.getElementById('polishBody');
+    const bodyTextEl = document.getElementById('bodyText');
+    const original = bodyTextEl.textContent.trim();
+    if(!original){
+      setStatus('กรุณาใส่เนื้อหาก่อนขอคำแนะนำ');
+      return;
+    }
+    btn.disabled = true;
+    const origLabel = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner"></span> กำลังปรับสำนวน...';
+    panel.classList.remove('hidden');
+    body.innerHTML = '<div class="ai-error" style="color:var(--muted)">กำลังเรียบเรียงข้อความ...</div>';
+    try{
+      const prompt = 'ปรับสำนวนข้อความข่าวประชาสัมพันธ์ของหน่วยงานราชการไทยต่อไปนี้ให้สละสลวย เป็นทางการ กระชับ อ่านลื่นไหลขึ้น '
+        + 'โดยคงข้อเท็จจริง ชื่อบุคคล สถานที่ วันที่ และรายละเอียดเดิมไว้ครบถ้วนทุกประการ ห้ามเพิ่มข้อมูลใหม่ที่ไม่มีในต้นฉบับ '
+        + 'ตอบกลับเฉพาะข้อความฉบับปรับปรุงแล้วเท่านั้น ห้ามมีคำนำ คำอธิบาย หรือ code fence ใดๆ ทั้งสิ้น '
+        + 'ข้อความต้นฉบับ: ' + original;
+      const suggestion = await callClaude(prompt);
+      const clean = stripCodeFence(suggestion);
+      body.innerHTML = '<div class="polish-text" id="polishSuggestionText"></div>'
+        + '<div class="ai-actions">'
+        + '<button class="apply-btn" id="applyPolishBtn">✓ ใช้ข้อความนี้แทน</button>'
+        + '<button id="copyPolishBtn">คัดลอก</button>'
+        + '</div>';
+      document.getElementById('polishSuggestionText').textContent = clean;
+      document.getElementById('applyPolishBtn').addEventListener('click', function(){
+        bodyTextEl.textContent = clean;
+        setStatus('แทนที่เนื้อหาด้วยสำนวนใหม่แล้ว');
+        panel.classList.add('hidden');
+      });
+      document.getElementById('copyPolishBtn').addEventListener('click', function(){
+        navigator.clipboard.writeText(clean).then(()=>setStatus('คัดลอกข้อความแล้ว'));
+      });
+    } catch(err){
+      console.error(err);
+      body.innerHTML = '<div class="ai-error">เกิดข้อผิดพลาด: ' + err.message + '</div>';
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = origLabel;
+    }
+  });
+
+  // ---- Smart person add ----
+  const presetPeople = {
+    ssj:   { name:'นายแพทย์ประภาส ผูกดวง', title:'นายแพทย์สาธารณสุขจังหวัดสมุทรปราการ' },
+    head:  { name:'นางสาววิภาวีร์ ฤทธิ์แก้ว', title:'หัวหน้ากลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก' },
+    target:{ name:'กลุ่มเป้าหมาย', title:'เจ้าหน้าที่และประชาชนผู้เข้าร่วมกิจกรรม' }
+  };
+  document.getElementById('addPersonBtn').addEventListener('click', function(){
+    const key = document.getElementById('personSelect').value;
+    const p = presetPeople[key];
+    if(!p) return;
+    document.querySelector('.doctor-name').textContent = p.name;
+    document.querySelector('.doctor-title').textContent = p.title;
+    setStatus('เพิ่มชื่อ-ตำแหน่งเรียบร้อย แก้ไขเพิ่มเติมได้ที่มุมขวาบนของโปสเตอร์');
+  });
+
+  // ---- 5W structured compose ----
+  document.getElementById('composeBtn').addEventListener('click', async function(){
+    const btn = this;
+    const fields = {
+      who:   document.getElementById('wWho').value.trim(),
+      what:  document.getElementById('wWhat').value.trim(),
+      where: document.getElementById('wWhere').value.trim(),
+      when:  document.getElementById('wWhen').value.trim(),
+      why:   document.getElementById('wWhy').value.trim()
+    };
+    if(!fields.who && !fields.what && !fields.where && !fields.when && !fields.why){
+      setStatus('กรุณากรอกอย่างน้อย 1 ช่องก่อนเรียบเรียง');
+      return;
+    }
+    const panel = document.getElementById('composePanel');
+    const body = document.getElementById('composeBody');
+    btn.disabled = true;
+    const origLabel = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner"></span> กำลังเรียบเรียง...';
+    panel.classList.remove('hidden');
+    body.innerHTML = '<div class="ai-error" style="color:var(--muted)">กำลังร่างคำบรรยาย...</div>';
+    try{
+      const prompt = 'คุณคือผู้ช่วยเขียนข่าวประชาสัมพันธ์ของหน่วยงานราชการไทย ผู้ใช้ได้กรอกประเด็นสำคัญตามหลัก 5W ต่อไปนี้ (แต่ละบรรทัดคือ 1 ประเด็นย่อย): '
+        + '\nใคร (Who): ' + (fields.who || '-')
+        + '\nทำอะไร (What): ' + (fields.what || '-')
+        + '\nที่ไหน (Where): ' + (fields.where || '-')
+        + '\nเมื่อไหร่ (When): ' + (fields.when || '-')
+        + '\nทำไม/วัตถุประสงค์ (Why): ' + (fields.why || '-')
+        + '\n\nงานของคุณ: 1) เรียบเรียงประเด็นทั้งหมดเป็นย่อหน้าคำบรรยายข่าวประชาสัมพันธ์ภาษาไทยที่สละสลวย เป็นทางการ อ่านลื่นไหล โดยใช้เฉพาะข้อมูลที่ให้มาเท่านั้น ห้ามแต่งข้อมูลใหม่ 2) ประเมินว่าควรเพิ่มหรือตัดข้อมูลใดเพื่อให้ครบถ้วนและกระชับขึ้น '
+        + 'ตอบกลับเป็น JSON เท่านั้น ไม่มี code fence รูปแบบ: {"paragraph":"...","suggestions":["คำแนะนำข้อ 1","คำแนะนำข้อ 2"]}';
+      const raw = await callClaude(prompt);
+      const json = JSON.parse(stripCodeFence(raw));
+      let html = '<div class="polish-text" id="composeSuggestionText"></div>';
+      if(json.suggestions && json.suggestions.length){
+        html += '<div class="w-overall">💡 คำแนะนำ:<ul style="margin:6px 0 0;padding-left:18px;">'
+          + json.suggestions.map(s=>'<li style="margin-bottom:4px;">'+s+'</li>').join('')
+          + '</ul></div>';
+      }
+      html += '<div class="ai-actions">'
+        + '<button class="apply-btn" id="applyComposeBtn">✓ ใช้ข้อความนี้เป็นเนื้อหา</button>'
+        + '<button id="copyComposeBtn">คัดลอก</button>'
+        + '</div>';
+      body.innerHTML = html;
+      document.getElementById('composeSuggestionText').textContent = json.paragraph || '';
+      document.getElementById('applyComposeBtn').addEventListener('click', function(){
+        document.getElementById('bodyText').textContent = json.paragraph || '';
+        setStatus('ใส่คำบรรยายลงในเนื้อหาแล้ว');
+      });
+      document.getElementById('copyComposeBtn').addEventListener('click', function(){
+        navigator.clipboard.writeText(json.paragraph || '').then(()=>setStatus('คัดลอกข้อความแล้ว'));
+      });
+    } catch(err){
+      console.error(err);
+      body.innerHTML = '<div class="ai-error">เกิดข้อผิดพลาด: ' + err.message + '</div>';
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = origLabel;
+    }
+  });
+
+  document.querySelectorAll('.ai-close-x').forEach(function(el){
+    el.addEventListener('click', function(){
+      document.getElementById(el.dataset.close).classList.add('hidden');
+    });
+  });
+
+  // init
+  renderGallery('A');
+  renderGallery('B');
+  refreshCounters();
+  renderThemeRow();
+  renderBgTplRow();
+  renderBgPhotoRow();
+  applyTheme(0);
+})();
+</script>
+</body>
+</html>
