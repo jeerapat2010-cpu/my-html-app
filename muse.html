@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>MUSE ✨ AI Makeup Fairy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mali:ital,wght@0,300;0,400;0,600;0,700;1,400;1,600&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink:#FF8FB6;
+    --pink-deep:#FF5C93;
+    --pink-pale:#FFE3EE;
+    --lav:#B9A6FF;
+    --lav-pale:#EFE8FF;
+    --mint:#7FE3C4;
+    --mint-pale:#DFFBF1;
+    --yellow:#FFD25E;
+    --cream:#FFFBF6;
+    --ink:#5B3A57;
+    --ink-soft:#9A7C95;
+    --white:#FFFFFF;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family:'Prompt',sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(circle at 12% 8%, var(--pink-pale) 0%, transparent 40%),
+      radial-gradient(circle at 88% 15%, var(--lav-pale) 0%, transparent 42%),
+      radial-gradient(circle at 20% 85%, var(--mint-pale) 0%, transparent 40%),
+      var(--cream);
+    min-height:100vh;
+    overflow-x:hidden;
+    position:relative;
+    padding-left:env(safe-area-inset-left);
+    padding-right:env(safe-area-inset-right);
+    -webkit-tap-highlight-color:transparent;
+  }
+  button, .chip, input[type=range]{ touch-action:manipulation; }
+  .display{ font-family:'Mali', cursive, sans-serif; }
+  ::selection{ background:var(--pink); color:#fff; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
+  }
+
+  /* floating background decor */
+  .decor{
+    position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;
+  }
+  .deco-item{
+    position:absolute; font-size:22px; opacity:.55;
+    animation:float 7s ease-in-out infinite;
+  }
+  @keyframes float{
+    0%,100%{ transform:translateY(0) rotate(0deg); }
+    50%{ transform:translateY(-16px) rotate(8deg); }
+  }
+
+  .wrap{ position:relative; z-index:1; max-width:520px; margin:0 auto; padding-bottom:env(safe-area-inset-bottom); }
+  @media (min-width:760px){
+    .wrap{ max-width:900px; }
+    .stage-and-selectors{ display:grid; grid-template-columns:1fr 1fr; gap:24px; align-items:start; }
+    .stage{ margin-top:24px; }
+  }
+
+  /* Header */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:20px 20px 10px;
+  }
+  .brand{
+    font-family:'Mali',cursive; font-weight:700; font-size:24px; color:var(--pink-deep);
+    display:flex; align-items:center; gap:6px;
+  }
+  .badge{
+    font-size:11px; font-weight:600; color:var(--white);
+    background:linear-gradient(135deg, var(--lav), var(--pink));
+    padding:6px 12px; border-radius:100px;
+    box-shadow:0 4px 0 rgba(185,166,255,.35);
+  }
+
+  /* Hero */
+  .hero{ padding:14px 22px 4px; text-align:center; }
+  .hero h1{
+    font-family:'Mali',cursive; font-weight:700; font-size:clamp(28px,8vw,36px);
+    line-height:1.2; margin:0 0 10px; color:var(--ink);
+  }
+  .hero h1 .pop{ color:var(--pink-deep); }
+  .hero p{
+    font-size:14.5px; color:var(--ink-soft); line-height:1.7; margin:0 auto;
+    max-width:32ch;
+  }
+  .squiggle{
+    width:90px; height:14px; margin:10px auto 0; display:block;
+  }
+
+  /* Stage / camera */
+  .stage{
+    margin:24px 18px 0;
+    background:var(--white);
+    border-radius:32px;
+    padding:14px;
+    box-shadow:0 10px 0 var(--pink-pale), 0 10px 26px rgba(255,92,147,.12);
+    position:relative;
+  }
+  .frame{
+    position:relative;
+    aspect-ratio:3/4;
+    border-radius:24px;
+    background:linear-gradient(160deg, var(--pink-pale), var(--lav-pale));
+    border:3px dashed #FFC1DA;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+  .frame video, .frame img.captured{
+    width:100%; height:100%; object-fit:cover; display:block; border-radius:20px;
+  }
+  .frame video{ transform:scaleX(-1); }
+  .frame-empty{ text-align:center; padding:0 26px; }
+  .mascot{ width:76px; margin:0 auto 10px; display:block; }
+  .frame-empty p{ font-size:13px; color:var(--ink-soft); line-height:1.6; margin:0; }
+  .sticker{
+    position:absolute; font-size:26px; filter:drop-shadow(0 2px 2px rgba(0,0,0,.08));
+    animation:wiggle 4s ease-in-out infinite;
+  }
+  @keyframes wiggle{ 0%,100%{transform:rotate(-6deg);} 50%{transform:rotate(6deg);} }
+  .sticker.s1{ top:8px; left:8px; }
+  .sticker.s2{ bottom:8px; right:8px; animation-delay:.6s; }
+
+  .stage-controls{ display:flex; gap:8px; padding:14px 4px 4px; flex-wrap:wrap; }
+  button{ font-family:'Prompt',sans-serif; cursor:pointer; border:none; }
+  .btn{
+    background:var(--white);
+    color:var(--ink);
+    border:2px solid var(--pink-pale);
+    padding:13px 14px;
+    min-height:46px;
+    font-size:13.5px; font-weight:600;
+    border-radius:100px;
+    flex:1; min-width:110px;
+    box-shadow:0 4px 0 var(--pink-pale);
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .btn:active{ transform:translateY(3px); box-shadow:0 1px 0 var(--pink-pale); }
+  .btn.primary{
+    background:linear-gradient(135deg, var(--pink), var(--pink-deep));
+    color:var(--white);
+    border:none;
+    box-shadow:0 5px 0 #D9407A;
+  }
+  .btn.primary:active{ box-shadow:0 1px 0 #D9407A; }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
+  .btn:disabled:active{ transform:none; }
+  #fileInput{ display:none; }
+
+  /* Selectors */
+  .selectors{ padding:26px 20px 4px; }
+  .sel-block + .sel-block{ margin-top:22px; }
+  .sel-label{
+    font-family:'Mali',cursive; font-weight:700; font-size:16px; color:var(--pink-deep);
+    margin-bottom:10px; display:flex; align-items:center; gap:6px;
+  }
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{
+    border:2px solid var(--pink-pale);
+    background:var(--white);
+    color:var(--ink-soft);
+    font-size:13px; font-weight:500;
+    padding:11px 14px;
+    min-height:40px;
+    border-radius:100px;
+    transition:transform .1s ease;
+  }
+  .chip:active{ transform:scale(.96); }
+  .chip.active{
+    border-color:transparent;
+    background:linear-gradient(135deg, var(--lav), var(--pink));
+    color:var(--white);
+    box-shadow:0 3px 0 rgba(255,92,147,.3);
+  }
+
+  .analyze-wrap{ padding:24px 20px 6px; }
+  .hint{ font-size:11.5px; color:var(--ink-soft); text-align:center; margin-top:10px; line-height:1.6; }
+
+  /* Loading */
+  .loading{ display:none; padding:50px 24px; text-align:center; }
+  .loading.show{ display:block; }
+  .dots{ display:flex; justify-content:center; gap:10px; margin-bottom:16px; }
+  .dots span{
+    width:14px; height:14px; border-radius:50%;
+    background:linear-gradient(135deg, var(--pink), var(--lav));
+    animation:bounce 1s ease-in-out infinite;
+  }
+  .dots span:nth-child(2){ animation-delay:.15s; }
+  .dots span:nth-child(3){ animation-delay:.3s; }
+  @keyframes bounce{ 0%,80%,100%{ transform:translateY(0); } 40%{ transform:translateY(-14px); } }
+  .loading p{ font-family:'Mali',cursive; font-weight:600; color:var(--pink-deep); font-size:16px; }
+
+  .error-box{
+    display:none; margin:18px 20px; padding:14px 16px;
+    border:2px dashed var(--pink); border-radius:18px;
+    color:var(--pink-deep); font-size:13px; line-height:1.6; background:var(--pink-pale);
+  }
+  .error-box.show{ display:block; }
+
+  /* Result */
+  .result{ display:none; }
+  .result.show{ display:block; animation:popIn .4s ease; }
+  @keyframes popIn{ from{ opacity:0; transform:translateY(14px) scale(.97); } to{ opacity:1; transform:translateY(0) scale(1); } }
+
+  .result-card{
+    margin:36px 18px 0;
+    background:var(--white);
+    border-radius:28px;
+    padding:26px 22px 22px;
+    box-shadow:0 10px 0 var(--lav-pale), 0 12px 28px rgba(185,166,255,.18);
+    position:relative;
+    transform:rotate(-.6deg);
+  }
+  .tape{
+    position:absolute; top:-14px; left:50%; transform:translateX(-50%) rotate(-2deg);
+    width:90px; height:26px;
+    background:repeating-linear-gradient(45deg, #FFD25E, #FFD25E 6px, #FFE29B 6px, #FFE29B 12px);
+    opacity:.85; border-radius:3px;
+  }
+  .match-badge{
+    display:inline-flex; align-items:center; gap:6px;
+    background:linear-gradient(135deg, var(--mint), #5FD1AA);
+    color:#0F5C42; font-weight:700; font-size:12.5px;
+    padding:6px 13px; border-radius:100px; margin-bottom:12px;
+  }
+  .look-title{
+    font-family:'Mali',cursive; font-weight:700; font-size:clamp(24px,8vw,30px);
+    margin:0 0 10px; color:var(--pink-deep); line-height:1.25;
+  }
+  .look-summary{ font-size:14px; color:var(--ink-soft); line-height:1.7; }
+
+  .analysis-strip{
+    display:grid; grid-template-columns:repeat(2,1fr); gap:10px;
+    margin:20px 0 0;
+  }
+  .analysis-item{
+    background:var(--pink-pale);
+    border-radius:16px;
+    padding:12px 14px;
+  }
+  .analysis-item .k{ font-size:10.5px; color:var(--pink-deep); font-weight:600; margin-bottom:4px; }
+  .analysis-item .v{ font-size:13.5px; font-family:'Mali',cursive; font-weight:600; }
+
+  .palette{ padding:26px 18px 0; }
+  .palette-title{
+    font-family:'Mali',cursive; font-weight:700; font-size:16px; color:var(--lav); margin-bottom:12px;
+  }
+  .swatch-row{ display:flex; flex-direction:column; gap:10px; }
+  .swatch{
+    display:flex; align-items:center; gap:14px;
+    background:var(--white);
+    border:2px solid var(--lav-pale);
+    border-radius:20px;
+    padding:12px 14px;
+  }
+  .swatch .dot{
+    width:40px; height:40px; border-radius:50%;
+    border:3px solid var(--white);
+    box-shadow:0 0 0 2px var(--lav-pale);
+    flex-shrink:0;
+  }
+  .swatch .txt .area{ font-size:10.5px; color:var(--lav); font-weight:700; margin-bottom:2px; }
+  .swatch .txt .name{ font-family:'Mali',cursive; font-size:15px; font-weight:600; margin-bottom:2px; }
+  .swatch .txt .tip{ font-size:12px; color:var(--ink-soft); line-height:1.5; }
+
+  .steps{ padding:28px 18px 0; }
+  .steps .palette-title{ color:var(--pink-deep); }
+  .step{ display:flex; gap:14px; padding:12px 0; }
+  .step .num{
+    width:30px; height:30px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Mali',cursive; font-weight:700; font-size:14px; color:#fff;
+    background:linear-gradient(135deg, var(--pink), var(--lav));
+  }
+  .step .body .t{ font-size:14px; font-weight:600; margin-bottom:3px; }
+  .step .body .d{ font-size:12.5px; color:var(--ink-soft); line-height:1.6; }
+
+  .finishing{
+    margin:22px 0 4px;
+    background:var(--lav-pale);
+    border-radius:20px;
+    padding:16px 16px;
+    display:flex; gap:10px; align-items:flex-start;
+  }
+  .finishing .emoji{ font-size:22px; }
+  .finishing .k{ font-size:11px; color:var(--lav); font-weight:700; margin-bottom:4px; }
+  .finishing .v{ font-family:'Mali',cursive; font-size:14.5px; line-height:1.55; }
+
+  .tryon{ padding:30px 18px 0; }
+  .tryon .palette-title{ color:var(--mint); }
+  .model-status{ font-size:12px; color:var(--ink-soft); text-align:center; margin-top:8px; line-height:1.6; min-height:16px; }
+
+  .ba-frame{
+    position:relative; border-radius:22px; overflow:hidden; aspect-ratio:3/4;
+    background:var(--pink-pale); border:2px solid var(--mint-pale);
+  }
+  .ba-img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  .ba-divider{
+    position:absolute; top:0; bottom:0; width:3px; background:#fff; left:50%;
+    box-shadow:0 0 8px rgba(0,0,0,.25); pointer-events:none; transform:translateX(-1.5px);
+  }
+  .ba-handle{
+    position:absolute; top:50%; left:50%; width:36px; height:36px; border-radius:50%;
+    background:#fff; display:flex; align-items:center; justify-content:center; font-size:14px;
+    box-shadow:0 3px 8px rgba(0,0,0,.25); pointer-events:none; transform:translate(-50%,-50%);
+  }
+  .ba-tag{
+    position:absolute; top:10px; font-size:11px; font-weight:700; color:var(--white);
+    background:rgba(91,58,87,.55); padding:4px 10px; border-radius:100px; pointer-events:none;
+  }
+  .ba-tag.left{ left:10px; }
+  .ba-tag.right{ right:10px; }
+  .ba-range{ position:absolute; inset:0; width:100%; height:100%; opacity:0; margin:0; cursor:ew-resize; }
+
+  .ar-controls{ display:flex; gap:8px; margin-top:14px; }
+  .ar-live{ margin-top:14px; }
+  .ar-stage{
+    position:relative; aspect-ratio:3/4; border-radius:22px; overflow:hidden;
+    background:#111; transform:scaleX(-1);
+  }
+  .ar-stage video, .ar-stage canvas{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .ar-hint{ font-size:11.5px; color:var(--ink-soft); text-align:center; margin:8px 0; }
+
+  .brand-tag{
+    display:inline-block; font-size:11px; color:var(--pink-deep); margin-top:3px;
+    background:var(--pink-pale); padding:2px 8px; border-radius:100px;
+  }
+
+  .action-row{ display:flex; gap:8px; padding:22px 18px 44px; }
+
+  footer{ text-align:center; padding:18px; font-size:11px; color:var(--ink-soft); }
+
+  /* confetti */
+  .confetti-piece{
+    position:fixed; top:-30px; font-size:20px; z-index:999; pointer-events:none;
+    animation:fall linear forwards;
+  }
+  @keyframes fall{
+    to{ transform:translateY(110vh) rotate(360deg); opacity:.9; }
+  }
+</style>
+</head>
+<body>
+
+<div class="decor" id="decor"></div>
+
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand">✨ MUSE</div>
+    <div class="badge">AI Makeup Fairy</div>
+  </div>
+
+  <div class="hero">
+    <h1>แต่งหน้าให้ <span class="pop">น่ารักปัง</span><br>แบบที่ใช่ที่สุด 💗</h1>
+    <p>ถ่ายรูปหรืออัปโหลดภาพ ให้เมจิก AI อ่านผิวและรูปหน้า แล้วจัดลุคสุดคิ้วต์ที่เหมาะกับคุณโดยเฉพาะ</p>
+    <svg class="squiggle" viewBox="0 0 90 14" fill="none">
+      <path d="M2 8 Q 15 -2, 25 8 T 48 8 T 71 8 T 88 8" stroke="#FF8FB6" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+  </div>
+
+  <div class="stage-and-selectors">
+  <div class="stage">
+    <div class="frame" id="frame">
+      <div class="sticker s1">💖</div>
+      <div class="sticker s2">✨</div>
+      <div class="frame-empty" id="frameEmpty">
+        <svg class="mascot" viewBox="0 0 100 100">
+          <ellipse cx="50" cy="58" rx="30" ry="26" fill="#FFFFFF" stroke="#FFC1DA" stroke-width="3"/>
+          <ellipse cx="30" cy="24" rx="9" ry="16" fill="#FFFFFF" stroke="#FFC1DA" stroke-width="3"/>
+          <ellipse cx="70" cy="24" rx="9" ry="16" fill="#FFFFFF" stroke="#FFC1DA" stroke-width="3"/>
+          <ellipse cx="30" cy="26" rx="4" ry="9" fill="#FFD6E8"/>
+          <ellipse cx="70" cy="26" rx="4" ry="9" fill="#FFD6E8"/>
+          <circle cx="39" cy="56" r="4" fill="#5B3A57"/>
+          <circle cx="61" cy="56" r="4" fill="#5B3A57"/>
+          <ellipse cx="30" cy="66" rx="5" ry="3.5" fill="#FFB4CE" opacity=".8"/>
+          <ellipse cx="70" cy="66" rx="5" ry="3.5" fill="#FFB4CE" opacity=".8"/>
+          <path d="M45 66 Q50 71 55 66" stroke="#5B3A57" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        </svg>
+        <p>เปิดกล้องหรืออัปโหลดรูปหน้าตรงได้เลยค่ะ<br>แสงธรรมชาติจะช่วยให้อ่านค่าแม่นยิ่งขึ้น 🌸</p>
+      </div>
+      <video id="video" autoplay playsinline muted style="display:none;"></video>
+      <img id="captured" class="captured" style="display:none;">
+    </div>
+    <div class="stage-controls">
+      <button class="btn" id="btnCamera">📷 เปิดกล้อง</button>
+      <button class="btn" id="btnSwitchCam" style="display:none;">🔁 สลับกล้อง</button>
+      <button class="btn" id="btnShot" style="display:none;">✨ ถ่ายภาพ</button>
+      <button class="btn" id="btnUpload">🖼️ อัปโหลดรูป</button>
+      <input type="file" id="fileInput" accept="image/*" capture="user">
+      <button class="btn" id="btnRetake" style="display:none;">🔄 ถ่ายใหม่</button>
+    </div>
+  </div>
+
+  <div class="selectors">
+    <div class="sel-block">
+      <div class="sel-label">🎀 โอกาส</div>
+      <div class="chips" id="occasionChips">
+        <button class="chip" data-v="ไปทำงาน โทนสุภาพดูดี">💼 ทำงาน</button>
+        <button class="chip" data-v="ออกเดท โทนหวานอบอุ่น">💕 ออกเดท</button>
+        <button class="chip" data-v="ไปปาร์ตี้กลางคืน โทนจัดเต็มมีมิติ">🎉 ปาร์ตี้</button>
+        <button class="chip" data-v="ถ่ายรูปงานสำคัญ โทนคมชัดกล้องขึ้น">📸 ถ่ายรูป/งานพิธี</button>
+        <button class="chip" data-v="ใช้ชีวิตประจำวัน โทนธรรมชาติ">☀️ ลุคประจำวัน</button>
+      </div>
+    </div>
+    <div class="sel-block">
+      <div class="sel-label">✨ สไตล์</div>
+      <div class="chips" id="styleChips">
+        <button class="chip" data-v="สไตล์เกาหลี ผิวใสฉ่ำน้ำ">🇰🇷 เกาหลี</button>
+        <button class="chip" data-v="สไตล์แฟชั่นนิสต้าจัดเต็ม กล้าเฉดสี">💄 แฟชั่นนิสต้า</button>
+        <button class="chip" data-v="สไตล์มินิมอลธรรมชาติ">🌿 มินิมอล</button>
+        <button class="chip" data-v="สไตล์คลาสสิกหรูดูแพง">👑 คลาสสิก</button>
+        <button class="chip" data-v="สไตล์โกลว์อบอุ่นแบบยุโรปฤดูร้อน">🌤️ ซอฟต์โกลว์</button>
+        <button class="chip" data-v="สไตล์ญี่ปุ่น ใสน่ารักโทนพีช">🎌 ญี่ปุ่น</button>
+        <button class="chip" data-v="สไตล์วินเทจฝรั่งเศส ลิปแดงคมชัด คิ้วเรียบ">🍷 วินเทจ</button>
+        <button class="chip" data-v="สไตล์กลามอรัสฮอลลีวูด แวววาวหรูหรา">🎬 กลามอรัส</button>
+        <button class="chip" data-v="สไตล์ Y2K แวววาว กลิตเตอร์ สีสดจัด">💿 Y2K</button>
+        <button class="chip" data-v="สไตล์เอดจี้ดาร์ก ตาสโมกี้เข้ม ลิปเข้ม">🖤 เอดจี้/ดาร์ก</button>
+        <button class="chip" data-v="สไตล์บาร์บี้คอร์ ชมพูหวานจัดเต็ม">🎀 บาร์บี้คอร์</button>
+        <button class="chip" data-v="สไตล์บ้านๆ ไม่แต่งแต่งแล้วดูดี (no-makeup makeup)">🍃 No-makeup</button>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div class="analyze-wrap">
+    <button class="btn primary" id="btnAnalyze" style="width:100%;" disabled>🪄 วิเคราะห์และจัดลุคให้ฉัน</button>
+    <div class="hint">ภาพจะถูกส่งไปวิเคราะห์ผ่าน AI เท่านั้น ไม่ถูกบันทึกไว้ที่ใด 🔒</div>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="loading" id="loading">
+    <div class="dots"><span></span><span></span><span></span></div>
+    <p>กำลังปรุงเมจิกให้อยู่ค่ะ… รอสักครู่นะ 🪄</p>
+  </div>
+
+  <div class="result" id="result">
+    <div class="result-card">
+      <div class="tape"></div>
+      <div class="match-badge" id="matchBadge">💚 เข้ากับคุณมากๆ</div>
+      <h2 class="look-title" id="resTitle">—</h2>
+      <p class="look-summary" id="resSummary">—</p>
+
+      <div class="analysis-strip">
+        <div class="analysis-item"><div class="k">🎨 อันเดอร์โทน</div><div class="v" id="aUndertone">—</div></div>
+        <div class="analysis-item"><div class="k">✨ โทนผิว</div><div class="v" id="aSkin">—</div></div>
+        <div class="analysis-item"><div class="k">💫 รูปหน้า</div><div class="v" id="aFace">—</div></div>
+        <div class="analysis-item"><div class="k">👁️ รูปตา</div><div class="v" id="aEye">—</div></div>
+      </div>
+    </div>
+
+    <div class="palette">
+      <div class="palette-title">🎨 พาเลตต์สีที่แนะนำ</div>
+      <div class="swatch-row" id="swatchRow"></div>
+    </div>
+
+    <div class="steps" id="stepsWrap">
+      <div class="palette-title">💌 ขั้นตอนการแต่ง</div>
+      <div id="stepsList"></div>
+    </div>
+
+    <div class="finishing" style="margin-left:18px; margin-right:18px;">
+      <div class="emoji">🐰</div>
+      <div>
+        <div class="k">เคล็ดลับจากมิวส์</div>
+        <div class="v" id="resFinish">—</div>
+      </div>
+    </div>
+
+    <div class="tryon" id="tryOnSection" style="display:none;">
+      <div class="palette-title">💄 ลองแต่งบนรูปจริงของคุณ (ลากเทียบก่อน-หลัง)</div>
+      <div class="ba-frame">
+        <img id="baBase" class="ba-img">
+        <img id="baOverlay" class="ba-img" style="clip-path:inset(0 50% 0 0);">
+        <div class="ba-tag left">ก่อน</div>
+        <div class="ba-tag right">หลัง</div>
+        <div class="ba-divider" id="baDivider" style="left:50%;"></div>
+        <div class="ba-handle">↔</div>
+        <input type="range" id="baSlider" class="ba-range" min="0" max="100" value="50">
+      </div>
+      <div class="model-status" id="modelStatus"></div>
+
+      <div class="ar-controls">
+        <button class="btn" id="btnLiveAR" style="width:100%;">📹 ลองแบบเรียลไทม์ผ่านกล้อง</button>
+      </div>
+      <div class="ar-live" id="arLiveWrap" style="display:none;">
+        <div class="ar-hint">ให้หน้าอยู่กลางเฟรม แสงสว่างพอ AI จะตามหน้าคุณสดๆ ✨</div>
+        <div class="ar-stage">
+          <video id="arVideo" autoplay playsinline muted></video>
+          <canvas id="arCanvas"></canvas>
+        </div>
+        <div class="ar-controls">
+          <button class="btn" id="btnStopAR" style="width:100%;">⏹️ ปิดกล้อง AR</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="btn" id="btnReset" style="width:100%;">🔄 วิเคราะห์รูปใหม่</button>
+    </div>
+  </div>
+
+  <footer>made with 💖 by MUSE — AI-assisted guidance, not a substitute for a professional artist</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/face-api.js/0.22.2/face-api.min.js"></script>
+<script>
+  // decorative floating background stickers
+  const decorEl = document.getElementById('decor');
+  const decoEmojis = ['✨','💗','🎀','⭐','💫','🌸'];
+  const decoPositions = [
+    {top:'6%', left:'6%'}, {top:'14%', left:'88%'}, {top:'42%', left:'3%'},
+    {top:'60%', left:'92%'}, {top:'78%', left:'8%'}, {top:'88%', left:'85%'}
+  ];
+  decoPositions.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'deco-item';
+    el.textContent = decoEmojis[i % decoEmojis.length];
+    el.style.top = p.top; el.style.left = p.left;
+    el.style.animationDelay = (i * 0.7) + 's';
+    decorEl.appendChild(el);
+  });
+
+  function burstConfetti(){
+    const emojis = ['✨','💖','🎀','⭐','💫','🌷'];
+    for (let i=0;i<26;i++){
+      const el = document.createElement('div');
+      el.className = 'confetti-piece';
+      el.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+      el.style.left = Math.random()*100 + 'vw';
+      el.style.fontSize = (14 + Math.random()*14) + 'px';
+      el.style.animationDuration = (2 + Math.random()*1.6) + 's';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+  }
+
+  const frame = document.getElementById('frame');
+  const frameEmpty = document.getElementById('frameEmpty');
+  const video = document.getElementById('video');
+  const captured = document.getElementById('captured');
+  const btnCamera = document.getElementById('btnCamera');
+  const btnSwitchCam = document.getElementById('btnSwitchCam');
+  const btnShot = document.getElementById('btnShot');
+  const btnUpload = document.getElementById('btnUpload');
+  const btnRetake = document.getElementById('btnRetake');
+  const fileInput = document.getElementById('fileInput');
+  const btnAnalyze = document.getElementById('btnAnalyze');
+  const errorBox = document.getElementById('errorBox');
+  const loading = document.getElementById('loading');
+  const result = document.getElementById('result');
+  const btnReset = document.getElementById('btnReset');
+
+  let stream = null;
+  let imageBase64 = null;
+  let imageMediaType = 'image/jpeg';
+  let facingMode = 'user';
+
+  const occasionChips = document.querySelectorAll('#occasionChips .chip');
+  const styleChips = document.querySelectorAll('#styleChips .chip');
+  let selectedOccasion = null;
+  let selectedStyle = null;
+
+  occasionChips.forEach(c => c.addEventListener('click', () => {
+    occasionChips.forEach(x => x.classList.remove('active'));
+    if (selectedOccasion === c.dataset.v) { selectedOccasion = null; }
+    else { c.classList.add('active'); selectedOccasion = c.dataset.v; }
+  }));
+  styleChips.forEach(c => c.addEventListener('click', () => {
+    styleChips.forEach(x => x.classList.remove('active'));
+    if (selectedStyle === c.dataset.v) { selectedStyle = null; }
+    else { c.classList.add('active'); selectedStyle = c.dataset.v; }
+  }));
+
+  function showError(msg){ errorBox.textContent = msg; errorBox.classList.add('show'); }
+  function clearError(){ errorBox.classList.remove('show'); errorBox.textContent = ''; }
+  function setImageReady(){ imageBase64 && (btnAnalyze.disabled = false); }
+
+  async function openCamera(){
+    clearError();
+    try {
+      if (stream) { stream.getTracks().forEach(t => t.stop()); }
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+      video.srcObject = stream;
+      video.style.transform = facingMode === 'user' ? 'scaleX(-1)' : 'none';
+      video.style.display = 'block';
+      captured.style.display = 'none';
+      frameEmpty.style.display = 'none';
+      btnCamera.style.display = 'none';
+      btnSwitchCam.style.display = 'block';
+      btnShot.style.display = 'block';
+      btnRetake.style.display = 'none';
+    } catch (e) {
+      showError('เปิดกล้องไม่ได้นะคะ 🥺 กรุณาอนุญาตการเข้าถึงกล้อง หรือใช้ปุ่มอัปโหลดรูปแทน');
+    }
+  }
+
+  btnCamera.addEventListener('click', openCamera);
+  btnSwitchCam.addEventListener('click', () => {
+    facingMode = facingMode === 'user' ? 'environment' : 'user';
+    openCamera();
+  });
+
+  btnShot.addEventListener('click', () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (facingMode === 'user') {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    imageBase64 = dataUrl.split(',')[1];
+    imageMediaType = 'image/jpeg';
+    captured.src = dataUrl;
+    captured.style.display = 'block';
+    video.style.display = 'none';
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    btnShot.style.display = 'none';
+    btnSwitchCam.style.display = 'none';
+    btnCamera.style.display = 'none';
+    btnRetake.style.display = 'block';
+    setImageReady();
+  });
+
+  btnUpload.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    clearError();
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      imageBase64 = dataUrl.split(',')[1];
+      imageMediaType = file.type || 'image/jpeg';
+      captured.src = dataUrl;
+      captured.style.display = 'block';
+      video.style.display = 'none';
+      frameEmpty.style.display = 'none';
+      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      btnShot.style.display = 'none';
+      btnCamera.style.display = 'none';
+      btnRetake.style.display = 'block';
+      setImageReady();
+    };
+    reader.readAsDataURL(file);
+  });
+
+  btnRetake.addEventListener('click', () => {
+    imageBase64 = null;
+    btnAnalyze.disabled = true;
+    captured.style.display = 'none';
+    frameEmpty.style.display = 'flex';
+    btnRetake.style.display = 'none';
+    btnCamera.style.display = 'block';
+    result.classList.remove('show');
+    clearError();
+    document.getElementById('tryOnSection').style.display = 'none';
+    if (typeof arRunning !== 'undefined' && arRunning) {
+      arRunning = false;
+      if (arStream) { arStream.getTracks().forEach(t => t.stop()); arStream = null; }
+      document.getElementById('arLiveWrap').style.display = 'none';
+    }
+  });
+
+  btnReset.addEventListener('click', () => {
+    btnRetake.click();
+    window.scrollTo({top:0, behavior:'smooth'});
+  });
+
+  btnAnalyze.addEventListener('click', async () => {
+    if (!imageBase64) return;
+    clearError();
+    result.classList.remove('show');
+    loading.classList.add('show');
+    btnAnalyze.disabled = true;
+
+    const occasionText = selectedOccasion || 'ไม่ระบุโอกาสเฉพาะ ให้แนะนำลุคที่ใช้ได้อเนกประสงค์';
+    const styleText = selectedStyle || 'ไม่ระบุสไตล์เฉพาะ ให้เลือกสไตล์ที่เหมาะกับหน้าที่วิเคราะห์ได้เอง';
+
+    const systemPrompt = `คุณคือเมคอัพอาร์ทิสต์และบิวตี้เอดิเตอร์มืออาชีพของนิตยสารแฟชั่นที่มีบุคลิกน่ารักเป็นกันเอง วิเคราะห์ภาพใบหน้าที่ได้รับ แล้วให้คำแนะนำการแต่งหน้าที่เฉพาะเจาะจงกับคนในภาพจริงๆ (ไม่ใช่คำแนะนำทั่วไป) ตอบเป็นภาษาไทยล้วน โทนเสียงน่ารัก อบอุ่น ให้กำลังใจ กระชับ ใช้อีโมจิได้บ้างในข้อความ (ไม่เกิน 1 อันต่อประโยค)
+
+ตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความอื่นนอก JSON ห้ามใช้ markdown code fence ตามโครงสร้างนี้เป๊ะๆ:
+{
+  "match_score": 90,
+  "undertone": "อันเดอร์โทนผิว เช่น อุ่นทอง / เย็นชมพู / เป็นกลาง (สั้น กระชับ)",
+  "skin_desc": "โทนสีผิวโดยรวม เช่น ผิวสองสีแทนอมทอง (สั้น)",
+  "face_shape": "รูปหน้า เช่น รูปไข่ / เหลี่ยม / หัวใจ",
+  "eye_shape": "รูปตา เช่น ตาชั้นเดียว / ตาหยดน้ำ",
+  "look_name": "ชื่อลุคภาษาไทยที่น่ารักไพเราะ ไม่เกิน 6 คำ",
+  "look_summary": "คำอธิบายลุค 1-2 ประโยค เชื่อมโยงกับลักษณะใบหน้าจริงของคนในภาพ",
+  "palette": {
+    "base": {"name":"ชื่อโทนรองพื้น/คุชชั่น", "hex":"#รหัสสี", "tip":"เคล็ดลับสั้นๆ", "brand_match":"ชื่อแบรนด์+เฉดที่ใกล้เคียงในตลาดจริง เช่น MAC Studio Fix NC30"},
+    "eyes": {"name":"ชื่อพาเลตต์อายแชโดว์", "hex":"#รหัสสี", "tip":"เคล็ดลับสั้นๆ", "brand_match":"ชื่อแบรนด์+เฉดที่ใกล้เคียง"},
+    "cheek": {"name":"ชื่อสีบลัชออน", "hex":"#รหัสสี", "tip":"เคล็ดลับสั้นๆ", "brand_match":"ชื่อแบรนด์+เฉดที่ใกล้เคียง"},
+    "lip": {"name":"ชื่อสีลิป", "hex":"#รหัสสี", "tip":"เคล็ดลับสั้นๆ", "brand_match":"ชื่อแบรนด์+เฉดที่ใกล้เคียง"}
+  },
+  "steps": [
+    {"title":"ชื่อขั้นตอน", "detail":"รายละเอียดวิธีทำ 1-2 ประโยค"},
+    {"title":"...", "detail":"..."},
+    {"title":"...", "detail":"..."},
+    {"title":"...", "detail":"..."}
+  ],
+  "finishing_tip": "เคล็ดลับปิดท้ายที่ทำให้ลุคนี้เข้ากับคนในภาพเป็นพิเศษ 1 ประโยค"
+}
+
+match_score คือตัวเลข 88-99 แสดงความเข้ากันของลุคนี้กับคนในภาพ (ใช้เพื่อสร้างความสนุก ไม่ใช่ค่าทางวิทยาศาสตร์)
+โอกาสที่ผู้ใช้เลือก: ${occasionText}
+สไตล์ที่ผู้ใช้เลือก: ${styleText}
+ให้ hex เป็นสีจริงที่ใช้แสดงผลสวอตช์สีได้ (ไม่ใช่สีดำ/ขาวเรียบๆ ให้เป็นโทนที่สมจริงกับเครื่องสำอาง)
+brand_match ให้เลือกแบรนด์เครื่องสำอางที่มีชื่อเสียงจริงและเฉดสีที่ใกล้เคียงที่สุดเท่าที่ทราบ หากไม่มั่นใจเฉดที่แน่นอนให้ระบุชื่อแบรนด์และหมวดสีกว้างๆแทน (เช่น "โทนใกล้เคียง MAC กลุ่มชมพูอมส้ม") อย่าระบุรหัสเฉดที่ไม่แน่ใจว่ามีอยู่จริง`;
+
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1000,
+          system: systemPrompt,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "image", source: { type: "base64", media_type: imageMediaType, data: imageBase64 } },
+                { type: "text", text: "วิเคราะห์ภาพนี้แล้วตอบกลับเป็น JSON ตามโครงสร้างที่กำหนดเท่านั้น" }
+              ]
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) throw new Error('API_ERROR');
+
+      const data = await response.json();
+      const textBlocks = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+      let clean = textBlocks.trim().replace(/^```json/i, '').replace(/^```/,'').replace(/```$/,'').trim();
+
+      let parsed;
+      try { parsed = JSON.parse(clean); }
+      catch (e) {
+        const match = clean.match(/\{[\s\S]*\}/);
+        if (match) parsed = JSON.parse(match[0]);
+        else throw new Error('PARSE_ERROR');
+      }
+
+      renderResult(parsed);
+    } catch (e) {
+      showError('วิเคราะห์ไม่สำเร็จค่ะ 🥲 ลองใหม่อีกครั้ง หรือลองเปลี่ยนรูปที่แสงชัดเจนกว่านี้นะคะ');
+    } finally {
+      loading.classList.remove('show');
+      btnAnalyze.disabled = false;
+    }
+  });
+
+  function renderResult(d){
+    document.getElementById('matchBadge').textContent = `💚 เข้ากับคุณ ${d.match_score || 95}%`;
+    document.getElementById('resTitle').textContent = d.look_name || 'ลุคของคุณ';
+    document.getElementById('resSummary').textContent = d.look_summary || '';
+    document.getElementById('aUndertone').textContent = d.undertone || '—';
+    document.getElementById('aSkin').textContent = d.skin_desc || '—';
+    document.getElementById('aFace').textContent = d.face_shape || '—';
+    document.getElementById('aEye').textContent = d.eye_shape || '—';
+    document.getElementById('resFinish').textContent = d.finishing_tip || '';
+
+    const areaLabels = { base:'เบส/รองพื้น', eyes:'ดวงตา', cheek:'แก้ม', lip:'ริมฝีปาก' };
+    const swatchRow = document.getElementById('swatchRow');
+    swatchRow.innerHTML = '';
+    ['base','eyes','cheek','lip'].forEach(key => {
+      const p = (d.palette && d.palette[key]) || {};
+      const el = document.createElement('div');
+      el.className = 'swatch';
+      el.innerHTML = `
+        <div class="dot" style="background:${esc(p.hex) || '#FFD6E8'};"></div>
+        <div class="txt">
+          <div class="area">${esc(areaLabels[key])}</div>
+          <div class="name">${esc(p.name) || '—'}</div>
+          <div class="tip">${esc(p.tip) || ''}</div>
+          ${p.brand_match ? `<div class="brand-tag">💫 ใกล้เคียง: ${esc(p.brand_match)}</div>` : ''}
+        </div>`;
+      swatchRow.appendChild(el);
+    });
+
+    const stepsList = document.getElementById('stepsList');
+    stepsList.innerHTML = '';
+    (d.steps || []).forEach((s, i) => {
+      const el = document.createElement('div');
+      el.className = 'step';
+      el.innerHTML = `
+        <div class="num">${i+1}</div>
+        <div class="body">
+          <div class="t">${esc(s.title) || ''}</div>
+          <div class="d">${esc(s.detail) || ''}</div>
+        </div>`;
+      stepsList.appendChild(el);
+    });
+
+    result.classList.add('show');
+    burstConfetti();
+    setTimeout(() => {
+      document.querySelector('.result-card').scrollIntoView({behavior:'smooth', block:'start'});
+    }, 50);
+
+    currentPalette = d.palette || {};
+    buildTryOn(currentPalette);
+  }
+
+  function esc(str){
+    if (str === undefined || str === null) return '';
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
+  }
+
+  /* ===================== Virtual try-on (face-api.js) ===================== */
+  let modelsLoaded = false;
+  let currentPalette = null;
+  let arStream = null;
+  let arRunning = false;
+  let arLastLandmarks = null;
+  let arLastDetectTime = 0;
+
+  const modelStatusEl = document.getElementById('modelStatus');
+  function setModelStatus(msg){ if (modelStatusEl) modelStatusEl.textContent = msg; }
+
+  async function loadModels(){
+    try {
+      const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
+      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+      modelsLoaded = true;
+    } catch (e) {
+      modelsLoaded = false;
+    }
+  }
+  loadModels();
+
+  function hexToRgba(hex, a){
+    const c = (hex || '#FFD6E8').replace('#','');
+    const r = parseInt(c.substring(0,2),16) || 255;
+    const g = parseInt(c.substring(2,4),16) || 200;
+    const b = parseInt(c.substring(4,6),16) || 220;
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  function pathFromPoints(ctx, points){
+    ctx.beginPath();
+    points.forEach((p,i) => i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y));
+    ctx.closePath();
+  }
+
+  function drawMakeup(ctx, pts, palette){
+    if (!pts || pts.length < 68 || !palette) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+
+    // Lips
+    const lipHex = (palette.lip && palette.lip.hex) || '#D94F70';
+    ctx.fillStyle = hexToRgba(lipHex, 0.55);
+    pathFromPoints(ctx, pts.slice(48,60));
+    ctx.fill();
+
+    // Blush
+    const cheekHex = (palette.cheek && palette.cheek.hex) || '#FFAFC0';
+    const faceWidth = Math.hypot(pts[16].x-pts[0].x, pts[16].y-pts[0].y);
+    [[pts[1],pts[31],pts[48]], [pts[15],pts[35],pts[54]]].forEach(group => {
+      const cx = (group[0].x+group[1].x+group[2].x)/3;
+      const cy = (group[0].y+group[1].y+group[2].y)/3 - faceWidth*0.03;
+      const r = faceWidth * 0.16;
+      const grad = ctx.createRadialGradient(cx,cy,2,cx,cy,r);
+      grad.addColorStop(0, hexToRgba(cheekHex,0.5));
+      grad.addColorStop(1, hexToRgba(cheekHex,0));
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+    });
+
+    // Eyeshadow
+    const eyeHex = (palette.eyes && palette.eyes.hex) || '#C99BD6';
+    [pts.slice(36,42), pts.slice(42,48)].forEach(eye => {
+      const xs = eye.map(p=>p.x), ys = eye.map(p=>p.y);
+      const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+      const cx=(minX+maxX)/2, cy=(minY+maxY)/2;
+      const w=(maxX-minX)*0.85, h=(maxY-minY)*1.7 + 4;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy-h*0.35, w, h, 0, 0, Math.PI*2);
+      ctx.fillStyle = hexToRgba(eyeHex,0.32);
+      ctx.fill();
+    });
+
+    ctx.restore();
+  }
+
+  async function buildTryOn(palette){
+    const tryOnSection = document.getElementById('tryOnSection');
+    tryOnSection.style.display = 'block';
+    setModelStatus('กำลังลองแต่งให้ดูนะคะ… ✨');
+
+    if (!modelsLoaded) {
+      // give the models a moment in case they were still loading
+      await new Promise(r => setTimeout(r, 1200));
+    }
+    if (!modelsLoaded) {
+      setModelStatus('โหมดลองแต่งบนรูปต้องใช้อินเทอร์เน็ตโหลดโมเดล AI เพิ่มเติมค่ะ — ถ้าเปิดไฟล์นี้นอก Claude โดยตรงในเบราว์เซอร์ปกติ ฟีเจอร์นี้จะใช้งานได้เต็มที่ 💫');
+      return;
+    }
+
+    try {
+      const img = new Image();
+      img.src = captured.src;
+      await img.decode();
+
+      const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+      if (!detection) {
+        setModelStatus('ตรวจไม่พบใบหน้าชัดเจนในรูปค่ะ ลองถ่ายรูปหน้าตรง แสงสว่างกว่านี้นะคะ 🌸');
+        return;
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      drawMakeup(ctx, detection.landmarks.positions, palette);
+
+      document.getElementById('baBase').src = img.src;
+      document.getElementById('baOverlay').src = canvas.toDataURL('image/jpeg', 0.92);
+      setModelStatus('ลากเส้นกลางเพื่อเทียบก่อน-หลังได้เลยค่ะ 💗');
+    } catch (e) {
+      setModelStatus('ลองแต่งบนรูปไม่สำเร็จค่ะ ลองใหม่อีกครั้งนะคะ');
+    }
+  }
+
+  const baSlider = document.getElementById('baSlider');
+  baSlider.addEventListener('input', () => {
+    const v = baSlider.value;
+    document.getElementById('baOverlay').style.clipPath = `inset(0 ${100-v}% 0 0)`;
+    document.getElementById('baDivider').style.left = v + '%';
+  });
+
+  /* ===================== Live AR ===================== */
+  const btnLiveAR = document.getElementById('btnLiveAR');
+  const btnStopAR = document.getElementById('btnStopAR');
+  const arLiveWrap = document.getElementById('arLiveWrap');
+  const arVideo = document.getElementById('arVideo');
+  const arCanvas = document.getElementById('arCanvas');
+
+  btnLiveAR.addEventListener('click', async () => {
+    if (!modelsLoaded) {
+      setModelStatus('โมเดล AI ยังโหลดไม่พร้อมค่ะ ลองรออีกสักครู่แล้วกดใหม่นะคะ');
+      return;
+    }
+    try {
+      arStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      arVideo.srcObject = arStream;
+      await new Promise(res => { arVideo.onloadedmetadata = res; });
+      await arVideo.play();
+      arCanvas.width = arVideo.videoWidth;
+      arCanvas.height = arVideo.videoHeight;
+      arLiveWrap.style.display = 'block';
+      arRunning = true;
+      arLastLandmarks = null;
+      window.addEventListener('orientationchange', resizeArCanvas);
+      window.addEventListener('resize', resizeArCanvas);
+      requestAnimationFrame(arLoop);
+    } catch (e) {
+      setModelStatus('เปิดกล้อง AR ไม่ได้ค่ะ กรุณาอนุญาตการเข้าถึงกล้อง');
+    }
+  });
+
+  function resizeArCanvas(){
+    if (!arRunning || !arVideo.videoWidth) return;
+    arCanvas.width = arVideo.videoWidth;
+    arCanvas.height = arVideo.videoHeight;
+  }
+
+  btnStopAR.addEventListener('click', () => {
+    arRunning = false;
+    if (arStream) { arStream.getTracks().forEach(t => t.stop()); arStream = null; }
+    arLiveWrap.style.display = 'none';
+    window.removeEventListener('orientationchange', resizeArCanvas);
+    window.removeEventListener('resize', resizeArCanvas);
+  });
+
+  async function arLoop(ts){
+    if (!arRunning) return;
+    const actx = arCanvas.getContext('2d');
+    actx.clearRect(0,0,arCanvas.width,arCanvas.height);
+
+    if (ts - arLastDetectTime > 140) {
+      arLastDetectTime = ts;
+      try {
+        const det = await faceapi.detectSingleFace(arVideo, new faceapi.TinyFaceDetectorOptions({ inputSize:224 })).withFaceLandmarks();
+        arLastLandmarks = det ? det.landmarks.positions : null;
+      } catch(e) { /* skip this frame */ }
+    }
+    if (arLastLandmarks && currentPalette) {
+      drawMakeup(actx, arLastLandmarks, currentPalette);
+    }
+    requestAnimationFrame(arLoop);
+  }
+</script>
+</body>
+</html>
