@@ -132,6 +132,18 @@ td.n{font-family:var(--mono);text-align:right;white-space:nowrap}
 #report .rp-meta{display:flex;justify-content:space-between;gap:4mm;font-size:9.5pt;color:#444;border-bottom:0.5pt solid #C9D4DC;padding-bottom:2mm;margin-bottom:3mm}
 #report .rp-box{border:1pt solid #C9D4DC;border-radius:2mm;padding:3mm;margin:2mm 0;break-inside:avoid}
 #report .rp-box.crit{border-color:#B3261E;background:#FDF1F0} #report .rp-box.warn{border-color:#9A5A00;background:#FFF7EA} #report .rp-box.ok{border-color:#1D7A45;background:#EFF8F2}
+#report .rp-ov{display:grid;grid-template-columns:62mm 1fr;gap:3mm;align-items:start;break-inside:avoid}
+#report .rp-gauge{text-align:center;margin:0}
+#report .rp-gk{font-size:8.5pt;font-weight:600;color:#444}
+#report .rp-gl{display:block;font-family:'Kanit',sans-serif;font-size:13pt}
+#report .rp-gd{font-size:8.5pt;color:#444}
+#report .rp-gp{font-size:8.5pt;border-top:0.5pt solid #C9D4DC;margin-top:1.5mm;padding-top:1.5mm}
+#report .rp-tiles{display:grid;grid-template-columns:1fr 1fr;gap:1.6mm}
+#report .rp-tile{border:0.6pt solid #C9D4DC;border-radius:1.5mm;padding:1.4mm 2mm;display:flex;flex-direction:column;break-inside:avoid}
+#report .rp-tile.crit{border-color:#B3261E;background:#FDF1F0} #report .rp-tile.warn{border-color:#9A5A00;background:#FFF7EA} #report .rp-tile.ok{border-color:#1D7A45}
+#report .rp-tk{font-size:7.8pt;color:#555;font-weight:600}
+#report .rp-tile b{font-family:'Kanit',sans-serif;font-size:11.5pt;line-height:1.25}
+#report .rp-ts{font-size:7.6pt;color:#555}
 #report .rp-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:2mm;margin:2mm 0}
 #report .rp-kpi{border:0.5pt solid #C9D4DC;border-radius:1.5mm;padding:2mm}
 #report .rp-kpi b{display:block;font-family:'Kanit',sans-serif;font-size:15pt}
@@ -843,52 +855,51 @@ function drawPump(ctx,x,y,s,color){ctx.save();ctx.translate(x,y);ctx.scale(s/40,
 async function makeImage(){
   try{await document.fonts.ready;}catch(e){}
   analyze();const A=lastAnalysis;const W=1080,H=1350;const cv=document.createElement('canvas');cv.width=W;cv.height=H;const ctx=cv.getContext('2d');
-  const C={bg:'#F3F6F8',ink:'#0F2232',muted:'#516474',line:'#D3DDE5',acc:'#0B5CAD',ok:'#1D7A45',okS:'#DDF1E4',warn:'#9A5A00',warnS:'#FBEBD0',crit:'#B3261E',critS:'#F9DEDC',idle:'#7A8A97',navy:'#0F2232'};
+  const C={bg:'#F3F6F8',ink:'#0F2232',muted:'#516474',line:'#D3DDE5',ok:'#2E7D32',okS:'#EFF8F2',warn:'#B26B00',warnS:'#FFF4E0',crit:'#C62828',critS:'#FDECEA',navy:'#0F2232'};
   const K="'Kanit',sans-serif",B="'IBM Plex Sans Thai',sans-serif",M="'IBM Plex Mono',monospace";
+  const rr=(x,y,w,h,r,fill,stroke,lw)=>{ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||2;ctx.stroke();}};
+  const fit=(t,font,size,maxW)=>{let sz=size;ctx.font=`600 ${sz}px ${font}`;while(ctx.measureText(t).width>maxW&&sz>16){sz-=1;ctx.font=`600 ${sz}px ${font}`;}return sz;};
+  const lines=(t,maxW,maxL)=>{const out=[];let line='';const toks=t.split(/(\s+)/);for(const tk of toks){if(ctx.measureText(line+tk).width<=maxW){line+=tk;continue;}if(line.trim()){out.push(line.trim());line='';if(out.length===maxL)break;}if(ctx.measureText(tk).width<=maxW){line=tk.trimStart();}else{for(const ch of [...tk]){if(ctx.measureText(line+ch).width>maxW&&line){out.push(line);line='';if(out.length===maxL)break;}line+=ch;}if(out.length===maxL)break;}}if(out.length<maxL&&line.trim())out.push(line.trim());else if(out.length===maxL&&line.trim()){out[maxL-1]=out[maxL-1].replace(/.{0,2}$/,'')+'…';}return out;};
   ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
-  ctx.fillStyle=C.navy;ctx.fillRect(0,0,W,170);
-  ctx.fillStyle='#9CC3E8';ctx.font=`600 24px ${B}`;ctx.fillText('สรุปสถานีสูบน้ำและระดับน้ำ',56,62);
-  ctx.fillStyle='#fff';ctx.font=`600 50px ${K}`;ctx.fillText('สถานการณ์น้ำจังหวัดสมุทรปราการ',56,128);
-  ctx.fillStyle='#D5E3F0';ctx.font=`500 22px ${B}`;ctx.textAlign='right';ctx.fillText(new Date().toLocaleString('th-TH',{timeZone:'Asia/Bangkok',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})+' น.',W-56,62);ctx.textAlign='left';
-  // verdict
-  const t=A.days[0];const[k,lbl,desc]=level(t.score);const vc={crit:[C.critS,C.crit],warn:[C.warnS,C.warn],ok:[C.okS,C.ok]}[k];
-  ctx.fillStyle=vc[0];ctx.fillRect(56,200,W-112,150);ctx.fillStyle=vc[1];ctx.fillRect(56,200,10,150);
-  ctx.font=`500 72px ${M}`;ctx.fillText(String(t.score),96,300);
-  ctx.font=`600 38px ${K}`;ctx.fillText('แนวโน้มวันนี้: '+lbl,250,262);
-  ctx.fillStyle=C.ink;ctx.font=`400 24px ${B}`;ctx.fillText(desc,250,300);
-  ctx.fillStyle=C.muted;ctx.font=`400 21px ${B}`;ctx.fillText(`เสี่ยงสูงสุดใน 7 วัน: ${thDay(A.peak.d0)} (คะแนน ${A.peak.score}) · สถานพยาบาลเสี่ยงสูง ${hfCount.crit} แห่ง เฝ้าระวัง ${hfCount.warn} แห่ง`,250,334);
-  // kpis
-  let now=0,mx=0;state.stations.forEach(s=>{const r=rateOf(s),m=maxOf(s);if(r)now+=r;if(m)mx+=m;});
-  const tNow=tideAt(Date.now());
-  const kp=[[now?now.toFixed(0):'–','ลบ.ม./วินาที สูบตามสถานะ'],[state.report.value??'–','ลบ.ม./วินาที รายงานรวม'],[(()=>{const j=judge(PAIRS[0]);return j.delta==null?'–':j.delta.toFixed(2)+' ม.'})(),'คอขวด ประเวศ→ชลหารฯ'],[tNow!=null?tNow.toFixed(2)+' ม.':'–','น้ำทะเลขณะนี้']];
-  kp.forEach(([v,l],i)=>{const x=56+i*247;ctx.fillStyle='#fff';ctx.fillRect(x,380,231,110);ctx.fillStyle=C.ink;ctx.font=`600 40px ${K}`;ctx.fillText(String(v),x+20,432);ctx.fillStyle=C.muted;ctx.font=`400 19px ${B}`;wrap(ctx,l,x+20,466,195,22);});
-  // stations
-  ctx.fillStyle=C.ink;ctx.font=`600 30px ${K}`;ctx.fillText('สถานีสูบน้ำ',56,548);
-  const list=state.stations.filter(s=>maxOf(s)||s.reported).slice(0,10);
-  list.forEach((s,i)=>{const col=i%2,row=Math.floor(i/2);const x=56+col*492,y=572+row*66;const[c,tt,cc]=statusOf(s);
-    const color={'var(--ok)':C.ok,'var(--warn)':C.warn,'var(--crit)':C.crit,'var(--idle)':C.idle}[cc];
-    drawPump(ctx,x,y+4,46,color);ctx.fillStyle=C.ink;ctx.font=`500 22px ${B}`;ctx.fillText(s.name.replace('สถานีสูบน้ำ',''),x+58,y+24);
-    const r=rateOf(s),m=maxOf(s);ctx.fillStyle=C.muted;ctx.font=`400 19px ${B}`;ctx.fillText(`${tt} · ${r!=null?r:'?'}/${m!=null?m:'?'} ลบ.ม./วิ`,x+58,y+50);});
-  // canals
-  let y0=572+Math.ceil(list.length/2)*66+30;
-  ctx.fillStyle=C.ink;ctx.font=`600 30px ${K}`;ctx.fillText('ระดับน้ำในคลอง (ม.รทก.)',56,y0);y0+=16;
-  const cs=state.canals.filter(c=>c.wl!=null).map(c=>({n:c.name,wl:c.wl,st:canalState(c)})).concat(wlRows.filter(w=>w.wl!=null).map(w=>({n:w.name,wl:w.wl,st:wlState(w)})));
-  const order={crit:0,warn:1,ok:2,na:3};cs.sort((a,b)=>order[a.st[0]]-order[b.st[0]]);
-  cs.slice(0,6).forEach((c,i)=>{const y=y0+18+i*44;const col={crit:C.crit,warn:C.warn,ok:C.ok,na:C.idle}[c.st[0]];
-    ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(66,y+4);ctx.lineTo(78,y+26);ctx.lineTo(54,y+26);ctx.closePath();ctx.fill();
-    ctx.fillStyle=C.ink;ctx.font=`400 22px ${B}`;ctx.fillText(c.n.length>34?c.n.slice(0,33)+'…':c.n,92,y+24);
-    ctx.font=`500 22px ${M}`;ctx.textAlign='right';ctx.fillText((+c.wl).toFixed(2),W-230,y+24);ctx.fillStyle=col;ctx.font=`600 20px ${B}`;ctx.fillText(c.st[1],W-56,y+24);ctx.textAlign='left';});
-  y0+=18+Math.min(6,cs.length)*44+30;
-  // trend
-  ctx.fillStyle=C.ink;ctx.font=`600 30px ${K}`;ctx.fillText('แนวโน้ม 7 วัน',56,y0);
-  const bw=(W-112-6*14)/7,base=Math.min(H-110,y0+190);
-  A.days.forEach((d,i)=>{const x=56+i*(bw+14);const h=20+d.score*1.2;const col={crit:C.crit,warn:C.warn,ok:C.ok}[level(d.score)[0]];
-    ctx.fillStyle=col;ctx.fillRect(x,base-h,bw,h);ctx.fillStyle=C.ink;ctx.font=`500 22px ${M}`;ctx.textAlign='center';ctx.fillText(d.score,x+bw/2,base-h-8);
-    ctx.font=`400 19px ${B}`;ctx.fillStyle=C.muted;ctx.fillText(thDay(d.d0),x+bw/2,base+26);ctx.textAlign='left';});
+  // header
+  ctx.fillStyle=C.navy;ctx.fillRect(0,0,W,150);
+  ctx.fillStyle='#9CC3E8';ctx.font=`600 22px ${B}`;ctx.fillText('สรุปสถานการณ์น้ำ · สถานีสูบ · หน่วยบริการ',56,52);
+  ctx.textAlign='right';ctx.fillStyle='#D5E3F0';ctx.font=`500 22px ${B}`;ctx.fillText(new Date().toLocaleString('th-TH',{timeZone:'Asia/Bangkok',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})+' น.',W-56,52);ctx.textAlign='left';
+  ctx.fillStyle='#fff';ctx.font=`600 50px ${K}`;ctx.fillText('สถานการณ์น้ำจังหวัดสมุทรปราการ',56,116);
+  // gauge card
+  const t=A.days[0],[k,lbl,desc]=level(t.score);const kc={crit:C.crit,warn:C.warn,ok:C.ok}[k];
+  rr(56,176,340,400,18,'#fff',kc,3);
+  ctx.fillStyle=C.muted;ctx.font=`600 20px ${B}`;ctx.textAlign='center';ctx.fillText('ความเสี่ยงน้ำท่วม วันนี้',226,212);
+  const gx=226,gy=380,R=130;const ang=v=>Math.PI*(1+v/100);
+  [[0,44.5,C.ok],[45.5,69.5,C.warn],[70.5,100,C.crit]].forEach(([a,b,c])=>{ctx.beginPath();ctx.arc(gx,gy,R,ang(a),ang(b));ctx.strokeStyle=c;ctx.lineWidth=24;ctx.lineCap='butt';ctx.stroke();});
+  ctx.fillStyle=C.muted;ctx.font=`500 15px ${M}`;[0,45,70,100].forEach(v=>{const a=ang(v);ctx.fillText(String(v),gx+(R+26)*Math.cos(a),gy+(R+26)*Math.sin(a)+5);});
+  const na=ang(Math.max(0,Math.min(100,t.score)));ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx+(R-34)*Math.cos(na),gy+(R-34)*Math.sin(na));ctx.strokeStyle=C.ink;ctx.lineWidth=6;ctx.lineCap='round';ctx.stroke();
+  ctx.beginPath();ctx.arc(gx,gy,11,0,Math.PI*2);ctx.fillStyle=C.ink;ctx.fill();
+  ctx.fillStyle=kc;ctx.font=`700 56px ${K}`;ctx.fillText(String(t.score),gx,gy-44);
+  ctx.font=`600 30px ${K}`;ctx.fillText(lbl,gx,gy+48);
+  ctx.fillStyle=C.muted;ctx.font=`400 18px ${B}`;lines(desc,300,2).forEach((l,i)=>ctx.fillText(l,gx,gy+78+i*22));
+  ctx.fillStyle=C.line;ctx.fillRect(80,520,292,1);
+  ctx.fillStyle=C.ink;ctx.font=`500 18px ${B}`;ctx.fillText(`เสี่ยงสูงสุด 7 วัน: ${thDay(A.peak.d0)} · ${A.peak.score}`,gx,554);ctx.textAlign='left';
+  // tiles
+  const tiles=ovTiles();
+  const drawTile=(tl,x,y,w,h)=>{const pal={crit:[C.critS,C.crit],warn:[C.warnS,C.warn],ok:['#fff',C.ok]}[tl.k]||['#fff',C.line];
+    rr(x,y,w,h,14,pal[0],pal[1],tl.k?2.5:1.5);
+    ctx.fillStyle=C.muted;ctx.font=`600 18px ${B}`;ctx.fillText(lines(tl.label,w-36,1)[0],x+18,y+32);
+    ctx.fillStyle=tl.k==='crit'?C.crit:tl.k==='warn'?C.warn:C.ink;const sz=fit(tl.value,K,h>115?34:28,w-36);ctx.fillText(tl.value,x+18,y+32+sz+6);
+    ctx.fillStyle=C.muted;ctx.font=`400 16px ${B}`;const yy=y+32+sz+32;lines(tl.sub,w-36,h>115?2:1).forEach((l,i)=>ctx.fillText(l,x+18,yy+i*20));};
+  tiles.slice(0,3).forEach((tl,i)=>drawTile(tl,412,176+i*137,612,125));
+  tiles.slice(3).forEach((tl,i)=>drawTile(tl,56+(i%2)*490,600+Math.floor(i/2)*112,478,100));
+  // 7-day trend
+  const y0=600+Math.ceil((tiles.length-3)/2)*112+24;
+  ctx.fillStyle=C.ink;ctx.font=`600 26px ${K}`;ctx.fillText('แนวโน้มความเสี่ยง 7 วัน',56,y0);
+  const bw=(W-112-6*14)/7,base=H-82,top=y0+40,maxH=base-top-34;
+  A.days.forEach((d,i)=>{const x=56+i*(bw+14);const h=Math.max(10,d.score/100*maxH);const col={crit:C.crit,warn:C.warn,ok:C.ok}[level(d.score)[0]];
+    rr(x,base-h,bw,h,6,col);ctx.fillStyle=C.ink;ctx.font=`500 20px ${M}`;ctx.textAlign='center';ctx.fillText(d.score,x+bw/2,base-h-8);
+    ctx.font=`400 16px ${B}`;ctx.fillStyle=C.muted;ctx.fillText(thDay(d.d0),x+bw/2,base+22);if(d.rain[0]==='h'){ctx.fillStyle=C.crit;ctx.font=`600 15px ${B}`;ctx.fillText('ฝนหนัก',x+bw/2,base-h-32);}ctx.textAlign='left';});
   // footer
-  ctx.fillStyle=C.line;ctx.fillRect(56,H-62,W-112,1);ctx.fillStyle=C.muted;ctx.font=`400 17px ${B}`;
-  ctx.fillText('ประเมินเบื้องต้น ไม่ใช่ประกาศเตือนภัยของหน่วยงาน · ข้อมูล: ThaiWater, สนน.กทม., กรมอุตุนิยมวิทยา',56,H-36);
-  ctx.fillStyle=C.ink;ctx.font=`600 17px ${B}`;ctx.textAlign='right';ctx.fillText('จัดทำโดย ภก.จีรภัทร พลายงาม สสจ.สมุทรปราการ',W-56,H-12);ctx.textAlign='left';
+  ctx.fillStyle=C.line;ctx.fillRect(56,H-50,W-112,1);ctx.fillStyle=C.muted;ctx.font=`400 15px ${B}`;
+  ctx.fillText('ประเมินเบื้องต้น ไม่ใช่ประกาศเตือนภัย · ThaiWater, สนน.กทม., GISTDA, กรมอุตุฯ',56,H-22);
+  ctx.textAlign='right';ctx.fillStyle=C.ink;ctx.font=`600 15px ${B}`;ctx.fillText('จัดทำโดย ภก.จีรภัทร พลายงาม สสจ.สมุทรปราการ',W-56,H-22);ctx.textAlign='left';
   return cv;
 }
 let imgBlob=null;
@@ -904,6 +915,17 @@ document.getElementById('bImg').addEventListener('click',async()=>{
 const stampName=()=>'สถานการณ์น้ำสมุทรปราการ-'+bkkDate(Date.now())+'-'+new Date(Date.now()+7*36e5).toISOString().slice(11,16).replace(':','')+'.png';
 document.getElementById('bDl').addEventListener('click',()=>{if(!imgBlob)return;const a=document.createElement('a');a.href=URL.createObjectURL(imgBlob);a.download=stampName();document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);});
 document.getElementById('bShare').addEventListener('click',async()=>{if(!imgBlob)return;try{await navigator.share({files:[new File([imgBlob],stampName(),{type:'image/png'})],title:'สถานการณ์น้ำจังหวัดสมุทรปราการ'});}catch(e){}});
+
+/* อ่านค่าจากกล่องสรุปด้านบน เพื่อให้รายงาน/รูปตรงกับหน้าจอ */
+function ovTiles(){return[...document.querySelectorAll('.ov-grid .ov-t')].map(t=>({k:t.dataset.k||'',label:t.querySelector('.ov-k').textContent.trim(),
+  value:t.querySelector('.ov-v').textContent.replace(/\s+/g,' ').trim(),sub:t.querySelector('.ov-s').textContent.replace(/\s+/g,' ').trim()}));}
+function gaugeSvgLight(score,k){const cx=120,cy=122,R=96,C={ok:'#2E7D32',warn:'#E08A00',crit:'#C62828'};
+  const pt=(v,r)=>{const a=Math.PI*(1-v/100);return[cx+r*Math.cos(a),cy-r*Math.sin(a)];};
+  const arc=(a,b,c)=>{const[x1,y1]=pt(a,R),[x2,y2]=pt(b,R);return`<path d="M${x1.toFixed(1)} ${y1.toFixed(1)} A${R} ${R} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" fill="none" stroke="${c}" stroke-width="18"/>`;};
+  const[nx,ny]=pt(Math.max(0,Math.min(100,score)),R-26);
+  return`<svg viewBox="0 0 240 140" width="100%" style="max-width:62mm;display:block;margin:0 auto">${arc(0,44.5,C.ok)+arc(45.5,69.5,C.warn)+arc(70.5,100,C.crit)}`+
+   [0,45,70,100].map(v=>{const[x,y]=pt(v,R+16);return`<text x="${x.toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="middle" font-size="11" fill="#555">${v}</text>`}).join('')+
+   `<line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="#111" stroke-width="4" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="8" fill="#111"/><text x="${cx}" y="${cy-30}" text-anchor="middle" font-size="34" font-weight="700" fill="${C[k]}">${score}</text></svg>`;}
 
 /* ---------- detailed PDF report (print to PDF) ---------- */
 const esc=x=>String(x==null?'':x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -934,13 +956,10 @@ function buildReport(){
   const nowTxt=new Date().toLocaleString('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'long',timeStyle:'short'});
   let h=`<h1>รายงานสถานการณ์น้ำจังหวัดสมุทรปราการ</h1>
   <div class="rp-meta"><span>จัดทำเมื่อ ${esc(nowTxt)} น. · ข้อมูลชุด ${esc(fmtT(new Date(DATA_DATE+':00+07:00')))}</span><span>สำนักงานสาธารณสุขจังหวัดสมุทรปราการ</span></div>
-  <h2>1. สรุปสำหรับผู้บริหาร</h2>
-  <div class="rp-box ${lk}"><b>แนวโน้มวันนี้: ${esc(ll)} (คะแนน ${t0.score}/100)</b> — ${esc(ld)}<br>ช่วงเสี่ยงสูงสุดใน 7 วัน: ${esc(thDay(A.peak.d0))} (คะแนน ${A.peak.score}, ${esc(level(A.peak.score)[1])})</div>
-  <div class="rp-kpis">
-   <div class="rp-kpi"><b>${now.toFixed(0)}</b><span>ลบ.ม./วินาที กำลังสูบตามสถานะ (สูงสุด ${mxc})</span></div>
-   <div class="rp-kpi"><b>${esc(state.report.value??'–')}</b><span>ลบ.ม./วินาที รายงานรวมจากหน่วยงาน</span></div>
-   <div class="rp-kpi"><b>${jb.delta==null?'–':jb.delta.toFixed(2)+' ม.'}</b><span>คอขวด ประเวศ (บางบ่อ) → ชลหารพิจิตร</span></div>
-   <div class="rp-kpi"><b>${hfCount.crit} / ${hfCount.warn}</b><span>หน่วยบริการเสี่ยงสูง / เฝ้าระวัง (จาก ${HEALTH.length})</span></div>
+  <h2>1. สรุปสถานการณ์</h2>
+  <div class="rp-ov">
+   <div class="rp-gauge rp-box ${lk}"><div class="rp-gk">ระดับความเสี่ยงน้ำท่วม วันนี้</div>${gaugeSvgLight(t0.score,lk)}<b class="rp-gl">${esc(ll)}</b><div class="rp-gd">${esc(ld)}</div><div class="rp-gp">เสี่ยงสูงสุดใน 7 วัน: <b>${esc(thDay(A.peak.d0))} · ${A.peak.score}</b></div></div>
+   <div class="rp-tiles">${ovTiles().map(t=>`<div class="rp-tile ${t.k}"><span class="rp-tk">${esc(t.label)}</span><b>${esc(t.value)}</b><span class="rp-ts">${esc(t.sub)}</span></div>`).join('')}</div>
   </div>
   <h3>ปัจจัยหลัก</h3><ul>${t0.why.slice(0,7).map(([p,w])=>`<li>${esc(w)} (+${p})</li>`).join('')}</ul>
   <h3>ข้อเสนอเพื่อการตัดสินใจ</h3><ul>${(jb.acts||[]).map(a=>`<li>${esc(a)}</li>`).join('')}
