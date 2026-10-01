@@ -83,6 +83,18 @@ td.n{font-family:var(--mono);text-align:right;white-space:nowrap}
 @keyframes spin{to{transform:rotate(360deg)}}
 .verdict{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:14px;border-radius:10px;border:1px solid var(--line)}
 .verdict.crit{background:var(--crit-soft);border-color:var(--crit)} .verdict.warn{background:var(--warn-soft);border-color:var(--warn)} .verdict.ok{background:var(--ok-soft);border-color:var(--ok)}
+.bn{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}
+.bn-card{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.bn-card.crit{border-color:var(--crit)} .bn-card.warn{border-color:var(--warn)}
+.flow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center}
+.node{background:var(--bg);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.node .v{font-family:var(--mono);font-size:22px;font-weight:500}
+.node .l{font-size:12px;color:var(--muted)}
+.arrow{display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--muted);gap:2px}
+.arrow b{font-family:var(--mono);font-size:20px;color:var(--ink)}
+.arrow svg{display:block}
+.acts{margin:0;padding-left:20px;font-size:14px;display:flex;flex-direction:column;gap:2px}
+.spark{width:100%;height:56px;display:block}
 .verdict b{font-family:var(--display);font-size:24px}
 .score{font-family:var(--mono);font-size:30px;font-weight:500}
 .reasons{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px}
@@ -113,6 +125,15 @@ td.n{font-family:var(--mono);text-align:right;white-space:nowrap}
     <div class="kpi"><b class="num" id="kMax">–</b><span>ลบ.ม./วินาที กำลังสูบสูงสุดที่ทราบ</span></div>
     <div class="kpi"><b class="num" id="kRun">–</b><span>สถานีเดินเครื่อง / ทั้งหมด</span></div>
     <div class="kpi"><b class="num" id="kRep">–</b><span id="kRepL">ลบ.ม./วินาที รายงานรวมจากหน่วยงาน</span></div>
+  </section>
+
+  <section class="panel" aria-labelledby="bnH">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
+      <h2 id="bnH">คอขวดการระบายน้ำ</h2>
+      <span class="note">ส่วนต่างระดับน้ำต้นทาง–ปลายทาง (ม.) · บอกว่าปัญหาอยู่ที่การส่งน้ำในคลองหรือที่สถานีสูบ</span>
+    </div>
+    <div class="bn" id="bn"></div>
+    <p class="note" style="margin:0">ส่วนต่างมาก + ต้นทางวิกฤต + หน้าสถานีสูบต่ำ = น้ำไหลมาไม่ทัน (คอขวดในคลอง) · หน้าสถานีสูบเกินเกณฑ์เตือน = สูบไม่ทัน · ประวัติบันทึกทุกครั้งที่แก้ระดับน้ำ</p>
   </section>
 
   <section class="main">
@@ -226,16 +247,16 @@ td.n{font-family:var(--mono);text-align:right;white-space:nowrap}
 <script>
 (function(){
 "use strict";
-const KEY='spk-pump-app-v1';
+const KEY='spk-pump-app-v3';
 const DEFAULT_STATIONS=[
- {id:'suvarnabhumi',name:'สถานีสูบน้ำสุวรรณภูมิ',amp:'เมืองสมุทรปราการ',lat:13.50699,lng:100.74471,n:4,q:25,on:null,rate:null,reported:true,approx:false},
- {id:'charoen-rat',name:'สถานีสูบน้ำเจริญราษฎร์',amp:'เมืองสมุทรปราการ',lat:13.50075,lng:100.76478,n:2,q:15,on:null,rate:null,reported:true,approx:false,note:'จำนวนเครื่องควรตรวจสอบเพิ่ม'},
- {id:'tamru',name:'สถานีสูบน้ำตำหรุ',amp:'เมืองสมุทรปราการ',lat:13.51612,lng:100.68331,n:6,q:3,on:null,rate:null,reported:true,approx:false},
- {id:'khlong-dan-2',name:'สถานีสูบน้ำคลองด่าน 2',amp:'บางบ่อ',lat:13.51060,lng:100.78290,n:4,q:3,on:null,rate:null,reported:true,approx:false},
- {id:'chonlaharn-1',name:'สถานีสูบน้ำชลหารพิจิตร 1',amp:'บางบ่อ',lat:13.51820,lng:100.82024,n:12,q:3,on:null,rate:null,reported:false,approx:true,note:'ใช้พิกัดสำนักงานโครงการฯ ชลหารพิจิตร'},
- {id:'chonlaharn-2',name:'สถานีสูบน้ำชลหารพิจิตร 2',amp:'บางบ่อ',lat:13.51720,lng:100.82160,n:15,q:3,on:null,rate:null,reported:false,approx:true,note:'ใช้พิกัดสำนักงานโครงการฯ (เลื่อนเล็กน้อยไม่ให้ซ้อนกัน)'},
- {id:'chonlaharn-3',name:'สถานีสูบน้ำชลหารพิจิตร 3',amp:'บางบ่อ',lat:13.51920,lng:100.82170,n:2,q:15,on:null,rate:null,reported:false,approx:true,note:'ใช้พิกัดสำนักงานโครงการฯ (เลื่อนเล็กน้อยไม่ให้ซ้อนกัน)'},
- {id:'bang-pla',name:'สถานีสูบน้ำบางปลา',amp:'บางพลี',lat:13.51500,lng:100.71500,n:2,q:3,on:null,rate:null,reported:true,approx:true,note:'ตำแหน่งโดยประมาณ'},
+ {id:'suvarnabhumi',name:'สถานีสูบน้ำสุวรรณภูมิ',amp:'เมืองสมุทรปราการ',lat:13.50699,lng:100.74471,n:4,q:25,on:4,rate:null,reported:true,approx:false},
+ {id:'charoen-rat',name:'สถานีสูบน้ำเจริญราษฎร์',amp:'เมืองสมุทรปราการ',lat:13.50075,lng:100.76478,n:2,q:15,on:2,rate:null,reported:true,approx:false,note:'จำนวนเครื่องควรตรวจสอบเพิ่ม'},
+ {id:'tamru',name:'สถานีสูบน้ำตำหรุ',amp:'เมืองสมุทรปราการ',lat:13.51612,lng:100.68331,n:6,q:3,on:6,rate:null,reported:true,approx:false},
+ {id:'khlong-dan-2',name:'สถานีสูบน้ำคลองด่าน 2',amp:'บางบ่อ',lat:13.51060,lng:100.78290,n:4,q:3,on:4,rate:null,reported:true,approx:false},
+ {id:'chonlaharn-1',name:'สถานีสูบน้ำชลหารพิจิตร 1',amp:'บางบ่อ',lat:13.51820,lng:100.82024,n:12,q:3,on:12,rate:null,reported:false,approx:true,note:'ใช้พิกัดสำนักงานโครงการฯ ชลหารพิจิตร'},
+ {id:'chonlaharn-2',name:'สถานีสูบน้ำชลหารพิจิตร 2',amp:'บางบ่อ',lat:13.51720,lng:100.82160,n:15,q:3,on:15,rate:null,reported:false,approx:true,note:'ใช้พิกัดสำนักงานโครงการฯ (เลื่อนเล็กน้อยไม่ให้ซ้อนกัน)'},
+ {id:'chonlaharn-3',name:'สถานีสูบน้ำชลหารพิจิตร 3',amp:'บางบ่อ',lat:13.51920,lng:100.82170,n:2,q:15,on:2,rate:null,reported:false,approx:true,note:'ใช้พิกัดสำนักงานโครงการฯ (เลื่อนเล็กน้อยไม่ให้ซ้อนกัน)'},
+ {id:'bang-pla',name:'สถานีสูบน้ำบางปลา',amp:'บางพลี',lat:13.51500,lng:100.71500,n:2,q:3,on:2,rate:null,reported:true,approx:true,note:'ตำแหน่งโดยประมาณ'},
  {id:'phraya-wisut',name:'สถานีสูบน้ำพระยาวิสูตร',amp:'บางปะกง จ.ฉะเชิงเทรา',lat:13.47967,lng:100.91121,n:null,q:null,on:null,rate:null,reported:true,approx:false,note:'อยู่นอกจังหวัด ร่วมระบายน้ำฝั่งตะวันออก'},
  {id:'nikhom-bangphli',name:'สถานีสูบระบายน้ำ นิคมฯ บางพลี',amp:'บางเสาธง',lat:13.58151,lng:100.80069,n:null,q:null,on:null,rate:null,reported:false,approx:false},
  {id:'polder',name:'Polder Pumping Station สุวรรณภูมิ',amp:'บางพลี',lat:13.65429,lng:100.72265,n:null,q:null,on:null,rate:null,reported:false,approx:false,note:'ระบบป้องกันน้ำท่วมสนามบิน'},
@@ -251,31 +272,45 @@ const WL_SNAPSHOT=[
  {name:'คลองหัวตะเข้ (วัดศรีวารีน้อย)',amp:'บางเสาธง',lat:13.669,lng:100.801,wl:0.60,bank:0.43,time:'2026-09-26 02:20'}
 ];
 /* canals: group sp = ในจังหวัด (กรอกเอง), bkk = คลองต้นน้ำฝั่ง กทม. */
+/* grp: sta = สถานีวัด สนน. กทม. ในสมุทรปราการ, sp = คลองในจังหวัด (กรอกเอง), bkk = คลองต้นน้ำฝั่ง กทม.
+   warn/crit = เกณฑ์เตือนภัย/วิกฤตของสถานี (ม.รทก.), bank = ระดับตลิ่ง */
+const T1='2026-10-01T15:45';
 const DEFAULT_CANALS=[
- {id:'samrong-bangphli',grp:'sp',name:'คลองสำโรง ช่วงบางพลี',amp:'บางพลี',lat:13.605,lng:100.705,approx:true,wl:null,bank:null,crit:null,time:'',src:''},
- {id:'samrong-bangbo',grp:'sp',name:'คลองสำโรง ช่วงบางบ่อ',amp:'บางบ่อ',lat:13.596,lng:100.84,approx:true,wl:null,bank:null,crit:null,time:'',src:''},
- {id:'suv-canal',grp:'sp',name:'คลองระบายน้ำสุวรรณภูมิ หน้าสถานีสูบ',amp:'เมืองสมุทรปราการ',lat:13.510,lng:100.7447,approx:true,wl:null,bank:null,crit:null,time:'',src:''},
- {id:'chaithale-tamru',grp:'sp',name:'คลองชายทะเล หน้าสถานีตำหรุ',amp:'เมืองสมุทรปราการ',lat:13.519,lng:100.6833,approx:true,wl:null,bank:null,crit:null,time:'',src:''},
- {id:'chaithale-chonlaharn',grp:'sp',name:'คลองชายทะเล หน้าสถานีชลหารพิจิตร',amp:'บางบ่อ',lat:13.5215,lng:100.818,approx:true,wl:null,bank:null,crit:null,time:'',src:''},
- {id:'khlong-dan',grp:'sp',name:'คลองด่าน ปตร.คลองด่าน',amp:'บางบ่อ',lat:13.5185,lng:100.826,approx:true,wl:null,bank:null,crit:null,time:'',src:''},
- {id:'chaiyanuchit-c',grp:'sp',name:'คลองพระองค์เจ้าไชยานุชิต',amp:'บางบ่อ',lat:13.659,lng:100.866,approx:true,wl:null,bank:null,crit:null,time:'',src:''},
- {id:'bangpla-c',grp:'sp',name:'คลองบางปลา',amp:'บางพลี',lat:13.53,lng:100.715,approx:true,wl:null,bank:null,crit:null,time:'',src:''},
- {id:'pwt-rid',grp:'bkk',name:'ปตร.คลองประเวศฯ (กรมชลฯ)',amp:'คลองประเวศบุรีรมย์',lat:null,lng:null,wl:1.19,bank:null,crit:0.50,time:'2026-10-01T15:00',src:'สนน. กทม.'},
- {id:'pwt-ruam',grp:'bkk',name:'คลองประเวศฯ ถ.ร่วมพัฒนา',amp:'คลองประเวศบุรีรมย์',lat:null,lng:null,wl:1.00,bank:null,crit:null,time:'2026-10-01T15:00',src:'สนน. กทม. (สถานะวิกฤต)'},
- {id:'lkb-546',grp:'bkk',name:'คลองลาดกระบัง ซ.ลาดกระบัง 54/6',amp:'คลองลาดกระบัง',lat:null,lng:null,wl:0.98,bank:null,crit:0.60,time:'2026-10-01T15:00',src:'สนน. กทม.'},
- {id:'pwt-lkb',grp:'bkk',name:'ปตร.คลองประเวศฯ ลาดกระบัง',amp:'คลองประเวศบุรีรมย์',lat:null,lng:null,wl:0.73,bank:null,crit:null,time:'2026-10-01T15:00',src:'สนน. กทม. (สถานะวิกฤต)'},
- {id:'pwt-kt',grp:'bkk',name:'ปตร.คลองประเวศฯ วัดกระทุ่ม',amp:'คลองประเวศบุรีรมย์',lat:null,lng:null,wl:0.55,bank:null,crit:null,time:'2026-10-01T15:00',src:'สนน. กทม. (สถานะวิกฤต)'}
+ {id:'WL.PWT.07',grp:'sta',name:'ปตร.คลองประเวศฯ-กรมชลฯ',amp:'บางบ่อ',lat:13.690,lng:100.805,approx:true,wl:1.19,warn:0.40,crit:0.50,bank:3.00,time:T1,src:'สนน. กทม. WL.PWT.07'},
+ {id:'WL.SRG.01',grp:'sta',name:'ส.คลองสำโรง (ด้านในประตู)',amp:'เมืองสมุทรปราการ',lat:13.640,lng:100.588,approx:true,wl:-0.22,warn:0.70,crit:0.80,bank:1.98,time:T1,src:'สนน. กทม. WL.SRG.01 · ด้านนอก 0.69 (เตือน 1.80/วิกฤต 1.90)'},
+ {id:'WL.CLH.01',grp:'sta',name:'หน้าสถานีสูบน้ำชลหารพิจิตร',amp:'บางบ่อ',lat:13.5215,lng:100.818,approx:true,wl:-0.05,warn:1.00,crit:1.20,bank:null,time:'2026-10-01T15:40',src:'สนน. กทม. WL.CLH.01'},
+ {id:'WL.BPU.01',grp:'sta',name:'บางปู (ชายทะเล)',amp:'เมืองสมุทรปราการ',lat:13.507,lng:100.658,approx:true,wl:0.45,warn:1.60,crit:1.80,bank:3.50,time:T1,src:'สนน. กทม. WL.BPU.01'},
+ {id:'samrong-bangphli',grp:'sp',name:'คลองสำโรง ช่วงบางพลี',amp:'บางพลี',lat:13.605,lng:100.705,approx:true,wl:null,warn:null,crit:null,bank:null,time:'',src:''},
+ {id:'samrong-bangbo',grp:'sp',name:'คลองสำโรง ช่วงบางบ่อ',amp:'บางบ่อ',lat:13.596,lng:100.84,approx:true,wl:null,warn:null,crit:null,bank:null,time:'',src:''},
+ {id:'suv-canal',grp:'sp',name:'คลองระบายน้ำสุวรรณภูมิ หน้าสถานีสูบ',amp:'เมืองสมุทรปราการ',lat:13.510,lng:100.7447,approx:true,wl:null,warn:null,crit:null,bank:null,time:'',src:''},
+ {id:'chaithale-tamru',grp:'sp',name:'คลองชายทะเล หน้าสถานีตำหรุ',amp:'เมืองสมุทรปราการ',lat:13.519,lng:100.6833,approx:true,wl:null,warn:null,crit:null,bank:null,time:'',src:''},
+ {id:'khlong-dan',grp:'sp',name:'คลองด่าน ปตร.คลองด่าน',amp:'บางบ่อ',lat:13.5185,lng:100.826,approx:true,wl:null,warn:null,crit:null,bank:null,time:'',src:''},
+ {id:'chaiyanuchit-c',grp:'sp',name:'คลองพระองค์เจ้าไชยานุชิต',amp:'บางบ่อ',lat:13.659,lng:100.866,approx:true,wl:null,warn:null,crit:null,bank:null,time:'',src:''},
+ {id:'bangpla-c',grp:'sp',name:'คลองบางปลา',amp:'บางพลี',lat:13.53,lng:100.715,approx:true,wl:null,warn:null,crit:null,bank:null,time:'',src:''},
+ {id:'WL.PWT.06',grp:'bkk',name:'ค.ประเวศฯ ถ.ร่วมพัฒนา',amp:'ลาดกระบัง',lat:null,lng:null,wl:1.00,warn:0.40,crit:0.60,bank:1.85,time:T1,src:'สนน. กทม. WL.PWT.06'},
+ {id:'WL.PWT.05',grp:'bkk',name:'ค.ประเวศฯ รพ.ลาดกระบัง',amp:'ลาดกระบัง',lat:null,lng:null,wl:0.99,warn:0.40,crit:0.60,bank:1.85,time:T1,src:'สนน. กทม. WL.PWT.05'},
+ {id:'lkb-546',grp:'bkk',name:'ค.ลาดกระบัง ซ.ลาดกระบัง 54/6',amp:'ลาดกระบัง',lat:null,lng:null,wl:0.98,warn:0.50,crit:0.60,bank:null,time:T1,src:'สนน. กทม.'},
+ {id:'WL.PWT.04',grp:'bkk',name:'ปตร.คลองประเวศฯ ลาดกระบัง (ด้านใน)',amp:'ลาดกระบัง',lat:null,lng:null,wl:0.73,warn:0.40,crit:0.60,bank:1.98,time:T1,src:'สนน. กทม. WL.PWT.04 · ด้านนอก 0.87'},
+ {id:'pwt-kt',grp:'bkk',name:'ปตร.คลองประเวศฯ วัดกระทุ่ม',amp:'ประเวศ',lat:null,lng:null,wl:0.55,warn:null,crit:null,bank:null,time:T1,src:'สนน. กทม. (สถานะวิกฤต)'}
 ];
+/* คู่ต้นทาง → ปลายทาง สำหรับดูคอขวด (ส่วนต่างระดับน้ำ) */
+const PAIRS=[
+ {id:'main',up:'WL.PWT.07',down:'WL.CLH.01',label:'คลองประเวศ (บางบ่อ) → หน้าสถานีสูบชลหารพิจิตร'},
+ {id:'bkk',up:'WL.PWT.04',down:'WL.PWT.07',label:'คลองประเวศ ลาดกระบัง (กทม.) → ประตูน้ำบางบ่อ'}
+];
+const DEFAULT_HISTORY=[{t:'2026-10-01T15:45',main:[1.19,-0.05],bkk:[0.73,1.19]}];
 const TIDE=[['2026-09-30T18:26',3.20],['2026-10-01T01:22',.72],['2026-10-01T08:36',3.69],['2026-10-01T14:12',2.57],['2026-10-01T18:39',3.24],['2026-10-02T01:56',.62],['2026-10-02T09:33',3.61],['2026-10-02T14:48',2.84],['2026-10-02T18:49',3.26],['2026-10-03T02:35',.64],['2026-10-03T10:46',3.48],['2026-10-03T15:28',3.08],['2026-10-03T18:54',3.27],['2026-10-04T03:21',.77],['2026-10-04T12:37',3.38],['2026-10-04T16:46',3.25],['2026-10-04T18:19',3.26],['2026-10-05T04:19',1.00],['2026-10-05T14:47',3.40],['2026-10-06T05:41',1.26],['2026-10-06T15:40',3.43],['2026-10-07T07:32',1.47],['2026-10-07T16:07',3.41],['2026-10-07T23:10',2.41],['2026-10-08T02:20',2.53],['2026-10-08T09:07',1.59],['2026-10-08T16:26',3.36],['2026-10-08T22:54',2.11],['2026-10-09T04:03',2.81],['2026-10-09T10:13',1.70],['2026-10-09T16:43',3.31],['2026-10-09T23:06',1.76],['2026-10-10T05:05',3.11],['2026-10-10T11:04',1.83],['2026-10-10T16:58',3.26],['2026-10-10T23:26',1.42],['2026-10-11T05:52',3.37],['2026-10-11T11:47',1.98],['2026-10-11T17:13',3.22],['2026-10-11T23:49',1.14]].map(([t,h])=>[new Date(t+':00+07:00').getTime(),h]);
 const THR=2.2;
 
 /* ---------- state ---------- */
 const clone=o=>JSON.parse(JSON.stringify(o));
-let state={stations:clone(DEFAULT_STATIONS),report:clone(DEFAULT_REPORT),canals:clone(DEFAULT_CANALS),edited:null};
-function load(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&Array.isArray(s.stations))state=merge(s);}catch(e){}}
+let state={stations:clone(DEFAULT_STATIONS),report:clone(DEFAULT_REPORT),canals:clone(DEFAULT_CANALS),history:clone(DEFAULT_HISTORY),edited:null};
+function load(){try{let s=JSON.parse(localStorage.getItem(KEY)||'null');
+  if(!s){const old=JSON.parse(localStorage.getItem('spk-pump-app-v2')||'null');if(old){old.stations=[];s=old;}}
+  if(s&&Array.isArray(s.stations))state=merge(s);}catch(e){}}
 function save(){state.edited=new Date().toISOString();try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
 function mergeList(defs,saved){const byId={};(saved||[]).forEach(x=>byId[x.id]=x);const out=defs.map(d=>Object.assign(clone(d),byId[d.id]||{}));(saved||[]).forEach(x=>{if(!defs.find(d=>d.id===x.id))out.push(x)});return out;}
-function merge(s){return{stations:mergeList(DEFAULT_STATIONS,s.stations),canals:mergeList(DEFAULT_CANALS,s.canals),report:Object.assign(clone(DEFAULT_REPORT),s.report||{}),edited:s.edited||null};}
+function merge(s){return{stations:mergeList(DEFAULT_STATIONS,s.stations),canals:mergeList(DEFAULT_CANALS,s.canals),history:Array.isArray(s.history)&&s.history.length?s.history:clone(DEFAULT_HISTORY),report:Object.assign(clone(DEFAULT_REPORT),s.report||{}),edited:s.edited||null};}
 
 const maxOf=s=>s.n&&s.q?s.n*s.q:null;
 function rateOf(s){if(s.q&&s.on!=null)return s.on*s.q;if(s.rate!=null&&s.rate!=='')return +s.rate;return null;}
@@ -327,7 +362,7 @@ function render(){
      `<div class="rate"><span>${s.amp}${s.approx?' · ตำแหน่งโดยประมาณ':''}${s.lat==null?' · ไม่มีพิกัด':''}</span><span><b class="num">${r!=null?r:'–'}</b> / <span class="num">${m!=null?m:'?'}</span></span></div>`+
      (m?`<div class="bar"><i style="width:${r?Math.min(100,r/m*100):0}%"></i></div>`:'')+
      `<div class="ctl">${ctl}<button type="button" class="btn" data-a="stop" style="min-height:34px;padding:4px 10px">หยุด</button></div>`+
-     `<div class="note">${s.updated?'แก้ไขล่าสุด '+fmtT(new Date(s.updated)):(s.reported?'มีรายงานเดินเครื่อง 30 ก.ย.':'ยังไม่มีรายงาน')}${s.note?' · '+s.note:''}</div>`;
+     `<div class="note">${s.updated?'แก้ไขล่าสุด '+fmtT(new Date(s.updated)):(s.on!=null?'ตั้งต้น: เดินเต็มกำลัง':(s.reported?'มีรายงานเดินเครื่อง 30 ก.ย.':'ยังไม่มีรายงาน'))}${s.note?' · '+s.note:''}</div>`;
     d.querySelector('.st-name').addEventListener('click',()=>highlight(s.id,true));
     d.querySelectorAll('[data-a]').forEach(b=>b.addEventListener('click',()=>{
       const a=b.dataset.a;
@@ -354,7 +389,7 @@ function kpis(){
   document.getElementById('kRun').textContent=run+' / '+state.stations.length;
   const rp=state.report;document.getElementById('kRep').textContent=rp.value??'–';
   document.getElementById('kRepL').textContent='ลบ.ม./วินาที รายงานรวม'+(rp.time?' · '+fmtT(new Date(rp.time+':00+07:00')):'');
-  document.getElementById('lastEdit').textContent=state.edited?'แก้ไขสถานะล่าสุด '+fmtT(new Date(state.edited)):'สถานะตั้งต้น: รายงาน 30 ก.ย. 2569';
+  document.getElementById('lastEdit').textContent=state.edited?'แก้ไขสถานะล่าสุด '+fmtT(new Date(state.edited)):'สถานะตั้งต้น: เดินเต็มกำลังทุกเครื่อง';
 }
 
 /* ---------- report ---------- */
@@ -367,11 +402,11 @@ document.getElementById('bExport').addEventListener('click',()=>{
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download='pump-status-'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'')+'.json';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);});
 document.getElementById('fImport').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();
-  rd.onload=()=>{try{const s=JSON.parse(rd.result);if(!Array.isArray(s.stations))throw 0;state=merge(s);save();fillReport();render();renderCanals();}catch(err){document.getElementById('lastEdit').textContent='นำเข้าไม่สำเร็จ: ไฟล์ไม่ใช่ข้อมูลที่ส่งออกจากแอปนี้';}e.target.value='';};rd.readAsText(f);});
+  rd.onload=()=>{try{const s=JSON.parse(rd.result);if(!Array.isArray(s.stations))throw 0;state=merge(s);save();fillReport();render();renderCanals();renderBottleneck();}catch(err){document.getElementById('lastEdit').textContent='นำเข้าไม่สำเร็จ: ไฟล์ไม่ใช่ข้อมูลที่ส่งออกจากแอปนี้';}e.target.value='';};rd.readAsText(f);});
 const rc=document.getElementById('resetConfirm');
 document.getElementById('bReset').addEventListener('click',()=>{rc.hidden=false});
 document.getElementById('bResetNo').addEventListener('click',()=>{rc.hidden=true});
-document.getElementById('bResetYes').addEventListener('click',()=>{state={stations:clone(DEFAULT_STATIONS),report:clone(DEFAULT_REPORT),canals:clone(DEFAULT_CANALS),edited:null};try{localStorage.removeItem(KEY)}catch(e){}rc.hidden=true;fillReport();render();renderCanals();});
+document.getElementById('bResetYes').addEventListener('click',()=>{state={stations:clone(DEFAULT_STATIONS),report:clone(DEFAULT_REPORT),canals:clone(DEFAULT_CANALS),history:clone(DEFAULT_HISTORY),edited:null};try{localStorage.removeItem(KEY)}catch(e){}rc.hidden=true;fillReport();render();renderCanals();renderBottleneck();});
 
 /* ---------- tide ---------- */
 function tideAt(t){for(let i=0;i<TIDE.length-1;i++){const[t0,h0]=TIDE[i],[t1,h1]=TIDE[i+1];if(t>=t0&&t<=t1){const f=(t-t0)/(t1-t0);return h0+(h1-h0)*(1-Math.cos(Math.PI*f))/2;}}return null;}
@@ -420,33 +455,80 @@ document.getElementById('bWl').addEventListener('click',loadWl);
 const canalLayer=L.layerGroup().addTo(map);
 function canalState(c){
   if(c.wl==null||c.wl==='')return['na','ไม่มีข้อมูล'];const w=+c.wl;
-  if(c.crit!=null&&c.crit!==''&&w>+c.crit)return['crit','วิกฤต'];
-  if(c.bank!=null&&c.bank!==''){const d=w-c.bank;if(d>0)return['crit','เกินตลิ่ง'];if(d>-0.2)return['warn','ใกล้ตลิ่ง'];return['ok','ปกติ'];}
-  if(c.crit!=null&&c.crit!=='')return['ok','ต่ำกว่าวิกฤต'];
+  const has=v=>v!=null&&v!=='';
+  if(has(c.crit)&&w>+c.crit)return['crit','วิกฤต'];
+  if(has(c.warn)&&w>+c.warn)return['warn','เตือนภัย'];
+  if(has(c.bank)){const d=w-c.bank;if(d>0)return['crit','เกินตลิ่ง'];if(!has(c.crit)&&d>-0.2)return['warn','ใกล้ตลิ่ง'];}
+  if(has(c.crit)||has(c.warn)||has(c.bank))return['ok','ปกติ'];
   if(/วิกฤต/.test(c.src||''))return['crit','วิกฤต'];
   return['na','ไม่มีเกณฑ์'];
 }
 const v2=x=>x==null||x===''?'':(+x).toFixed(2);
-function canalRows(grp){return state.canals.filter(c=>c.grp===grp).map(c=>{const[k,t]=canalState(c);const d=c.bank!=null&&c.bank!==''&&c.wl!=null&&c.wl!==''?Math.round((c.wl-c.bank)*100):null;
+function canalRows(grp){return state.canals.filter(c=>c.grp===grp).map(c=>{const[k,t]=canalState(c);const ref=c.crit!=null&&c.crit!==''?c.crit:c.bank;const d=ref!=null&&ref!==''&&c.wl!=null&&c.wl!==''?Math.round((c.wl-ref)*100):null;
   return`<tr data-id="${c.id}"><td>${c.name}<div class="note">${c.amp}${c.approx?' · ตำแหน่งโดยประมาณ':''}</div></td>`+
   `<td><input class="cin" type="number" step="0.01" data-f="wl" value="${v2(c.wl)}" aria-label="ระดับน้ำ ${c.name}" placeholder="–"></td>`+
+  `<td><input class="cin" type="number" step="0.01" data-f="warn" value="${v2(c.warn)}" aria-label="เกณฑ์เตือนภัย ${c.name}" placeholder="–"></td>`+
+  `<td><input class="cin" type="number" step="0.01" data-f="crit" value="${v2(c.crit)}" aria-label="เกณฑ์วิกฤต ${c.name}" placeholder="–"></td>`+
   `<td><input class="cin" type="number" step="0.01" data-f="bank" value="${v2(c.bank)}" aria-label="ระดับตลิ่ง ${c.name}" placeholder="–"></td>`+
-  `<td><input class="cin" type="number" step="0.01" data-f="crit" value="${v2(c.crit)}" aria-label="ระดับวิกฤต ${c.name}" placeholder="–"></td>`+
   `<td class="n">${d==null?'–':(d>0?'+':'')+d}</td><td><span class="pill ${k}">${t}</span></td>`+
   `<td><input class="cin t" type="datetime-local" data-f="time" value="${c.time||''}" aria-label="เวลาวัด ${c.name}"><div class="note">${c.src||''}</div></td></tr>`}).join('');}
 function renderCanals(){
   const tb=document.getElementById('canalTable');
-  tb.innerHTML=`<thead><tr><th>จุดวัด</th><th>ระดับน้ำ</th><th>ตลิ่ง</th><th>วิกฤต</th><th>ต่างจากตลิ่ง (ซม.)</th><th>สถานะ</th><th>เวลาวัด / แหล่ง</th></tr></thead><tbody>`+
-   `<tr><td colspan="7" class="grp">คลองในจังหวัดสมุทรปราการ</td></tr>`+canalRows('sp')+
-   `<tr><td colspan="7" class="grp">คลองต้นน้ำฝั่ง กทม. ที่ไหลลงคลองสำโรง</td></tr>`+canalRows('bkk')+'</tbody>';
+  tb.innerHTML=`<thead><tr><th>จุดวัด</th><th>ระดับน้ำ</th><th>เตือนภัย</th><th>วิกฤต</th><th>ตลิ่ง</th><th>เทียบวิกฤต/ตลิ่ง (ซม.)</th><th>สถานะ</th><th>เวลาวัด / แหล่ง</th></tr></thead><tbody>`+
+   `<tr><td colspan="8" class="grp">สถานีวัดระดับน้ำในจังหวัด (สนน. กทม.)</td></tr>`+canalRows('sta')+
+   `<tr><td colspan="8" class="grp">คลองในจังหวัดที่ยังไม่มีสถานีวัด (กรอกเอง)</td></tr>`+canalRows('sp')+
+   `<tr><td colspan="8" class="grp">คลองต้นน้ำฝั่ง กทม. ที่ไหลลงสมุทรปราการ</td></tr>`+canalRows('bkk')+'</tbody>';
   tb.querySelectorAll('input').forEach(inp=>inp.addEventListener('change',()=>{
     const c=state.canals.find(x=>x.id===inp.closest('tr').dataset.id),f=inp.dataset.f;
     if(f==='time')c.time=inp.value;else{c[f]=inp.value===''?null:+inp.value;if(f==='wl'){const n=new Date(Date.now()+7*36e5).toISOString().slice(0,16);c.time=n;c.src='กรอกเอง';}}
-    save();renderCanals();kpis();analyze();}));
+    if(f==='wl')logHistory();
+    save();renderCanals();kpis();renderBottleneck();analyze();}));
   canalLayer.clearLayers();
   state.canals.forEach(c=>{if(c.lat==null)return;const[k,t]=canalState(c);const col={crit:'var(--crit)',warn:'var(--warn)',ok:'var(--ok)',na:'var(--idle)'}[k];
     L.marker([c.lat,c.lng],{icon:L.divIcon({className:'',html:`<div class="wl-icon" style="--c:${css(col)};opacity:${c.wl==null?0.55:1}"></div>`,iconSize:[16,14],iconAnchor:[8,10]})})
      .bindPopup(`<b>${c.name}</b><br>ระดับน้ำ <b class="num">${c.wl==null?'–':v2(c.wl)}</b> ม.รทก.<br>${c.bank!=null?'ตลิ่ง <span class="num">'+v2(c.bank)+'</span><br>':''}<span class="pill ${k}">${t}</span><br><span class="note">${c.time?c.time.replace('T',' '):'ยังไม่มีค่า'} · ${c.approx?'ตำแหน่งโดยประมาณ':''}</span>`).addTo(canalLayer);});
+}
+
+/* ---------- bottleneck ---------- */
+const cById=id=>state.canals.find(c=>c.id===id);
+const nowBkk=()=>new Date(Date.now()+7*36e5).toISOString().slice(0,16);
+function logHistory(){
+  const e={t:nowBkk()};PAIRS.forEach(p=>{const u=cById(p.up),d=cById(p.down);e[p.id]=[u&&u.wl!=null?+u.wl:null,d&&d.wl!=null?+d.wl:null];});
+  const h=state.history;if(h.length&&h[h.length-1].t===e.t)h[h.length-1]=e;else h.push(e);if(h.length>300)h.splice(0,h.length-300);
+}
+function judge(p){
+  const u=cById(p.up),d=cById(p.down);if(!u||!d||u.wl==null||d.wl==null)return{k:'na',delta:null,title:'ข้อมูลไม่ครบ',acts:['กรอกระดับน้ำทั้งต้นทางและปลายทาง']};
+  const delta=+u.wl-+d.wl,us=canalState(u)[0],ds=canalState(d)[0];
+  if(ds==='crit'||ds==='warn')return{k:'crit',delta,type:'pump',title:'ปลายทางรับน้ำไม่ทัน',desc:`ระดับน้ำที่${d.name}เกินเกณฑ์เตือนแล้ว`,acts:['เดินเครื่องสูบให้เต็มกำลังและเพิ่มเครื่องสูบเสริม','เร่งสูบช่วงน้ำทะเลลง','ประสานลดการปล่อยน้ำจากต้นทางชั่วคราว']};
+  if((us==='crit'||us==='warn')&&delta>=0.8)return{k:'crit',delta,type:'pipe',title:'คอขวดที่การส่งน้ำในคลอง',desc:`ต้นทาง${canalState(u)[1]} แต่ปลายทางยังต่ำ น้ำไหลมาถึงสถานีสูบไม่ทัน`,acts:['ติดตั้งเครื่องผลักดันน้ำตามแนวคลอง','เปิดประตูระบายน้ำกลางทางให้เต็มที่','กำจัดผักตบชวาและสิ่งกีดขวางทางน้ำ','ตรวจจุดคลองตื้นเขินหรือคอคอด']};
+  if(delta>=0.8)return{k:'warn',delta,type:'grad',title:'ต้นทางสูงกว่าปลายทางมาก',desc:'ยังไม่เกินเกณฑ์ แต่น้ำไหลช้า ควรเฝ้าระวัง',acts:['ติดตามระดับน้ำต้นทางทุก 1–3 ชม.','เตรียมเครื่องผลักดันน้ำ']};
+  if(delta<=-0.2)return{k:'warn',delta,type:'rev',title:'ปลายทางสูงกว่าต้นทาง',desc:'น้ำอาจไหลย้อนทิศ หรือมีน้ำเข้ามาจากทางอื่น ควรตรวจการเปิด-ปิดประตูน้ำ',acts:['ตรวจสอบทิศทางการไหลและสถานะประตูระบายน้ำ','ประสานผู้ควบคุมประตูน้ำทั้งสองฝั่ง']};
+  if(us==='crit'||us==='warn')return{k:'warn',delta,type:'high',title:'ระดับน้ำสูงทั้งระบบ',desc:'ส่วนต่างไม่มาก แต่ต้นทางเกินเกณฑ์',acts:['เร่งสูบทุกสถานีช่วงน้ำทะเลลง']};
+  return{k:'ok',delta,type:'ok',title:'การไหลสมดุล',desc:'ไม่พบคอขวด',acts:[]};
+}
+function spark(id){
+  const pts=state.history.map(h=>h[id]&&h[id][0]!=null&&h[id][1]!=null?[Date.parse(h.t+':00+07:00'),h[id][0]-h[id][1]]:null).filter(Boolean);
+  if(pts.length<2)return'<span class="note">ประวัติยังมีจุดเดียว กราฟจะแสดงเมื่อแก้ระดับน้ำครั้งถัดไป</span>';
+  const t0=pts[0][0],t1=pts[pts.length-1][0]||t0+1,vs=pts.map(p=>p[1]),mn=Math.min(0,...vs),mx=Math.max(...vs,0.1);
+  const X=t=>4+(t-t0)/Math.max(1,t1-t0)*292,Y=v=>50-(v-mn)/(mx-mn||1)*44;
+  const d=pts.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1)).join(' ');const last=pts[pts.length-1];
+  return`<svg class="spark" viewBox="0 0 300 56" preserveAspectRatio="none" role="img" aria-label="กราฟส่วนต่างระดับน้ำย้อนหลัง"><line x1="4" x2="296" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--line)"/><path d="${d} L${X(last[0])} 50 L4 50 Z" fill="var(--accent-soft)"/><path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2"/><circle cx="${X(last[0])}" cy="${Y(last[1])}" r="3.5" fill="var(--accent)"/></svg>`;
+}
+function trendTxt(id){const h=state.history.filter(x=>x[id]&&x[id][0]!=null&&x[id][1]!=null);if(h.length<2)return'';
+  const a=h[h.length-2][id],b=h[h.length-1][id],dd=(b[0]-b[1])-(a[0]-a[1]),du=b[0]-a[0];
+  const f=v=>(v>0?'+':'')+(v*100).toFixed(0)+' ซม.';
+  return`เทียบครั้งก่อน (${h[h.length-2].t.replace('T',' ').slice(5)}): ส่วนต่าง ${f(dd)} · ต้นทาง ${f(du)} → ${dd<-0.02?'คอขวดคลายตัว':dd>0.02?'คอขวดแย่ลง':'ทรงตัว'}`;}
+function renderBottleneck(){
+  const el=document.getElementById('bn');if(!el)return;
+  el.innerHTML=PAIRS.map(p=>{const u=cById(p.up),d=cById(p.down),j=judge(p);const us=u?canalState(u):['na','–'],ds=d?canalState(d):['na','–'];
+    const col={crit:'var(--crit)',warn:'var(--warn)',ok:'var(--ok)',na:'var(--idle)'}[j.k];
+    return`<div class="bn-card ${j.k}"><div class="eyebrow">${p.label}</div>`+
+     `<div class="flow"><div class="node"><span class="l">ต้นทาง</span><span>${u?u.name:'–'}</span><span class="v">${u&&u.wl!=null?v2(u.wl):'–'}</span><span class="pill ${us[0]}" style="align-self:flex-start">${us[1]}</span></div>`+
+     `<div class="arrow"><span>ส่วนต่าง</span><b style="color:${col}">${j.delta==null?'–':j.delta.toFixed(2)}</b><svg width="44" height="14" viewBox="0 0 44 14" aria-hidden="true"><path d="M2 7 H36 M30 2 L38 7 L30 12" fill="none" stroke="${col}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>ม.</span></div>`+
+     `<div class="node"><span class="l">ปลายทาง</span><span>${d?d.name:'–'}</span><span class="v">${d&&d.wl!=null?v2(d.wl):'–'}</span><span class="pill ${ds[0]}" style="align-self:flex-start">${ds[1]}</span></div></div>`+
+     `<div><span class="pill ${j.k==='na'?'na':j.k}">${j.title}</span> <span style="font-size:14px">${j.desc||''}</span></div>`+
+     (j.acts.length?`<ul class="acts">${j.acts.map(a=>`<li>${a}</li>`).join('')}</ul>`:'')+
+     spark(p.id)+`<span class="note">${trendTxt(p.id)}</span></div>`;}).join('');
 }
 
 /* ---------- trend analysis ---------- */
@@ -470,6 +552,8 @@ function conditionNow(){
   const rep=+state.report.value||0;const use=Math.max(now,rep);
   if(mx&&use/mx>=0.8){out.pts+=8;out.why.push([8,`เครื่องสูบเดินแล้ว ${Math.round(use/mx*100)}% ของกำลังสูงสุด เหลือกำลังสำรองน้อย`]);}
   else if(unk>3){out.pts+=5;out.why.push([5,`ยังไม่ทราบอัตราสูบจริงของ ${unk} สถานี`]);}
+  const jb=judge(PAIRS[0]);if(jb.type==='pump'){out.pts+=12;out.why.push([12,`หน้าสถานีสูบชลหารพิจิตรเกินเกณฑ์เตือน สูบไม่ทัน`]);}
+  else if(jb.type==='pipe'){out.pts+=8;out.why.push([8,`คอขวดในคลองประเวศ–ชลหารพิจิตร ส่วนต่าง ${jb.delta.toFixed(2)} ม.`]);}
   if(Date.now()<INUNDATED_UNTIL){out.pts+=10;out.why.push([10,'บางพลี บางบ่อ บางเสาธง ยังมีน้ำแช่ขัง คาด 7–10 วัน']);}
   return out;
 }
@@ -522,7 +606,7 @@ async function makeImage(){
   // kpis
   let now=0,mx=0;state.stations.forEach(s=>{const r=rateOf(s),m=maxOf(s);if(r)now+=r;if(m)mx+=m;});
   const tNow=tideAt(Date.now());
-  const kp=[[now?now.toFixed(0):'–','ลบ.ม./วินาที สูบตามสถานะ'],[state.report.value??'–','ลบ.ม./วินาที รายงานรวม'],[mx,'ลบ.ม./วินาที กำลังสูงสุด'],[tNow!=null?tNow.toFixed(2)+' ม.':'–','น้ำทะเลขณะนี้']];
+  const kp=[[now?now.toFixed(0):'–','ลบ.ม./วินาที สูบตามสถานะ'],[state.report.value??'–','ลบ.ม./วินาที รายงานรวม'],[(()=>{const j=judge(PAIRS[0]);return j.delta==null?'–':j.delta.toFixed(2)+' ม.'})(),'คอขวด ประเวศ→ชลหารฯ'],[tNow!=null?tNow.toFixed(2)+' ม.':'–','น้ำทะเลขณะนี้']];
   kp.forEach(([v,l],i)=>{const x=56+i*247;ctx.fillStyle='#fff';ctx.fillRect(x,380,231,110);ctx.fillStyle=C.ink;ctx.font=`600 40px ${K}`;ctx.fillText(String(v),x+20,432);ctx.fillStyle=C.muted;ctx.font=`400 19px ${B}`;wrap(ctx,l,x+20,466,195,22);});
   // stations
   ctx.fillStyle=C.ink;ctx.font=`600 30px ${K}`;ctx.fillText('สถานีสูบน้ำ',56,548);
@@ -569,10 +653,10 @@ document.getElementById('bShare').addEventListener('click',async()=>{if(!imgBlob
 /* ---------- clock ---------- */
 function tick(){document.getElementById('clock').textContent=new Date().toLocaleString('th-TH',{timeZone:'Asia/Bangkok',weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})+' น.';}
 
-load();fillReport();render();renderCanals();tide();tick();loadWl();analyze();
+load();fillReport();render();renderCanals();renderBottleneck();tide();tick();loadWl();analyze();
 setInterval(()=>{tick();tide();analyze();},60000);
 setInterval(loadWl,600000);
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{drawMarkers();loadWl();renderCanals();});
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{drawMarkers();loadWl();renderCanals();renderBottleneck();});
 })();
 </script>
 </body>
