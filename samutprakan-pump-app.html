@@ -310,6 +310,33 @@ body.exec-on #bgfx{z-index:4999}
 .tide-ic{width:26px;height:26px;border-radius:50%;background:#0A56A3;color:#fff;font-weight:700;font-size:18px;line-height:22px;text-align:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45)}
 #damChart{min-width:760px;background:#fff;border-radius:12px}
 #damChart svg{width:100%;height:auto;display:block}
+.fx-wrap{display:flex;flex-direction:column;gap:8px;min-width:0}
+.fx-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.fx-head h2{margin:0}
+.fx-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:1100px){.fx-grid{grid-template-columns:repeat(2,minmax(0,1fr))}} @media (max-width:560px){.fx-grid{grid-template-columns:minmax(0,1fr)}}
+.fx{position:relative;border-radius:14px;padding:12px 14px 12px 20px;background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;gap:3px;min-width:0;overflow:hidden;box-shadow:0 2px 10px rgba(15,34,50,.05)}
+.fx::before{content:"";position:absolute;left:0;top:0;bottom:0;width:7px;background:var(--ok-fill)}
+.fx.crit{background:var(--crit-soft);border-color:var(--crit)} .fx.crit::before{background:var(--crit-fill)}
+.fx.warn{background:var(--warn-soft);border-color:var(--warn)} .fx.warn::before{background:var(--warn-fill)}
+.fx-k{display:flex;justify-content:space-between;gap:8px;align-items:center;font-weight:600;font-size:calc(14px*var(--fs,1))}
+.fx-v{font-family:var(--display);font-weight:700;font-size:calc(25px*var(--fs,1));line-height:1.15}
+.fx.crit .fx-v{color:var(--crit)} .fx.warn .fx-v{color:var(--warn)}
+.fx-s{font-size:calc(13px*var(--fs,1));color:var(--muted)}
+.wt-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media (max-width:760px){.wt-grid{grid-template-columns:minmax(0,1fr)}}
+.wt{display:flex;gap:10px;align-items:center;text-align:left;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px;cursor:pointer;min-width:0}
+.wt:hover{border-color:var(--accent);background:var(--accent-soft)}
+.wt-sc{flex-shrink:0;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:calc(19px*var(--fs,1));color:#fff;background:var(--ok-fill)}
+.wt.crit .wt-sc{background:var(--crit-fill)} .wt.warn .wt-sc{background:var(--warn-fill)}
+.wt.crit{border-color:var(--crit)}
+.wt-b{display:flex;flex-direction:column;min-width:0;gap:1px}
+.wt-b b{font-weight:600} .wt-b span{font-size:calc(12.5px*var(--fs,1));color:var(--muted)}
+.wt-r{margin-left:auto;font-family:var(--mono);font-size:calc(12px*var(--fs,1));color:var(--muted);flex-shrink:0}
+#report .rp-fx td:first-child{font-weight:600}
+.ovmode{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ovmode .tool button{padding:0 16px}
+.ovmode .tool button[aria-pressed="true"]{background:var(--accent-btn);color:#fff}
 .ex-foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:calc(13px*var(--fs,1));color:var(--muted)}
 body.exec-on{overflow:hidden}
 @media print{#exec,.tabs{display:none!important}}
@@ -394,13 +421,16 @@ table{width:100%}
   </nav>
 
   <section class="ov" data-tab="overview" aria-label="สรุปสถานการณ์">
+    <div class="ovmode" role="group" aria-label="ช่วงเวลาที่สรุป"><span class="note" style="font-weight:600">ดูสรุปแบบ</span><div class="tool"><button type="button" data-ovmode="today" aria-pressed="false">วันนี้</button><button type="button" data-ovmode="week" aria-pressed="true">7 วันข้างหน้า</button></div><span class="note" id="ovModeNote"></span></div>
     <div class="ov-gauge panel">
       <div class="eyebrow">ระดับความเสี่ยงน้ำท่วม วันนี้</div>
       <svg id="gauge" viewBox="-10 0 260 140" role="img" aria-label="มาตรวัดความเสี่ยงน้ำท่วม"></svg>
       <div class="ov-glabel"><b id="gLevel">–</b><span id="gDesc" class="note"></span></div>
       <div class="ov-gfoot"><span>เสี่ยงสูงสุดใน 7 วัน</span><b id="gPeak">–</b></div>
     </div>
-    <div class="ov-grid">
+    <div class="fx-wrap"><div class="fx-head"><h2 id="fxH">ปัจจัยที่ทำให้เสี่ยงน้ำท่วม</h2><span class="note">เรียงจากรุนแรงที่สุด · คำนวณจากข้อมูลล่าสุดในแอป</span></div><div class="fx-grid" id="ovFactors"></div></div>
+    <div class="panel ov-names" id="ovWatchP"><div class="fx-head"><h2 id="wtH">หน่วยบริการที่ต้องระวังเป็นพิเศษ</h2><span class="note" id="ovWatchN"></span></div><div class="wt-grid" id="ovWatch"></div><p class="note" style="margin:0">จัดอันดับจากคะแนนความเสี่ยงรายจุด (เมนู "ค้นหาจุดเสี่ยง") · กดที่ชื่อเพื่อดูรายละเอียดและแผนที่</p></div>
+    <div class="ov-grid" style="grid-column:1/-1">
       <div class="ov-t pri"><span class="ov-k">หน่วยบริการเสี่ยงน้ำท่วม</span><b class="ov-v"><span id="oHfCrit">–</span> <small>เสี่ยงสูง</small> · <span id="oHfWarn">–</span> <small>เฝ้าระวัง</small></b><span class="ov-s" id="oHfSub">–</span><span hidden><b id="kHf"></b></span></div>
       <div class="ov-t pri"><span class="ov-k">ฝนตกหนักที่สุด</span><b class="ov-v" id="oRain">–</b><span class="ov-s" id="oRainSub">–</span></div>
       <div class="ov-t pri"><span class="ov-k">น้ำทะเลขึ้นสูงสุด (7 วัน)</span><b class="ov-v" id="oTide">–</b><span class="ov-s" id="oTideSub">–</span></div>
@@ -1231,6 +1261,7 @@ function analyze(){
   renderOverview();
   refreshDynamicLayers();headerMeta();renderMethod();renderExec();
   try{siteHistSave();if(!document.getElementById('sitePanel').hidden)siteRender();}catch(e){}
+  try{renderFocus();renderExec();}catch(e){}
 }
 
 /* ---------- summary image ---------- */
@@ -1250,7 +1281,7 @@ async function makeImage(){
   ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
   // header
   ctx.fillStyle=C.navy;ctx.fillRect(0,0,W,150);
-  ctx.fillStyle='#9CC3E8';ctx.font=`600 22px ${B}`;ctx.fillText('สรุปสถานการณ์น้ำ · สถานีสูบ · หน่วยบริการ',56,52);
+  ctx.fillStyle='#9CC3E8';ctx.font=`600 22px ${B}`;ctx.fillText('ปัจจัยเสี่ยงน้ำท่วม · หน่วยบริการที่ต้องระวัง',56,52);
   ctx.textAlign='right';ctx.fillStyle='#D5E3F0';ctx.font=`500 22px ${B}`;ctx.fillText(new Date().toLocaleString('th-TH',{timeZone:'Asia/Bangkok',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})+' น.',W-56,52);ctx.textAlign='left';
   ctx.fillStyle='#fff';ctx.font=`600 50px ${K}`;ctx.fillText('สถานการณ์น้ำจังหวัดสมุทรปราการ',56,116);
   // gauge card
@@ -1267,17 +1298,22 @@ async function makeImage(){
   ctx.fillStyle=C.muted;ctx.font=`400 18px ${B}`;lines(desc,300,2).forEach((l,i)=>ctx.fillText(l,gx,gy+78+i*22));
   ctx.fillStyle=C.line;ctx.fillRect(80,520,292,1);
   ctx.fillStyle=C.ink;ctx.font=`500 18px ${B}`;ctx.fillText(`เสี่ยงสูงสุด 7 วัน: ${thDay(A.peak.d0)} · ${A.peak.score}`,gx,554);ctx.textAlign='left';
-  // tiles
-  const tiles=ovTiles();
-  const drawTile=(tl,x,y,w,h)=>{const pal={crit:[C.critS,C.crit],warn:[C.warnS,C.warn],ok:['#fff',C.ok]}[tl.k]||['#fff',C.line];
-    rr(x,y,w,h,14,pal[0],pal[1],tl.k?2.5:1.5);
-    ctx.fillStyle=C.muted;ctx.font=`600 18px ${B}`;ctx.fillText(lines(tl.label,w-36,1)[0],x+18,y+32);
-    ctx.fillStyle=tl.k==='crit'?C.crit:tl.k==='warn'?C.warn:C.ink;const sz=fit(tl.value,K,h>115?34:28,w-36);ctx.fillText(tl.value,x+18,y+32+sz+6);
-    ctx.fillStyle=C.muted;ctx.font=`400 16px ${B}`;const yy=y+32+sz+32;lines(tl.sub,w-36,h>115?2:1).forEach((l,i)=>ctx.fillText(l,x+18,yy+i*20));};
-  tiles.slice(0,3).forEach((tl,i)=>drawTile(tl,412,176+i*137,612,125));
-  tiles.slice(3).forEach((tl,i)=>drawTile(tl,56+(i%2)*490,600+Math.floor(i/2)*112,478,100));
+  const one=(t,maxW)=>{t=String(t);if(ctx.measureText(t).width<=maxW)return t;while(t.length>1&&ctx.measureText(t+'…').width>maxW)t=t.slice(0,-1);return t.trimEnd()+'…';};
+  // ปัจจัยหลัก 6 ข้อ
+  const pal={crit:[C.critS,C.crit],warn:[C.warnS,C.warn],ok:['#fff',C.ok]};
+  keyFactors().forEach((f,i)=>{const x=412,y=176+i*67,w=612,h=60,p=pal[f.k];rr(x,y,w,h,12,p[0],p[1],2);ctx.fillStyle=p[1];ctx.fillRect(x+1,y+10,7,h-20);
+    ctx.textAlign='right';ctx.fillStyle=f.k==='ok'?C.ink:p[1];const sz=fit(f.v,K,25,250);ctx.fillText(f.v,x+w-16,y+28+sz/3);const vw=ctx.measureText(f.v).width;ctx.textAlign='left';
+    ctx.fillStyle=C.ink;ctx.font=`600 19px ${B}`;ctx.fillText(one(f.t,w-56-vw),x+22,y+25);
+    ctx.fillStyle=C.muted;ctx.font=`400 14.5px ${B}`;ctx.fillText(one(f.s,w-56-vw),x+22,y+48);});
+  // หน่วยบริการที่ต้องระวัง
+  const WL=watchList(8);ctx.fillStyle=C.ink;ctx.font=`600 26px ${K}`;ctx.fillText('หน่วยบริการที่ต้องระวังเป็นพิเศษ',56,628);
+  ctx.textAlign='right';ctx.fillStyle=C.muted;ctx.font=`500 17px ${B}`;ctx.fillText(`โอกาสสูง ${WL.crit} · เฝ้าระวัง ${WL.warn} · จาก ${WL.total} แห่ง`,W-56,628);ctx.textAlign='left';
+  WL.top.forEach((x,i)=>{const cx=56+(i%2)*490,cy=646+Math.floor(i/2)*70,w=478,h=62,p=pal[x.k];rr(cx,cy,w,h,12,'#fff',x.k==='ok'?C.line:p[1],x.k==='crit'?2.5:1.5);
+    ctx.beginPath();ctx.arc(cx+34,cy+31,22,0,Math.PI*2);ctx.fillStyle=p[1];ctx.fill();ctx.fillStyle='#fff';ctx.font=`700 21px ${K}`;ctx.textAlign='center';ctx.fillText(String(x.score),cx+34,cy+38);ctx.textAlign='left';
+    ctx.fillStyle=C.ink;ctx.font=`600 18px ${B}`;ctx.fillText(one(`${i+1}. ${hfLabel(x.h)}`,w-80),cx+66,cy+27);
+    ctx.fillStyle=C.muted;ctx.font=`400 14.5px ${B}`;ctx.fillText(one(`อ.${x.h.amp} · ${x.why}`,w-80),cx+66,cy+49);});
   // 7-day trend
-  const y0=600+Math.ceil((tiles.length-3)/2)*112+24;
+  const y0=968;
   ctx.fillStyle=C.ink;ctx.font=`600 26px ${K}`;ctx.fillText('แนวโน้มความเสี่ยง 7 วัน',56,y0);
   const bw=(W-112-6*14)/7,base=H-82,top=y0+40,maxH=base-top-34;
   A.days.forEach((d,i)=>{const x=56+i*(bw+14);const h=Math.max(10,d.score/100*maxH);const col={crit:C.crit,warn:C.warn,ok:C.ok}[level(d.score)[0]];
@@ -1285,7 +1321,7 @@ async function makeImage(){
     ctx.font=`400 16px ${B}`;ctx.fillStyle=C.muted;ctx.fillText(thDay(d.d0),x+bw/2,base+22);if(d.rain[0]==='h'){ctx.fillStyle=C.crit;ctx.font=`600 15px ${B}`;ctx.fillText('ฝนหนัก',x+bw/2,base-h-32);}ctx.textAlign='left';});
   // footer
   ctx.fillStyle=C.line;ctx.fillRect(56,H-50,W-112,1);ctx.fillStyle=C.muted;ctx.font=`400 15px ${B}`;
-  ctx.fillText('ประเมินเบื้องต้น ไม่ใช่ประกาศเตือนภัย · ThaiWater, สนน.กทม., GISTDA, กรมอุตุฯ',56,H-22);
+  ctx.fillText('ประเมินเบื้องต้น บางส่วนประมาณการด้วย AI โปรดตรวจสอบก่อนนำไปใช้',56,H-22);
   ctx.textAlign='right';ctx.fillStyle=C.ink;ctx.font=`600 15px ${B}`;ctx.fillText('จัดทำโดย ภก.จีรภัทร พลายงาม สสจ.สมุทรปราการ',W-56,H-22);ctx.textAlign='left';
   return cv;
 }
@@ -1348,6 +1384,8 @@ function buildReport(){
    <div class="rp-gauge rp-box ${lk}"><div class="rp-gk">ระดับความเสี่ยงน้ำท่วม วันนี้</div>${gaugeSvgLight(t0.score,lk)}<b class="rp-gl">${esc(ll)}</b><div class="rp-gd">${esc(ld)}</div><div class="rp-gp">เสี่ยงสูงสุดใน 7 วัน: <b>${esc(thDay(A.peak.d0))} · ${A.peak.score}</b></div></div>
    <div class="rp-tiles">${ovTiles().map(t=>`<div class="rp-tile ${t.k}"><span class="rp-tk">${esc(t.label)}</span><b>${esc(t.value)}</b><span class="rp-ts">${esc(t.sub)}</span></div>`).join('')}</div>
   </div>
+  <h3>ปัจจัยที่มีผลต่อการเกิดน้ำท่วม (เรียงจากรุนแรงที่สุด)</h3><table class="rp-fx"><thead><tr><th>ปัจจัย</th><th>ระดับ</th><th>ค่าล่าสุด</th><th>รายละเอียด</th></tr></thead><tbody>${keyFactors().map(f=>`<tr><td>${esc(f.t)}</td><td><span class=\"tag ${f.k}\">${KLV[f.k]}</span></td><td><b>${esc(f.v)}</b></td><td>${esc(f.s)}</td></tr>`).join('')}</tbody></table>
+  <h3>หน่วยบริการที่ต้องระวังเป็นพิเศษ (10 อันดับคะแนนความเสี่ยงรายจุด)</h3>${(()=>{const W=watchList(10);return`<p>โอกาสน้ำท่วมสูง ${W.crit} แห่ง · เฝ้าระวัง ${W.warn} แห่ง · จากทั้งหมด ${W.total} แห่ง</p><table><thead><tr><th>#</th><th>หน่วยบริการ</th><th>อำเภอ</th><th>คะแนน</th><th>ระดับ</th><th>ปัจจัยเด่น</th></tr></thead><tbody>`+W.top.map((x,i)=>`<tr><td class="n">${i+1}</td><td>${esc(hfLabel(x.h))}</td><td>${esc(x.h.amp)}</td><td class="n"><b>${x.score}</b></td><td><span class=\"tag ${x.k}\">${esc(SITE_LV[x.k][0])}</span></td><td>${esc(x.why)}</td></tr>`).join('')+'</tbody></table>';})()}
   <h3>หน่วยบริการที่เสี่ยงน้ำท่วม (ระบุชื่อ)</h3><div class="rp-hfn">${hfNamesText()}</div>
   <h3>ปัจจัยหลัก</h3><ul>${t0.why.slice(0,7).map(([p,w])=>`<li>${esc(w)} (+${p})</li>`).join('')}</ul>
   <h3>ข้อเสนอเพื่อการตัดสินใจ</h3><ul>${(jb.acts||[]).map(a=>`<li>${esc(a)}</li>`).join('')}
@@ -1481,13 +1519,13 @@ function renderExec(){const ex=document.getElementById('exec');if(!ex||ex.hidden
   document.getElementById('exGauge').innerHTML=gaugeBig(t.score,k);const lv=document.getElementById('exLevel');lv.textContent=l;lv.style.color={crit:'var(--crit)',warn:'var(--warn)',ok:'var(--ok)'}[k];
   txt('exDesc',d);document.getElementById('exPeak').innerHTML=`เสี่ยงสูงสุดใน 7 วัน: <b style="color:var(--ink)">${thShort(A.peak.d0)} · คะแนน ${A.peak.score}</b>`;
   const cf=confidence();txt('exConf',`ความครบถ้วนของข้อมูล: ${cf.lv[0]} (${cf.n}/${cf.total} จุดในจังหวัดมีค่าวัด)`);
-  document.getElementById('exTiles').innerHTML=ovTiles().slice(0,6).map(o=>`<div class="ex-t" data-k="${o.k}"><span class="k">${o.label}</span><span class="v">${o.value}</span><span class="s">${o.sub}</span></div>`).join('');
+  document.getElementById('exTiles').innerHTML=keyFactors().map(o=>`<div class="ex-t" data-k="${o.k}"><span class="k">${esc(o.t)} · ${KLV[o.k]}</span><span class="v">${esc(o.v)}</span><span class="s">${esc(o.s)}</span></div>`).join('');
   document.getElementById('exBars').innerHTML=A.days.map(x=>{const c={crit:'var(--crit-fill)',warn:'var(--warn-fill)',ok:'var(--ok-fill)'}[level(x.score)[0]];return`<div class="c"><span class="sc">${x.score}</span><div class="b" style="height:${Math.max(8,x.score)}%;background:${c}"></div><span>${thDay(x.d0)}</span><span style="font-weight:600;color:${x.rain[0]==='h'?'var(--crit)':'var(--muted)'}">${{h:'ฝนหนัก',m:'ฝน',l:'ฝนน้อย',n:'–'}[x.rain[0]]}</span></div>`}).join('');
   const j=judge(PAIRS[0]);const acts=(j.acts||[]).slice(0,2);const today=dayStart(Date.now());
   acts.push('เร่งสูบช่วงน้ำทะเลลง: '+lowWindows(today)+' (วันนี้)');
   if(hfCount.crit+hfCount.warn)acts.push(`เตรียมแผนสำรองยา เวชภัณฑ์ และการส่งต่อ สำหรับหน่วยบริการเสี่ยงสูง ${hfCount.crit} แห่ง เฝ้าระวัง ${hfCount.warn} แห่ง`);
   if(A.peak.score>=70)acts.push(`เตรียมรับฝนหนักและน้ำหนุนช่วง ${thShort(A.peak.d0)}`);
-  document.getElementById('exHf').innerHTML=hfNamesHtml();txt('exHfN',`เสี่ยงสูง ${hfCount.crit} · เฝ้าระวัง ${hfCount.warn} แห่ง`);document.getElementById('exActs').innerHTML=acts.map(a=>`<li><span>${a}</span></li>`).join('');}
+  {const W=watchList(8);document.getElementById('exHf').innerHTML='<div class="wt-grid" style="margin-bottom:10px">'+W.top.map((x,i)=>`<button type="button" class="wt ${x.k}" data-site="${x.h.id}"><span class="wt-sc">${x.score}</span><span class="wt-b"><b>${i+1}. ${esc(hfLabel(x.h))}</b><span>อ.${esc(x.h.amp)} · ${esc(x.why)}</span></span></button>`).join('')+'</div>'+hfNamesHtml();}txt('exHfN',`เสี่ยงสูง ${hfCount.crit} · เฝ้าระวัง ${hfCount.warn} แห่ง`);document.getElementById('exActs').innerHTML=acts.map(a=>`<li><span>${a}</span></li>`).join('');}
 function openExec(on){const ex=document.getElementById('exec');ex.hidden=!on;document.body.classList.toggle('exec-on',on);if(on){renderExec();document.getElementById('bExClose').focus();}else{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});document.getElementById('bExec').focus();}}
 document.getElementById('bExec').addEventListener('click',()=>openExec(true));
 document.getElementById('bExClose').addEventListener('click',()=>openExec(false));
@@ -1534,7 +1572,7 @@ function headerMeta(){const d=DATA_DATE;document.querySelectorAll('.tkText').for
 const RIVER=[[13.668,100.555],[13.690,100.556],[13.705,100.575],[13.688,100.592],[13.668,100.580],[13.660,100.536],[13.640,100.545],[13.622,100.562],[13.600,100.588],[13.570,100.585],[13.540,100.590]];
 const COAST=[[13.500,100.450],[13.520,100.540],[13.538,100.592],[13.520,100.640],[13.500,100.720],[13.485,100.800],[13.475,100.870],[13.470,100.950]];
 function distLine(lat,lng,line){let m=Infinity;for(let i=0;i<line.length-1;i++){const[a,b]=line[i],[c,d]=line[i+1];for(let f=0;f<=1;f+=.05){const x=distKm(lat,lng,a+(c-a)*f,b+(d-b)*f);if(x<m)m=x;}}return m;}
-function siteRisk(h){const F=[];const base=hfRisk(h);const inAmp=Date.now()<INUNDATED_UNTIL&&INUND_AMP.includes(h.amp);const east=h.lng>100.62;
+function siteRisk(h,mode){const tideN=mode==='today'?1:mode==='week'?7:3,rainN=mode==='today'?1:7;const F=[];const base=hfRisk(h);const inAmp=Date.now()<INUNDATED_UNTIL&&INUND_AMP.includes(h.amp);const east=h.lng>100.62;
   // 1 การระบายน้ำ
   let ps=null;state.stations.forEach(st=>{if(st.lat==null)return;const d=distKm(h.lat,h.lng,st.lat,st.lng);if(!ps||d<ps.d)ps={d,st};});
   const jb=judge(PAIRS[0]);let p1={pump:15,pipe:10,grad:6,high:6,rev:6,ok:2}[jb.type]??4;if(!east)p1=Math.round(p1*.4);
@@ -1556,15 +1594,15 @@ function siteRisk(h){const F=[];const base=hfRisk(h);const inAmp=Date.now()<INUN
     const bk=state.canals.filter(c=>c.grp==='bkk'&&c.wl!=null),bc=bk.filter(c=>canalState(c)[0]==='crit').length;if(bk.length&&bc){p3=Math.min(25,p3+Math.round(bc/bk.length*5));d3.push(`คลองต้นน้ำฝั่ง กทม. วิกฤต ${bc}/${bk.length} จุด น้ำยังหลากลงมาต่อเนื่อง`);}}
   F.push({t:'3. น้ำท่วมที่หลากมา / น้ำแช่ขัง',p:p3,max:25,d:d3});
   // 4 แม่น้ำเจ้าพระยา
-  const today=dayStart(Date.now());let tmx=0;for(let k=0;k<3;k++){const td=tideDay(today+k*864e5);if(td&&td.max>tmx)tmx=td.max;}
+  const today=dayStart(Date.now());let tmx=0;for(let k=0;k<tideN;k++){const td=tideDay(today+k*864e5);if(td&&td.max>tmx)tmx=td.max;}
   const dr=distLine(h.lat,h.lng,RIVER),wr=dr<=1?1:dr<=3?.6:dr<=5?.3:0,lr=tmx>=CP_C?10:tmx>=CP_W?7:3;
-  F.push({t:'4. น้ำแม่น้ำเจ้าพระยาที่ขึ้น',p:Math.round(wr*lr),max:10,d:[`ห่างแม่น้ำเจ้าพระยาประมาณ ${dr.toFixed(1)} กม.`+(wr?'':' (ไกลเกิน 5 กม. ไม่คิดคะแนน)'),tmx?`ระดับทำนายที่ป้อมพระจุลจอมเกล้าสูงสุดใน 3 วัน ${tmx.toFixed(2)} ม. · ${{ok:'ปกติ',warn:'เฝ้าระวัง',crit:'วิกฤต น้ำหนุนสูง'}[cpZone(tmx)]} (ค่าทำนาย)`:'ไม่มีตารางน้ำช่วงนี้']});
+  F.push({t:'4. น้ำแม่น้ำเจ้าพระยาที่ขึ้น',p:Math.round(wr*lr),max:10,d:[`ห่างแม่น้ำเจ้าพระยาประมาณ ${dr.toFixed(1)} กม.`+(wr?'':' (ไกลเกิน 5 กม. ไม่คิดคะแนน)'),tmx?`ระดับทำนายที่ป้อมพระจุลจอมเกล้าสูงสุดใน ${tideN} วัน ${tmx.toFixed(2)} ม. · ${{ok:'ปกติ',warn:'เฝ้าระวัง',crit:'วิกฤต น้ำหนุนสูง'}[cpZone(tmx)]} (ค่าทำนาย)`:'ไม่มีตารางน้ำช่วงนี้']});
   // 5 น้ำทะเลหนุน
   const dc=distLine(h.lat,h.lng,COAST),wc=dc<=2?1:dc<=5?.6:dc<=10?.3:.15,lc=tmx>=CP_C?15:tmx>=CP_W?10:4;
-  F.push({t:'5. น้ำทะเลหนุน',p:Math.round(wc*lc),max:15,d:[`ห่างชายฝั่งประมาณ ${dc.toFixed(1)} กม.`,tmx?`น้ำทะเลหนุนสูงสุดใน 3 วัน ${tmx.toFixed(2)} ม.`:'ไม่มีตารางน้ำช่วงนี้',`ช่วงน้ำลงที่ระบายได้ดีวันนี้: ${lowWindows(today)}`]});
+  F.push({t:'5. น้ำทะเลหนุน',p:Math.round(wc*lc),max:15,d:[`ห่างชายฝั่งประมาณ ${dc.toFixed(1)} กม.`,tmx?`น้ำทะเลหนุนสูงสุดใน ${tideN} วัน ${tmx.toFixed(2)} ม.`:'ไม่มีตารางน้ำช่วงนี้',`ช่วงน้ำลงที่ระบายได้ดีวันนี้: ${lowWindows(today)}`]});
   // 6 ฝน
-  let rc='n',rd=null;for(let k=0;k<7;k++){const r=RAIN[bkkDate(today+k*864e5)];if(!r)continue;const o={h:3,m:2,l:1,n:0};if(o[r[0]]>o[rc]){rc=r[0];rd=[today+k*864e5,r[1]];}}
-  F.push({t:'6. ฝนตก',p:{h:15,m:8,l:3,n:3}[rc],max:15,d:[rd?`ฝนมากสุดใน 7 วัน: ${thDay(rd[0])} · ${rd[1]}`:'ยังไม่มีพยากรณ์ฝน',`วันนี้: ${(RAIN[bkkDate(today)]||['n','ยังไม่มีพยากรณ์'])[1]}`,'พยากรณ์ระดับ กทม.–ปริมณฑล ไม่ใช่รายจุด']});
+  let rc='n',rd=null;for(let k=0;k<rainN;k++){const r=RAIN[bkkDate(today+k*864e5)];if(!r)continue;const o={h:3,m:2,l:1,n:0};if(o[r[0]]>o[rc]){rc=r[0];rd=[today+k*864e5,r[1]];}}
+  F.push({t:'6. ฝนตก',p:{h:15,m:8,l:3,n:3}[rc],max:15,d:[rd?`ฝนมากสุดใน ${rainN} วัน: ${thDay(rd[0])} · ${rd[1]}`:'ยังไม่มีพยากรณ์ฝน',`วันนี้: ${(RAIN[bkkDate(today)]||['n','ยังไม่มีพยากรณ์'])[1]}`,'พยากรณ์ระดับ กทม.–ปริมณฑล ไม่ใช่รายจุด']});
   let score=F.reduce((a,f)=>a+f.p,0);if(base.k==='crit')score=Math.max(score,55);score=Math.min(100,score);
   const k=score>=55?'crit':score>=40?'warn':'ok';
   return{score,k,F,base,ps,g:bad||g0,inAmp};}
@@ -1602,6 +1640,37 @@ function siteRender(){const out=document.getElementById('siteOut');if(!out)retur
 (function(){const sel=document.getElementById('siteSel'),q=document.getElementById('siteQ');if(!sel)return;
   sel.addEventListener('change',()=>{siteCur=sel.value;try{localStorage.setItem('spk-site',siteCur);}catch(e){}siteRender();});
   q.addEventListener('input',()=>{siteFill(q.value);const op=[...sel.options].filter(o=>o.value);if(op.length===1){sel.value=op[0].value;siteCur=sel.value;siteRender();}});})();
+/* ---------- ปัจจัยหลัก และหน่วยบริการที่ต้องระวัง (ใช้ร่วมกันทุกหน้า รูป และ PDF) ---------- */
+const DAM_ARRIVE='กทม. เตรียมรับน้ำเหนือช่วง 4–5 ต.ค. (Thai PBS)';
+const KLV={crit:'รุนแรง',warn:'เฝ้าระวัง',ok:'ปกติ'};
+function keyFactors(mode){const A=lastAnalysis;if(!A)return[];const N=mode==='today'?1:7;const F=[],today=dayStart(Date.now()),n0=x=>x.toLocaleString('en-US');
+  const dq=DAM_Q[DAM_Q.length-1],d0=DAM_Q[0],dT=t=>Date.parse(t+':00+07:00');
+  F.push({t:'น้ำเหนือ (เขื่อนเจ้าพระยา)',k:dq[1]>=2500?'crit':dq[1]>=2200?'warn':'ok',v:n0(dq[1])+' ลบ.ม./วินาที',s:`เพิ่มขึ้น ${Math.round((dq[1]-d0[1])/d0[1]*100)}% ใน ${Math.round((dT(dq[0])-dT(d0[0]))/864e5)} วัน · ${DAM_ARRIVE}`});
+  let tm=null;for(let i=0;i<N;i++){const td=tideDay(today+i*864e5);if(td&&(!tm||td.max>tm.max))tm={max:td.max,d:today+i*864e5};}const t0=tideDay(today);
+  if(tm)F.push({t:'น้ำทะเลหนุน (ป้อมพระจุลฯ)',k:cpZone(tm.max),v:`สูงสุด ${tm.max.toFixed(2)} ม.`,s:N===1?`วันนี้ · ระบายได้ดี ${t0?t0.lowH.toFixed(0):'–'} ชม. (${lowWindows(today)})`:`${thDay(tm.d)} · วันนี้สูงสุด ${t0?t0.max.toFixed(2):'–'} ม. ระบายได้ดี ${t0?t0.lowH.toFixed(0):'–'} ชม.`});
+  let rb=null;const ord={h:3,m:2,l:1,n:0},DS=A.days.slice(0,N);DS.forEach(d=>{if(!rb||ord[d.rain[0]]>ord[rb.rain[0]])rb=d;});const hd=DS.filter(d=>d.rain[0]==='h');
+  F.push({t:N===1?'ฝน (พยากรณ์วันนี้)':'ฝน (พยากรณ์ 7 วัน)',k:rb.rain[0]==='h'?'crit':rb.rain[0]==='m'?'warn':'ok',v:hd.length?`ฝนหนัก ${hd.length} วัน`:rb.rain[1],s:(hd.length?`${thDay(hd[0].d0)}${hd.length>1?'–'+thDay(hd[hd.length-1].d0):''} · ${hd[0].rain[1]} · `:'')+`วันนี้ ${A.days[0].rain[1]}`});
+  const cs=state.canals.filter(c=>c.wl!=null),cc=cs.filter(c=>canalState(c)[0]==='crit'),cw=cs.filter(c=>canalState(c)[0]==='warn'),ov=wlRows.filter(w=>w.wl!=null&&w.bank!=null&&w.wl>w.bank).length,pw=cById('WL.PWT.07');
+  F.push({t:'ระดับน้ำในคลอง',k:cc.length||ov?'crit':cw.length?'warn':'ok',v:`วิกฤต ${cc.length} จุด`+(ov?` · เกินตลิ่ง ${ov}`:''),s:(pw&&pw.wl!=null?`คลองประเวศ บางบ่อ ${(+pw.wl).toFixed(2)} ม. (เกณฑ์วิกฤต ${(+pw.crit).toFixed(2)}) · `:'')+`มีค่าวัด ${cs.length} จุด`});
+  const j=judge(PAIRS[0]);let mx=0;state.stations.forEach(x=>{const m=maxOf(x);if(m)mx+=m;});const rp=+state.report.value||0;
+  F.push({t:'การระบายน้ำ (คอขวด–สูบ)',k:j.k==='na'?'warn':j.k,v:j.delta!=null?`ส่วนต่าง ${j.delta.toFixed(2)} ม.`:'ข้อมูลไม่ครบ',s:`${j.title}`+(rp&&mx?` · สูบจริง ${rp} จาก ${mx} ลบ.ม./วินาที (${Math.round(rp/mx*100)}%)`:' · ยังไม่มีรายงานสูบจริง')});
+  const left=Math.ceil((INUNDATED_UNTIL-Date.now())/864e5);
+  F.push({t:'น้ำแช่ขังในพื้นที่',k:left>0?'warn':'ok',v:left>0?`อีกราว ${left} วัน`:'ไม่มีประกาศ',s:left>0?`${INUND_AMP.join(' ')} · คาดถึง ${thShort(INUNDATED_UNTIL)}`:'ไม่มีอำเภอที่ประกาศน้ำแช่ขัง'});
+  const o={crit:0,warn:1,ok:2};return F.map((f,i)=>[f,i]).sort((a,b)=>o[a[0].k]-o[b[0].k]||a[1]-b[1]).map(x=>x[0]);}
+function watchList(n,mode){const L=HEALTH.map(h=>{const R=siteRisk(h,mode||'week');const loc=R.F.filter(f=>!/ฝนตก/.test(f.t)).sort((a,b)=>b.p/b.max-a.p/a.max)[0];const top=loc&&loc.p/loc.max>=.45?loc:R.F.slice().sort((a,b)=>b.p/b.max-a.p/a.max)[0];return{h,score:R.score,k:R.k,why:top.t.replace(/^\d+\.\s*/,'')+(top.d[0]?': '+top.d[0]:'')};}).sort((a,b)=>b.score-a.score||a.h.name.localeCompare(b.h.name,'th'));
+  return{top:L.slice(0,n),crit:L.filter(x=>x.k==='crit').length,warn:L.filter(x=>x.k==='warn').length,total:L.length};}
+let ovMode='week';try{ovMode=localStorage.getItem('spk-ovmode')==='today'?'today':'week';}catch(e){}
+function renderFocus(){const fx=document.getElementById('ovFactors');if(!fx||!lastAnalysis)return;const A=lastAnalysis,td=ovMode==='today',lab=td?'วันนี้':'7 วันข้างหน้า';
+  document.querySelectorAll('[data-ovmode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.ovmode===ovMode));
+  const sc=td?A.days[0].score:A.peak.score,[gk,gl,gd]=level(sc);drawGauge(sc,gk);txt('gLevel',gl);document.getElementById('gLevel').style.color={crit:'var(--crit)',warn:'var(--warn)',ok:'var(--ok)'}[gk];txt('gDesc',gd);
+  const eb=document.querySelector('.ov-gauge .eyebrow');if(eb)eb.textContent=td?'ระดับความเสี่ยงน้ำท่วม วันนี้':'ระดับความเสี่ยงสูงสุดใน 7 วัน · '+thShort(A.peak.d0);
+  const gf=document.querySelector('.ov-gfoot span');if(gf)gf.textContent=td?'เสี่ยงสูงสุดใน 7 วัน':'คะแนนวันนี้';txt('gPeak',td?thShort(A.peak.d0)+' · '+A.peak.score+' ('+level(A.peak.score)[1]+')':A.days[0].score+' ('+level(A.days[0].score)[1]+')');
+  txt('fxH','ปัจจัยที่ทำให้เสี่ยงน้ำท่วม · '+lab);txt('wtH','หน่วยบริการที่ต้องระวังเป็นพิเศษ · '+lab);
+  txt('ovModeNote',td?'ใช้น้ำทะเลหนุนและฝนของวันนี้เท่านั้น':'ใช้ค่าสูงสุดของน้ำทะเลหนุนและฝนใน 7 วันข้างหน้า · ปัจจัยอื่นเป็นค่าปัจจุบันเหมือนกันทั้งสองแบบ');
+  fx.innerHTML=keyFactors(ovMode).map(f=>`<div class="fx ${f.k}"><div class="fx-k"><span>${esc(f.t)}</span><span class="pill ${f.k}">${KLV[f.k]}</span></div><div class="fx-v">${esc(f.v)}</div><div class="fx-s">${esc(f.s)}</div></div>`).join('');
+  const W=watchList(10,ovMode);txt('ovWatchN',`โอกาสน้ำท่วมสูง ${W.crit} แห่ง · เฝ้าระวัง ${W.warn} แห่ง · จากทั้งหมด ${W.total} แห่ง`);
+  document.getElementById('ovWatch').innerHTML=W.top.map((x,i)=>`<button type="button" class="wt ${x.k}" data-site="${x.h.id}"><span class="wt-sc">${x.score}</span><span class="wt-b"><b>${i+1}. ${esc(hfLabel(x.h))}</b><span>อ.${esc(x.h.amp)} · ${esc(x.why)}</span></span><span class="wt-r">${SITE_LV[x.k][0]}</span></button>`).join('');}
+document.addEventListener('click',e=>{const m=e.target.closest('[data-ovmode]');if(m){ovMode=m.dataset.ovmode;try{localStorage.setItem('spk-ovmode',ovMode);}catch(_){}renderFocus();return;}const b=e.target.closest('[data-site]');if(!b)return;siteCur=b.dataset.site;try{localStorage.setItem('spk-site',siteCur);}catch(_){}document.getElementById('siteQ').value='';siteFill('');document.getElementById('siteSel').value=siteCur;if(!document.getElementById('exec').hidden)openExec(false);showTab('site');siteRender();window.scrollTo({top:0});});
 /* ---------- กลางวัน/กลางคืน และขนาดตัวอักษร ---------- */
 (function(){const root=document.documentElement,FS=[.9,1,1.15,1.3,1.45];
   const cur=()=>{const v=parseFloat(getComputedStyle(root).getPropertyValue('--fs'))||1;let k=FS.findIndex(x=>Math.abs(x-v)<.01);return k<0?1:k;};
