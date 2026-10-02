@@ -276,6 +276,17 @@ body.exec-on #bgfx{z-index:4999}
 @keyframes wv{to{background-position-x:1200px}}
 @media (prefers-reduced-motion:reduce){.wv{animation:none}}
 @media print{#bgfx{display:none}}
+.cp-leg{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13.5px;margin:8px 0;color:var(--ink)}
+.cp-leg i{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:6px;vertical-align:-2px}
+#cpPanel{grid-column:1/-1}
+.cp-wrap{overflow-x:auto}
+#cpChart{min-width:680px}
+#cpChart svg{width:100%;height:auto;display:block}
+.cp-sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
+@media (max-width:700px){.cp-sum{grid-template-columns:minmax(0,1fr)}}
+.cp-d{border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:#fff;font-size:13.5px}
+.cp-d b{font-family:var(--display);font-size:15px}
+.cp-d.crit{border-color:var(--crit);background:var(--crit-soft)} .cp-d.warn{border-color:var(--warn);background:var(--warn-soft)} .cp-d.ok{border-color:var(--ok);background:var(--ok-soft)}
 .ex-foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 body.exec-on{overflow:hidden}
 @media print{#exec,.tabs{display:none!important}}
@@ -395,6 +406,13 @@ body.exec-on{overflow:hidden}
       <div id="tInfo" style="display:flex;flex-direction:column;gap:4px;font-size:14px"></div>
       <p class="note" style="margin:0">ป้อมพระจุลฯ/ปากแม่น้ำ · ความสูงเทียบระดับอ้างอิงตารางน้ำ (ไม่ใช่ ม.รทก.) · คำนวณจากตารางน้ำขึ้นลง 1–11 ต.ค. 2569 · ช่วงระบายดี = น้ำทะเลต่ำกว่า <span class="num">2.2</span> ม. (ประมาณการ)</p>
     </div>
+    <section class="panel" data-tab="water" id="cpPanel">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap"><h2 style="margin:0">ระดับน้ำแม่น้ำเจ้าพระยา (ปากแม่น้ำ) 3 วัน</h2><span class="note">ป้อมพระจุลจอมเกล้า · ค่าทำนายจากตารางน้ำ ไม่ใช่ค่าวัดจริง</span></div>
+      <div class="cp-leg"><span><i style="background:#2E7D32"></i>ปกติ (ต่ำกว่า 3.30 ม.)</span><span><i style="background:#E08A00"></i>เฝ้าระวัง (3.30–3.49 ม.)</span><span><i style="background:#C62828"></i>วิกฤต น้ำหนุนสูง (3.50 ม. ขึ้นไป)</span><span><i style="background:#BFE0F7;border:1px solid #7BB9E8"></i>ช่วงระบายน้ำได้ดี (ต่ำกว่า 2.20 ม.)</span></div>
+      <div class="cp-wrap"><div id="cpChart" role="img" aria-label="กราฟระดับน้ำแม่น้ำเจ้าพระยา 3 วัน"></div></div>
+      <div class="cp-sum" id="cpSum"></div>
+      <p class="note" style="margin:6px 0 0">ความสูงเทียบระดับอ้างอิงของตารางน้ำ (ไม่ใช่ ม.รทก.) เส้นโค้งประมาณจากจุดน้ำขึ้นสูงสุด–ลงต่ำสุด ระดับจริงอาจสูงกว่านี้เมื่อมีน้ำเหนือหรือลมแรง · เกณฑ์สีเป็นเกณฑ์ของแอป ไม่ใช่เกณฑ์ทางการ</p>
+    </section>
     <div class="panel" data-tab="water">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
         <h2>ระดับน้ำสด (ThaiWater)</h2><span class="note" id="wlStatus">กำลังโหลด…</span>
@@ -725,7 +743,31 @@ document.getElementById('bResetYes').addEventListener('click',()=>{state={statio
 
 /* ---------- tide ---------- */
 function tideAt(t){for(let i=0;i<TIDE.length-1;i++){const[t0,h0]=TIDE[i],[t1,h1]=TIDE[i+1];if(t>=t0&&t<=t1){const f=(t-t0)/(t1-t0);return h0+(h1-h0)*(1-Math.cos(Math.PI*f))/2;}}return null;}
+/* ---------- กราฟระดับน้ำเจ้าพระยา 3 วัน ---------- */
+const CP_W=3.3,CP_C=3.5;
+function cpZone(v){return v>=CP_C?'crit':v>=CP_W?'warn':'ok';}
+function renderTideChart(){const el=document.getElementById('cpChart');if(!el)return;const d0=dayStart(Date.now()),d1=d0+3*864e5,now=Date.now();
+  const pts=[];for(let t=d0;t<=d1;t+=6e5){const v=tideAt(t);if(v!=null)pts.push([t,v]);}
+  if(pts.length<10){el.innerHTML='<p class="note">ไม่มีตารางน้ำสำหรับช่วง 3 วันนี้</p>';document.getElementById('cpSum').innerHTML='';return;}
+  const W=960,H=340,L=46,R=14,T=22,B=44,y0=0,y1=4.2;const X=t=>L+(t-d0)/(d1-d0)*(W-L-R),Y=v=>T+(1-(v-y0)/(y1-y0))*(H-T-B);
+  const col={ok:'#2E7D32',warn:'#E08A00',crit:'#C62828'};let g='';
+  const band=(a,b,f,o)=>`<rect x="${L}" y="${Y(b).toFixed(1)}" width="${W-L-R}" height="${(Y(a)-Y(b)).toFixed(1)}" fill="${f}" opacity="${o}"/>`;
+  g+=band(y0,THR,'#BFE0F7',.55)+band(THR,CP_W,'#2E7D32',.07)+band(CP_W,CP_C,'#E08A00',.16)+band(CP_C,y1,'#C62828',.14);
+  for(let v=0;v<=4;v+=1)g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="#C9D6E0" stroke-width="1"/><text x="${L-8}" y="${Y(v)+4}" text-anchor="end" font-size="12" fill="#3D4F5F">${v.toFixed(1)}</text>`;
+  [[THR,'2.20 ระบายดี','#1F6FB2'],[CP_W,'3.30 เฝ้าระวัง','#8A5200'],[CP_C,'3.50 วิกฤต','#A01515']].forEach(([v,t,c])=>{g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${c}" stroke-width="1.2" stroke-dasharray="5 4"/><text x="${L+6}" y="${Y(v)+(v===CP_W?13:-4)}" font-size="11.5" font-weight="600" fill="${c}" stroke="#fff" stroke-width="3" paint-order="stroke">${t}</text>`;});
+  for(let k=0;k<=3;k++){const t=d0+k*864e5;g+=`<line x1="${X(t)}" x2="${X(t)}" y1="${T}" y2="${H-B}" stroke="#8FA3B3" stroke-width="1.2"/>`;if(k<3)g+=`<text x="${X(t+432e5)}" y="${H-8}" text-anchor="middle" font-size="13.5" font-weight="600" fill="#0B1D2C">${thDay(t)}</text>`;
+    if(k<3)[6,12,18].forEach(hh=>{const tt=t+hh*36e5;g+=`<line x1="${X(tt)}" x2="${X(tt)}" y1="${T}" y2="${H-B}" stroke="#DCE5EC" stroke-width="1"/><text x="${X(tt)}" y="${H-B+15}" text-anchor="middle" font-size="11" fill="#3D4F5F">${String(hh).padStart(2,'0')}:00</text>`;});}
+  let seg=[pts[0]],z=cpZone(pts[0][1]);const flush=()=>{g+=`<polyline fill="none" stroke="${col[z]}" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" points="${seg.map(([t,v])=>X(t).toFixed(1)+','+Y(v).toFixed(1)).join(' ')}"/>`;};
+  for(let i=1;i<pts.length;i++){const zz=cpZone(pts[i][1]);seg.push(pts[i]);if(zz!==z){flush();seg=[pts[i]];z=zz;}}flush();
+  TIDE.filter(([t])=>t>=d0&&t<=d1).forEach(([t,v],i,a)=>{const idx=TIDE.findIndex(x=>x[0]===t),pv=idx>0?TIDE[idx-1][1]:v-1,hi=v>pv,c=col[cpZone(v)];const x=Math.min(W-R-30,Math.max(L+30,X(t)));
+    g+=`<circle cx="${X(t)}" cy="${Y(v)}" r="4.5" fill="#fff" stroke="${c}" stroke-width="2.5"><title>${hi?'น้ำขึ้นสูงสุด':'น้ำลงต่ำสุด'} ${fmtDHM(t)} · ${v.toFixed(2)} ม.</title></circle><text x="${x}" y="${Y(v)+(hi?-10:20)}" text-anchor="middle" font-size="12" font-weight="600" fill="#0B1D2C" stroke="#fff" stroke-width="3" paint-order="stroke">${v.toFixed(2)} · ${fmtHM(t)}</text>`;});
+  if(now>=d0&&now<=d1){const v=tideAt(now);g+=`<line x1="${X(now)}" x2="${X(now)}" y1="${T-6}" y2="${H-B}" stroke="#0A56A3" stroke-width="2"/><text x="${Math.min(W-R-40,X(now)+6)}" y="${T-8}" font-size="12" font-weight="700" fill="#0A56A3">ขณะนี้${v!=null?' '+v.toFixed(2)+' ม.':''}</text>`;if(v!=null)g+=`<circle cx="${X(now)}" cy="${Y(v)}" r="5.5" fill="#0A56A3" stroke="#fff" stroke-width="2"/>`;}
+  g+=`<text x="${L}" y="12" font-size="11.5" fill="#3D4F5F">ม. (ระดับอ้างอิงตารางน้ำ)</text>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Sans Thai,sans-serif">${g}</svg>`;
+  document.getElementById('cpSum').innerHTML=[0,1,2].map(k=>{const t=d0+k*864e5,ex=TIDE.filter(([x])=>x>=t&&x<t+864e5);if(!ex.length)return'';const hi=ex.reduce((a,b)=>b[1]>a[1]?b:a),lo=ex.reduce((a,b)=>b[1]<a[1]?b:a),zk=cpZone(hi[1]);
+    return`<div class="cp-d ${zk}"><b>${thDay(t)} · ${{ok:'ปกติ',warn:'เฝ้าระวัง',crit:'วิกฤต น้ำหนุนสูง'}[zk]}</b><br>สูงสุด ${hi[1].toFixed(2)} ม. เวลา ${fmtHM(hi[0])} น.<br>ต่ำสุด ${lo[1].toFixed(2)} ม. เวลา ${fmtHM(lo[0])} น.<br>ช่วงระบายดี: ${lowWindows(t)}</div>`}).join('');}
 function tide(){
+  try{renderTideChart();}catch(e){}
   const now=Date.now(),h=tideAt(now);const info=document.getElementById('tInfo');
   if(h==null){document.getElementById('tNow').textContent='–';document.getElementById('tDir').textContent='อยู่นอกช่วงตารางน้ำที่มี (30 ก.ย.–11 ต.ค. 2569)';info.innerHTML='';return;}
   const rising=tideAt(now+600000)>h;
