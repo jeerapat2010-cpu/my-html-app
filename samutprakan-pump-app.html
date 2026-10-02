@@ -287,6 +287,25 @@ body.exec-on #bgfx{z-index:4999}
 .cp-d{border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:#fff;font-size:13.5px}
 .cp-d b{font-family:var(--display);font-size:15px}
 .cp-d.crit{border-color:var(--crit);background:var(--crit-soft)} .cp-d.warn{border-color:var(--warn);background:var(--warn-soft)} .cp-d.ok{border-color:var(--ok);background:var(--ok-soft)}
+.site-pick{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:10px;margin-bottom:12px}
+@media (max-width:700px){.site-pick{grid-template-columns:minmax(0,1fr)}}
+.site-pick label{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:13.5px}
+.site-pick input,.site-pick select{font:inherit;font-weight:400;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);min-width:0;width:100%}
+.site-top{display:grid;grid-template-columns:minmax(240px,1fr) minmax(0,2fr);gap:12px;align-items:stretch}
+@media (max-width:800px){.site-top{grid-template-columns:minmax(0,1fr)}}
+.site-score{border:2px solid var(--line);border-radius:16px;padding:14px;text-align:center;display:flex;flex-direction:column;gap:4px;justify-content:center;background:#fff}
+.site-score.crit{border-color:var(--crit);background:var(--crit-soft)} .site-score.warn{border-color:var(--warn);background:var(--warn-soft)} .site-score.ok{border-color:var(--ok);background:var(--ok-soft)}
+.site-score .n{font-family:var(--display);font-weight:700;font-size:56px;line-height:1}
+.site-score .l{font-family:var(--display);font-weight:700;font-size:21px}
+#siteMap{height:330px;border-radius:14px;border:1px solid var(--line);z-index:0}
+.site-f{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+@media (max-width:900px){.site-f{grid-template-columns:repeat(2,minmax(0,1fr))}} @media (max-width:600px){.site-f{grid-template-columns:minmax(0,1fr)}}
+.sf{border:1px solid var(--line);border-radius:14px;padding:10px 12px;background:#fff;display:flex;flex-direction:column;gap:5px;font-size:13.5px;min-width:0}
+.sf h3{margin:0;font-size:15px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.sf h3 span{font-family:var(--mono);font-size:13.5px;white-space:nowrap}
+.sf-bar{height:8px;border-radius:99px;background:#E3EBF1;overflow:hidden} .sf-bar i{display:block;height:100%;border-radius:99px}
+.sf.hist{grid-column:1/-1;background:#F7FAFC}
+.site-pin{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45)}
 .ex-foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 body.exec-on{overflow:hidden}
 @media print{#exec,.tabs{display:none!important}}
@@ -317,6 +336,7 @@ body.exec-on{overflow:hidden}
     <button role="tab" data-go="water" aria-selected="false">ระดับน้ำ<span class="cnt" id="tcWater" hidden></span></button>
     <button role="tab" data-go="pump" aria-selected="false">สถานีสูบน้ำ</button>
     <button role="tab" data-go="health" aria-selected="false">หน่วยบริการ<span class="cnt" id="tcHealth" hidden></span></button>
+    <button role="tab" data-go="site" aria-selected="false">ค้นหาจุดเสี่ยง</button>
     <button role="tab" data-go="report" aria-selected="false">รายงานและลิงก์</button>
     <button role="tab" data-go="method" aria-selected="false">วิธีคิดและแหล่งข้อมูล</button>
   </nav>
@@ -501,6 +521,15 @@ body.exec-on{overflow:hidden}
     </div>
   </section>
 
+  <section class="panel" data-tab="site" id="sitePanel">
+    <h2 style="margin:0 0 4px">ค้นหาความเสี่ยงน้ำท่วมรายหน่วยบริการ</h2>
+    <p class="note" style="margin:0 0 10px">เลือกโรงพยาบาลหรือ รพ.สต. เพื่อดูว่าจุดนั้นมีโอกาสน้ำท่วมหรือไม่ จากข้อมูล 6 ด้านที่มีในแอป พร้อมประวัติประกอบ</p>
+    <div class="site-pick">
+      <label>พิมพ์ค้นหา<input type="search" id="siteQ" placeholder="เช่น บางบ่อ, จุฬารัตน์, คลองด่าน" autocomplete="off"></label>
+      <label>เลือกหน่วยบริการ<select id="siteSel"></select></label>
+    </div>
+    <div id="siteOut"></div>
+  </section>
   <section class="panel" data-tab="method" aria-labelledby="mtH">
     <h2 id="mtH">วิธีคิดคะแนนความเสี่ยงน้ำท่วม</h2>
     <p style="margin:0">คะแนน 0–100 รวมจากปัจจัยด้านล่าง คำนวณใหม่ทุกนาทีจากข้อมูลล่าสุดในแอป ระดับ: <span class="pill ok">0–44 แนวโน้มลดลง</span> <span class="pill warn">45–69 เฝ้าระวัง</span> <span class="pill crit">70–100 เสี่ยงน้ำท่วมเพิ่ม</span></p>
@@ -1107,6 +1136,7 @@ function analyze(){
   renderHealth();
   renderOverview();
   refreshDynamicLayers();headerMeta();renderMethod();renderExec();
+  try{siteHistSave();if(!document.getElementById('sitePanel').hidden)siteRender();}catch(e){}
 }
 
 /* ---------- summary image ---------- */
@@ -1330,13 +1360,13 @@ function restoreLayers(){let on=null;try{on=JSON.parse(localStorage.getItem('spk
   LM.flatMap(g=>g[1]).forEach(([id,,ly,def])=>{const want=on?on.includes(id):def;if(want&&id!=='radar'){if(!map.hasLayer(ly))ly.addTo(map);}else map.removeLayer(ly);});}
 
 /* ---- tabs ---- */
-const TABS=['overview','map','water','pump','health','report','method'];
+const TABS=['overview','map','water','pump','health','site','report','method'];
 function showTab(t){if(!TABS.includes(t))t='overview';
   document.querySelectorAll('[data-tab]').forEach(el=>{el.hidden=el.dataset.tab!==t;});
   document.querySelectorAll('.wrap > section:not([data-tab])').forEach(sec=>{sec.hidden=[...sec.children].every(k=>k.hidden);});
   document.querySelectorAll('.tabs [data-go]').forEach(b=>b.setAttribute('aria-selected',b.dataset.go===t));
   try{localStorage.setItem('spk-tab',t);history.replaceState(null,'','#'+t);}catch(e){}
-  if(t==='map')setTimeout(()=>map.invalidateSize(),60);}
+  if(t==='map')setTimeout(()=>map.invalidateSize(),60);if(t==='site')setTimeout(()=>{if(siteMap)siteMap.invalidateSize();else siteRender();},60);}
 document.querySelectorAll('.tabs [data-go]').forEach(b=>b.addEventListener('click',()=>{showTab(b.dataset.go);window.scrollTo({top:0});}));
 
 /* ---- confidence / completeness ---- */
@@ -1405,13 +1435,85 @@ function headerMeta(){const d=DATA_DATE;document.querySelectorAll('.tkText').for
   size();addEventListener('resize',size);
   if(!still){raf=requestAnimationFrame(loop);document.addEventListener('visibilitychange',()=>{cancelAnimationFrame(raf);if(!document.hidden){last=performance.now();raf=requestAnimationFrame(loop);}});}
 })();
+/* ---------- ค้นหาความเสี่ยงรายหน่วยบริการ ---------- */
+const RIVER=[[13.668,100.555],[13.690,100.556],[13.705,100.575],[13.688,100.592],[13.668,100.580],[13.660,100.536],[13.640,100.545],[13.622,100.562],[13.600,100.588],[13.570,100.585],[13.540,100.590]];
+const COAST=[[13.500,100.450],[13.520,100.540],[13.538,100.592],[13.520,100.640],[13.500,100.720],[13.485,100.800],[13.475,100.870],[13.470,100.950]];
+function distLine(lat,lng,line){let m=Infinity;for(let i=0;i<line.length-1;i++){const[a,b]=line[i],[c,d]=line[i+1];for(let f=0;f<=1;f+=.05){const x=distKm(lat,lng,a+(c-a)*f,b+(d-b)*f);if(x<m)m=x;}}return m;}
+function siteRisk(h){const F=[];const base=hfRisk(h);const inAmp=Date.now()<INUNDATED_UNTIL&&INUND_AMP.includes(h.amp);const east=h.lng>100.62;
+  // 1 การระบายน้ำ
+  let ps=null;state.stations.forEach(st=>{if(st.lat==null)return;const d=distKm(h.lat,h.lng,st.lat,st.lng);if(!ps||d<ps.d)ps={d,st};});
+  const jb=judge(PAIRS[0]);let p1={pump:15,pipe:10,grad:6,high:6,rev:6,ok:2}[jb.type]??4;if(!east)p1=Math.round(p1*.4);
+  F.push({t:'1. การระบายน้ำ',p:p1,max:15,d:[`คอขวดคลองประเวศ → ชลหารพิจิตร: ${jb.title}${jb.delta!=null?' (ส่วนต่าง '+jb.delta.toFixed(2)+' ม.)':''}`,ps?`สถานีสูบใกล้สุด: ${ps.st.name} ห่าง ${ps.d.toFixed(1)} กม. · ${statusOf(ps.st)[1]}${ps.st.n?' (ตั้งค่าเดิน '+(ps.st.on??'?')+'/'+ps.st.n+' เครื่อง)':''}`:'',east?'':'อยู่ฝั่งแม่น้ำเจ้าพระยา ไม่ได้พึ่งระบบระบายน้ำฝั่งตะวันออกเป็นหลัก จึงลดน้ำหนัก'].filter(Boolean)});
+  // 2 ระดับน้ำคลองใกล้เคียง
+  const gs=[];state.canals.forEach(c=>{if(c.lat==null||c.wl==null)return;gs.push({name:c.name,lat:c.lat,lng:c.lng,wl:+c.wl,k:canalState(c)[0],kt:canalState(c)[1],id:c.id,time:c.time});});
+  wlRows.forEach(w=>{if(w.lat==null||w.wl==null)return;const st=wlState(w);gs.push({name:w.name,lat:w.lat,lng:w.lng,wl:w.wl,k:st[0],kt:st[1],time:w.time});});
+  gs.forEach(g=>g.d=distKm(h.lat,h.lng,g.lat,g.lng));gs.sort((a,b)=>a.d-b.d);const g0=gs[0];const bad=gs.filter(g=>g.d<=8&&(g.k==='crit'||g.k==='warn'))[0];
+  let p2=0;const d2=[];if(bad){const tb=bad.k==='crit'?[20,15,8,4]:[12,8,4,2];p2=bad.d<=1.5?tb[0]:bad.d<=3?tb[1]:bad.d<=6?tb[2]:tb[3];d2.push(`${bad.name} ห่าง ${bad.d.toFixed(1)} กม. ระดับ ${bad.wl.toFixed(2)} ม. · ${bad.kt}`);}
+  if(g0&&g0!==bad)d2.push(`จุดวัดใกล้สุด: ${g0.name} ห่าง ${g0.d.toFixed(1)} กม. ระดับ ${g0.wl.toFixed(2)} ม. · ${g0.kt}`);
+  if(!g0||g0.d>5)d2.push('ไม่มีจุดวัดระดับน้ำในระยะ 5 กม. คะแนนด้านนี้จึงอาจต่ำกว่าความจริง');
+  const tr=(bad||g0)&&(bad||g0).id?lvSeries((bad||g0).id):[];if(tr.length>=2){const dv=tr[tr.length-1][1]-tr[tr.length-2][1];d2.push(`แนวโน้มจุดวัดนี้: ${dv>0.02?'เพิ่มขึ้น':dv<-0.02?'ลดลง':'ทรงตัว'} ${(dv*100).toFixed(0)} ซม. จากครั้งก่อน`);}
+  F.push({t:'2. ระดับน้ำในคลองใกล้เคียง',p:p2,max:20,d:d2,g:bad||g0});
+  // 3 น้ำท่วมที่หลากมา / แช่ขัง
+  const f1=floodHit(h,gFlood.d1),f3=floodHit(h,gFlood.d3);let p3=0;const d3=[];
+  if(f1&&f1.inside){p3=25;d3.push('อยู่ในพื้นที่น้ำท่วมจากดาวเทียม GISTDA รอบ 1 วันล่าสุด');}else if(f3&&f3.inside){p3=20;d3.push('อยู่ในพื้นที่น้ำท่วมจากดาวเทียม GISTDA รอบ 3 วัน');}
+  else{const dd=Math.min(f1?f1.d:Infinity,f3?f3.d:Infinity);if(dd<=0.5){p3=12;d3.push(`ห่างพื้นที่น้ำท่วมจากดาวเทียม ${Math.round(dd*1000)} ม.`);}else if(gFlood.d1)d3.push(dd<Infinity?`พื้นที่น้ำท่วมจากดาวเทียมใกล้สุดห่าง ${dd.toFixed(1)} กม.`:'ไม่พบพื้นที่น้ำท่วมจากดาวเทียมใกล้จุดนี้');else d3.push('ยังไม่ได้ใช้ข้อมูลดาวเทียม GISTDA (ต้องใส่ API key ในหน้าแผนที่)');}
+  if(inAmp){p3=Math.max(p3,12);d3.push(`อ.${h.amp} ยังมีน้ำแช่ขังตามประกาศ คาดถึง ${thShort(INUNDATED_UNTIL)}`);
+    const bk=state.canals.filter(c=>c.grp==='bkk'&&c.wl!=null),bc=bk.filter(c=>canalState(c)[0]==='crit').length;if(bk.length&&bc){p3=Math.min(25,p3+Math.round(bc/bk.length*5));d3.push(`คลองต้นน้ำฝั่ง กทม. วิกฤต ${bc}/${bk.length} จุด น้ำยังหลากลงมาต่อเนื่อง`);}}
+  F.push({t:'3. น้ำท่วมที่หลากมา / น้ำแช่ขัง',p:p3,max:25,d:d3});
+  // 4 แม่น้ำเจ้าพระยา
+  const today=dayStart(Date.now());let tmx=0;for(let k=0;k<3;k++){const td=tideDay(today+k*864e5);if(td&&td.max>tmx)tmx=td.max;}
+  const dr=distLine(h.lat,h.lng,RIVER),wr=dr<=1?1:dr<=3?.6:dr<=5?.3:0,lr=tmx>=CP_C?10:tmx>=CP_W?7:3;
+  F.push({t:'4. น้ำแม่น้ำเจ้าพระยาที่ขึ้น',p:Math.round(wr*lr),max:10,d:[`ห่างแม่น้ำเจ้าพระยาประมาณ ${dr.toFixed(1)} กม.`+(wr?'':' (ไกลเกิน 5 กม. ไม่คิดคะแนน)'),tmx?`ระดับปากแม่น้ำสูงสุดใน 3 วัน ${tmx.toFixed(2)} ม. · ${{ok:'ปกติ',warn:'เฝ้าระวัง',crit:'วิกฤต น้ำหนุนสูง'}[cpZone(tmx)]} (ค่าทำนาย)`:'ไม่มีตารางน้ำช่วงนี้']});
+  // 5 น้ำทะเลหนุน
+  const dc=distLine(h.lat,h.lng,COAST),wc=dc<=2?1:dc<=5?.6:dc<=10?.3:.15,lc=tmx>=CP_C?15:tmx>=CP_W?10:4;
+  F.push({t:'5. น้ำทะเลหนุน',p:Math.round(wc*lc),max:15,d:[`ห่างชายฝั่งประมาณ ${dc.toFixed(1)} กม.`,tmx?`น้ำทะเลหนุนสูงสุดใน 3 วัน ${tmx.toFixed(2)} ม.`:'ไม่มีตารางน้ำช่วงนี้',`ช่วงน้ำลงที่ระบายได้ดีวันนี้: ${lowWindows(today)}`]});
+  // 6 ฝน
+  let rc='n',rd=null;for(let k=0;k<7;k++){const r=RAIN[bkkDate(today+k*864e5)];if(!r)continue;const o={h:3,m:2,l:1,n:0};if(o[r[0]]>o[rc]){rc=r[0];rd=[today+k*864e5,r[1]];}}
+  F.push({t:'6. ฝนตก',p:{h:15,m:8,l:3,n:3}[rc],max:15,d:[rd?`ฝนมากสุดใน 7 วัน: ${thDay(rd[0])} · ${rd[1]}`:'ยังไม่มีพยากรณ์ฝน',`วันนี้: ${(RAIN[bkkDate(today)]||['n','ยังไม่มีพยากรณ์'])[1]}`,'พยากรณ์ระดับ กทม.–ปริมณฑล ไม่ใช่รายจุด']});
+  let score=F.reduce((a,f)=>a+f.p,0);if(base.k==='crit')score=Math.max(score,55);score=Math.min(100,score);
+  const k=score>=55?'crit':score>=40?'warn':'ok';
+  return{score,k,F,base,ps,g:bad||g0,inAmp};}
+const SITE_LV={crit:['มีโอกาสน้ำท่วมสูง','ควรเตรียมแผนสำรองยา เวชภัณฑ์ ไฟฟ้า และการส่งต่อผู้ป่วยทันที'],warn:['มีโอกาสน้ำท่วม ควรเฝ้าระวัง','ติดตามระดับน้ำใกล้เคียงทุกวัน และเตรียมยกของขึ้นที่สูง'],ok:['โอกาสน้ำท่วมต่ำ','จากข้อมูลที่มีในขณะนี้ยังไม่พบสัญญาณเสี่ยง']};
+function siteHist(){try{return JSON.parse(localStorage.getItem('spk-site-hist')||'{}');}catch(e){return{};}}
+function siteHistSave(){try{const H=siteHist(),d=bkkDate(Date.now());H[d]={};HEALTH.forEach(h=>{H[d][h.id]=siteRisk(h).score;});Object.keys(H).sort().slice(0,-30).forEach(k=>delete H[k]);localStorage.setItem('spk-site-hist',JSON.stringify(H));}catch(e){}}
+let siteMap=null,siteLayer=null,siteCur='';
+function siteFill(q){const sel=document.getElementById('siteSel');if(!sel)return;q=(q||'').trim().toLowerCase();const keep=sel.value||siteCur;
+  const amps=[...new Set(HEALTH.map(h=>h.amp))].sort((a,b)=>a.localeCompare(b,'th'));let o='<option value="">— เลือกหน่วยบริการ —</option>',n=0;
+  amps.forEach(a=>{const L2=HEALTH.filter(h=>h.amp===a&&(!q||(hfLabel(h)+' '+h.en+' '+h.tambon+' '+h.amp).toLowerCase().includes(q))).sort((x,y)=>(x.type==='H'?0:1)-(y.type==='H'?0:1)||x.name.localeCompare(y.name,'th'));if(!L2.length)return;n+=L2.length;
+    o+=`<optgroup label="อ.${esc(a)} (${L2.length})">`+L2.map(h=>`<option value="${h.id}">${esc(hfLabel(h))}${h.tambon&&h.type==='H'?' · ต.'+esc(h.tambon):''}</option>`).join('')+'</optgroup>';});
+  sel.innerHTML=o;if(keep&&HEALTH.some(h=>h.id===keep)&&[...sel.options].some(x=>x.value===keep))sel.value=keep;return n;}
+function siteRender(){const out=document.getElementById('siteOut');if(!out)return;const h=HEALTH.find(x=>x.id===siteCur);
+  if(!h){out.innerHTML='<p class="note">ยังไม่ได้เลือกหน่วยบริการ</p>';if(siteMap){siteMap.remove();siteMap=null;}return;}
+  const R=siteRisk(h),col={crit:'#C62828',warn:'#E08A00',ok:'#2E7D32'},lv=SITE_LV[R.k];
+  const H=siteHist(),days=Object.keys(H).sort().filter(d=>H[d][h.id]!=null).map(d=>[d,H[d][h.id]]);
+  const histHtml=[`สถานะตามเกณฑ์หน่วยบริการของแอปวันนี้: <b>${{crit:'เสี่ยงสูง',warn:'เฝ้าระวัง',ok:'ปกติ'}[R.base.k]}</b>`+(R.base.why.length?' — '+R.base.why.map(esc).join(' · '):''),
+    INUND_AMP.includes(h.amp)?`อ.${esc(h.amp)} เป็นอำเภอที่มีน้ำแช่ขังในเหตุการณ์ครั้งนี้ (ประกาศเขตภัยพิบัติตั้งแต่ 27 ก.ย. 2569)`:`อ.${esc(h.amp)} ไม่ได้อยู่ใน 3 อำเภอที่มีน้ำแช่ขังของเหตุการณ์ครั้งนี้`,
+    days.length>=2?'คะแนนย้อนหลังของจุดนี้: '+days.slice(-10).map(([d,v])=>`${+d.slice(8)}/${+d.slice(5,7)} = <b>${v}</b>`).join(' → '):'คะแนนย้อนหลังของจุดนี้: เริ่มบันทึกวันนี้ ('+R.score+') แอปจะเก็บคะแนนรายวันในเบราว์เซอร์เครื่องนี้ และแสดงแนวโน้มเมื่อมีข้อมูลตั้งแต่ 2 วัน',
+    'ยังไม่มีข้อมูลประวัติน้ำท่วมย้อนหลังหลายปีรายจุดในแอป (ดูชั้น "พื้นที่ท่วมซ้ำซาก" ของ GISTDA ในหน้าแผนที่ประกอบได้)'];
+  out.innerHTML=`<div class="site-top"><div class="site-score ${R.k}"><div style="font-weight:600">${esc(hfLabel(h))}</div><div class="note">${h.tambon?'ต.'+esc(h.tambon)+' ':''}อ.${esc(h.amp)} · ${h.type==='H'?(h.own==='P'?'โรงพยาบาลเอกชน':'โรงพยาบาลรัฐ'):'รพ.สต.'}</div>
+    <div class="n" style="color:${col[R.k]}">${R.score}</div><div class="note">คะแนนความเสี่ยงของจุดนี้ (เต็ม 100)</div><div class="l" style="color:${R.k==='warn'?'#8A5200':col[R.k]}">${lv[0]}</div><div>${lv[1]}</div>
+    <button class="btn" type="button" id="siteGo" style="align-self:center;margin-top:6px">ดูจุดนี้บนแผนที่หลัก</button></div><div id="siteMap" aria-label="แผนที่ตำแหน่งหน่วยบริการ"></div></div>
+   <div class="site-f">${R.F.map(f=>{const r=f.p/f.max,c=r>=.66?col.crit:r>=.33?col.warn:col.ok;return`<div class="sf"><h3>${f.t}<span>${f.p} / ${f.max}</span></h3><div class="sf-bar"><i style="width:${Math.max(3,r*100)}%;background:${c}"></i></div>${f.d.map(x=>`<div>${esc(x)}</div>`).join('')}</div>`}).join('')}
+    <div class="sf hist"><h3>7. ประวัติความเสี่ยงของจุดนี้ <span>แสดงประกอบ ไม่คิดคะแนน</span></h3>${histHtml.map(x=>`<div>${x}</div>`).join('')}</div></div>
+   <p class="note" style="margin:10px 0 0">คะแนน = ผลรวม 6 ด้าน (15+20+25+10+15+15) · 55 ขึ้นไป = โอกาสสูง · 40–54 = เฝ้าระวัง · ต่ำกว่า 40 = โอกาสต่ำ · เป็นการประเมินเบื้องต้นจากข้อมูลที่มีในแอป ไม่ใช่การพยากรณ์รายจุดของหน่วยงาน ระยะห่างแม่น้ำและชายฝั่งเป็นค่าโดยประมาณ และไม่ได้คิดความสูงของพื้นที่ โปรดตรวจสอบหน้างานก่อนตัดสินใจ</p>`;
+  document.getElementById('siteGo').addEventListener('click',()=>{showTab('map');setTimeout(()=>{map.setView([h.lat,h.lng],15);L.popup().setLatLng([h.lat,h.lng]).setContent(`<b>${esc(hfLabel(h))}</b><br>คะแนนความเสี่ยง ${R.score} · ${lv[0]}`).openOn(map);},120);});
+  if(siteMap){siteMap.remove();siteMap=null;}
+  try{siteMap=L.map('siteMap',{scrollWheelZoom:false}).setView([h.lat,h.lng],13);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(siteMap);
+    const pts=[[h.lat,h.lng]];L.marker([h.lat,h.lng],{icon:L.divIcon({className:'',html:`<div class="site-pin" style="background:${col[R.k]}"></div>`,iconSize:[26,26],iconAnchor:[13,26]}),title:h.name,zIndexOffset:900}).addTo(siteMap).bindPopup(`<b>${esc(hfLabel(h))}</b><br>คะแนน ${R.score} · ${lv[0]}`).openPopup();
+    L.circle([h.lat,h.lng],{radius:3000,color:col[R.k],weight:1.5,fillOpacity:.05,dashArray:'6 5'}).addTo(siteMap);
+    if(R.g){pts.push([R.g.lat,R.g.lng]);L.polyline([[h.lat,h.lng],[R.g.lat,R.g.lng]],{color:'#0A56A3',weight:2,dashArray:'4 5'}).addTo(siteMap);L.circleMarker([R.g.lat,R.g.lng],{radius:8,color:'#fff',weight:2,fillColor:col[R.g.k]||'#607D8B',fillOpacity:1}).addTo(siteMap).bindPopup(`<b>จุดวัดระดับน้ำ</b><br>${esc(R.g.name)}<br>${R.g.wl.toFixed(2)} ม. · ${esc(R.g.kt)} · ห่าง ${R.g.d.toFixed(1)} กม.`);}
+    if(R.ps){pts.push([R.ps.st.lat,R.ps.st.lng]);L.polyline([[h.lat,h.lng],[R.ps.st.lat,R.ps.st.lng]],{color:'#5E35B1',weight:2,dashArray:'2 6'}).addTo(siteMap);L.circleMarker([R.ps.st.lat,R.ps.st.lng],{radius:8,color:'#fff',weight:2,fillColor:'#5E35B1',fillOpacity:1}).addTo(siteMap).bindPopup(`<b>สถานีสูบน้ำใกล้สุด</b><br>${esc(R.ps.st.name)}<br>ห่าง ${R.ps.d.toFixed(1)} กม.`);}
+    if(pts.length>1)siteMap.fitBounds(pts,{padding:[40,40],maxZoom:14});setTimeout(()=>siteMap&&siteMap.invalidateSize(),80);}catch(e){}}
+(function(){const sel=document.getElementById('siteSel'),q=document.getElementById('siteQ');if(!sel)return;
+  sel.addEventListener('change',()=>{siteCur=sel.value;try{localStorage.setItem('spk-site',siteCur);}catch(e){}siteRender();});
+  q.addEventListener('input',()=>{siteFill(q.value);const op=[...sel.options].filter(o=>o.value);if(op.length===1){sel.value=op[0].value;siteCur=sel.value;siteRender();}});})();
 /* ---------- clock ---------- */
 function tick(){document.getElementById('clock').textContent=new Date().toLocaleString('th-TH',{timeZone:'Asia/Bangkok',weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})+' น.';}
 
 async function boot(){
   try{const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),4000);const r=await fetch('data.json?t='+Date.now(),{signal:ctl.signal,cache:'no-store'});clearTimeout(to);
     if(r.ok&&applyData(await r.json()))state={stations:clone(DEFAULT_STATIONS),report:clone(DEFAULT_REPORT),canals:clone(DEFAULT_CANALS),history:clone(DEFAULT_HISTORY),edited:null,dataDate:DATA_DATE};}catch(e){}
-  load();fillReport();render();renderCanals();renderBottleneck();tide();tick();loadWl();restoreLayers();analyze();applyGistda();buildLayerMenu();
+  load();fillReport();render();renderCanals();renderBottleneck();tide();tick();loadWl();restoreLayers();analyze();applyGistda();buildLayerMenu();try{siteCur=localStorage.getItem('spk-site')||'';}catch(e){}siteFill('');if(siteCur)document.getElementById('siteSel').value=siteCur;
   let t0=(location.hash||'').slice(1);if(!TABS.includes(t0)){try{t0=localStorage.getItem('spk-tab')||'overview';}catch(e){t0='overview';}}showTab(t0);
   if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 }
