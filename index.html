@@ -4,6 +4,26 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TTM Digital Portal | การแพทย์แผนไทย สสจ.สมุทรปราการ</title>
+<!-- TTM GA4: production portal only; local previews do not send analytics. -->
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+window.ttmAnalyticsEnabled = location.hostname === 'jeerapat2010-cpu.github.io'
+  && location.pathname.startsWith('/my-html-app/');
+if(window.ttmAnalyticsEnabled){
+  gtag('js', new Date());
+  gtag('config', 'G-DT9E54XRZZ', {
+    page_location: location.origin + location.pathname,
+    allow_google_signals: false,
+    allow_ad_personalization_signals: false
+  });
+  var ttmTag = document.createElement('script');
+  ttmTag.async = true;
+  ttmTag.src = 'https://www.googletagmanager.com/gtag/js?id=G-DT9E54XRZZ';
+  document.head.appendChild(ttmTag);
+}
+</script>
+
 <meta name="description" content="ศูนย์รวมระบบและรายงานการแพทย์แผนไทยและการแพทย์ทางเลือก จังหวัดสมุทรปราการ">
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.json">
@@ -913,7 +933,7 @@ html[data-theme="dark"] #newShelf::before{background:linear-gradient(to right,tr
 
   <!-- 📊 สถิติการใช้งาน -->
   <div class="shelf" id="statShelf">
-    <div class="shelf-h"><i class="fas fa-chart-simple"></i> สถิติการใช้งานของฉัน
+    <div class="shelf-h"><i class="fas fa-chart-simple"></i> สถิติการใช้งานเฉพาะเครื่องนี้
       <button class="clr" id="statClear">ล้างสถิติ</button></div>
     <div class="stat-sum" id="statSum"></div>
     <div class="bars" id="statBars"></div>
@@ -2977,7 +2997,7 @@ async function showQR(href,name){
       .catch(()=>{ const t=document.createElement('textarea'); t.value=url; document.body.appendChild(t);
                    t.select(); try{document.execCommand('copy');toast('คัดลอกลิงก์แล้ว','fa-link');}catch(e){} t.remove(); });
   };
-  $('#qrOpen').onclick=()=>location.href=url;
+  $('#qrOpen').onclick=()=>{ window.ttmTrackApp(url,'qr_open'); location.href=url; };
   $('#qrPng').onclick=()=>{
     const dataURL=qrToDataURL(box);
     if(!dataURL) return toast('ยังสร้าง QR ไม่สำเร็จ','fa-circle-exclamation');
@@ -3226,7 +3246,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){ presToggle(false); }
   if(e.key==='ArrowRight'||e.key==='ArrowDown'){ e.preventDefault(); presFocus(presIdx+1); }
   if(e.key==='ArrowLeft'||e.key==='ArrowUp'){ e.preventDefault(); presFocus(presIdx-1); }
-  if(e.key==='Enter'&&presIdx>=0){ const c=presCards()[presIdx]; if(c) location.href=c.getAttribute('href'); }
+  if(e.key==='Enter'&&presIdx>=0){ const c=presCards()[presIdx]; if(c){ e.preventDefault(); window.ttmTrackApp(c.getAttribute('href'),'presentation'); location.href=c.getAttribute('href'); } }
 });
 
 /* ============ E. เอฟเฟกต์ภาพ ============ */
@@ -3718,7 +3738,7 @@ const KB = [
    a:[{l:'🕐 เปิดไทม์ไลน์',do:'timeline'}] },
 
  { k:['สถิติ','ใช้บ่อย','กราฟ','ประวัติ','เปิดกี่ครั้ง'],
-   t:'มีสถิติการใช้งานส่วนตัวค่ะ 📊<br>แถบ <b>“สถิติการใช้งานของฉัน”</b> จะบอกว่าเดือนนี้เปิดไปกี่ครั้ง ใช้กี่ระบบ และ Top 5 ที่เปิดบ่อยที่สุดพร้อมกราฟ กดจากตรงนั้นไปได้เลย<br><small>เก็บในเครื่องของแต่ละคน ไม่มีใครเห็นข้อมูลของเราค่ะ</small>' },
+   t:'มีสถิติการใช้งานส่วนตัวค่ะ 📊<br>แถบ <b>“สถิติการใช้งานเฉพาะเครื่องนี้”</b> จะบอกว่าเดือนนี้เปิดไปกี่ครั้ง ใช้กี่ระบบ และ Top 5 ที่เปิดบ่อยที่สุดพร้อมกราฟ กดจากตรงนั้นไปได้เลย<br><small>เก็บในเครื่องของแต่ละคน ไม่มีใครเห็นข้อมูลของเราค่ะ</small>' },
 
  { k:['ลิงก์เสีย','เปิดไม่ได้','404','ตรวจสอบลิงก์','ลิงก์ใช้ไม่ได้','error'],
    t:'ตรวจสอบลิงก์เสียได้ค่ะ 🔗<br>กดปุ่ม<b>รูปโซ่</b>บนแถบเครื่องมือ → ระบบจะไล่เช็กทุกลิงก์ แล้วรายงานว่าอันไหนเปิดไม่ได้ พร้อมปุ่มคัดลอกรายการไปแก้',
@@ -4015,5 +4035,51 @@ countUp($('#nApp'),$$('.cat .card').length,1300);
       const t = setInterval(() => { counterElement.innerText = (++s).toLocaleString(); if (s >= c) clearInterval(t); }, 30);
   }
 </script>
+
+<!-- Counts portal selections, not confirmed destination page loads. -->
+<script>
+(function(){
+  const apps = new Map();
+  function pathFor(href){
+    try { const u=new URL(href,location.href); return u.origin+u.pathname; }
+    catch(e){ return ''; }
+  }
+  document.querySelectorAll('.cat .card[href]').forEach(function(card){
+    const path=pathFor(card.getAttribute('href'));
+    if(path && !apps.has(path)) apps.set(path, {
+      app_name: (card.dataset.name || card.textContent.trim()).slice(0,100),
+      app_path: new URL(path).pathname.slice(0,100),
+      app_category: card.dataset.cat || 'other'
+    });
+  });
+  window.ttmTrackApp=function(href,source){
+    const app=apps.get(pathFor(href));
+    if(!window.ttmAnalyticsEnabled || !app) return;
+    gtag('event','app_click',Object.assign({},app,{
+      click_source: source || 'portal',
+      send_to: 'G-DT9E54XRZZ',
+      transport_type: 'beacon'
+    }));
+  };
+  function trackLink(e){
+    if(e.type==='auxclick' && e.button!==1) return;
+    if(e.type==='click' && e.button!==0) return;
+    const target=e.target.closest ? e.target : e.target.parentElement;
+    if(!target || target.closest('.fav, button, [role="button"]')) return;
+    const a=target.closest('a[href]');
+    if(!a || a.hasAttribute('download')) return;
+    const source=a.closest('#favShelf') ? 'favorites'
+      : a.closest('#recShelf') ? 'recent'
+      : a.closest('#pal') ? 'search'
+      : a.closest('#statShelf') ? 'local_stats'
+      : a.closest('#tl') ? 'timeline'
+      : a.closest('#ai') ? 'assistant' : 'portal';
+    window.ttmTrackApp(a.getAttribute('href'),source);
+  }
+  document.addEventListener('click',trackLink,true);
+  document.addEventListener('auxclick',trackLink,true);
+})();
+</script>
+
 </body>
 </html>
