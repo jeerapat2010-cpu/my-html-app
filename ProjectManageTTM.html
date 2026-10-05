@@ -579,6 +579,7 @@ function loadDB(){
     if(raw){ DB = JSON.parse(raw); hadStoredData = true; }
     else{ DB = seedData(); }
   }catch(e){ DB = seedData(); }
+  if(!DB.fiscalYears) DB.fiscalYears=[];
   if(!DB.tasks) DB.tasks=[];
   if(!DB.evaluations) DB.evaluations=[];
   if(!DB.trash) DB.trash=[];
@@ -587,9 +588,61 @@ function loadDB(){
   if(!DB.expenseRateCard || !DB.expenseRateCard.length) DB.expenseRateCard=defaultExpenseRateCard();
   if(!DB.strategicGoals) DB.strategicGoals=[];
   if(DB.currentUserName===undefined) DB.currentUserName='';
-  purgeOldTrash();
   window.__versionMismatch = hadStoredData && DB.meta && DB.meta.version !== APP_VERSION;
   window.__storedVersion = hadStoredData ? (DB.meta && DB.meta.version) : null;
+  /* นำเข้าโครงการที่ขาดหายไปโดยอัตโนมัติ (เช่น ข้อมูลปีงบประมาณใหม่ที่เพิ่งเพิ่มเข้ามาในไฟล์เวอร์ชันล่าสุด)
+     แม้ว่าเบราว์เซอร์จะมีข้อมูลเก่าบันทึกไว้อยู่ก่อนแล้วและผู้ใช้เลือก "ใช้ข้อมูลเดิมต่อไป" ในกล่องแจ้งเตือนเวอร์ชัน ก็ตาม */
+  if(hadStoredData){
+    window.__autoImportedCount = backfillSeedProjects();
+  }
+  purgeOldTrash();
+}
+/* เทียบ "ปีงบประมาณ" ที่มีอยู่ในชุดข้อมูลตั้งต้น (seedData) กับข้อมูลที่โหลดจากเบราว์เซอร์ผู้ใช้
+   ปีงบประมาณใดที่ชุดข้อมูลตั้งต้นมีโครงการอยู่ แต่ข้อมูลที่บันทึกไว้ในเบราว์เซอร์ไม่มีโครงการของปีนั้นเลย (เช่น เพิ่งเพิ่มปีงบใหม่เข้ามาในไฟล์เวอร์ชันล่าสุด)
+   จะคัดลอกโครงการ+งานย่อยของปีนั้นทั้งหมดเข้าไปให้อัตโนมัติ พร้อมปรับ categoryId/ownerPersonId/assigneeId ให้ตรงกับรายการหมวดหมู่/บุคลากรที่มีอยู่จริงในข้อมูลผู้ใช้ (จับคู่ด้วยชื่อ)
+   หมายเหตุ: จงใจเทียบเป็น "ทั้งปี" ไม่ใช่รายโครงการ เพื่อไม่ให้ไปทับหรือเพิ่มซ้ำโครงการที่ผู้ใช้เคยแก้ไข/เปลี่ยนชื่อไว้แล้วในปีที่มีข้อมูลอยู่ก่อน */
+function backfillSeedProjects(){
+  try{
+    const seed = seedData();
+    const existingYears = new Set((DB.projects||[]).map(p=>p.year));
+    const seedYears = new Set((seed.projects||[]).map(p=>p.year));
+    const missingYears = [...seedYears].filter(y=> !existingYears.has(y));
+    if(!missingYears.length) return 0;
+
+    const seedCatNameById = {}; (seed.categories||[]).forEach(c=> seedCatNameById[c.id]=c.name);
+    const seedPersonNameById = {}; (seed.personnel||[]).forEach(p=> seedPersonNameById[p.id]=p.name);
+    const catIdByName = {}; (DB.categories||[]).forEach(c=> catIdByName[c.name]=c.id);
+    const personIdByName = {}; (DB.personnel||[]).forEach(p=> personIdByName[p.name]=p.id);
+
+    const missingProjects = (seed.projects||[]).filter(p=> missingYears.includes(p.year));
+    if(!missingProjects.length) return 0;
+
+    missingProjects.forEach(p=>{
+      const catName = seedCatNameById[p.categoryId];
+      if(catName && catIdByName[catName]) p.categoryId = catIdByName[catName];
+      const ownerName = seedPersonNameById[p.ownerPersonId];
+      if(ownerName && personIdByName[ownerName]) p.ownerPersonId = personIdByName[ownerName];
+    });
+    const addedProjIds = new Set(missingProjects.map(p=>p.id));
+    if(!DB.projects) DB.projects=[];
+    DB.projects.push(...missingProjects);
+
+    const missingTasks = (seed.tasks||[]).filter(t=> addedProjIds.has(t.projectId));
+    missingTasks.forEach(t=>{
+      const assigneeName = seedPersonNameById[t.assigneeId];
+      if(assigneeName && personIdByName[assigneeName]) t.assigneeId = personIdByName[assigneeName];
+    });
+    if(!DB.tasks) DB.tasks=[];
+    DB.tasks.push(...missingTasks);
+
+    (seed.fiscalYears||[]).forEach(y=>{ if(!DB.fiscalYears.includes(y)) DB.fiscalYears.push(y); });
+    DB.fiscalYears.sort((a,b)=>a-b);
+
+    if(!DB.auditLog) DB.auditLog=[];
+    DB.auditLog.unshift({ id: uid('log'), action:'นำเข้าข้อมูลอัตโนมัติ', detail:`เพิ่มโครงการของปีงบประมาณ ${missingYears.join(', ')} ที่ขาดหายไป รวม ${missingProjects.length} โครงการ (${missingTasks.length} งานย่อย) จากชุดข้อมูลเวอร์ชัน ${APP_VERSION} เข้าสู่ข้อมูลที่บันทึกไว้ในเบราว์เซอร์นี้โดยอัตโนมัติ`, actor:'ระบบ (อัตโนมัติ)', at:new Date().toISOString() });
+    saveDB();
+    return missingProjects.length;
+  }catch(e){ return 0; }
 }
 function purgeOldTrash(){
   if(!DB.trash || !DB.trash.length) return;
@@ -3441,9 +3494,13 @@ function drawPerfChart(){
 loadDB();
 render();
 if(window.__versionMismatch){
+  const importedNote = window.__autoImportedCount>0
+    ? `<p class="small-muted">✅ ระบบตรวจพบและนำเข้าโครงการที่ขาดหายไปให้อัตโนมัติแล้ว ${window.__autoImportedCount} โครงการ (เช่น โครงการปีงบประมาณใหม่ที่เพิ่มเข้ามาในไฟล์นี้) ข้อมูลเดิมที่พี่จีเคยแก้ไขไว้ยังอยู่ครบ ไม่จำเป็นต้องล้างข้อมูลก็ได้</p>`
+    : '';
   setTimeout(()=>{
     openModal('พบข้อมูลเก่าเวอร์ชันอื่นในเบราว์เซอร์นี้', `
       <p>ข้อมูลที่บันทึกไว้ในเบราว์เซอร์นี้เป็นเวอร์ชัน <b>${escapeHtml(window.__storedVersion||'-')}</b> แต่ไฟล์ที่เปิดอยู่ตอนนี้เป็นเวอร์ชัน <b>${APP_VERSION}</b></p>
+      ${importedNote}
       <p class="small-muted">ถ้าเพิ่งได้ไฟล์ใหม่มา (มีโครงการ/ฟีเจอร์เพิ่มเติม) แนะนำให้ล้างข้อมูลเพื่อโหลดชุดล่าสุด แต่ถ้าพี่จีเคยแก้ไขข้อมูลไว้ในเบราว์เซอร์นี้แล้ว การล้างจะทำให้ข้อมูลที่แก้ไขหายไป — แนะนำกด "ส่งออกสำรอง" ก่อนทุกครั้ง</p>
     `, `
       <button class="btn btn-ghost" onclick="closeModal()">ใช้ข้อมูลเดิมต่อไป</button>
@@ -3451,6 +3508,8 @@ if(window.__versionMismatch){
       <button class="btn btn-primary" onclick="resetAllData();closeModal();">♻️ ล้างข้อมูล &amp; โหลดชุดใหม่</button>
     `);
   }, 400);
+} else if(window.__autoImportedCount>0){
+  setTimeout(()=>{ showToast(`✅ นำเข้าโครงการปีงบประมาณใหม่ให้อัตโนมัติ ${window.__autoImportedCount} โครงการ`); }, 400);
 }
 </script>
 </body>
