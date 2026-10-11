@@ -245,7 +245,7 @@ textarea.input{resize:vertical; min-height:70px;}
    ========================================================================= */
 
 const STORAGE_KEY = 'thaimed_ops_v1';
-const APP_VERSION = 'v3.17';
+const APP_VERSION = 'v3.18';
 const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const FY_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
 const STATUS_LIST = [
@@ -368,7 +368,7 @@ function seedData(){
   /* โครงการปีงบประมาณ 2570 นำเข้าจากไฟล์ร่าง_แผนปฏิบัติการแผนไทย70_V2.xlsx */
   const proj17=uid('proj'), proj18=uid('proj'), proj19=uid('proj'), proj20=uid('proj'), proj21=uid('proj'), proj22=uid('proj'), proj23=uid('proj'), proj24=uid('proj'), proj25=uid('proj'), proj26=uid('proj'), proj27=uid('proj'), proj28=uid('proj'), proj29=uid('proj'), proj30=uid('proj'), proj31=uid('proj');
   return {
-    meta:{ org:'สำนักงานสาธารณสุขจังหวัดสมุทรปราการ', group:'กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก', version:'v3.17' },
+    meta:{ org:'สำนักงานสาธารณสุขจังหวัดสมุทรปราการ', group:'กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก', version:'v3.18' },
     currentYear: 2569,
     fiscalYears:[2567,2568,2569,2570,2571],
     categories:[
@@ -1076,6 +1076,7 @@ function renderSidebar(){
       ${navGroupItem('system', trashN)}
     </div>
     <div class="sidebar-foot">
+      <button class="btn btn-ghost btn-sm" style="width:100%;margin-bottom:8px;color:#fff;border-color:rgba(255,255,255,.3);" onclick="lockNow()">🔒 ล็อกหน้าจอ</button>
       จัดทำโดย ภก.จีรภัทร พลายงาม · 21 สิงหาคม 2569<br>ระบบ ${DB.meta.version} · ข้อมูลเก็บในเครื่องนี้ (Local Storage)
     </div>
   </div>`;
@@ -3864,6 +3865,11 @@ function viewSettings(){
   return `
   <div class="grid grid-2">
     <div class="card card-pad">
+      <div class="card-title" style="margin-bottom:8px;">🔒 รหัสผ่านเข้าระบบ</div>
+      <div class="small-muted" style="margin-bottom:10px;">ระบบขอรหัสผ่านทุกครั้งที่เปิดแท็บใหม่ (รหัสเริ่มต้น 8888) · เป็นการล็อกหน้าจอเพื่อกันผู้อื่นเปิดดู ไม่ใช่การเข้ารหัสข้อมูล</div>
+      <button class="btn btn-ghost btn-sm" onclick="openChangePasswordForm()">เปลี่ยนรหัสผ่าน</button> <button class="btn btn-ghost btn-sm" onclick="lockNow()">🔒 ล็อกตอนนี้</button>
+    </div>
+    <div class="card card-pad">
       <div class="card-title" style="margin-bottom:12px;">ปีงบประมาณ</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
         ${DB.fiscalYears.slice().sort((a,b)=>a-b).map(y=>`<span class="tag-chip">${y} ${DB.fiscalYears.length>1?`<button class="icon-btn" style="width:18px;height:18px;border:none;font-size:10px;" onclick="removeFY(${y})">✕</button>`:''}</span>`).join('')}
@@ -4793,7 +4799,66 @@ function drawPerfChart(){
 /* =========================================================================
    Init
    ========================================================================= */
+/* =========================================================================
+   หน้าล็อกรหัสผ่าน (v3.18) — รหัสเริ่มต้น 8888, เปลี่ยนได้ที่เมนูตั้งค่า
+   หมายเหตุ: เป็นการล็อกหน้าจอในเบราว์เซอร์เพื่อกันคนทั่วไปเปิดดู ไม่ใช่การเข้ารหัสข้อมูล
+   (ข้อมูลยังอยู่ใน Local Storage ของเครื่องนี้ และไฟล์ HTML เปิดอ่านโค้ดได้)
+   ========================================================================= */
+const LOCK_DEFAULT_HASH = (function(){ return lockHash('8888'); })();
+function lockHash(str){
+  let h1=0xdeadbeef^7, h2=0x41c6ce57^7; str='tm70|'+String(str);
+  for(let i=0,ch;i<str.length;i++){ ch=str.charCodeAt(i); h1=Math.imul(h1^ch,2654435761); h2=Math.imul(h2^ch,1597334677); }
+  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+  h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+  return (4294967296*(2097151&h2)+(h1>>>0)).toString(36);
+}
+function lockCurrentHash(){ return (DB && DB.security && DB.security.pwHash) || LOCK_DEFAULT_HASH; }
+function isUnlocked(){ try{ return sessionStorage.getItem('thaimed_unlocked')==='1'; }catch(e){ return !!window.__unlockedMem; } }
+function setUnlocked(v){ window.__unlockedMem=v; try{ if(v) sessionStorage.setItem('thaimed_unlocked','1'); else sessionStorage.removeItem('thaimed_unlocked'); }catch(e){} }
+function showLockScreen(){
+  if(document.getElementById('lockScreen')) return;
+  const app=document.getElementById('app'); if(app) app.style.display='none';
+  const d=document.createElement('div'); d.id='lockScreen';
+  d.style.cssText='position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0F3D2A,#146C43);font-family:inherit;padding:16px;';
+  d.innerHTML=`<div style="background:#fff;border-radius:18px;padding:30px 28px;width:100%;max-width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);">
+    <div style="font-size:42px;">🔒</div>
+    <div style="font-weight:700;font-size:16px;margin:6px 0 2px;color:#0F3D2A;">ระบบบริหารแผนงานโครงการและบุคลากร</div>
+    <div style="font-size:12px;color:#6B7D73;margin-bottom:16px;">กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สสจ.สมุทรปราการ</div>
+    <input id="lockInput" type="password" inputmode="numeric" autocomplete="off" placeholder="กรอกรหัสผ่าน" style="width:100%;box-sizing:border-box;padding:12px 14px;font-size:18px;text-align:center;letter-spacing:6px;border:1.5px solid #CFE3D8;border-radius:10px;outline:none;">
+    <div id="lockMsg" style="min-height:20px;font-size:12.5px;color:#B02A2A;margin:8px 0;"></div>
+    <button id="lockBtn" style="width:100%;padding:12px;border:0;border-radius:10px;background:#146C43;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">เข้าสู่ระบบ</button>
+  </div>`;
+  document.body.appendChild(d);
+  const inp=d.querySelector('#lockInput'), msg=d.querySelector('#lockMsg');
+  let fails=0, until=0;
+  const tryUnlock=()=>{
+    const now=Date.now(); if(now<until){ msg.textContent=`ลองใหม่อีก ${Math.ceil((until-now)/1000)} วินาที`; return; }
+    if(lockHash(inp.value)===lockCurrentHash()){ setUnlocked(true); d.remove(); if(app) app.style.display=''; }
+    else{ fails++; inp.value=''; msg.textContent='รหัสผ่านไม่ถูกต้อง'; if(fails>=5){ until=Date.now()+15000; fails=0; msg.textContent='ใส่ผิดหลายครั้ง กรุณารอ 15 วินาที'; } inp.focus(); }
+  };
+  d.querySelector('#lockBtn').addEventListener('click', tryUnlock);
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter') tryUnlock(); });
+  setTimeout(()=>inp.focus(),50);
+}
+function lockNow(){ setUnlocked(false); showLockScreen(); }
+function openChangePasswordForm(){
+  openModal('เปลี่ยนรหัสผ่าน', `
+    <div class="form-row"><label>รหัสผ่านปัจจุบัน</label><input class="input" type="password" id="pw_old" autocomplete="off"></div>
+    <div class="form-row"><label>รหัสผ่านใหม่ (อย่างน้อย 4 ตัว)</label><input class="input" type="password" id="pw_new" autocomplete="off"></div>
+    <div class="form-row"><label>ยืนยันรหัสผ่านใหม่</label><input class="input" type="password" id="pw_new2" autocomplete="off"></div>
+    <div class="small-muted">หากลืมรหัสที่เปลี่ยนไว้ ให้ล้างข้อมูลเบราว์เซอร์ (จะกลับเป็น 8888 แต่ข้อมูลหาย) จึงควรส่งออกสำรองไว้เสมอ</div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="saveNewPassword()">💾 บันทึก</button>`);
+}
+function saveNewPassword(){
+  const o=document.getElementById('pw_old').value, n=document.getElementById('pw_new').value, n2=document.getElementById('pw_new2').value;
+  if(lockHash(o)!==lockCurrentHash()){ showToast('รหัสผ่านปัจจุบันไม่ถูกต้อง'); return; }
+  if(n.length<4){ showToast('รหัสผ่านใหม่ต้องมีอย่างน้อย 4 ตัว'); return; }
+  if(n!==n2){ showToast('ยืนยันรหัสผ่านไม่ตรงกัน'); return; }
+  DB.security={pwHash:lockHash(n)}; logAction('เปลี่ยนรหัสผ่าน',''); saveDB(); closeModal(); showToast('เปลี่ยนรหัสผ่านเรียบร้อย');
+}
+
 loadDB();
+if(!isUnlocked()) showLockScreen();
 render();
 if(window.__versionMismatch){
   const noteLines = [];
