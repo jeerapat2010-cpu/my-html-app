@@ -245,7 +245,7 @@ textarea.input{resize:vertical; min-height:70px;}
    ========================================================================= */
 
 const STORAGE_KEY = 'thaimed_ops_v1';
-const APP_VERSION = 'v3.15';
+const APP_VERSION = 'v3.17';
 const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const FY_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
 const STATUS_LIST = [
@@ -368,7 +368,7 @@ function seedData(){
   /* โครงการปีงบประมาณ 2570 นำเข้าจากไฟล์ร่าง_แผนปฏิบัติการแผนไทย70_V2.xlsx */
   const proj17=uid('proj'), proj18=uid('proj'), proj19=uid('proj'), proj20=uid('proj'), proj21=uid('proj'), proj22=uid('proj'), proj23=uid('proj'), proj24=uid('proj'), proj25=uid('proj'), proj26=uid('proj'), proj27=uid('proj'), proj28=uid('proj'), proj29=uid('proj'), proj30=uid('proj'), proj31=uid('proj');
   return {
-    meta:{ org:'สำนักงานสาธารณสุขจังหวัดสมุทรปราการ', group:'กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก', version:'v3.15' },
+    meta:{ org:'สำนักงานสาธารณสุขจังหวัดสมุทรปราการ', group:'กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก', version:'v3.17' },
     currentYear: 2569,
     fiscalYears:[2567,2568,2569,2570,2571],
     categories:[
@@ -608,6 +608,9 @@ function loadDB(){
     window.__autoCodeFilledCount = backfillProjectCodes();
     window.__autoSourceFixedCount = normalizeFY70BudgetSources();
   }
+  window.__autoOKRCount = ensureOKRData();
+  window.__autoCarbonCount = ensureCarbonData();
+  window.__autoCoOwnerCount = backfillCoOwners();
   purgeOldTrash();
 }
 /* เติม "รหัสโครงการ" (8 หลัก) ให้กับโครงการที่มีอยู่แล้วในเบราว์เซอร์ของผู้ใช้ แต่ยังไม่มีรหัส
@@ -817,6 +820,15 @@ const NAV_GROUPS = {
     {route:'evaluation', label:'ประเมินผลงาน'},
     {route:'heatmap', label:'ภาระงาน (Heatmap)'},
   ]},
+  okr: {label:'OKR', icon:'🎯', tabs:[
+    {route:'okr', label:'ติดตาม OKR รายกิจกรรม'},
+    {route:'okrperson', label:'OKR รายบุคคล (เชื่อมประเมิน)'},
+  ]},
+  carbon: {label:'Carbon Footprint', icon:'🌱', tabs:[
+    {route:'carbon', label:'แผน & เป้าลดคาร์บอน'},
+    {route:'carbonlog', label:'บันทึกการปล่อยจริง'},
+    {route:'carbonef', label:'ค่า EF / ค่าสมมติ'},
+  ]},
   system: {label:'ระบบ', icon:'⚙️', tabs:[
     {route:'trash', label:'ถังขยะ'},
     {route:'auditlog', label:'ประวัติการแก้ไข'},
@@ -843,6 +855,25 @@ function getPersonNames(ids){
   return names.length? names.join(', ') : '— ไม่ระบุ —';
 }
 function projectOwnerNames(p){ return getPersonNames(projectOwnerIds(p)); }
+/* ---- บทบาท: ผู้รับผิดชอบหลัก = คนแรกใน ownerPersonIds, ผู้รับผิดชอบร่วม = คนถัดไป ---- */
+function projectRoleOf(p,id){ const o=projectOwnerIds(p); const i=o.indexOf(id); return i<0?null:(i===0?'primary':'co'); }
+function roleLabel(r){ return r==='primary'?'รับผิดชอบหลัก':r==='co'?'รับผิดชอบร่วม':'ไม่ระบุระดับ'; }
+function personRoleProjects(id, year){
+  const list=DB.projects.filter(p=>!year || p.year===year);
+  return {primary:list.filter(p=>projectRoleOf(p,id)==='primary'), co:list.filter(p=>projectRoleOf(p,id)==='co')};
+}
+/* งานย่อยของคนนั้น แยกตามบทบาทในโครงการ: เป็นหลักของโครงการ = หลัก, นอกนั้น (เป็นร่วม/ช่วยงาน) = ร่วม */
+function personRoleTasks(id, year){
+  const pids=new Set(DB.projects.filter(p=>!year||p.year===year).map(p=>p.id));
+  const mine=DB.tasks.filter(t=>t.assigneeId===id && pids.has(t.projectId));
+  const primary=mine.filter(t=>projectRoleOf(getProject(t.projectId),id)==='primary');
+  const co=mine.filter(t=>projectRoleOf(getProject(t.projectId),id)!=='primary');
+  return {primary, co, all:mine};
+}
+function evalByLevel(personId, level){
+  return DB.evaluations.filter(e=>e.personId===personId && (level==='none'? !e.level : e.level===level)).sort((a,b)=>String(b.evaluatedAt).localeCompare(String(a.evaluatedAt)));
+}
+function levelBadge(l){ const c=l==='primary'?['#E1F5E9','#0F7A45']:l==='co'?['#E3F1FB','#1D5F94']:['#EEF1EF','#5C6B63']; return `<span class="badge" style="background:${c[0]};color:${c[1]};">${l==='primary'?'ระดับหลัก':l==='co'?'ระดับร่วม':'ไม่ระบุระดับ'}</span>`; }
 /* ---- งบผสม (โครงการที่ใช้เงินมากกว่า 1 แหล่ง) ----
    p.budgetSplit = [{source, amount, items?:[{name,amount}]}] เป็นฟิลด์ทางเลือก — ถ้าไม่มี = ใช้ budgetSource + budgetAmount ทั้งก้อนตามเดิม
    p.budgetSource ยังคงเป็น "แหล่งหลัก" (แหล่งที่ใช้เงินมากกว่า) เพื่อกำหนดรหัสโครงการและให้เข้ากันได้กับโค้ดเดิม */
@@ -1037,6 +1068,10 @@ function renderSidebar(){
       <div class="nav-leg"><span class="dot" style="background:#8FC4E8"></span>PART 2 · บริหารบุคลากร</div>
       ${navGroupItem('people')}
 
+      <div class="nav-leg"><span class="dot" style="background:#E3B341"></span>PART 3 · ผลลัพธ์ &amp; สิ่งแวดล้อม</div>
+      ${navGroupItem('okr')}
+      ${navGroupItem('carbon')}
+
       <div class="nav-group-label">ระบบ</div>
       ${navGroupItem('system', trashN)}
     </div>
@@ -1066,6 +1101,11 @@ function pageTitleFor(route){
     people:['บุคลากรทั้งหมด','ทำเนียบบุคลากรกลุ่มงานและภาระงาน'],
     performance:['ผลงานรายบุคคล','เปรียบเทียบผลงานและภาระงานของบุคลากร'],
     heatmap:['ภาระงานบุคลากร (Heatmap)','ดูความหนาแน่นของภาระงานแต่ละคนรายเดือน เพื่อกระจายงานได้เหมาะสม'],
+    okr:['OKR รายกิจกรรม','ติดตามเป้าหมายและผลลัพธ์สำคัญ (O/KR) เช็คอินรายไตรมาส เทียบกับกำหนดเวลา'],
+    okrperson:['OKR รายบุคคล','สรุปคะแนน OKR ของแต่ละคน เพื่อประกอบการประเมินผลงานบุคคล'],
+    carbon:['Carbon Footprint — แผนและเป้าหมาย','ประมาณการก๊าซเรือนกระจกของแผนงาน มาตรการลดคาร์บอน และเทียบกับการปล่อยจริง'],
+    carbonlog:['บันทึกการปล่อยจริง','บันทึกเลขไมล์รถ น้ำมัน บิลค่าไฟ เพื่อคำนวณ kgCO2e จริงของแต่ละกิจกรรม'],
+    carbonef:['ค่า EF / ค่าสมมติ','ค่าสัมประสิทธิ์การปล่อยและข้อสมมติที่ใช้คำนวณทั้งระบบ'],
     evaluation:['ประเมินผลงาน','บันทึกและติดตามผลการประเมินผลงานรายบุคคล'],
     settings:['ตั้งค่า / นำเข้า-ส่งออก','จัดการปีงบประมาณ หมวดหมู่ แหล่งงบ และสำรองข้อมูล'],
     trash:['ถังขยะ','กู้คืนหรือลบถาวรรายการที่ถูกลบ (เก็บไว้ 7 วัน)'],
@@ -1117,6 +1157,11 @@ function renderRoute(){
     case 'performance': return viewPerformance();
     case 'heatmap': return viewResourceHeatmap();
     case 'evaluation': return viewEvaluation();
+    case 'okr': return viewOKR();
+    case 'okrperson': return viewOKRPerson();
+    case 'carbon': return viewCarbon();
+    case 'carbonlog': return viewCarbonLog();
+    case 'carbonef': return viewCarbonEF();
     case 'settings': return viewSettings();
     case 'trash': return viewTrash();
     case 'auditlog': return viewAuditLog();
@@ -1262,8 +1307,12 @@ function viewDashboard(){
       <canvas id="chartBudgetSource" height="200"></canvas>
     </div>
     <div class="card card-pad">
-      <div class="card-title" style="margin-bottom:10px;">ภาระงานรายบุคคล (จำนวนงานย่อย)</div>
+      <div class="card-title" style="margin-bottom:4px;">ภาระงานรายบุคคล — รับผิดชอบหลัก / ร่วม</div>
+      <div class="small-muted" style="margin-bottom:6px;">แท่งกราฟ = จำนวนงานย่อย · ตาราง = จำนวนโครงการ (ปีงบ ${DB.currentYear})</div>
       <canvas id="chartWorkload" height="200"></canvas>
+      <div class="tbl-wrap" style="margin-top:10px;"><table style="font-size:12px;"><thead><tr><th>บุคลากร</th><th style="text-align:center">โครงการ<br>หลัก</th><th style="text-align:center">โครงการ<br>ร่วม</th><th style="text-align:center">งานย่อย<br>หลัก</th><th style="text-align:center">งานย่อย<br>ร่วม</th></tr></thead><tbody>
+        ${DB.personnel.map(p=>{ const rp=personRoleProjects(p.id,DB.currentYear), rt=personRoleTasks(p.id,DB.currentYear); return `<tr><td>${escapeHtml(p.name.replace(/^(นางสาว|นาง|นาย)/,''))}</td><td style="text-align:center;font-weight:700;color:#0F7A45;">${rp.primary.length}</td><td style="text-align:center;font-weight:700;color:#1D5F94;">${rp.co.length}</td><td style="text-align:center;">${rt.primary.length}</td><td style="text-align:center;">${rt.co.length}</td></tr>`; }).join('')}
+      </tbody></table></div>
     </div>
   </div>
 
@@ -1319,10 +1368,12 @@ function viewDashboard(){
       const avgW = DB.personnel.length? (totalW/DB.personnel.length).toFixed(1) : '0';
       const evals = DB.evaluations.filter(e=>e.year===DB.currentYear);
       const avgEval = evals.length? (evals.reduce((s,e)=>s+evalOverall(e),0)/evals.length).toFixed(1) : null;
+      const avgLv=l=>{ const x=evals.filter(e=>e.level===l); return x.length? (x.reduce((s,e)=>s+evalOverall(e),0)/x.length).toFixed(1) : '-'; };
       return `<div class="card card-pad">
         <div style="font-weight:700;color:var(--g-900);margin-bottom:8px;">👥 มุมบุคลากร</div>
         <div class="small-muted">ภาระงานเฉลี่ย/คน/ปี</div><div style="font-size:20px;font-weight:700;">${avgW}</div>
         <div class="small-muted" style="margin-top:6px;">คะแนนประเมินเฉลี่ย ${avgEval? avgEval+' / 5' : '- ยังไม่มีการประเมิน'}</div>
+        <div class="small-muted">ระดับหลัก ${avgLv('primary')} · ระดับร่วม ${avgLv('co')}</div>
       </div>`;
     })()}
     ${(()=>{
@@ -3424,17 +3475,21 @@ function viewPeople(){
   <div class="grid grid-3">
     ${DB.personnel.map(p=>{
       const myTasks=DB.tasks.filter(t=>t.assigneeId===p.id);
-      const myProjects=DB.projects.filter(pr=>projectOwnerIds(pr).includes(p.id) && pr.year===DB.currentYear);
+      const rp=personRoleProjects(p.id,DB.currentYear);
+      const myProjects=rp.primary.concat(rp.co);
       const done=myTasks.filter(t=>t.status==='done').length;
+      const evP=evalByLevel(p.id,'primary')[0], evC=evalByLevel(p.id,'co')[0];
       return `<div class="card person-card" onclick="viewPersonPage('${p.id}')">
         <div class="avatar" style="background:${colorForId(p.id)}">${initials(p.name)}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-weight:700;font-size:14px;">${escapeHtml(p.name)}</div>
           <div class="small-muted" style="margin-bottom:8px;">${escapeHtml(p.position)}</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <span class="tag-chip">📁 ${myProjects.length} โครงการ</span>
+            <span class="tag-chip" style="background:#E1F5E9;color:#0F7A45;">📁 หลัก ${rp.primary.length}</span>
+            <span class="tag-chip" style="background:#E3F1FB;color:#1D5F94;">🤝 ร่วม ${rp.co.length}</span>
             <span class="tag-chip">✅ ${done}/${myTasks.length} งานย่อย</span>
           </div>
+          <div class="small-muted" style="margin-top:6px;">⭐ ประเมินล่าสุด: หลัก ${evP?evalOverall(evP).toFixed(1):'-'} · ร่วม ${evC?evalOverall(evC).toFixed(1):'-'}</div>
         </div>
       </div>`;
     }).join('') || `<div class="empty-state">ยังไม่มีข้อมูลบุคลากร</div>`}
@@ -3444,9 +3499,14 @@ function viewPersonPage(id){ UI.route='people'; UI.personDetailId=id; render(); 
 function viewPersonDetail(id){
   const p=getPerson(id); if(!p){ UI.personDetailId=null; return viewPeople(); }
   const myTasks=DB.tasks.filter(t=>t.assigneeId===id);
-  const myProjects=DB.projects.filter(pr=>projectOwnerIds(pr).includes(id));
+  const rpAll=personRoleProjects(id);
+  const myProjects=rpAll.primary.concat(rpAll.co);
   const done=myTasks.filter(t=>t.status==='done').length;
   const evals=DB.evaluations.filter(e=>e.personId===id).sort((a,b)=>b.evaluatedAt.localeCompare(a.evaluatedAt));
+  const evLv=l=>evalByLevel(id,l)[0];
+  const projRows=list=>list.length? list.map(pr=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer" onclick="openProjectDetail('${pr.id}')">
+        <div><b>${escapeHtml(pr.name)}</b><div class="small-muted">ปีงบ ${pr.year}${pr.projectCode?' · '+escapeHtml(pr.projectCode):''}${projectOwnerIds(pr).length>1?' · ผู้รับผิดชอบทั้งหมด: '+escapeHtml(projectOwnerNames(pr)):''}</div></div><span class="badge ${statusObj(pr.status).cls}">${statusObj(pr.status).label}</span>
+      </div>`).join('') : '<div class="small-muted">— ไม่มี —</div>';
   return `
   <button class="btn btn-ghost btn-sm" style="margin-bottom:14px;" onclick="UI.personDetailId=null;render()">← กลับไปหน้าบุคลากร</button>
   <div class="card card-pad" style="display:flex;gap:16px;align-items:center;margin-bottom:16px;">
@@ -3459,18 +3519,19 @@ function viewPersonDetail(id){
     <button class="btn btn-danger btn-sm" onclick="deletePerson('${p.id}')">ลบ</button>
   </div>
   <div class="grid grid-4">
-    ${kpiCard('📁','โครงการที่รับผิดชอบ (ทุกปี)', myProjects.length,'')}
+    ${kpiCard('📁','โครงการ (ทุกปี) หลัก / ร่วม', rpAll.primary.length+' / '+rpAll.co.length,'รับผิดชอบหลัก / รับผิดชอบร่วม')}
     ${kpiCard('✅','งานย่อยทั้งหมด', myTasks.length, done+' รายการเสร็จสิ้น')}
     ${kpiCard('📈','อัตราสำเร็จงาน', myTasks.length?Math.round(done/myTasks.length*100)+'%':'-','')}
-    ${kpiCard('⭐','ผลประเมินล่าสุด', evals.length?evalOverall(evals[0]).toFixed(1):'-', evals.length?evals[0].period:'ยังไม่มีการประเมิน')}
+    ${kpiCard('⭐','ประเมินล่าสุด ระดับหลัก / ร่วม', (evLv('primary')?evalOverall(evLv('primary')).toFixed(1):'-')+' / '+(evLv('co')?evalOverall(evLv('co')).toFixed(1):'-'), evals.length?'ล่าสุด: '+evals[0].period:'ยังไม่มีการประเมิน')}
   </div>
   <div class="card" style="margin-top:16px;">
-    <div class="card-head"><div class="card-title">โครงการที่รับผิดชอบ</div></div>
-    <div class="card-pad" style="padding-top:10px;">
-      ${myProjects.length? myProjects.map(pr=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer" onclick="openProjectDetail('${pr.id}')">
-        <div><b>${escapeHtml(pr.name)}</b><div class="small-muted">ปีงบ ${pr.year}</div></div><span class="badge ${statusObj(pr.status).cls}">${statusObj(pr.status).label}</span>
-      </div>`).join('') : '<div class="small-muted">ยังไม่มีโครงการ</div>'}
-    </div>
+    <div class="card-head"><div class="card-title">โครงการที่รับผิดชอบหลัก (${rpAll.primary.length})</div></div>
+    <div class="card-pad" style="padding-top:10px;">${projRows(rpAll.primary)}</div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-head"><div class="card-title">โครงการที่รับผิดชอบร่วม (${rpAll.co.length})</div></div>
+    <div class="card-pad" style="padding-top:10px;">${projRows(rpAll.co)}</div>
+  </div>
   </div>
   <div class="card" style="margin-top:16px;">
     <div class="card-head"><div class="card-title">งานย่อยที่รับผิดชอบ</div></div>
@@ -3479,16 +3540,17 @@ function viewPersonDetail(id){
     </div>
   </div>
   <div class="card" style="margin-top:16px;">
-    <div class="card-head"><div class="card-title">ประวัติการประเมินผลงาน</div><button class="link-btn" onclick="openEvalForm(null,'${id}')">+ ประเมินใหม่</button></div>
+    <div class="card-head"><div class="card-title">ประวัติการประเมินผลงาน แยก 2 ระดับ</div><button class="link-btn" onclick="openEvalForm(null,'${id}')">+ ประเมินใหม่</button></div>
     <div class="card-pad" style="padding-top:10px;">
-      ${evals.length? evals.map(ev=>`<div style="padding:9px 0;border-bottom:1px solid var(--line);">
-        <div style="display:flex;justify-content:space-between;"><b>${escapeHtml(ev.period)}</b><span style="color:var(--g-700);font-weight:700;">${evalOverall(ev).toFixed(1)} / 5</span></div>
-        <div class="small-muted">${escapeHtml(ev.note||'')}</div>
-      </div>`).join('') : '<div class="small-muted">ยังไม่มีประวัติการประเมิน</div>'}
+      ${['primary','co','none'].map(l=>{ const list=evalByLevel(id,l); if(l==='none' && !list.length) return '';
+        return `<div style="margin-bottom:10px;"><div style="margin-bottom:4px;">${levelBadge(l==='none'?null:l)} <span class="small-muted">${l==='primary'?'ประเมินจากงานที่เป็นผู้รับผิดชอบหลัก':l==='co'?'ประเมินจากงานที่เป็นผู้รับผิดชอบร่วม':'ผลประเมินเดิม (ก่อนแยกระดับ)'}</span></div>
+        ${list.length? list.map(ev=>`<div style="padding:7px 0;border-bottom:1px solid var(--line);">
+          <div style="display:flex;justify-content:space-between;"><b>${escapeHtml(ev.period)}</b><span style="color:var(--g-700);font-weight:700;">${evalOverall(ev).toFixed(1)} / 5</span></div>
+          <div class="small-muted">${escapeHtml(ev.note||'')}</div></div>`).join('') : '<div class="small-muted">ยังไม่มีการประเมินในระดับนี้</div>'}</div>`; }).join('')}
     </div>
   </div>`;
 }
-function evalOverall(ev){ const c=ev.criteria; const vals=[c.quantity,c.quality,c.punctuality,c.teamwork]; return vals.reduce((a,b)=>a+b,0)/vals.length; }
+function evalOverall(ev){ const c=ev.criteria; const vals=[c.quantity,c.quality,c.punctuality,c.teamwork]; if(Number(c.okr)>0) vals.push(Number(c.okr)); return vals.reduce((a,b)=>a+b,0)/vals.length; }
 
 function openPersonForm(id){
   const editing=!!id;
@@ -3529,7 +3591,7 @@ function deletePerson(id){
 /* =========================================================================
    VIEW: Resource Heatmap (แผนที่ความหนาแน่นภาระงานบุคลากร)
    ========================================================================= */
-function computeHeatmapData(){
+function computeHeatmapData(role){
   const y = DB.currentYear;
   const fyStartCE = y-543-1, fyEndCE=y-543;
   const projs = yearProjects();
@@ -3544,7 +3606,7 @@ function computeHeatmapData(){
   }
   projs.forEach(p=>{
     if(!p.startDate || !p.endDate) return;
-    const owners = projectOwnerIds(p).filter(oid=>data[oid]);
+    const owners = projectOwnerIds(p).filter((oid,ix)=>data[oid] && (!role || (role==='primary')===(ix===0)));
     if(!owners.length) return;
     const s = new Date(p.startDate+'T00:00:00'), e = new Date(p.endDate+'T00:00:00');
     for(let i=0;i<12;i++){
@@ -3554,6 +3616,7 @@ function computeHeatmapData(){
   });
   tasksInYear.forEach(t=>{
     if(!t.dueDate || !data[t.assigneeId]) return;
+    if(role){ const tr = projectRoleOf(getProject(t.projectId), t.assigneeId)==='primary' ? 'primary' : 'co'; if(tr!==role) return; }
     const d = new Date(t.dueDate+'T00:00:00');
     for(let i=0;i<12;i++){
       const {start,end} = monthCellRange(i);
@@ -3572,6 +3635,7 @@ function heatColor(n){
 }
 function viewResourceHeatmap(){
   const data = computeHeatmapData();
+  const dataP = computeHeatmapData('primary'), dataC = computeHeatmapData('co');
   const y = DB.currentYear;
   return `
   <div class="card card-pad" style="margin-bottom:16px;">
@@ -3580,14 +3644,16 @@ function viewResourceHeatmap(){
   </div>
   <div class="card">
     <div class="tbl-wrap card-pad">
-    <table><thead><tr><th style="min-width:180px;">บุคลากร</th>${FY_MONTHS.map(m=>`<th style="text-align:center;">${m}</th>`).join('')}<th style="text-align:center;">รวม</th></tr></thead>
+    <table><thead><tr><th style="min-width:180px;">บุคลากร</th>${FY_MONTHS.map(m=>`<th style="text-align:center;">${m}</th>`).join('')}<th style="text-align:center;">หลัก</th><th style="text-align:center;">ร่วม</th><th style="text-align:center;">รวม</th></tr></thead>
       <tbody>
         ${DB.personnel.map(p=>{
           const row = data[p.id]||Array(12).fill(0);
+          const rowP = dataP[p.id]||Array(12).fill(0), rowC = dataC[p.id]||Array(12).fill(0);
           const total = row.reduce((a,b)=>a+b,0);
           return `<tr>
             <td style="font-weight:600;cursor:pointer;" onclick="viewPersonPage('${p.id}')">${escapeHtml(p.name)}</td>
-            ${row.map(n=>`<td style="text-align:center;background:${heatColor(n)};font-weight:${n>0?700:400};color:${n>=4?'#fff':'var(--ink)'};">${n||''}</td>`).join('')}
+            ${row.map((n,ix)=>`<td title="หลัก ${rowP[ix]} + ร่วม ${rowC[ix]}" style="text-align:center;background:${heatColor(n)};font-weight:${n>0?700:400};color:${n>=4?'#fff':'var(--ink)'};">${n||''}</td>`).join('')}
+            <td style="text-align:center;font-weight:700;color:#0F7A45;">${rowP.reduce((a,b)=>a+b,0)}</td><td style="text-align:center;font-weight:700;color:#1D5F94;">${rowC.reduce((a,b)=>a+b,0)}</td>
             <td style="text-align:center;font-weight:700;">${total}</td>
           </tr>`;
         }).join('')}
@@ -3610,19 +3676,19 @@ function viewPerformance(){
   </div>
   <div class="card" style="margin-top:16px;">
     <div class="tbl-wrap card-pad">
-    <table><thead><tr><th>บุคลากร</th><th>ตำแหน่ง</th><th>โครงการที่รับผิดชอบ</th><th>งานย่อยทั้งหมด</th><th>เสร็จสิ้น</th><th>อัตราสำเร็จ</th><th>คะแนนประเมินล่าสุด</th></tr></thead>
+    <table><thead><tr><th>บุคลากร</th><th>ตำแหน่ง</th><th>โครงการหลัก</th><th>โครงการร่วม</th><th>งานย่อยทั้งหมด</th><th>เสร็จสิ้น</th><th>อัตราสำเร็จ</th><th>คะแนนประเมินล่าสุด</th></tr></thead>
       <tbody>
         ${DB.personnel.map(p=>{
           const myTasks=DB.tasks.filter(t=>t.assigneeId===p.id);
           const done=myTasks.filter(t=>t.status==='done').length;
-          const myProjects=DB.projects.filter(pr=>projectOwnerIds(pr).includes(p.id));
-          const evals=DB.evaluations.filter(e=>e.personId===p.id).sort((a,b)=>b.evaluatedAt.localeCompare(a.evaluatedAt));
+          const rpA=personRoleProjects(p.id);
+          const evP=evalByLevel(p.id,'primary')[0], evC=evalByLevel(p.id,'co')[0];
           return `<tr class="tbl-row" onclick="viewPersonPage('${p.id}')">
             <td style="display:flex;align-items:center;gap:8px;"><span class="avatar" style="width:26px;height:26px;font-size:10px;background:${colorForId(p.id)}">${initials(p.name)}</span>${escapeHtml(p.name)}</td>
             <td class="small-muted">${escapeHtml(p.position)}</td>
-            <td>${myProjects.length}</td><td>${myTasks.length}</td><td>${done}</td>
+            <td style="font-weight:700;color:#0F7A45;">${rpA.primary.length}</td><td style="font-weight:700;color:#1D5F94;">${rpA.co.length}</td><td>${myTasks.length}</td><td>${done}</td>
             <td>${myTasks.length? Math.round(done/myTasks.length*100)+'%':'-'}</td>
-            <td>${evals.length? evalOverall(evals[0]).toFixed(1)+' / 5':'-'}</td>
+            <td>หลัก ${evP?evalOverall(evP).toFixed(1):'-'} · ร่วม ${evC?evalOverall(evC).toFixed(1):'-'}</td>
           </tr>`;
         }).join('')}
       </tbody>
@@ -3634,23 +3700,35 @@ function viewPerformance(){
 /* =========================================================================
    VIEW: Evaluation
    ========================================================================= */
+function setEvalLevelFilter(v){ UI.evalLevel=v; render(); }
 function viewEvaluation(){
-  const evals = DB.evaluations.slice().sort((a,b)=>b.evaluatedAt.localeCompare(a.evaluatedAt));
+  const lf=UI.evalLevel||'';
+  const all = DB.evaluations.slice().sort((a,b)=>String(b.evaluatedAt).localeCompare(String(a.evaluatedAt)));
+  const evals = all.filter(e=> !lf || (lf==='none'? !e.level : e.level===lf));
+  const avgOf=l=>{ const x=all.filter(e=>e.level===l); return x.length? (x.reduce((s,e)=>s+evalOverall(e),0)/x.length).toFixed(2)+' / 5 ('+x.length+' ครั้ง)' : '-'; };
+  const legacy=all.filter(e=>!e.level).length;
   return `
-  <div class="filter-bar"><div class="spacer"></div><button class="btn btn-primary btn-sm" onclick="openEvalForm()">＋ ประเมินผลงานใหม่</button></div>
+  <div class="grid grid-2" style="margin-bottom:14px;">
+    <div class="card card-pad" style="border-left:4px solid #146C43;"><div class="small-muted">ระดับ 1 · ผู้รับผิดชอบหลัก</div><div style="font-size:20px;font-weight:700;">${avgOf('primary')}</div></div>
+    <div class="card card-pad" style="border-left:4px solid #2D6FA5;"><div class="small-muted">ระดับ 2 · ผู้รับผิดชอบร่วม</div><div style="font-size:20px;font-weight:700;">${avgOf('co')}</div></div>
+  </div>
+  <div class="filter-bar">
+    ${[['','ทั้งหมด'],['primary','ระดับหลัก'],['co','ระดับร่วม']].concat(legacy?[['none','ไม่ระบุระดับ ('+legacy+')']]:[]).map(x=>`<button class="btn ${lf===x[0]?'btn-primary':'btn-ghost'} btn-sm" onclick="setEvalLevelFilter('${x[0]}')">${x[1]}</button>`).join('')}
+    <div class="spacer"></div><button class="btn btn-primary btn-sm" onclick="openEvalForm()">＋ ประเมินผลงานใหม่</button></div>
   <div class="card">
     <div class="tbl-wrap card-pad">
-    <table><thead><tr><th>บุคลากร</th><th>รอบการประเมิน</th><th>ปริมาณงาน</th><th>คุณภาพ</th><th>ตรงเวลา</th><th>ทำงานร่วมกัน</th><th>คะแนนรวม</th><th>บันทึก</th><th></th></tr></thead>
+    <table><thead><tr><th>บุคลากร</th><th>ระดับ</th><th>รอบการประเมิน</th><th>ปริมาณงาน</th><th>คุณภาพ</th><th>ตรงเวลา</th><th>ทำงานร่วมกัน</th><th>OKR</th><th>คะแนนรวม</th><th>บันทึก</th><th></th></tr></thead>
       <tbody>
         ${evals.length? evals.map(ev=>`<tr>
           <td style="font-weight:600;">${escapeHtml(getPersonName(ev.personId))}</td>
+          <td>${levelBadge(ev.level)}</td>
           <td>${escapeHtml(ev.period)}</td>
           <td>${starDisplay(ev.criteria.quantity)}</td><td>${starDisplay(ev.criteria.quality)}</td>
-          <td>${starDisplay(ev.criteria.punctuality)}</td><td>${starDisplay(ev.criteria.teamwork)}</td>
+          <td>${starDisplay(ev.criteria.punctuality)}</td><td>${starDisplay(ev.criteria.teamwork)}</td><td>${ev.criteria.okr>0?starDisplay(ev.criteria.okr)+(ev.okrPct!=null?`<div class="small-muted">${ev.okrPct}%</div>`:''):'-'}</td>
           <td style="font-weight:700;color:var(--g-800);">${evalOverall(ev).toFixed(1)}</td>
           <td class="small-muted" style="max-width:180px;">${escapeHtml(ev.note||'-')}</td>
           <td><button class="icon-btn" onclick="openEvalForm('${ev.id}')">✏️</button></td>
-        </tr>`).join('') : `<tr><td colspan="9"><div class="empty-state">ยังไม่มีข้อมูลการประเมิน</div></td></tr>`}
+        </tr>`).join('') : `<tr><td colspan="11"><div class="empty-state">ยังไม่มีข้อมูลการประเมิน</div></td></tr>`}
       </tbody>
     </table>
     </div>
@@ -3659,17 +3737,24 @@ function viewEvaluation(){
 function starDisplay(n){ let s=''; for(let i=1;i<=5;i++) s+= i<=n?'★':'☆'; return `<span style="color:var(--gold);letter-spacing:1px;">${s}</span>`; }
 function openEvalForm(id, presetPerson){
   const editing=!!id;
-  const ev = editing? DB.evaluations.find(e=>e.id===id) : {id:null, personId:presetPerson||DB.personnel[0]?.id||'', year:DB.currentYear, period:'รอบที่ 1/'+DB.currentYear, criteria:{quantity:3,quality:3,punctuality:3,teamwork:3}, note:''};
+  const ev = editing? DB.evaluations.find(e=>e.id===id) : {id:null, personId:presetPerson||DB.personnel[0]?.id||'', year:DB.currentYear, level:'primary', period:'รอบที่ 1/'+DB.currentYear, criteria:{quantity:3,quality:3,punctuality:3,teamwork:3,okr:0}, note:''};
   const body=`
     <div class="form-2col">
-      <div class="form-row"><label>บุคลากร</label><select class="select" id="e_person">${DB.personnel.map(p=>`<option value="${p.id}" ${p.id===ev.personId?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}</select></div>
+      <div class="form-row"><label>บุคลากร</label><select class="select" id="e_person" onchange="refreshEvalOkrHint()">${DB.personnel.map(p=>`<option value="${p.id}" ${p.id===ev.personId?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}</select></div>
       <div class="form-row"><label>รอบการประเมิน</label><input class="input" id="e_period" value="${escapeHtml(ev.period)}"></div>
     </div>
+    <div class="form-row"><label>ระดับการประเมิน *</label>
+      <select class="select" id="e_level" onchange="refreshEvalOkrHint()">
+        ${editing && !ev.level?'<option value="" selected>ไม่ระบุระดับ (ผลประเมินเดิม)</option>':''}
+        <option value="primary" ${ev.level==='primary'?'selected':''}>ระดับ 1 · ประเมินงานที่เป็นผู้รับผิดชอบหลัก</option>
+        <option value="co" ${ev.level==='co'?'selected':''}>ระดับ 2 · ประเมินงานที่เป็นผู้รับผิดชอบร่วม</option>
+      </select><div class="small-muted" style="margin-top:3px;">ประเมินแยกกัน 2 ระดับ เพราะภาระและความรับผิดชอบต่างกัน — ผู้รับผิดชอบหลัก = คนแรกในรายชื่อผู้รับผิดชอบโครงการ</div></div>
     <div class="section-title" style="margin-top:4px;">ให้คะแนนแต่ละด้าน (1-5 ดาว)<span class="line-flex"></span></div>
     ${['quantity','quality','punctuality','teamwork'].map((k,i)=>{
       const labels={quantity:'ปริมาณงาน',quality:'คุณภาพงาน',punctuality:'ความตรงต่อเวลา',teamwork:'การทำงานร่วมกับผู้อื่น'};
       return `<div class="form-row"><label>${labels[k]}</label><div class="star-row" data-key="${k}">${[1,2,3,4,5].map(n=>`<span class="star ${n<=ev.criteria[k]?'on':''}" data-val="${n}" onclick="setStar('${k}',${n})">★</span>`).join('')}</div></div>`;
     }).join('')}
+    <div class="form-row" style="background:#F7FAF8;border-radius:10px;padding:8px 10px;"><label>🎯 ผลสัมฤทธิ์ตาม OKR (ไม่บังคับ — ถ้าให้คะแนนจะนำไปเฉลี่ยในคะแนนรวม)</label><div class="star-row" data-key="okr">${[1,2,3,4,5].map(n=>`<span class="star ${n<=(ev.criteria.okr||0)?'on':''}" data-val="${n}" onclick="setStar('okr',${n})">★</span>`).join('')}</div><div id="evalOkrHint" class="small-muted" style="margin-top:4px;"></div></div>
     <div class="form-row"><label>บันทึก/ข้อเสนอแนะ</label><textarea class="input" id="e_note">${escapeHtml(ev.note||'')}</textarea></div>
   `;
   const footer=`
@@ -3678,6 +3763,17 @@ function openEvalForm(id, presetPerson){
     <button class="btn btn-primary" onclick="saveEvalForm(${editing?`'${id}'`:'null'})">💾 บันทึกผลประเมิน</button>`;
   openModal(editing?'แก้ไขผลการประเมิน':'ประเมินผลงานรายบุคคล', body, footer);
   window.__currentEvalCriteria = JSON.parse(JSON.stringify(ev.criteria));
+  if(window.__currentEvalCriteria.okr===undefined) window.__currentEvalCriteria.okr=0;
+  refreshEvalOkrHint();
+}
+function refreshEvalOkrHint(){
+  const box=document.getElementById('evalOkrHint'); const sel=document.getElementById('e_person'); if(!box||!sel) return;
+  const lv=(document.getElementById('e_level')||{}).value||undefined;
+  const rp=personRoleProjects(sel.value, DB.currentYear);
+  const roleTxt=`ปีงบ ${DB.currentYear}: เป็นผู้รับผิดชอบหลัก ${rp.primary.length} โครงการ · ร่วม ${rp.co.length} โครงการ<br>`;
+  const s=personOkrSummary(sel.value, undefined, lv);
+  if(!s.n){ box.innerHTML=roleTxt+'บุคคลนี้ยังไม่มี OKR ที่รับผิดชอบในระดับนี้'; return; }
+  box.innerHTML=roleTxt+`OKR ปีงบ ${okrActiveYear()}: ${s.n} กิจกรรม · ${s.krN} KR · ความคืบหน้าเฉลี่ย <b>${s.avg}%</b> (คาดหวัง ณ ตอนนี้ ~${s.exp}%) (สำเร็จ ${s.done} · เสี่ยง ${s.risk} · ล่าช้า ${s.late}) → ดาวแนะนำ <b>${s.stars}★</b> <button type="button" class="btn btn-ghost btn-sm" onclick="setStar('okr',${s.stars})">ใช้ค่าแนะนำ</button>`;
 }
 function setStar(key,val){
   window.__currentEvalCriteria[key]=val;
@@ -3685,7 +3781,7 @@ function setStar(key,val){
   row.querySelectorAll('.star').forEach(s=>{ s.classList.toggle('on', Number(s.dataset.val)<=val); });
 }
 function saveEvalForm(id){
-  const data={ personId:document.getElementById('e_person').value, year:DB.currentYear, period:document.getElementById('e_period').value, criteria:window.__currentEvalCriteria, note:document.getElementById('e_note').value, evaluatedAt:new Date().toISOString() };
+  const data={ personId:document.getElementById('e_person').value, level:document.getElementById('e_level').value, year:DB.currentYear, period:document.getElementById('e_period').value, criteria:window.__currentEvalCriteria, okrPct:(personOkrSummary(document.getElementById('e_person').value, undefined, document.getElementById('e_level').value||undefined).avg), note:document.getElementById('e_note').value, evaluatedAt:new Date().toISOString() };
   if(id){ Object.assign(DB.evaluations.find(e=>e.id===id), data); }
   else{ DB.evaluations.push(Object.assign({id:uid('eval')}, data)); }
   logAction('บันทึกผลประเมิน', `${getPersonName(data.personId)} · ${data.period}`);
@@ -3998,11 +4094,650 @@ function handleImportJSON(e){
       const data=JSON.parse(reader.result);
       if(!data.projects || !data.personnel){ showToast('ไฟล์ไม่ถูกต้อง'); return; }
       if(confirm('นำเข้าข้อมูลนี้จะแทนที่ข้อมูลปัจจุบันทั้งหมด ยืนยันหรือไม่?')){
-        DB=data; saveDB(); render(); showToast('นำเข้าข้อมูลเรียบร้อย');
+        DB=data; ensureOKRData(); ensureCarbonData(); saveDB(); render(); showToast('นำเข้าข้อมูลเรียบร้อย');
       }
     }catch(err){ showToast('อ่านไฟล์ไม่สำเร็จ: ไฟล์ไม่ใช่ JSON ที่ถูกต้อง'); }
   };
   reader.readAsText(file);
+}
+
+/* =========================================================================
+   v3.16 — OKR (เชื่อมประเมินบุคคล) และ Carbon Footprint
+   ที่มาข้อมูลตั้งต้น: ไฟล์ V8 ชีต "OKR รายกิจกรรม" และ "Carbon Footprint" (11 ต.ค. 69)
+   - ข้อมูลตั้งต้นนำเข้าครั้งเดียว (บันทึกคีย์ที่นำเข้าแล้วไว้ใน DB.okr.seeded) ไม่ทับ/ไม่เพิ่มซ้ำสิ่งที่พี่จีแก้ไขหรือลบ
+   - ค่าเป้าหมายใน KR ที่ไม่มีในแผนเดิมเป็นค่าที่เสนอ ให้ผู้รับผิดชอบยืนยันก่อนใช้ (ตามหมายเหตุในไฟล์ V8)
+   ========================================================================= */
+const OKR_YEAR = 2570;
+const OKR_SEED = [{"code":"70130101","name":"นโยบาย 1 : อบรมการดูแลผู้ป่วยระยะกลางโรคหลอดเลือดสมอง 90 ชม.","budget":129000,"objective":"O : แพทย์แผนไทยทุกอำเภอดูแลผู้ป่วยโรคหลอดเลือดสมองระยะกลางได้ตามมาตรฐาน และผู้ป่วย IMC ได้รับการดูแลด้วยการแพทย์แผนไทยผ่านเกณฑ์ร้อยละ 16","acts":[{"no":"1","name":"อบรมเชิงปฏิบัติการหลักสูตร 90 ชั่วโมง (50 คน 4 วัน)","budget":129000,"src":"เงินบำรุง","kr":["แพทย์แผนไทย ≥ 45 จาก 50 คน (ร้อยละ 90) เข้าอบรมครบ 90 ชม. และผ่านการประเมินทักษะ ภายใน ก.ค. 70","ทั้ง 6 อำเภอมีหน่วยบริการที่มีผู้ผ่านอบรมเปิดบริการฟื้นฟูผู้ป่วย IMC ด้วยการแพทย์แผนไทย อย่างน้อยอำเภอละ 1 แห่ง ภายใน ก.ย. 70","ผู้ป่วย IMC ได้รับการดูแลด้วยการแพทย์แผนไทย ร้อยละ 8 / 12 / 16 ในรอบรายงาน 1 / 2 / 3"],"evidence":"ทะเบียนผู้เข้าอบรมและผลประเมินทักษะ / รายชื่อหน่วยบริการที่เปิดบริการ / รายงาน HDC ตัวชี้วัด IMC","quarter":"ไตรมาส 2-4","owner":"ขจีวรรณ (แพทย์แผนไทยชำนาญการ)"}]},{"code":"70130502","name":"นโยบาย 2 : ยกระดับเศรษฐกิจสุขภาพด้วยการแพทย์แผนไทย","budget":12480,"objective":"O : สถานประกอบการเวลเนส แหล่งท่องเที่ยวเชิงสุขภาพ และร้านอาหารในจังหวัดได้รับการรับรองมาตรฐานเพิ่มขึ้น และสร้างรายได้ให้ชุมชน","acts":[{"no":"2","name":"2.1 สำรวจและประเมินรับรองสถานประกอบการเวลเนส","budget":3600,"src":"กองทุนฯ","kr":["คำขอรับรองได้รับการตรวจประเมินแล้วเสร็จภายในเวลาที่กำหนด ≥ ร้อยละ 85","มีฐานข้อมูลสถานประกอบการเวลเนสครบ 6 อำเภอ ภายในไตรมาส 2","สถานประกอบการเวลเนสผ่านการรับรองรายใหม่ ≥ 3 แห่ง ภายใน ก.ย. 70"],"evidence":"ทะเบียนคำขอและวันที่ตรวจ / ฐานข้อมูลรายอำเภอ / หนังสือรับรอง","quarter":"ไตรมาส 1-4","owner":"ขจีวรรณ (แพทย์แผนไทยชำนาญการ)"},{"no":"3","name":"2.2 สำรวจและประเมินรับรองแหล่งท่องเที่ยวเชิงสุขภาพ","budget":3600,"src":"กองทุนฯ","kr":["แหล่งท่องเที่ยวเชิงสุขภาพภูมิปัญญาไทยผ่านการประเมินรับรอง ≥ 1 แห่ง","แหล่งที่ได้รับรองมีนักท่องเที่ยวเพิ่มขึ้น ≥ ร้อยละ 15 เทียบกับปี 2569","จัดทำและเผยแพร่เส้นทางท่องเที่ยวเชิงสุขภาพภูมิปัญญาไทยของจังหวัด 1 เส้นทาง"],"evidence":"ผลประเมิน / สถิตินักท่องเที่ยวจากแหล่ง / สื่อเส้นทางที่เผยแพร่","quarter":"ไตรมาส 1-4","owner":"ขจีวรรณ (แพทย์แผนไทยชำนาญการ)"},{"no":"4","name":"2.3 ประชุมคณะกรรมการพิจารณารับรองเมนู Thai Food Good Health","budget":1680,"src":"กองทุนฯ","kr":["ประชุมครบ 6 ครั้ง และพิจารณาคำขอแล้วเสร็จภายใน 30 วันหลังได้รับเอกสารครบ","เมนูผ่านการรับรองมาตรฐาน Thai Food Good Health ≥ 10 เมนู","–"],"evidence":"รายงานการประชุม / ทะเบียนเมนูที่ผ่านการรับรอง","quarter":"ไตรมาส 1-4","owner":"ขจีวรรณ (แพทย์แผนไทยชำนาญการ)"},{"no":"5","name":"2.4 สำรวจและประเมินรับรองเมนูอาหาร Thai Food Good Health","budget":3600,"src":"กองทุนฯ","kr":["สำรวจร้านอาหารครบ 6 อำเภอ อย่างน้อย 12 ร้าน","เมนูที่ผ่านการรับรองถูกนำไปวางจำหน่ายจริง ≥ ร้อยละ 80","ผู้บริโภคพึงพอใจต่อเมนูที่ได้รับรอง ≥ ร้อยละ 85"],"evidence":"แบบสำรวจร้าน / ภาพถ่ายเมนูที่วางขาย / แบบสอบถามความพึงพอใจ","quarter":"ไตรมาส 1-4","owner":"ขจีวรรณ (แพทย์แผนไทยชำนาญการ)"}]},{"code":"70130503","name":"นโยบาย 3 : พัฒนานวัตกรรมและผลิตภัณฑ์ด้านการแพทย์แผนไทย","budget":10900,"objective":"O : เกิดนวัตกรรมและผลิตภัณฑ์ภูมิปัญญาการแพทย์แผนไทยที่ใช้ได้จริงในหน่วยบริการ และต่อยอดสู่ระดับเขต","acts":[{"no":"6","name":"3.1 คัดเลือกและนำเสนอผลงานนวัตกรรมและผลิตภัณฑ์","budget":10900,"src":"กองทุนฯ","kr":["มีผลงานส่งเข้าคัดเลือก ≥ 10 ผลงาน จากครบ 6 อำเภอ","คัดเลือกผลงานดีเด่น ≥ 3 ผลงาน ส่งประกวดระดับเขตสุขภาพ","ผลงานที่ได้รับคัดเลือกนำไปใช้จริงในหน่วยบริการ ≥ ร้อยละ 80 ภายใน 6 เดือน"],"evidence":"ทะเบียนผลงาน / ผลการตัดสิน / รายงานติดตามการใช้งาน","quarter":"ไตรมาส 2-4","owner":"กานต์รวี (แพทย์แผนไทยชำนาญการ)"}]},{"code":"70130504","name":"งานประจำ 1 : คุ้มครองและส่งเสริมภูมิปัญญาการแพทย์แผนไทยและสมุนไพร","budget":65190,"objective":"O : จังหวัดดำเนินภารกิจนายทะเบียนตาม พ.ร.บ.คุ้มครองฯ ได้ ≥ 4 จาก 6 กิจกรรมสำคัญ และภูมิปัญญาได้รับการคุ้มครองและนำไปใช้ประโยชน์","acts":[{"no":"7","name":"1.1 ประชุมชี้แจงนโยบาย และพิธีถวายราชสักการะ ร.3","budget":10200,"src":"เงินบำรุง","kr":["ผู้บริหารและแพทย์แผนไทยเข้าร่วม ≥ 48 คน (ร้อยละ 80 ของ 60 คน) ครบทั้ง 6 อำเภอ","ทุกหน่วยบริการได้รับแนวทางและตัวชี้วัดปี 2570 เป็นลายลักษณ์อักษรภายใน 30 วันหลังประชุม","จัดพิธีถวายราชสักการะพระบาทสมเด็จพระนั่งเกล้าเจ้าอยู่หัว ร.3 สำเร็จ 1 ครั้ง"],"evidence":"ใบลงทะเบียน / หนังสือแจ้งแนวทาง / ภาพกิจกรรม","quarter":"ไตรมาส 1-4","owner":"ขจีวรรณ (แพทย์แผนไทยชำนาญการ) รัตนาวลี (แพทย์แผนไทยปฏิบัติการ)"},{"no":"8","name":"1.2 คัดเลือกพื้นที่ต้นแบบดีเด่นด้านการแพทย์แผนไทย","budget":8500,"src":"กองทุนฯ","kr":["ทั้ง 6 อำเภอส่งผลงานเข้าคัดเลือก (ร้อยละ 100)","ได้พื้นที่ต้นแบบระดับจังหวัด ≥ 1 แห่ง ส่งประกวดระดับเขตสุขภาพภายในเวลาที่เขตกำหนด","ถอดบทเรียนพื้นที่ต้นแบบและเผยแพร่ให้ทุกอำเภอ 1 ชุด"],"evidence":"ผลงานที่ส่ง / ผลการคัดเลือก / เอกสารถอดบทเรียน","quarter":"ไตรมาส 1-3","owner":"รัตนาวลี (แพทย์แผนไทยปฏิบัติการ)"},{"no":"9","name":"1.3 ส่งเสริมการปลูกสมุนไพรในพื้นที่สวนสมุนไพรชุมชน","budget":0,"src":"ไม่ใช้งบ","kr":["ปลูกสมุนไพร ≥ 10 ชนิด ในพื้นที่ ≥ 1 แห่ง ภายใน มิ.ย. 70","อัตรารอดของต้นสมุนไพรหลังปลูก 3 เดือน ≥ ร้อยละ 70","จัดทำทะเบียนชนิดและจำนวนต้นที่ปลูก พร้อมพิกัด เพื่อใช้ติดตามและคำนวณการดูดซับคาร์บอน"],"evidence":"ทะเบียนต้นไม้ / ภาพถ่ายก่อน-หลัง / รายงานติดตาม 3 เดือน","quarter":"ไตรมาส 2-3","owner":"รัตนาวลี (แพทย์แผนไทยปฏิบัติการ)"},{"no":"10","name":"1.4 ทะเบียนภูมิปัญญาและบุคลากร 5 กลุ่ม","budget":0,"src":"ไม่ใช้งบ","kr":["ฐานข้อมูลบุคลากร 5 กลุ่มได้รับการทบทวนครบ 6 อำเภอ ภายใน ก.ย. 70","มีข้อมูลบุคลากรรายใหม่หรือปรับปรุงข้อมูล ≥ 20 ราย","–"],"evidence":"ไฟล์ฐานข้อมูล / รายงานสรุปรายอำเภอ","quarter":"ไตรมาส 2-4","owner":"รัตนาวลี (แพทย์แผนไทยปฏิบัติการ)"},{"no":"11","name":"1.5 สำรวจตำรับยาแผนไทยและตำราการแพทย์แผนไทย","budget":0,"src":"ไม่ใช้งบ","kr":["สำรวจและรวบรวมตำรับยา/ตำรา ≥ 3 รายการ","ยื่นคำขอขึ้นทะเบียนตำรับ/ตำรา (มาตรา 15) ≥ 1 รายการ","–"],"evidence":"แบบสำรวจ / สำเนาคำขอขึ้นทะเบียน","quarter":"ไตรมาส 2-4","owner":"รัตนาวลี (แพทย์แผนไทยปฏิบัติการ)"},{"no":"12","name":"1.6 รายงานผลการดำเนินงานเสนอคณะกรรมการกองทุนฯ","budget":0,"src":"ไม่ใช้งบ","kr":["ส่งรายงานครบ 4 ไตรมาส ตรงตามกำหนดทุกครั้ง","รายงานครอบคลุมผลตัวชี้วัดกองทุนครบ 5 ตัวชี้วัด","–"],"evidence":"หนังสือนำส่งพร้อมวันที่ / รายงานรายไตรมาส","quarter":"ไตรมาส 1-4","owner":"ศรัณยู โสตะวงศ์ (แพทย์แผนไทยชำนาญการ)"},{"no":"13","name":"1.7 จัดทำบัตรประจำตัวพนักงานเจ้าหน้าที่","budget":200,"src":"กองทุนฯ","kr":["พนักงานเจ้าหน้าที่รายใหม่ได้รับบัตรครบร้อยละ 100 ภายใน 30 วันหลังได้รับแต่งตั้ง","ทะเบียนบัตรพนักงานเจ้าหน้าที่เป็นปัจจุบัน ณ 30 ก.ย. 70","–"],"evidence":"ทะเบียนคุมบัตร","quarter":"ไตรมาส 3-4","owner":"ศรัณยู โสตะวงศ์ (แพทย์แผนไทยชำนาญการ)"},{"no":"14","name":"1.8 รายงานการใช้ประโยชน์สมุนไพรควบคุม (กวาวเครือ)","budget":0,"src":"ไม่ใช้งบ","kr":["รายงานการใช้ประโยชน์ส่งครบร้อยละ 100 ตามรอบที่กำหนด","ผู้รับอนุญาตที่เกี่ยวข้องส่งข้อมูลครบร้อยละ 100","–"],"evidence":"รายงานที่ส่งกรม / ทะเบียนผู้รับอนุญาต","quarter":"ไตรมาส 1-4","owner":"ศรัณยู โสตะวงศ์ (แพทย์แผนไทยชำนาญการ)"},{"no":"15","name":"1.9 ประชุมคณะอนุกรรมการคุ้มครองและส่งเสริมภูมิปัญญาฯ","budget":18950,"src":"กองทุนฯ","kr":["ประชุม 1 ครั้งภายในไตรมาส 1 องค์ประชุม ≥ ร้อยละ 80","มีมติรับรองแผนการดำเนินงานคุ้มครองภูมิปัญญาปี 2570","มติที่ประชุมได้รับการดำเนินการแล้วเสร็จ ≥ ร้อยละ 80 ภายในปีงบประมาณ"],"evidence":"รายงานการประชุม / ตารางติดตามมติ","quarter":"ไตรมาส 1","owner":"ศรัณยู โสตะวงศ์ (แพทย์แผนไทยชำนาญการ)"},{"no":"16","name":"1.10 ประชุมคณะกรรมการหมอพื้นบ้าน","budget":27340,"src":"กองทุนฯ","kr":["จัดทำทะเบียนหมอพื้นบ้านที่ได้รับการรับรองทั้งหมดของจังหวัดครบร้อยละ 100 (ใช้เป็นฐานตัวชี้วัดที่ 1)","คำขอรับรองหมอพื้นบ้านที่ยื่นครบได้รับการพิจารณาแล้วเสร็จร้อยละ 100","–"],"evidence":"ทะเบียนหมอพื้นบ้าน / รายงานการประชุม","quarter":"ไตรมาส 2","owner":"ศรัณยู โสตะวงศ์ (แพทย์แผนไทยชำนาญการ)"},{"no":"17","name":"1.11 ประชาสัมพันธ์ด้านการคุ้มครองภูมิปัญญาผ่านสื่อออนไลน์","budget":0,"src":"ไม่ใช้งบ","kr":["เผยแพร่ข่าวสารและประกาศคุ้มครองภูมิปัญญา ≥ 12 ชิ้นต่อปี (เดือนละ 1 ชิ้น)","ยอดเข้าถึงสื่อรวม ≥ 5,000 ครั้งต่อปี","–"],"evidence":"ลิงก์โพสต์ / สถิติการเข้าถึงจากเพจ","quarter":"ไตรมาส 1-4","owner":"ศรัณยู โสตะวงศ์ (แพทย์แผนไทยชำนาญการ) รัตนาวลี (แพทย์แผนไทยปฏิบัติการ)"}]},{"code":"70130105","name":"งานประจำ 2 : ส่งเสริมการใช้ภูมิปัญญาการแพทย์แผนไทย","budget":55300,"objective":"O : ประชาชนในจังหวัดเข้าถึงความรู้ภูมิปัญญาการแพทย์แผนไทยผ่านนิทรรศการ และจังหวัดนับผลตัวชี้วัดที่ 2 และ 4 ของกองทุนได้","acts":[{"no":"18","name":"2.1 ร่วมจัดนิทรรศการส่งเสริมการใช้ภูมิปัญญา (6 วัน)","budget":55300,"src":"เงินบำรุง","kr":["จัดนิทรรศการครบ 6 ครั้ง มีผู้เข้าชม ≥ 1,200 คน (เฉลี่ย 200 คน/ครั้ง)","อย่างน้อย 2 ใน 6 ครั้งเป็นการร่วมงานที่กรมการแพทย์แผนไทยฯ กำหนด (นับผลตัวชี้วัดที่ 4)","ผู้เข้าชมที่ตอบแบบสอบถามมีความรู้เพิ่มขึ้น ≥ ร้อยละ 80 และนำเสนอภูมิปัญญาที่ขึ้นทะเบียนแล้ว ≥ 3 เรื่อง (ตัวชี้วัดที่ 2)"],"evidence":"ทะเบียนผู้เข้าชม / แบบสอบถาม QR / รายงานสรุปนิทรรศการ","quarter":"ไตรมาส 1-4","owner":"รัตนาวลี (แพทย์แผนไทยปฏิบัติการ)"}]},{"code":"70130506","name":"งานประจำ 3 : พัฒนาระบบบริการสุขภาพ (Service Plan)","budget":2100,"objective":"O : Service Plan สาขาการแพทย์แผนไทยฯ และสาขากัญชาทางการแพทย์ขับเคลื่อนตัวชี้วัดได้ผ่านเกณฑ์","acts":[{"no":"19","name":"3.1 ประชุม Service Plan สาขาการแพทย์แผนไทยและการแพทย์ผสมผสาน","budget":1400,"src":"กองทุนฯ","kr":["ประชุมครบ 2 ครั้ง (ไตรมาส 1 และ 3)","ตัวชี้วัด Service Plan สาขาการแพทย์แผนไทยผ่านเกณฑ์ ≥ ร้อยละ 80 ของตัวชี้วัดทั้งหมด","ประเด็นที่มีมติให้แก้ไขได้รับการติดตามและปิดได้ ≥ ร้อยละ 80"],"evidence":"รายงานการประชุม / ผลตัวชี้วัดจาก HDC","quarter":"ไตรมาส 1-4","owner":"ขจีวรรณ (แพทย์แผนไทยชำนาญการ) รัตนาวลี (แพทย์แผนไทยปฏิบัติการ)"},{"no":"20","name":"3.2 ประชุม Service Plan สาขากัญชาทางการแพทย์","budget":700,"src":"กองทุนฯ","kr":["ประชุมครบ 2 ครั้ง (ไตรมาส 1 และ 3)","หน่วยบริการที่มีคลินิกกัญชาทางการแพทย์รายงานข้อมูลบริการครบร้อยละ 100","ตัวชี้วัด Service Plan สาขากัญชาผ่านเกณฑ์ ≥ ร้อยละ 80"],"evidence":"รายงานการประชุม / รายงานข้อมูลคลินิกกัญชา","quarter":"ไตรมาส 1-4","owner":"จีรภัทร (เภสัชกรชำนาญการ) วิลาวัลย์ (เภสัชกรปฏิบัการ)"}]},{"code":"70130107","name":"งานประจำ 4 : กำกับสถานประกอบการกัญชาก่อนได้รับอนุญาต","budget":11520,"objective":"O : สถานประกอบการที่ขออนุญาตสมุนไพรควบคุม (กัญชา) ได้รับการตรวจก่อนอนุญาตครบ ถูกต้องตามกฎหมาย และทันเวลา","acts":[{"no":"21","name":"4.1 ตรวจสถานประกอบการก่อนได้รับอนุญาต (48 ครั้ง)","budget":11520,"src":"เงินบำรุง","kr":["คำขออนุญาตได้รับการตรวจสถานที่ก่อนอนุญาตครบร้อยละ 100","ตรวจสถานที่แล้วเสร็จภายใน 15 วันทำการนับจากรับคำขอครบ ≥ ร้อยละ 90","บันทึกผลตรวจเข้าระบบครบร้อยละ 100 ภายใน 7 วันหลังตรวจ"],"evidence":"ทะเบียนรับคำขอ / แบบบันทึกการตรวจ / ข้อมูลในระบบ","quarter":"ไตรมาส 1-4","owner":"จีรภัทร (เภสัชกรชำนาญการ) วิลาวัลย์ (เภสัชกรปฏิบัติการ) พัชรา (เจ้าพนักงานสาธารณสุข ชำนาญงาน)"}]},{"code":"70130108","name":"งานประจำ 5 : เฝ้าระวังสถานประกอบการกัญชาหลังได้รับอนุญาต","budget":9600,"objective":"O : สถานประกอบการที่ได้รับอนุญาตปฏิบัติตามเงื่อนไขกฎหมาย และเรื่องร้องเรียนได้รับการแก้ไขครบ","acts":[{"no":"22","name":"5.1 ตรวจสอบ เฝ้าระวัง และตรวจเรื่องร้องเรียน (20 วัน)","budget":9600,"src":"เงินบำรุง","kr":["ออกตรวจเฝ้าระวังครบ 20 วัน ครอบคลุมสถานประกอบการเป้าหมายที่กำหนดในแผนตรวจ","เรื่องร้องเรียนได้รับการตรวจสอบข้อเท็จจริงแล้วเสร็จร้อยละ 100 ภายใน 30 วัน","สถานประกอบการที่พบข้อบกพร่องได้รับการแก้ไขครบร้อยละ 100 ภายในเวลาที่สั่งการ"],"evidence":"แผนตรวจ / ทะเบียนเรื่องร้องเรียน / บันทึกการตรวจซ้ำ","quarter":"ไตรมาส 1-4","owner":"จีรภัทร (เภสัชกรชำนาญการ) วิลาวัลย์ (เภสัชกรปฏิบัติการ) พัชรา (เจ้าพนักงานสาธารณสุข ชำนาญงาน)"}]},{"code":"70130109","name":"งานประจำ 6 : ขับเคลื่อนและบริหารจัดการด้านยาสมุนไพร","budget":875,"objective":"O : สถานบริการภาครัฐในจังหวัดใช้ยาสมุนไพรเพิ่มขึ้นตามเป้าหมายของกระทรวง","acts":[{"no":"23","name":"6.1 ทบทวนคำสั่งและประชุมคณะทำงานบริหารจัดการยาสมุนไพร","budget":875,"src":"เงินบำรุง","kr":["คำสั่งแต่งตั้งคณะทำงานฉบับปรับปรุงลงนามภายในไตรมาส 1","มูลค่าการใช้ยาสมุนไพรในสถานบริการภาครัฐ ≥ ร้อยละ 10 ของมูลค่าการใช้ยาทั้งหมด","มีรายงานติดตามมูลค่าการใช้ยาสมุนไพรรายอำเภอ ทุกไตรมาส (4 ครั้ง)"],"evidence":"คำสั่งที่ลงนาม / รายงานมูลค่ายาสมุนไพรจาก HDC","quarter":"ไตรมาส 1-4","owner":"จีรภัทร (เภสัชกรชำนาญการ)"}]},{"code":"70130510","name":"งานประจำ 7 : พัฒนาศักยภาพผู้ทรงคุณวุฒิการแพทย์แผนไทย","budget":8400,"objective":"O : ผู้ทรงคุณวุฒิมีความรู้ด้านกฎหมายคุ้มครองภูมิปัญญา และร่วมขับเคลื่อนงานคุ้มครองของจังหวัด","acts":[{"no":"24","name":"7.1 อบรมผู้ทรงคุณวุฒิและคณะทำงาน (15 คน 1 วัน)","budget":8400,"src":"กองทุนฯ","kr":["ผู้ทรงคุณวุฒิและคณะทำงานเข้าอบรม ≥ 12 จาก 15 คน (ร้อยละ 80)","ผู้เข้าอบรมผ่านแบบทดสอบหลังอบรม ≥ ร้อยละ 80","ผู้ผ่านอบรมร่วมกิจกรรมคุ้มครองภูมิปัญญาของจังหวัด ≥ 1 กิจกรรมต่อคน ภายในปีงบประมาณ"],"evidence":"ใบลงทะเบียน / ผล pre-post test / บันทึกการร่วมกิจกรรม","quarter":"ไตรมาส 2","owner":"ศรัณยู โสตะวงศ์ (แพทย์แผนไทยชำนาญการ)"}]},{"code":"70130511","name":"งานประจำ 8 : รักษาภูมิปัญญาไทยและพัฒนาความรู้หมอพื้นบ้าน","budget":17720,"objective":"O : หมอพื้นบ้านที่ได้รับการรับรองได้รับการอบรมตามหลักสูตรที่กรมกำหนด ≥ ร้อยละ 50 (ตัวชี้วัดที่ 1 ของกองทุน)","acts":[{"no":"25","name":"8.1 อบรมพัฒนาศักยภาพหมอพื้นบ้าน (40 คน 1 วัน)","budget":13400,"src":"กองทุนฯ","kr":["จัดอบรมครบ 4 หัวข้อตามที่กรมกำหนด ผู้เข้าอบรม ≥ 24 จาก 40 คน (ร้อยละ 60)","หมอพื้นบ้านที่ได้รับการรับรองผ่านการอบรม ≥ ร้อยละ 50 ของทั้งจังหวัด","ผู้เข้าอบรมผ่านแบบทดสอบหลังอบรม ≥ ร้อยละ 80"],"evidence":"ใบลงทะเบียน / ทะเบียนหมอพื้นบ้านที่ได้รับรอง (จาก 1.10) / ผลทดสอบ","quarter":"ไตรมาส 2","owner":"ศรัณยู โสตะวงศ์ (แพทย์แผนไทยชำนาญการ)"},{"no":"26","name":"8.2 ลงพื้นที่กำกับติดตามหมอพื้นบ้าน (6 วัน)","budget":4320,"src":"กองทุนฯ","kr":["ติดตามหมอพื้นบ้านที่ผ่านการอบรม ≥ ร้อยละ 80","บันทึกองค์ความรู้หรือตำรับของหมอพื้นบ้านเข้าฐานข้อมูล (ต่อยอด 1.4 และ 1.5) ≥ 5 ราย","–"],"evidence":"แบบบันทึกการติดตาม / ฐานข้อมูลภูมิปัญญา","quarter":"ไตรมาส 3-4","owner":"ศรัณยู โสตะวงศ์ (แพทย์แผนไทยชำนาญการ)"}]},{"code":"70130512","name":"งานประจำ 9 : พัฒนาระบบบริการตามมาตรฐาน รพ.สส.พท.","budget":2160,"objective":"O : หน่วยบริการภาครัฐที่มีแพทย์แผนไทยผ่านมาตรฐาน รพ.สส.พท.","acts":[{"no":"27","name":"9.1 ประเมินมาตรฐานงานบริการแพทย์แผนไทย (รพ.สส.พท.)","budget":2160,"src":"กองทุนฯ","kr":["ชี้แจงเกณฑ์ให้หน่วยบริการที่มีแพทย์แผนไทยครบร้อยละ 100","หน่วยบริการที่ยังไม่เคยประเมินได้รับการประเมินครบร้อยละ 100 ภายใน เม.ย. 70","หน่วยบริการที่ประเมินผ่านมาตรฐาน ≥ ร้อยละ 80 และส่งรายงานให้กรมครบ"],"evidence":"รายชื่อหน่วยบริการเป้าหมาย / แบบประเมิน / หนังสือส่งกรม","quarter":"ไตรมาส 1-3","owner":"กานต์รวี (แพทย์แผนไทยชำนาญการ)"}]},{"code":"70130113","name":"งานประจำ 10 : พัฒนาระบบบริการคลินิกการแพทย์แผนไทย สสจ.","budget":200000,"objective":"O : คลินิกการแพทย์แผนไทยของ สสจ. ให้บริการครบ 4 มิติ ได้มาตรฐาน และผู้รับบริการพึงพอใจ","acts":[{"no":"28","name":"10.1 จัดบริการและพัฒนาคลินิก (ทางลาด ครุภัณฑ์ สื่อ)","budget":200000,"src":"เงินบำรุง","kr":["ปรับปรุงทางลาดสำหรับผู้พิการและจัดหาครุภัณฑ์แล้วเสร็จภายในไตรมาส 2","จำนวนครั้งการรับบริการเพิ่มขึ้น ≥ ร้อยละ 10 เทียบกับปี 2569","ผู้รับบริการพึงพอใจ ≥ ร้อยละ 80 และคลินิกผ่านเกณฑ์ รพ.สส.พท."],"evidence":"ใบตรวจรับงาน / สถิติผู้รับบริการ / แบบประเมินความพึงพอใจ","quarter":"ไตรมาส 1-4","owner":"กานต์รวี (แพทย์แผนไทยชำนาญการ)"}]},{"code":"70130014","name":"งานประจำ 11 : สร้างงาน สร้างอาชีพ ด้วยศาสตร์การนวดไทย","budget":0,"objective":"O : ผู้ผ่านการอบรมนวดไทยมีทักษะได้มาตรฐานและนำไปประกอบอาชีพได้จริง","acts":[{"no":"29","name":"11.1 อบรมนวดไทยยืดเหยียดเฉพาะทาง 7 ด้าน (รุ่นละ 30 คน)","budget":0,"src":"ไม่ใช้งบ","kr":["ผู้เข้าอบรมผ่านการทดสอบทั้งภาคทฤษฎีและปฏิบัติ ≥ ร้อยละ 80","ผู้ผ่านอบรมนำทักษะไปให้บริการจริง ≥ ร้อยละ 60 ภายใน 3 เดือน","–"],"evidence":"ผลการทดสอบ / แบบติดตามหลังอบรม","quarter":"ไตรมาส 1-4","owner":"มัธนา (เจ้าพนักงานสาธารณสุข ชำนาญงาน)"},{"no":"30","name":"11.2 อบรมนวดไทยเพื่อสุขภาพ 150 ชั่วโมง (2 รุ่น 60 คน)","budget":0,"src":"ไม่ใช้งบ","kr":["ผู้เข้าอบรม 60 คน ผ่านการทดสอบตามเกณฑ์หลักสูตร ≥ ร้อยละ 80","ผู้ผ่านอบรมมีงานหรือรายได้จากการนวด ≥ ร้อยละ 50 ภายใน 6 เดือน","–"],"evidence":"ผลการทดสอบ / แบบติดตามการมีงานทำ","quarter":"ไตรมาส 1-4","owner":"มัธนา (เจ้าพนักงานสาธารณสุข ชำนาญงาน)"}]},{"code":"70130515","name":"งานประจำ 12 : พัฒนาศักยภาพการจัดบริการด้านการแพทย์แผนไทย","budget":71100,"objective":"O : หน่วยบริการจัดเก็บรายได้ด้านการแพทย์แผนไทยจาก สปสช. ได้ครบถ้วน และจัดบริการแบบบูรณาการเพิ่มขึ้น","acts":[{"no":"31","name":"12.1 ประชุมเชิงปฏิบัติการพัฒนาระบบจัดเก็บรายได้ (6 วัน)","budget":53400,"src":"กองทุนฯ","kr":["หน่วยบริการส่งเจ้าหน้าที่เข้าร่วมครบทีม ≥ ร้อยละ 80","รายได้ชดเชยด้านการแพทย์แผนไทยจาก สปสช. ของจังหวัดเพิ่มขึ้น ≥ ร้อยละ 10 เทียบกับปี 2569","รายการเบิกที่ถูกปฏิเสธ (deny) ลดลง ≥ ร้อยละ 30 เทียบกับไตรมาสแรก"],"evidence":"ใบลงทะเบียน / รายงานเงินโอน สปสช. / รายงาน deny","quarter":"ไตรมาส 2-3","owner":"ขจีวรรณ (แพทย์แผนไทยชำนาญการ) พัชรา (เจ้าพนักงานสาธารณสุข ชำนาญงาน)"},{"no":"32","name":"12.2 ประชุมพัฒนาองค์ความรู้การจัดบริการแบบบูรณาการ","budget":17700,"src":"กองทุนฯ","kr":["ผู้เข้าร่วม ≥ 40 จาก 50 คน","หน่วยบริการเปิดบริการใหม่อย่างน้อย 1 บริการ (ผดุงครรภ์ไทย / คลินิกอายุวัฒนะ / IMC) ≥ 3 แห่ง ภายใน ก.ย. 70","หน่วยบริการบันทึกรหัสบริการ IMC ถูกต้องจนนับผลตัวชี้วัดที่ 5 ได้ ≥ ร้อยละ 90"],"evidence":"ใบลงทะเบียน / รายชื่อบริการใหม่ / รายงาน HDC","quarter":"ไตรมาส 1-2","owner":"ขจีวรรณ (แพทย์แผนไทยชำนาญการ) พัชรา (เจ้าพนักงานสาธารณสุข ชำนาญงาน)"}]}];
+const CARBON_SEED = {"ef":[{"label":"EF ไฟฟ้า (Grid mix)","value":0.4999,"unit":"kgCO2e/kWh","note":"อบก. (TGO) ค่าการปล่อยไฟฟ้า 2559–2561 ใช้ในการคำนวณ CFO ตั้งแต่ 1 เม.ย. 2565"},{"label":"EF น้ำมันดีเซล (ยานพาหนะบนถนน)","value":2.7406,"unit":"kgCO2e/ลิตร","note":"อบก. (TGO) อ้างอิง IPCC Vol.2 ตาราง 3.2.1–3.2.2 และ พพ."},{"label":"EF น้ำมันเบนซิน (ยานพาหนะบนถนน)","value":2.2394,"unit":"kgCO2e/ลิตร","note":"อบก. (TGO) อ้างอิง IPCC Vol.2 ตาราง 3.2.1–3.2.2 และ พพ."},{"label":"ระยะทางเฉลี่ยรถราชการต่อวันลงพื้นที่","value":80,"unit":"กม./คัน/วัน","note":"ค่าสมมติ (6 อำเภอ จ.สมุทรปราการ ไป-กลับ) ควรแทนด้วยเลขไมล์จริงจากสมุดคุมรถ"},{"label":"อัตราสิ้นเปลืองรถราชการ (ดีเซล)","value":10,"unit":"กม./ลิตร","note":"ค่าสมมติ รถตู้/กระบะดีเซล"},{"label":"ระยะทางเดินทางผู้เข้าประชุมเฉลี่ย (ไป-กลับ)","value":30,"unit":"กม./คน/วัน","note":"ค่าสมมติ ผู้เข้าประชุมจากหน่วยบริการในจังหวัด"},{"label":"อัตราสิ้นเปลืองรถส่วนตัว (เบนซิน)","value":12,"unit":"กม./ลิตร","note":"ค่าสมมติ"},{"label":"จำนวนคนต่อคันโดยเฉลี่ย (นั่งรถร่วมกัน)","value":2,"unit":"คน/คัน","note":"ค่าสมมติ"},{"label":"ไฟฟ้าห้องประชุม/ห้องอบรม (แอร์ ไฟ เครื่องเสียง)","value":70,"unit":"kWh/วันประชุม","note":"ค่าสมมติ ห้องประชุมขนาด 50 คน 7 ชม. ควรแทนด้วยค่ามิเตอร์ย่อย"},{"label":"ไฟฟ้าคลินิกแพทย์แผนไทย สสจ.","value":12000,"unit":"kWh/ปี","note":"ค่าสมมติ ควรแทนด้วยบิลค่าไฟฟ้าจริงของคลินิก"}],"plans":[{"no":1,"name":"นโยบาย 1 อบรม Stroke IMC 90 ชม. (50 คน 4 วัน)","relevance":"สูง","kind":"ปล่อย","scope":"S2 ไฟฟ้าห้องอบรม / S3 การเดินทางผู้เข้าอบรม ที่พักวิทยากร 16 ห้อง-คืน ค่าเดินทางวิทยากร อาหาร 200 คน-วัน","detail":"เป็นกิจกรรมที่มีผู้เข้าร่วม-วันมากที่สุดของงบเงินบำรุง มีที่พักวิทยากรและการเดินทางวิทยากรจากต่างจังหวัด","carDays":0,"roomDays":4,"attendDays":200,"directKwh":0,"measure":"จัดอบรมแบบ Green Meeting: งดขวดน้ำพลาสติก ใช้เอกสารดิจิทัล (QR) จัดรถรับส่งร่วมรายอำเภอ เลือกที่พักใกล้สถานที่อบรม","reducePct":0.2,"kr":"ลดเอกสารพิมพ์ ≥ ร้อยละ 80 และขยะพลาสติกจากเครื่องดื่มเป็นศูนย์ ตลอด 4 วันอบรม","projectCodes":["70130101"]},{"no":2,"name":"นโยบาย 2.1, 2.2, 2.4 ลงพื้นที่สำรวจ/ประเมินรับรอง (3 กิจกรรม x 10 วัน)","relevance":"สูง","kind":"ปล่อย","scope":"S1 น้ำมันรถราชการ","detail":"ทีมเดียวกันลงพื้นที่ 6 อำเภอซ้ำ 3 รอบ รวม 30 คัน-วัน เป็นแหล่งปล่อยจากรถราชการที่ลดได้ง่ายที่สุดด้วยการรวมเส้นทาง","carDays":30,"roomDays":0,"attendDays":0,"directKwh":0,"measure":"รวมเส้นทาง 3 กิจกรรมเป็นรอบเดียว (30 เหลือ 15 คัน-วัน) และนัดหมายตามลำดับพื้นที่","reducePct":0.5,"kr":"ลดวันใช้รถราชการจาก 30 เหลือ ≤ 15 คัน-วัน โดยตรวจครบทั้ง 3 เรื่อง","projectCodes":["70130502"]},{"no":3,"name":"นโยบาย 3.1 คัดเลือกนวัตกรรม (50 คน 1 วัน)","relevance":"กลาง","kind":"ปล่อย","scope":"S2 ไฟฟ้า / S3 การเดินทาง อาหาร","detail":"ประชุม 1 วัน 50 คน กลุ่มเดียวกับ 1.2 (คัดเลือกพื้นที่ต้นแบบ)","carDays":0,"roomDays":1,"attendDays":50,"directKwh":0,"measure":"จัดวันเดียวกับ 1.2 ลดการเดินทางซ้ำของผู้เข้าร่วม 50 คน และนำเสนอผลงานด้วยไฟล์แทนโปสเตอร์ไวนิล","reducePct":0.5,"kr":"จัด 1.2 และ 3.1 ร่วมกันใน 1 วัน และงดผลิตโปสเตอร์ไวนิลใหม่","projectCodes":["70130503"]},{"no":4,"name":"งานประจำ 1.1 ประชุมชี้แจงนโยบาย (60 คน 1 วัน)","relevance":"กลาง","kind":"ปล่อย","scope":"S2 ไฟฟ้า / S3 การเดินทาง อาหาร เอกสาร","detail":"ประชุมใหญ่ประจำปี ผู้เข้าร่วมมากที่สุดในงานประจำ","carDays":0,"roomDays":1,"attendDays":60,"directKwh":0,"measure":"ใช้เอกสารดิจิทัล ภาชนะใช้ซ้ำ และจัดแบบ Hybrid ให้ผู้ที่อยู่ไกลเข้าร่วมออนไลน์","reducePct":0.3,"kr":"เอกสารประกอบการประชุมเป็นไฟล์ดิจิทัล ≥ ร้อยละ 90","projectCodes":["70130504"]},{"no":5,"name":"งานประจำ 1.2 คัดเลือกพื้นที่ต้นแบบ (50 คน 1 วัน)","relevance":"กลาง","kind":"ปล่อย","scope":"S2 ไฟฟ้า / S3 การเดินทาง อาหาร","detail":"ผู้เข้าร่วมกลุ่มเดียวกับนโยบาย 3.1","carDays":0,"roomDays":1,"attendDays":50,"directKwh":0,"measure":"จัดร่วมกับนโยบาย 3.1 (ดูแถวนโยบาย 3.1)","reducePct":0.5,"kr":"ดูแถวนโยบาย 3.1","projectCodes":["70130504"]},{"no":6,"name":"งานประจำ 1.3 ปลูกสมุนไพรในสวนสมุนไพรชุมชน","relevance":"สูง","kind":"ดูดซับ","scope":"การดูดซับคาร์บอนจากพืช / S1 รถ 1 วัน","detail":"กิจกรรมเดียวในแผนที่เพิ่มแหล่งดูดซับคาร์บอน ถ้าปลูกไม้ยืนต้นสมุนไพร (เช่น มะขามป้อม สะเดา ขี้เหล็ก) จะนับการดูดซับระยะยาวได้ชัดกว่าพืชล้มลุก","carDays":1,"roomDays":0,"attendDays":0,"directKwh":0,"measure":"เลือกไม้ยืนต้นสมุนไพรอย่างน้อยครึ่งหนึ่งของชนิดที่ปลูก ทำทะเบียนต้นไม้และติดตามอัตรารอด เพื่อใช้คำนวณการดูดซับตามวิธีของ อบก. ในปีถัดไป","reducePct":0,"kr":"ปลูกไม้ยืนต้นสมุนไพร ≥ 50 ต้น อัตรารอด ≥ ร้อยละ 70 และมีทะเบียนต้นไม้พร้อมพิกัด","projectCodes":["70130504"]},{"no":7,"name":"งานประจำ 1.6, 1.8, 1.11 รายงานและประชาสัมพันธ์","relevance":"ต่ำ","kind":"ลด","scope":"S3 กระดาษและการพิมพ์","detail":"เป็นงานเอกสารต่อเนื่องทั้งปี ส่งรายงานและเผยแพร่แบบดิจิทัลช่วยลดกระดาษได้","carDays":0,"roomDays":0,"attendDays":0,"directKwh":0,"measure":"ส่งรายงานผ่านระบบสารบรรณอิเล็กทรอนิกส์ และประชาสัมพันธ์ผ่านสื่อออนไลน์แทนสิ่งพิมพ์","reducePct":0,"kr":"รายงานรายไตรมาสและสื่อประชาสัมพันธ์เป็นดิจิทัลร้อยละ 100","projectCodes":["70130504"]},{"no":8,"name":"งานประจำ 2.1 ร่วมจัดนิทรรศการ (6 วัน 10 คน)","relevance":"สูง","kind":"ปล่อย","scope":"S1 รถขนอุปกรณ์และเจ้าหน้าที่ / S3 ป้ายไวนิลและวัสดุตกแต่งบูธ","detail":"ใช้รถ 2 คันต่อวัน 6 วัน และค่าป้ายประชาสัมพันธ์ 10,900 บาท ไวนิลเป็นพลาสติก PVC ที่กำจัดยาก","carDays":12,"roomDays":0,"attendDays":0,"directKwh":0,"measure":"ออกแบบป้ายและบูธใช้ซ้ำได้ทั้ง 6 ครั้ง ใช้จอแสดงผลแทนการพิมพ์ใหม่ และใช้รถคันเดียวเมื่อทำได้","reducePct":0.3,"kr":"ผลิตป้ายชุดเดียวใช้ครบ 6 ครั้ง และไม่ผลิตไวนิลเพิ่มระหว่างปี","projectCodes":["70130105"]},{"no":9,"name":"งานประจำ 3.1, 3.2, 6.1 ประชุมคณะกรรมการ (Service Plan / ยาสมุนไพร)","relevance":"ต่ำ","kind":"ปล่อย","scope":"S2 ไฟฟ้า / S3 การเดินทาง","detail":"ประชุมครึ่งวัน 5 ครั้งรวม 85 คน-ครั้ง ผู้เข้าร่วมเดินทางจากหน่วยบริการ","carDays":0,"roomDays":2.5,"attendDays":85,"directKwh":0,"measure":"จัดประชุมแบบ Hybrid หรือออนไลน์สำหรับการประชุมติดตาม","reducePct":0.5,"kr":"ประชุมติดตามผลแบบออนไลน์ ≥ 1 ใน 2 ครั้งของแต่ละคณะ","projectCodes":["70130506","70130109"]},{"no":10,"name":"งานประจำ 4.1 ตรวจสถานประกอบการกัญชาก่อนอนุญาต (48 ครั้ง)","relevance":"สูง","kind":"ปล่อย","scope":"S1 น้ำมันรถราชการ","detail":"ออกตรวจสัปดาห์ละ 1 ครั้ง ทั้งปี เป็นกิจกรรมที่ใช้รถราชการมากที่สุด","carDays":48,"roomDays":0,"attendDays":0,"directKwh":0,"measure":"จัดกลุ่มคำขอตามพื้นที่ ตรวจหลายแห่งในรอบเดียว และใช้ตรวจเอกสารออนไลน์ก่อนลงพื้นที่","reducePct":0.25,"kr":"ตรวจครบทุกคำขอ โดยใช้รถราชการ ≤ 36 คัน-วัน (ลดร้อยละ 25)","projectCodes":["70130107"]},{"no":11,"name":"งานประจำ 5.1 เฝ้าระวังสถานประกอบการกัญชาหลังอนุญาต (20 วัน)","relevance":"สูง","kind":"ปล่อย","scope":"S1 น้ำมันรถราชการ","detail":"ออกตรวจ 20 วัน พื้นที่ซ้อนกับ 4.1","carDays":20,"roomDays":0,"attendDays":0,"directKwh":0,"measure":"ตรวจหลังอนุญาตในรอบเดียวกับการตรวจก่อนอนุญาต (4.1) เมื่ออยู่ในพื้นที่เดียวกัน","reducePct":0.25,"kr":"ตรวจเฝ้าระวังครบเป้า โดยใช้รถ ≤ 15 คัน-วัน","projectCodes":["70130108"]},{"no":12,"name":"งานประจำ 7.1, 8.1, 1.9, 1.10 อบรม/ประชุมด้านภูมิปัญญา","relevance":"กลาง","kind":"ปล่อย","scope":"S2 ไฟฟ้า / S3 การเดินทาง อาหาร","detail":"อบรมและประชุม 4 ครั้ง รวม 99 คน-วัน","carDays":0,"roomDays":3,"attendDays":99,"directKwh":0,"measure":"จัด 7.1 ต่อจากการประชุม 1.9 ในวันเดียวกัน (ผู้ทรงคุณวุฒิกลุ่มเดียวกัน) และใช้ภาชนะใช้ซ้ำ","reducePct":0.15,"kr":"จัด 1.9 และ 7.1 ในวันเดียวกัน","projectCodes":["70130510","70130511","70130504"]},{"no":13,"name":"งานประจำ 8.2, 9.1 ลงพื้นที่ติดตามหมอพื้นบ้าน/ประเมิน รพ.สส.พท.","relevance":"กลาง","kind":"ปล่อย","scope":"S1 น้ำมันรถราชการ","detail":"ลงพื้นที่รวม 12 วัน","carDays":12,"roomDays":0,"attendDays":0,"directKwh":0,"measure":"วางเส้นทางร่วมกันเมื่อพื้นที่ตรงกัน","reducePct":0.2,"kr":"ลดวันใช้รถรวมเหลือ ≤ 10 คัน-วัน","projectCodes":["70130511","70130512"]},{"no":14,"name":"งานประจำ 10.1 คลินิกการแพทย์แผนไทย สสจ.","relevance":"สูง","kind":"ปล่อย / ลด","scope":"S2 ไฟฟ้า (แอร์ เครื่องอบผ้า หม้อนึ่งลูกประคบ) / S3 ผ้าและวัสดุใช้แล้วทิ้ง","detail":"เป็นแหล่งใช้ไฟฟ้าต่อเนื่องทั้งปี และแผนปีนี้จัดซื้อเครื่องอบผ้าใหม่ ซึ่งใช้ไฟฟ้าสูง การเลือกรุ่นประหยัดไฟส่งผลทั้งปี","carDays":0,"roomDays":0,"attendDays":0,"directKwh":12000,"measure":"จัดซื้อเครื่องอบผ้าและครุภัณฑ์ไฟฟ้าที่มีฉลากประหยัดไฟเบอร์ 5 ตากผ้าด้วยแสงแดดเมื่อทำได้ ตั้งแอร์ 26 องศา","reducePct":0.15,"kr":"ใช้ไฟฟ้าคลินิกลดลง ≥ ร้อยละ 15 ต่อครั้งบริการ เทียบปี 2569 (บิลค่าไฟ / จำนวนผู้รับบริการ)","projectCodes":["70130113"]},{"no":15,"name":"งานประจำ 11.1, 11.2 อบรมนวดไทย (2 รุ่น 30 วัน + หลักสูตร 7 ด้าน)","relevance":"สูง","kind":"ปล่อย","scope":"S2 ไฟฟ้าห้องอบรม / S3 การเดินทางผู้เข้าอบรม","detail":"อบรมต่อเนื่อง 60 วันสำหรับ 60 คน (1,800 คน-วัน) มากที่สุดในแผน แม้ไม่ใช้งบในแผนนี้แต่อยู่ในความรับผิดชอบของกลุ่มงาน (ยังไม่รวมหลักสูตร 7 ด้านซึ่งไม่ระบุจำนวนวัน)","carDays":0,"roomDays":60,"attendDays":1800,"directKwh":0,"measure":"ให้ผู้เรียนภาคทฤษฎีเรียนออนไลน์บางส่วน ใช้แสงธรรมชาติและพัดลมในห้องฝึกปฏิบัติ ใช้ผ้าและลูกประคบซ้ำได้","reducePct":0.15,"kr":"ภาคทฤษฎี ≥ ร้อยละ 20 ของชั่วโมงเรียนเป็นออนไลน์","projectCodes":["70130014"]},{"no":16,"name":"งานประจำ 12.1, 12.2 ประชุมเชิงปฏิบัติการ","relevance":"กลาง","kind":"ปล่อย","scope":"S2 ไฟฟ้า / S3 การเดินทาง วิทยากร อาหาร","detail":"12.1 จัด 6 วัน (10 คน/วัน) และ 12.2 1 วัน 50 คน รวม 110 คน-วัน","carDays":0,"roomDays":7,"attendDays":110,"directKwh":0,"measure":"จัด 12.1 แบบ Hybrid (วิทยากรสอนออนไลน์บางวัน) ลดการเดินทางวิทยากรและผู้เข้าร่วม","reducePct":0.3,"kr":"จัด 12.1 แบบออนไลน์หรือ Hybrid ≥ 3 ใน 6 วัน","projectCodes":["70130515"]}],"notes":["1. ประมาณการก๊าซเรือนกระจกจากกิจกรรมที่คำนวณได้ทั้งแผน ประมาณ 18.35 tCO2e (รถราชการ 2.70 / ไฟฟ้า 8.78 / การเดินทางผู้เข้าร่วม 6.87 tCO2e)","2. ถ้าทำได้ตามมาตรการในส่วนที่ 2 จะลดได้ประมาณ 3.57 tCO2e โดยไม่ต้องเพิ่มงบ และหลายมาตรการช่วยประหยัดงบไปพร้อมกัน (รวมเส้นทางลงพื้นที่ จัดประชุมร่วมวัน)","3. กิจกรรมที่ควรเริ่มก่อน: (ก) รวมเส้นทางนโยบาย 2.1/2.2/2.4 (ข) จัดกลุ่มการตรวจกัญชา 4.1 และ 5.1 ตามพื้นที่ (ค) เลือกเครื่องอบผ้าประหยัดไฟเบอร์ 5 ในการจัดซื้อของ 10.1 ซึ่งต้องตัดสินใจก่อนจัดซื้อ","4. กิจกรรม 1.3 ปลูกสมุนไพรเป็นกิจกรรมเดียวที่เพิ่มการดูดซับคาร์บอน ควรเลือกไม้ยืนต้นและทำทะเบียนต้นไม้ไว้ตั้งแต่ปีนี้ เพื่อคำนวณปริมาณดูดซับในปีถัดไป","5. ข้อจำกัด: ยังไม่รวมก๊าซจากอาหาร กระดาษ ป้ายไวนิล และที่พักวิทยากร เพราะต้องใช้ค่า EF จากฐานข้อมูล Thai Carbon Label ของ อบก. ซึ่งควรตรวจค่าล่าสุดก่อนใช้ ตัวเลขทั้งหมดเป็นการประมาณการจากค่าสมมติในส่วนที่ 1 ควรแทนด้วยเลขไมล์รถและบิลค่าไฟจริงเมื่อมีข้อมูล","6. ความสอดคล้อง: มาตรการเหล่านี้ใช้ประกอบนโยบายสาธารณสุขสีเขียว (GREEN & CLEAN Hospital) และการจัดประชุมแบบ Green Meeting ของหน่วยงานภาครัฐได้"],"title":"ความเกี่ยวข้องของแผนงาน/โครงการกับ Carbon Footprint และประมาณการก๊าซเรือนกระจก ปี 2570","sub":"ประมาณการเบื้องต้นเพื่อวางแผนลดคาร์บอน ไม่ใช่การรับรองคาร์บอนฟุตพริ้นท์องค์กร (CFO)  |  ตัวเลขสีน้ำเงิน = ค่าสมมติ/ข้อมูลกิจกรรมที่แก้ไขได้  |  สีดำ = สูตร  |  หน่วยผลลัพธ์ : kgCO2e"};
+const CARBON_EF_KEYS = ['elec','diesel','petrol','carKm','carKmPerL','attendKm','attendKmPerL','paxPerCar','roomKwh','clinicKwh'];
+const QUARTER_MONTHS = ['','ต.ค.–ธ.ค.','ม.ค.–มี.ค.','เม.ย.–มิ.ย.','ก.ค.–ก.ย.'];
+const FY_MONTHS_TH = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
+const OWNER_ALIAS = {'ศรัณยู':'ศรัญญู'};
+const CARBON_LOG_TYPES = [
+  {id:'car_days', label:'วันใช้รถราชการ (คัน-วัน)', unit:'คัน-วัน', scope:'S1'},
+  {id:'car_km', label:'ระยะทางรถราชการ (กม.) จากสมุดคุมรถ', unit:'กม.', scope:'S1'},
+  {id:'diesel_l', label:'น้ำมันดีเซลรถราชการ (ลิตร) จากใบเติมน้ำมัน', unit:'ลิตร', scope:'S1'},
+  {id:'room_days', label:'วันใช้ห้องประชุม/อบรม (วัน)', unit:'วัน', scope:'S2'},
+  {id:'elec_kwh', label:'ไฟฟ้า (kWh) จากบิล/มิเตอร์', unit:'kWh', scope:'S2'},
+  {id:'attend_pd', label:'ผู้เข้าร่วมเดินทาง (คน-วัน)', unit:'คน-วัน', scope:'S3'},
+  {id:'petrol_l', label:'น้ำมันเบนซินเดินทางส่วนตัว (ลิตร)', unit:'ลิตร', scope:'S3'},
+  {id:'other_kg', label:'อื่นๆ / การดูดซับ (kgCO2e, ค่าลบ = ดูดซับ)', unit:'kgCO2e', scope:'อื่นๆ'},
+];
+const CARBON_STATUS = [{id:'notstarted',label:'ยังไม่เริ่ม'},{id:'doing',label:'กำลังดำเนินการ'},{id:'done',label:'ดำเนินการแล้ว'}];
+
+function sdiv(a,b){ b=Number(b); return b? a/b : 0; }
+function matchOwnerIds(text){
+  const ids=[]; const t=String(text||'');
+  (DB.personnel||[]).forEach(p=>{
+    const core=String(p.name||'').replace(/^(นางสาว|นาง|นาย|ดร\.|ภก\.|ภญ\.)/,'').trim().split(/\s+/)[0];
+    if(!core) return;
+    const hit = t.includes(core) || Object.keys(OWNER_ALIAS).some(k=>t.includes(k) && OWNER_ALIAS[k]===core);
+    if(hit && !ids.includes(p.id)) ids.push(p.id);
+  });
+  return ids;
+}
+/* v3.17 — เติม "ผู้รับผิดชอบร่วม" ให้โครงการปี 2570 จากรายชื่อใน "ผู้รับผิดชอบ:" ของรายละเอียดโครงการ (ข้อมูลจากไฟล์ Excel)
+   เพิ่มเฉพาะคนที่ยังไม่อยู่ในรายชื่อ โดยไม่เปลี่ยนผู้รับผิดชอบหลัก (คนแรก) · ทำครั้งเดียวต่อโครงการ (จำธงไว้) จึงไม่เติมซ้ำถ้าผู้ใช้ลบออกเอง */
+function backfillCoOwners(){
+  let n=0; const notes=[];
+  try{
+    (DB.projects||[]).forEach(p=>{
+      if(p.year!==2570 || p.coOwnersBackfilled) return;
+      p.coOwnersBackfilled=true;
+      const m=String(p.description||'').match(/ผู้รับผิดชอบ:\s*([^|]*)/); if(!m) return;
+      const cur=projectOwnerIds(p).slice();
+      const add=matchOwnerIds(m[1]).filter(id=>!cur.includes(id));
+      if(!add.length) return;
+      p.ownerPersonIds=cur.concat(add); p.ownerPersonId=p.ownerPersonIds[0];
+      notes.push(`${p.projectCode||p.name.slice(0,20)}: +${add.map(getPersonName).join(', ')}`); n++;
+    });
+    if(n>0){
+      if(!DB.auditLog) DB.auditLog=[];
+      DB.auditLog.unshift({id:uid('log'), action:'เติมผู้รับผิดชอบร่วมอัตโนมัติ', detail:`เพิ่มผู้รับผิดชอบร่วม ${n} โครงการ (ผู้รับผิดชอบหลักไม่เปลี่ยน) ตามรายชื่อในรายละเอียดโครงการ: ${notes.join(' | ')}`, actor:'ระบบ (อัตโนมัติ)', at:new Date().toISOString()});
+    }
+    if(n>0 || (DB.projects||[]).length) saveDB();
+  }catch(e){}
+  return n;
+}
+function parseQuarters(s){
+  const m=String(s||'').match(/(\d)(?:\s*-\s*(\d))?/);
+  if(!m) return [1,4];
+  const a=Math.min(4,Math.max(1,Number(m[1]))), b=m[2]?Math.min(4,Math.max(1,Number(m[2]))):a;
+  return [Math.min(a,b),Math.max(a,b)];
+}
+/* นำเข้า OKR ตั้งต้นจาก V8 — idempotent: จำคีย์ "รหัสโครงการ|ลำดับกิจกรรม" ที่นำเข้าแล้ว */
+function ensureOKRData(){
+  if(!DB.okr || typeof DB.okr!=='object') DB.okr={objectives:[],items:[],seeded:[]};
+  const o=DB.okr; ['objectives','items','seeded'].forEach(k=>{ if(!Array.isArray(o[k])) o[k]=[]; });
+  let added=0;
+  OKR_SEED.forEach(sp=>{
+    if(!o.seeded.includes(sp.code+'|O')){
+      o.objectives.push({id:uid('okro'), year:OKR_YEAR, projectCode:sp.code, text:String(sp.objective||'').replace(/^O\s*:\s*/,'')});
+      o.seeded.push(sp.code+'|O');
+    }
+    sp.acts.forEach(a=>{
+      const key=sp.code+'|'+a.no; if(o.seeded.includes(key)) return;
+      const [qs,qe]=parseQuarters(a.quarter);
+      o.items.push({id:uid('okri'), year:OKR_YEAR, projectCode:sp.code, no:a.no, name:a.name, budget:Number(a.budget)||0,
+        source:['เงินบำรุง','กองทุนฯ','ไม่ใช้งบ'].includes(a.src)?a.src:'', qStart:qs, qEnd:qe,
+        ownerPersonIds:matchOwnerIds(a.owner), ownerText:a.owner||'', evidence:a.evidence||'',
+        krs:(a.kr||[]).filter(Boolean).map(t=>({id:uid('kr'), text:t, progress:0})), checkins:[]});
+      o.seeded.push(key); added++;
+    });
+  });
+  if(added>0){
+    if(!DB.auditLog) DB.auditLog=[];
+    DB.auditLog.unshift({id:uid('log'), action:'นำเข้า OKR รายกิจกรรมอัตโนมัติ', detail:`นำเข้า OKR ปี 2570 จำนวน ${added} กิจกรรม จากไฟล์ V8`, actor:'ระบบ (อัตโนมัติ)', at:new Date().toISOString()});
+    saveDB();
+  }
+  return added;
+}
+function ensureCarbonData(){
+  if(!DB.carbon || typeof DB.carbon!=='object'){
+    const ef={}; CARBON_EF_KEYS.forEach((k,i)=>{ ef[k]=Number(CARBON_SEED.ef[i].value); });
+    DB.carbon={year:2570, ef, plans:CARBON_SEED.plans.map(p=>({
+      id:uid('cbp'), no:p.no, name:p.name, relevance:p.relevance, kind:p.kind, scope:p.scope, detail:p.detail,
+      carDays:Number(p.carDays)||0, roomDays:Number(p.roomDays)||0, attendDays:Number(p.attendDays)||0, directKwh:Number(p.directKwh)||0,
+      measure:p.measure, reducePct:Number(p.reducePct)||0, kr:p.kr, projectCodes:p.projectCodes.slice(), ownerPersonId:'', status:'notstarted', progress:0
+    })), logs:[]};
+    if(!DB.auditLog) DB.auditLog=[];
+    DB.auditLog.unshift({id:uid('log'), action:'นำเข้า Carbon Footprint อัตโนมัติ', detail:`นำเข้าแผนประมาณการก๊าซเรือนกระจก ${DB.carbon.plans.length} รายการ และค่า EF จากไฟล์ V8`, actor:'ระบบ (อัตโนมัติ)', at:new Date().toISOString()});
+    saveDB(); return 1;
+  }
+  const c=DB.carbon;
+  if(!c.ef) c.ef={}; CARBON_EF_KEYS.forEach((k,i)=>{ if(!(Number(c.ef[k])>=0) || c.ef[k]==null) c.ef[k]=Number(CARBON_SEED.ef[i].value); });
+  if(!Array.isArray(c.plans)) c.plans=[]; if(!Array.isArray(c.logs)) c.logs=[];
+  return 0;
+}
+
+/* ---------- ช่วงเวลา / ไตรมาสปีงบ ---------- */
+function currentFYQuarter(year){
+  const y=(year||DB.currentYear)-543-1; const now=new Date();
+  const m=(now.getFullYear()*12+now.getMonth())-(y*12+9);
+  if(m<0) return 0; if(m>=12) return 5; return Math.floor(m/3)+1;
+}
+function qLabel(i){ return i.qStart===i.qEnd ? `ไตรมาส ${i.qStart}` : `ไตรมาส ${i.qStart}–${i.qEnd}`; }
+
+/* ---------- OKR: คำนวณ ---------- */
+function okrActiveYear(){
+  ensureOKRData(); const ys=[...new Set(DB.okr.items.map(i=>i.year))];
+  if(ys.includes(DB.currentYear) || !ys.length) return DB.currentYear;
+  return Math.max(...ys); /* ปีงบที่เลือกไม่มี OKR → แสดงปีล่าสุดที่มี (ข้อมูลตั้งต้นจาก V8 เป็นปี 2570) */
+}
+function okrItems(year){ ensureOKRData(); const y=year||okrActiveYear(); return DB.okr.items.filter(i=>i.year===y); }
+function itemProgress(i){ const k=i.krs||[]; if(!k.length) return 0; return Math.round(k.reduce((s,x)=>s+(Number(x.progress)||0),0)/k.length); }
+function itemExpected(i){
+  const q=currentFYQuarter(i.year); if(q<i.qStart) return 0; if(q>i.qEnd) return 100;
+  return Math.round((q-i.qStart+1)/(i.qEnd-i.qStart+1)*100);
+}
+function itemHealth(i){
+  const p=itemProgress(i), e=itemExpected(i);
+  if(p>=100) return {key:'done',label:'สำเร็จ'};
+  if(e===0) return p>0 ? {key:'ontrack',label:'กำลังดำเนินการ'} : {key:'wait',label:'ยังไม่ถึงกำหนด'};
+  const gap=e-p;
+  if(gap<=10) return {key:'ontrack',label:'ตามแผน'};
+  if(gap<=30) return {key:'risk',label:'เสี่ยงล่าช้า'};
+  return {key:'late',label:'ล่าช้า'};
+}
+function okrBadge(h){
+  const m={done:['#E1F5E9','#0F7A45'],ontrack:['#E3F1FB','#1D5F94'],risk:['#FFF3D6','#9C6B0B'],late:['#FDE4E4','#B02A2A'],wait:['#EEF1EF','#5C6B63']}[h.key]||['#EEF1EF','#5C6B63'];
+  return `<span class="badge" style="background:${m[0]};color:${m[1]};">${h.label}</span>`;
+}
+function pctBar(p){ p=Math.max(0,Math.min(100,Number(p)||0)); return `<div class="progress-bar" style="height:6px;"><div class="progress-fill" style="width:${p}%"></div></div>`; }
+function okrProjectName(code){
+  const pr=findProjectByCodeOrName(DB.projects, okrActiveYear(), code, '');
+  if(pr) return pr.name;
+  const sp=OKR_SEED.find(x=>x.code===code); return sp?sp.name:code;
+}
+function okrStars(avg){ return avg>=90?5:avg>=75?4:avg>=60?3:avg>=40?2:1; }
+function personOkrSummary(personId, year, level){
+  const items=okrItems(year).filter(i=>{ const ix=(i.ownerPersonIds||[]).indexOf(personId); return level==='primary'?ix===0 : level==='co'?ix>0 : ix>=0; });
+  const krN=items.reduce((s,i)=>s+(i.krs||[]).length,0);
+  if(!items.length) return {n:0,krN:0,avg:null,late:0,risk:0,done:0,stars:null,items};
+  const avg=Math.round(items.reduce((s,i)=>s+itemProgress(i),0)/items.length);
+  const hs=items.map(itemHealth);
+  const exp=Math.round(items.reduce((s,i)=>s+itemExpected(i),0)/items.length);
+  return {n:items.length,exp,krN,avg,late:hs.filter(h=>h.key==='late').length,risk:hs.filter(h=>h.key==='risk').length,done:hs.filter(h=>h.key==='done').length,stars:okrStars(avg),items};
+}
+function lastCheckinText(i){
+  const c=(i.checkins||[]).slice(-1)[0]; return c ? fmtDateTH(c.date) : '-';
+}
+
+/* ---------- OKR: หน้าติดตาม ---------- */
+function okrFilterState(){ return UI.okrFilter || (UI.okrFilter={owner:'',q:'',health:'',project:''}); }
+function setOkrFilter(k,v){ okrFilterState()[k]=v; render(); }
+function okrFiltered(){
+  const f=okrFilterState();
+  return okrItems().filter(i=>{
+    if(f.project && i.projectCode!==f.project) return false;
+    if(f.owner==='_none'){ if((i.ownerPersonIds||[]).length) return false; }
+    else if(f.owner && !(i.ownerPersonIds||[]).includes(f.owner)) return false;
+    if(f.q && !(Number(f.q)>=i.qStart && Number(f.q)<=i.qEnd)) return false;
+    if(f.health && itemHealth(i).key!==f.health) return false;
+    return true;
+  });
+}
+function viewOKR(){
+  const all=okrItems(); const f=okrFilterState();
+  const cq=currentFYQuarter();
+  const cqText = cq===0?'ยังไม่เริ่มปีงบ':cq===5?'สิ้นปีงบแล้ว':`ไตรมาส ${cq} (${QUARTER_MONTHS[cq]})`;
+  if(!all.length){
+    return `<div class="card card-pad"><div class="empty-state">ปีงบ ${okrActiveYear()} ยังไม่มี OKR — ข้อมูลตั้งต้นจากไฟล์ V8 เป็นของปีงบ 2570 (เปลี่ยนปีงบด้านบน หรือกด “＋ เพิ่ม OKR”)</div><div style="text-align:center;margin-top:10px;"><button class="btn btn-primary btn-sm" onclick="openOkrForm()">＋ เพิ่ม OKR</button></div></div>`;
+  }
+  const items=okrFiltered();
+  const hs=all.map(itemHealth);
+  const avgAll=Math.round(all.reduce((s,i)=>s+itemProgress(i),0)/all.length);
+  const krTotal=all.reduce((s,i)=>s+(i.krs||[]).length,0);
+  const nDone=hs.filter(h=>h.key==='done').length, nLate=hs.filter(h=>h.key==='late').length, nRisk=hs.filter(h=>h.key==='risk').length;
+  const noOwner=all.filter(i=>!(i.ownerPersonIds||[]).length).length;
+  const codes=[...new Set(all.map(i=>i.projectCode))];
+  const groups=codes.filter(c=>items.some(i=>i.projectCode===c));
+  const optOwner=DB.personnel.map(p=>`<option value="${p.id}" ${f.owner===p.id?'selected':''}>${escapeHtml(p.name)}</option>`).join('');
+  const optProj=codes.map(c=>`<option value="${c}" ${f.project===c?'selected':''}>${c} ${escapeHtml(okrProjectName(c).slice(0,40))}</option>`).join('');
+  return `
+  ${okrActiveYear()!==DB.currentYear?`<div class="card card-pad" style="margin-bottom:12px;font-size:12.5px;">ℹ️ ปีงบที่เลือก (${DB.currentYear}) ยังไม่มี OKR — กำลังแสดง OKR ปีงบ <b>${okrActiveYear()}</b></div>`:''}
+  <div class="grid grid-4" style="margin-bottom:14px;">
+    ${kpiCard('🎯','ความคืบหน้า OKR เฉลี่ย',avgAll+'%',`${all.length} กิจกรรม · ${krTotal} KR`)}
+    ${kpiCard('✅','สำเร็จแล้ว',nDone,'กิจกรรมที่ KR ครบ 100%')}
+    ${kpiCard('⚠️','เสี่ยงล่าช้า / ล่าช้า',`${nRisk} / ${nLate}`,'เทียบกับไตรมาสที่กำหนดไว้')}
+    ${kpiCard('📅','ช่วงเวลาปัจจุบัน',cq>=1&&cq<=4?`Q${cq}`:'-',cqText)}
+  </div>
+  ${noOwner?`<div class="card card-pad" style="margin-bottom:12px;border-left:4px solid var(--amber);background:#FFFBF0;font-size:12.5px;">⚠️ มี ${noOwner} กิจกรรมที่ยังไม่ได้ระบุผู้รับผิดชอบที่ตรงกับทำเนียบ — จะไม่ถูกนับเข้าคะแนนรายบุคคล (กด ✏️ เพื่อเลือกผู้รับผิดชอบ)</div>`:''}
+  <div class="filter-bar">
+    <select class="select" onchange="setOkrFilter('project',this.value)"><option value="">ทุกโครงการ</option>${optProj}</select>
+    <select class="select" onchange="setOkrFilter('owner',this.value)"><option value="">ทุกผู้รับผิดชอบ</option>${optOwner}<option value="_none" ${f.owner==='_none'?'selected':''}>— ยังไม่ระบุผู้รับผิดชอบ —</option></select>
+    <select class="select" onchange="setOkrFilter('q',this.value)"><option value="">ทุกไตรมาส</option>${[1,2,3,4].map(q=>`<option value="${q}" ${String(f.q)===String(q)?'selected':''}>ไตรมาส ${q} (${QUARTER_MONTHS[q]})</option>`).join('')}</select>
+    <select class="select" onchange="setOkrFilter('health',this.value)"><option value="">ทุกสถานะ</option>${[['done','สำเร็จ'],['ontrack','ตามแผน/กำลังดำเนินการ'],['risk','เสี่ยงล่าช้า'],['late','ล่าช้า'],['wait','ยังไม่ถึงกำหนด']].map(x=>`<option value="${x[0]}" ${f.health===x[0]?'selected':''}>${x[1]}</option>`).join('')}</select>
+    <div class="spacer"></div>
+    <button class="btn btn-ghost btn-sm" onclick="exportOKRExcel()">📥 ส่งออก Excel</button>
+    <button class="btn btn-primary btn-sm" onclick="openOkrForm()">＋ เพิ่ม OKR</button>
+  </div>
+  ${groups.length? groups.map(code=>{
+    const its=items.filter(i=>i.projectCode===code);
+    const obj=DB.okr.objectives.find(o=>o.projectCode===code && o.year===okrActiveYear());
+    const pAvg=Math.round(its.reduce((s,i)=>s+itemProgress(i),0)/its.length);
+    const pr=findProjectByCodeOrName(DB.projects, okrActiveYear(), code, '');
+    const cbPlans=(DB.carbon&&DB.carbon.plans||[]).filter(pl=>(pl.projectCodes||[]).includes(code));
+    return `<div class="card" style="margin-bottom:14px;">
+      <div class="card-head" style="align-items:flex-start;gap:10px;">
+        <div style="flex:1;min-width:0;">
+          <div class="card-title">${pr?`<a href="javascript:void(0)" onclick="openProjectDetail('${pr.id}')" style="color:inherit;">`:''}<span style="font-family:monospace;color:var(--g-700);">${escapeHtml(code)}</span> · ${escapeHtml(okrProjectName(code))}${pr?'</a>':''}</div>
+          <div style="font-size:12.5px;margin-top:5px;line-height:1.55;"><b>🎯 O :</b> ${escapeHtml(obj?obj.text:'—')} <button class="icon-btn" title="แก้ไข Objective" onclick="openOkrObjectiveForm('${code}')">✏️</button></div>
+          ${cbPlans.length?`<div class="small-muted" style="margin-top:3px;">🌱 มี KR ด้านคาร์บอนที่เกี่ยวข้อง ${cbPlans.length} รายการ (ดูเมนู Carbon Footprint)</div>`:''}
+        </div>
+        <div style="min-width:140px;text-align:right;"><div style="font-weight:700;color:var(--g-800);font-size:18px;">${pAvg}%</div><div class="small-muted">ความคืบหน้าโครงการ</div></div>
+      </div>
+      <div class="tbl-wrap card-pad" style="padding-top:4px;">
+      <table><thead><tr><th style="width:24%">กิจกรรม</th><th>ผู้รับผิดชอบ</th><th>ช่วงเวลา</th><th style="width:36%">KR (ผลลัพธ์สำคัญ)</th><th style="width:90px;">รวม</th><th></th></tr></thead><tbody>
+      ${its.map(i=>{
+        const h=itemHealth(i), p=itemProgress(i), e=itemExpected(i);
+        const hist=(i.checkins||[]).slice().reverse();
+        return `<tr>
+          <td style="vertical-align:top;"><div style="font-weight:600;">${escapeHtml(i.no)}. ${escapeHtml(i.name)}</div>
+            <div class="small-muted">${i.source?escapeHtml(i.source)+' · ':''}${money(i.budget)} บาท</div>
+            ${i.evidence?`<div class="small-muted" style="margin-top:3px;">📎 ${escapeHtml(i.evidence)}</div>`:''}</td>
+          <td style="vertical-align:top;font-size:12px;">${(i.ownerPersonIds||[]).length?escapeHtml(getPersonNames(i.ownerPersonIds)):`<span class="small-muted">${escapeHtml(i.ownerText||'— ไม่ระบุ —')}</span>`}</td>
+          <td style="vertical-align:top;font-size:12px;">${qLabel(i)}<div class="small-muted">คาดหวัง ณ ตอนนี้ ${e}%</div></td>
+          <td style="vertical-align:top;">${(i.krs||[]).map((k,ix)=>`<div style="margin-bottom:6px;"><div style="font-size:12px;line-height:1.45;"><b>KR${ix+1}</b> ${escapeHtml(k.text)} <b style="color:var(--g-800);">(${Number(k.progress)||0}%)</b></div>${pctBar(k.progress)}</div>`).join('')||'<span class="small-muted">ยังไม่มี KR</span>'}
+            ${hist.length?`<details style="margin-top:4px;"><summary class="small-muted" style="cursor:pointer;">ประวัติเช็คอิน (${hist.length}) · ล่าสุด ${lastCheckinText(i)}</summary>${hist.map(c=>`<div class="small-muted" style="margin:3px 0;">${fmtDateTH(c.date)} · ไตรมาส ${c.quarter} · ${c.progress}% ${c.note?'— '+escapeHtml(c.note):''}</div>`).join('')}</details>`:''}</td>
+          <td style="vertical-align:top;"><div style="font-weight:700;font-size:16px;">${p}%</div>${pctBar(p)}<div style="margin-top:5px;">${okrBadge(h)}</div></td>
+          <td style="vertical-align:top;white-space:nowrap;"><button class="btn btn-primary btn-sm" onclick="openOkrCheckin('${i.id}')">📝 เช็คอิน</button> <button class="icon-btn" onclick="openOkrForm('${i.id}')">✏️</button></td>
+        </tr>`;
+      }).join('')}
+      </tbody></table></div></div>`;
+  }).join('') : '<div class="card card-pad"><div class="empty-state">ไม่พบรายการตามตัวกรอง</div></div>'}
+  <div class="card card-pad small-muted" style="line-height:1.7;">
+    <b>วิธีใช้:</b> กด “📝 เช็คอิน” ทุกสิ้นไตรมาส (หรือเมื่อมีความคืบหน้า) แล้วใส่ % ความสำเร็จของแต่ละ KR พร้อมหมายเหตุ ระบบจะคำนวณความคืบหน้ากิจกรรม/โครงการ และเทียบกับช่วงเวลาที่กำหนดเพื่อบอกว่า “ตามแผน/เสี่ยง/ล่าช้า” ·
+    คะแนน OKR ของแต่ละคนไปที่เมนู <b>OKR รายบุคคล</b> และดึงไปประกอบการประเมินผลงานได้ ·
+    ค่าเป้าหมายที่ไม่มีในแผนเดิมเป็นค่าที่เสนอ (ตามไฟล์ V8) ผู้รับผิดชอบควรยืนยัน/แก้ไขข้อความ KR ก่อนใช้จริง
+  </div>`;
+}
+function openOkrObjectiveForm(code){
+  ensureOKRData();
+  const obj=DB.okr.objectives.find(o=>o.projectCode===code && o.year===okrActiveYear());
+  openModal('แก้ไข Objective (เป้าหมายระดับโครงการ)', `
+    <div class="small-muted" style="margin-bottom:6px;">${escapeHtml(code)} · ${escapeHtml(okrProjectName(code))}</div>
+    <div class="form-row"><label>Objective</label><textarea class="input" id="o_text" rows="4">${escapeHtml(obj?obj.text:'')}</textarea></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="saveOkrObjective('${code}')">💾 บันทึก</button>`);
+}
+function saveOkrObjective(code){
+  const text=document.getElementById('o_text').value.trim();
+  let obj=DB.okr.objectives.find(o=>o.projectCode===code && o.year===okrActiveYear());
+  if(!obj){ obj={id:uid('okro'),year:okrActiveYear(),projectCode:code,text:''}; DB.okr.objectives.push(obj); }
+  obj.text=text; logAction('แก้ไข Objective ของ OKR', code);
+  saveDB(); closeModal(); render(); showToast('บันทึก Objective เรียบร้อย');
+}
+function openOkrForm(id){
+  ensureOKRData();
+  const editing=!!id;
+  const it = editing ? DB.okr.items.find(x=>x.id===id) : {id:null, year:okrActiveYear(), projectCode:'', no:'', name:'', budget:0, source:'', qStart:1, qEnd:4, ownerPersonIds:[], ownerText:'', evidence:'', krs:[], checkins:[]};
+  const projs=DB.projects.filter(p=>p.year===okrActiveYear() && p.projectCode);
+  const codes=new Set(projs.map(p=>p.projectCode)); if(it.projectCode && !codes.has(it.projectCode)) codes.add(it.projectCode);
+  const body=`
+    <div class="form-row"><label>โครงการ (รหัส) *</label><select class="select" id="ok_proj">${[...codes].map(c=>`<option value="${c}" ${c===it.projectCode?'selected':''}>${c} · ${escapeHtml(okrProjectName(c).slice(0,60))}</option>`).join('')}</select></div>
+    <div class="form-2col">
+      <div class="form-row"><label>ลำดับกิจกรรม</label><input class="input" id="ok_no" value="${escapeHtml(it.no)}" placeholder="เช่น 1.2"></div>
+      <div class="form-row"><label>งบประมาณกิจกรรม (บาท)</label><input class="input" type="number" min="0" id="ok_budget" value="${it.budget||0}"></div>
+    </div>
+    <div class="form-row"><label>ชื่อกิจกรรม *</label><input class="input" id="ok_name" value="${escapeHtml(it.name)}"></div>
+    <div class="form-row"><label>KR — ผลลัพธ์สำคัญ (1 บรรทัด = 1 KR ควรมีตัวเลขและกำหนดเวลา)</label><textarea class="input" id="ok_krs" rows="5">${escapeHtml((it.krs||[]).map(k=>k.text).join('\n'))}</textarea></div>
+    <div class="form-row"><label>ผู้รับผิดชอบ</label><div style="display:flex;flex-wrap:wrap;gap:8px;">${DB.personnel.map(pe=>`<label style="display:flex;align-items:center;gap:5px;font-size:12.5px;background:#F5F8F6;padding:5px 10px;border-radius:8px;"><input type="checkbox" class="ok-owner-chk" value="${pe.id}" ${(it.ownerPersonIds||[]).includes(pe.id)?'checked':''}>${escapeHtml(pe.name)}</label>`).join('')}</div></div>
+    <div class="form-2col">
+      <div class="form-row"><label>ตั้งแต่ไตรมาส</label><select class="select" id="ok_qs">${[1,2,3,4].map(q=>`<option value="${q}" ${q===it.qStart?'selected':''}>ไตรมาส ${q} (${QUARTER_MONTHS[q]})</option>`).join('')}</select></div>
+      <div class="form-row"><label>ถึงไตรมาส</label><select class="select" id="ok_qe">${[1,2,3,4].map(q=>`<option value="${q}" ${q===it.qEnd?'selected':''}>ไตรมาส ${q} (${QUARTER_MONTHS[q]})</option>`).join('')}</select></div>
+    </div>
+    <div class="form-row"><label>หลักฐาน / วิธีวัดผล</label><textarea class="input" id="ok_evi" rows="2">${escapeHtml(it.evidence||'')}</textarea></div>`;
+  const footer=`${editing?`<button class="btn btn-danger" onclick="deleteOkrItem('${id}')">ลบ</button>`:''}<button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="saveOkrForm(${editing?`'${id}'`:'null'})">💾 บันทึก</button>`;
+  openModal(editing?'แก้ไข OKR กิจกรรม':'เพิ่ม OKR กิจกรรม', body, footer, true);
+}
+function saveOkrForm(id){
+  const name=document.getElementById('ok_name').value.trim();
+  const code=document.getElementById('ok_proj').value;
+  if(!name){ showToast('กรุณากรอกชื่อกิจกรรม'); return; }
+  if(!code){ showToast('กรุณาเลือกโครงการ'); return; }
+  let qs=Number(document.getElementById('ok_qs').value), qe=Number(document.getElementById('ok_qe').value); if(qe<qs){ const t=qs; qs=qe; qe=t; }
+  const lines=document.getElementById('ok_krs').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const owners=Array.from(document.querySelectorAll('.ok-owner-chk:checked')).map(c=>c.value);
+  let it = id ? DB.okr.items.find(x=>x.id===id) : null;
+  if(!it){ it={id:uid('okri'), year:okrActiveYear(), checkins:[], krs:[], ownerText:''}; DB.okr.items.push(it); }
+  it.projectCode=code; it.no=document.getElementById('ok_no').value.trim(); it.name=name; it.budget=Number(document.getElementById('ok_budget').value)||0;
+  it.qStart=qs; it.qEnd=qe; it.ownerPersonIds=owners; it.evidence=document.getElementById('ok_evi').value.trim();
+  it.krs=lines.map((t,ix)=> (it.krs[ix] ? Object.assign(it.krs[ix],{text:t}) : {id:uid('kr'),text:t,progress:0}));
+  logAction(id?'แก้ไข OKR':'เพิ่ม OKR', `${code} · ${name}`);
+  saveDB(); closeModal(); render(); showToast('บันทึก OKR เรียบร้อย');
+}
+function deleteOkrItem(id){
+  if(!confirm('ลบ OKR กิจกรรมนี้หรือไม่? (ประวัติเช็คอินจะหายไปด้วย)')) return;
+  const it=DB.okr.items.find(x=>x.id===id);
+  DB.okr.items=DB.okr.items.filter(x=>x.id!==id);
+  if(it) logAction('ลบ OKR', `${it.projectCode} · ${it.name}`);
+  saveDB(); closeModal(); render();
+}
+function openOkrCheckin(id){
+  const it=DB.okr.items.find(x=>x.id===id); if(!it) return;
+  const cq=currentFYQuarter(it.year); const q=cq>=1&&cq<=4?cq:(cq===5?4:1);
+  const today=new Date().toISOString().slice(0,10);
+  const body=`
+    <div style="font-weight:700;margin-bottom:2px;">${escapeHtml(it.no)}. ${escapeHtml(it.name)}</div>
+    <div class="small-muted" style="margin-bottom:8px;">${escapeHtml(it.projectCode)} · ${qLabel(it)} · หลักฐาน: ${escapeHtml(it.evidence||'-')}</div>
+    <div class="form-2col">
+      <div class="form-row"><label>วันที่เช็คอิน</label><input class="input" type="date" id="ci_date" value="${today}"></div>
+      <div class="form-row"><label>รอบไตรมาส</label><select class="select" id="ci_q">${[1,2,3,4].map(n=>`<option value="${n}" ${n===q?'selected':''}>ไตรมาส ${n} (${QUARTER_MONTHS[n]})</option>`).join('')}</select></div>
+    </div>
+    <div class="section-title" style="margin-top:4px;">ความสำเร็จของแต่ละ KR (0–100%)<span class="line-flex"></span></div>
+    ${(it.krs||[]).map((k,ix)=>`<div class="form-row"><label>KR${ix+1} ${escapeHtml(k.text)}</label>
+      <div style="display:flex;gap:10px;align-items:center;"><input type="range" min="0" max="100" step="5" value="${Number(k.progress)||0}" class="ci-range" data-kr="${k.id}" oninput="this.nextElementSibling.value=this.value" style="flex:1;"><input class="input ci-num" type="number" min="0" max="100" value="${Number(k.progress)||0}" style="width:80px;" oninput="this.previousElementSibling.value=this.value"> %</div></div>`).join('') || '<div class="small-muted">กิจกรรมนี้ยังไม่มี KR — กด ✏️ เพื่อเพิ่ม</div>'}
+    <div class="form-row"><label>หมายเหตุ / ปัญหาอุปสรรค / สิ่งที่ทำไปแล้ว</label><textarea class="input" id="ci_note" rows="3"></textarea></div>`;
+  openModal('📝 เช็คอินความคืบหน้า OKR', body, `<button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="saveOkrCheckin('${id}')">💾 บันทึกเช็คอิน</button>`, true);
+}
+function saveOkrCheckin(id){
+  const it=DB.okr.items.find(x=>x.id===id); if(!it) return;
+  const values={};
+  document.querySelectorAll('.ci-num').forEach((inp,ix)=>{
+    const kr=(it.krs||[])[ix]; if(!kr) return;
+    const v=Math.max(0,Math.min(100,Number(inp.value)||0)); kr.progress=v; values[kr.id]=v;
+  });
+  const avg=itemProgress(it);
+  it.checkins=it.checkins||[];
+  it.checkins.push({id:uid('ci'), date:document.getElementById('ci_date').value||new Date().toISOString().slice(0,10), quarter:Number(document.getElementById('ci_q').value), values, progress:avg, note:document.getElementById('ci_note').value.trim()});
+  logAction('เช็คอิน OKR', `${it.projectCode} ${it.no} · รวม ${avg}%`);
+  saveDB(); closeModal(); render(); showToast(`บันทึกเช็คอินแล้ว — ความคืบหน้ารวม ${avg}%`);
+}
+
+/* ---------- OKR รายบุคคล (เชื่อมประเมินบุคคล) ---------- */
+function viewOKRPerson(){
+  const all=okrItems();
+  const rows=DB.personnel.map(p=>({p, s:personOkrSummary(p.id)}));
+  const withOkr=rows.filter(r=>r.s.n>0);
+  const noOwner=all.filter(i=>!(i.ownerPersonIds||[]).length);
+  return `
+  <div class="card card-pad" style="margin-bottom:14px;font-size:12.5px;line-height:1.7;">
+    <b>วิธีเชื่อมกับประเมินผลงานบุคคล:</b> ระบบรวม % ความคืบหน้า KR ของกิจกรรมที่แต่ละคนรับผิดชอบเป็น “คะแนน OKR” แล้วแปลงเป็นดาวแนะนำ
+    (≥90% = 5★ · ≥75% = 4★ · ≥60% = 3★ · ≥40% = 2★ · ต่ำกว่านั้น = 1★) — กด “ประเมินผลงาน” จะมีหัวข้อ “ผลสัมฤทธิ์ตาม OKR” พร้อมปุ่มใช้ค่าแนะนำ ผู้ประเมินปรับเองได้เสมอ
+    และคะแนนนี้จะเข้าไปเฉลี่ยในคะแนนรวมของการประเมิน
+  </div>
+  ${noOwner.length?`<div class="card card-pad" style="margin-bottom:12px;border-left:4px solid var(--amber);background:#FFFBF0;font-size:12.5px;">⚠️ ${noOwner.length} กิจกรรมยังไม่มีผู้รับผิดชอบที่ตรงกับทำเนียบ: ${noOwner.slice(0,6).map(i=>escapeHtml(i.projectCode+' '+i.no)).join(', ')}${noOwner.length>6?' …':''}</div>`:''}
+  <div class="filter-bar"><div class="spacer"></div><button class="btn btn-ghost btn-sm" onclick="exportOKRExcel()">📥 ส่งออก Excel</button></div>
+  <div class="card"><div class="tbl-wrap card-pad">
+  <table><thead><tr><th>บุคลากร</th><th style="text-align:center">กิจกรรม</th><th style="text-align:center">KR</th><th style="width:20%">ความคืบหน้าเฉลี่ย</th><th style="text-align:center">สำเร็จ</th><th style="text-align:center">เสี่ยง/ล่าช้า</th><th>ดาวแนะนำ</th><th>ผลประเมินล่าสุด</th><th></th></tr></thead><tbody>
+  ${rows.map(({p,s})=>{
+    const evs=DB.evaluations.filter(e=>e.personId===p.id).sort((a,b)=>String(b.evaluatedAt).localeCompare(String(a.evaluatedAt)));
+    const last=evs[0];
+    return `<tr>
+      <td style="font-weight:600;vertical-align:top;">${escapeHtml(p.name)}<div class="small-muted">${escapeHtml(p.position||'')}</div>
+        ${s.n?`<details style="margin-top:4px;"><summary class="small-muted" style="cursor:pointer;">ดูกิจกรรมที่รับผิดชอบ</summary>${s.items.map(i=>`<div class="small-muted" style="margin:3px 0;">• ${escapeHtml(i.projectCode)} ${escapeHtml(i.no)} ${escapeHtml(i.name.slice(0,48))} — <b>${itemProgress(i)}%</b> ${okrBadge(itemHealth(i))}</div>`).join('')}</details>`:''}</td>
+      <td style="text-align:center;">${s.n||'-'}${s.n?`<div class="small-muted">หลัก ${personOkrSummary(p.id,undefined,'primary').n} · ร่วม ${personOkrSummary(p.id,undefined,'co').n}</div>`:''}</td><td style="text-align:center;">${s.krN||'-'}</td>
+      <td>${s.n?`<b>${s.avg}%</b> <span class="small-muted">(คาดหวัง ~${s.exp}%)</span>${pctBar(s.avg)}`:'<span class="small-muted">ไม่มี OKR</span>'}</td>
+      <td style="text-align:center;">${s.n?s.done:'-'}</td>
+      <td style="text-align:center;${s.late?'color:#B02A2A;font-weight:700;':''}">${s.n?`${s.risk} / ${s.late}`:'-'}</td>
+      <td>${s.stars?starDisplay(s.stars):'-'}</td>
+      <td class="small-muted">${last?`${escapeHtml(last.period)} · ${evalOverall(last).toFixed(1)}${last.criteria&&last.criteria.okr>0?` · OKR ${last.criteria.okr}★`:''}`:'-'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="openEvalForm(null,'${p.id}')">⭐ ประเมินผลงาน</button></td>
+    </tr>`;
+  }).join('')}
+  </tbody></table></div></div>`;
+}
+
+/* ---------- OKR: Export Excel ---------- */
+function buildOKRAOA(year){
+  const items=okrItems(year); const maxK=Math.max(3,...items.map(i=>(i.krs||[]).length));
+  const head=['รหัสโครงการ','โครงการ','ลำดับ','กิจกรรม','งบ (บาท)','แหล่งงบ','ผู้รับผิดชอบ','ไตรมาส'];
+  for(let k=1;k<=maxK;k++){ head.push('KR '+k, 'KR '+k+' (%)'); }
+  head.push('ความคืบหน้ารวม (%)','คาดหวัง ณ ปัจจุบัน (%)','สถานะ','หลักฐาน/วิธีวัดผล','เช็คอินล่าสุด','หมายเหตุเช็คอินล่าสุด');
+  const aoa=[[`OKR รายกิจกรรม ปีงบประมาณ ${year}  (ส่งออก ${fmtDateTH(new Date().toISOString().slice(0,10))})`],[],head];
+  items.forEach(i=>{
+    const r=[i.projectCode, okrProjectName(i.projectCode), i.no, i.name, i.budget, i.source, (i.ownerPersonIds||[]).length?getPersonNames(i.ownerPersonIds):(i.ownerText||''), qLabel(i)];
+    for(let k=0;k<maxK;k++){ const kr=(i.krs||[])[k]; r.push(kr?kr.text:'', kr?Number(kr.progress)||0:''); }
+    const lc=(i.checkins||[]).slice(-1)[0];
+    r.push(itemProgress(i), itemExpected(i), itemHealth(i).label, i.evidence||'', lc?lc.date:'', lc?lc.note:'');
+    aoa.push(r);
+  });
+  const p2=[['OKR รายบุคคล (สำหรับประกอบการประเมินผลงาน)'],[],['บุคลากร','ตำแหน่ง','กิจกรรม','KR','ความคืบหน้าเฉลี่ย (%)','สำเร็จ','เสี่ยงล่าช้า','ล่าช้า','ดาวแนะนำ (1-5)']];
+  DB.personnel.forEach(p=>{ const s=personOkrSummary(p.id,year); p2.push([p.name,p.position||'',s.n,s.krN,s.avg==null?'':s.avg,s.done,s.risk,s.late,s.stars||'']); });
+  return {aoa, p2, widths:[12,40,7,44,11,10,26,12].concat(Array(maxK*2).fill(0).map((_,x)=>x%2?9:42)).concat([12,12,14,40,12,30])};
+}
+function exportOKRExcel(){
+  if(typeof XLSX==='undefined'){ showToast('⚠️ โหลดไลบรารี Excel ไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต'); return; }
+  const y=okrActiveYear(); const b=buildOKRAOA(y);
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet(b.aoa); ws['!cols']=b.widths.map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws, 'OKR รายกิจกรรม');
+  const ws2=XLSX.utils.aoa_to_sheet(b.p2); ws2['!cols']=[28,34,9,7,16,8,12,8,14].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws2, 'OKR รายบุคคล');
+  XLSX.writeFile(wb, `OKR_ปีงบ${y}.xlsx`);
+  showToast('ส่งออก OKR เรียบร้อย');
+}
+
+/* ======================= Carbon Footprint ======================= */
+function carbonCalc(pl){
+  ensureCarbonData(); const e=DB.carbon.ef;
+  const s1=(Number(pl.carDays)||0)*sdiv(e.carKm,e.carKmPerL)*e.diesel;
+  const s2=((Number(pl.roomDays)||0)*e.roomKwh+(Number(pl.directKwh)||0))*e.elec;
+  const s3=(Number(pl.attendDays)||0)*sdiv(sdiv(e.attendKm,e.attendKmPerL),e.paxPerCar)*e.petrol;
+  return {s1,s2,s3,total:s1+s2+s3};
+}
+function carbonTarget(pl){ return carbonCalc(pl).total*(1-(Number(pl.reducePct)||0)); }
+function carbonLogKg(l){
+  const e=DB.carbon.ef, q=Number(l.qty)||0;
+  switch(l.type){
+    case 'car_days': return q*sdiv(e.carKm,e.carKmPerL)*e.diesel;
+    case 'car_km': return sdiv(q,e.carKmPerL)*e.diesel;
+    case 'diesel_l': return q*e.diesel;
+    case 'room_days': return q*e.roomKwh*e.elec;
+    case 'elec_kwh': return q*e.elec;
+    case 'attend_pd': return q*sdiv(sdiv(e.attendKm,e.attendKmPerL),e.paxPerCar)*e.petrol;
+    case 'petrol_l': return q*e.petrol;
+    default: return q;
+  }
+}
+function carbonLogScope(l){ const t=CARBON_LOG_TYPES.find(x=>x.id===l.type); return t?t.scope:'อื่นๆ'; }
+function carbonLogsOfYear(year){
+  ensureCarbonData(); const sy=(year||DB.currentYear)-543-1;
+  const a=`${sy}-10-01`, b=`${sy+1}-09-30`;
+  return DB.carbon.logs.filter(l=>l.date>=a && l.date<=b);
+}
+function fyMonthIdx(dateStr){ const m=Number(String(dateStr).slice(5,7)); return (m+2)%12; }
+function carbonTotals(year){
+  ensureCarbonData(); const plans=DB.carbon.plans;
+  const t={est:0,target:0,s1:0,s2:0,s3:0,actual:0,done:0,doing:0};
+  plans.forEach(pl=>{ const c=carbonCalc(pl); t.est+=c.total; t.s1+=c.s1; t.s2+=c.s2; t.s3+=c.s3; t.target+=carbonTarget(pl); if(pl.status==='done') t.done++; if(pl.status==='doing') t.doing++; });
+  carbonLogsOfYear(year).forEach(l=>{ t.actual+=carbonLogKg(l); });
+  return t;
+}
+const fmtKg=(n)=>(Number(n)||0).toLocaleString('th-TH',{maximumFractionDigits:1});
+function viewCarbon(){
+  ensureCarbonData(); const c=DB.carbon; const t=carbonTotals(c.year);
+  const red=t.est-t.target; const redPct=sdiv(red,t.est)*100;
+  const usedPct=sdiv(t.actual,t.target)*100;
+  const logs=carbonLogsOfYear(c.year);
+  const planActual=id=>logs.filter(l=>l.planId===id).reduce((s,l)=>s+carbonLogKg(l),0);
+  const high=c.plans.filter(p=>p.relevance==='สูง').length;
+  return `
+  <div class="card card-pad" style="margin-bottom:14px;font-size:12.5px;line-height:1.6;border-left:4px solid var(--g-500);">
+    <b>${escapeHtml(CARBON_SEED.title)}</b><br><span class="small-muted">${escapeHtml(CARBON_SEED.sub)}</span>
+  </div>
+  <div class="grid grid-4" style="margin-bottom:14px;">
+    ${kpiCard('🏭','ประมาณการทั้งแผน (tCO2e)',(t.est/1000).toFixed(2),`รถราชการ ${(t.s1/1000).toFixed(2)} · ไฟฟ้า ${(t.s2/1000).toFixed(2)} · เดินทาง ${(t.s3/1000).toFixed(2)}`)}
+    ${kpiCard('🎯','เป้าหลังใช้มาตรการลด (tCO2e)',(t.target/1000).toFixed(2),`ลดได้ ${(red/1000).toFixed(2)} t (${redPct.toFixed(1)}%)`)}
+    ${kpiCard('📒','บันทึกการปล่อยจริงสะสม (tCO2e)',(t.actual/1000).toFixed(2),`${usedPct.toFixed(0)}% ของเป้าทั้งปี · ${logs.length} รายการ`)}
+    ${kpiCard('✅','มาตรการที่ดำเนินการแล้ว',`${t.done}/${c.plans.length}`,`กำลังทำ ${t.doing} · ความเกี่ยวข้องระดับสูง ${high} รายการ`)}
+  </div>
+  <div class="card card-pad" style="margin-bottom:14px;"><div class="card-title" style="margin-bottom:8px;">สะสมการปล่อยจริง เทียบเป้าหมายรายเดือน (kgCO2e)</div><div style="height:240px;"><canvas id="chartCarbonCum"></canvas></div></div>
+  <div class="filter-bar"><div class="spacer"></div>
+    <button class="btn btn-ghost btn-sm" onclick="exportCarbonExcel()">📥 ส่งออก Excel</button>
+    <button class="btn btn-ghost btn-sm" onclick="openCarbonPlanForm()">＋ เพิ่มกิจกรรม</button>
+    <button class="btn btn-primary btn-sm" onclick="openCarbonLogForm()">＋ บันทึกการปล่อยจริง</button></div>
+  <div class="card"><div class="tbl-wrap card-pad">
+  <table><thead><tr><th>#</th><th style="min-width:230px;">โครงการ / กิจกรรม</th><th>ความเกี่ยวข้อง</th><th style="text-align:right">ประมาณการ<br><span class="small-muted">kgCO2e</span></th><th style="text-align:right">เป้าหลังลด</th><th style="text-align:right">บันทึกจริง</th><th style="width:110px;">จริง/เป้า</th><th style="min-width:200px;">มาตรการลดคาร์บอน (KR)</th><th>สถานะมาตรการ</th><th></th></tr></thead><tbody>
+  ${c.plans.map(pl=>{
+    const cc=carbonCalc(pl), tg=carbonTarget(pl), ac=planActual(pl.id), pc=sdiv(ac,tg)*100;
+    const over=tg>0 && ac>tg;
+    const relCol={'สูง':'#B02A2A','กลาง':'#9C6B0B','ต่ำ':'#5C6B63'}[pl.relevance]||'#5C6B63';
+    return `<tr>
+      <td>${pl.no}</td>
+      <td style="vertical-align:top;"><div style="font-weight:600;">${escapeHtml(pl.name)}</div><div class="small-muted">${escapeHtml(pl.kind||'')} · ${escapeHtml(pl.scope||'')}</div><div class="small-muted">โครงการ: ${(pl.projectCodes||[]).map(escapeHtml).join(', ')||'-'}${pl.ownerPersonId?' · '+escapeHtml(getPersonName(pl.ownerPersonId)):''}</div></td>
+      <td style="color:${relCol};font-weight:700;">${escapeHtml(pl.relevance||'-')}</td>
+      <td style="text-align:right;">${fmtKg(cc.total)}<div class="small-muted">S1 ${fmtKg(cc.s1)}<br>S2 ${fmtKg(cc.s2)}<br>S3 ${fmtKg(cc.s3)}</div></td>
+      <td style="text-align:right;">${fmtKg(tg)}<div class="small-muted">ลด ${Math.round((Number(pl.reducePct)||0)*100)}%</div></td>
+      <td style="text-align:right;${over?'color:#B02A2A;font-weight:700;':''}">${fmtKg(ac)}</td>
+      <td>${tg>0?`<span style="font-size:12px;">${pc.toFixed(0)}%</span>${pctBar(Math.min(100,pc))}`:'-'}</td>
+      <td style="vertical-align:top;font-size:12px;line-height:1.5;">${escapeHtml(pl.measure||'-')}<div class="small-muted" style="margin-top:3px;"><b>KR:</b> ${escapeHtml(pl.kr||'-')}</div></td>
+      <td style="vertical-align:top;white-space:nowrap;"><select class="select" style="padding:5px 8px;font-size:12px;" onchange="setCarbonPlanField('${pl.id}','status',this.value)">${CARBON_STATUS.map(s=>`<option value="${s.id}" ${s.id===pl.status?'selected':''}>${s.label}</option>`).join('')}</select>
+        <div style="display:flex;align-items:center;gap:4px;margin-top:5px;"><input class="input" type="number" min="0" max="100" value="${Number(pl.progress)||0}" style="width:64px;padding:4px 6px;font-size:12px;" onchange="setCarbonPlanField('${pl.id}','progress',Math.max(0,Math.min(100,Number(this.value)||0)))"> <span class="small-muted">% ของ KR</span></div></td>
+      <td style="white-space:nowrap;"><button class="icon-btn" title="บันทึกการปล่อยจริง" onclick="openCarbonLogForm(null,'${pl.id}')">📒</button><button class="icon-btn" onclick="openCarbonPlanForm('${pl.id}')">✏️</button></td>
+    </tr>`;
+  }).join('')}
+  </tbody><tfoot><tr style="font-weight:700;background:#EDEDE6;"><td colspan="3">รวม ${c.plans.length} รายการ</td><td style="text-align:right;">${fmtKg(t.est)}</td><td style="text-align:right;">${fmtKg(t.target)}</td><td style="text-align:right;">${fmtKg(t.actual)}</td><td colspan="4">ลดตามเป้าได้ ${fmtKg(red)} kgCO2e (${redPct.toFixed(1)}%)</td></tr></tfoot></table></div></div>
+  <div class="card card-pad" style="margin-top:14px;"><div class="card-title" style="margin-bottom:8px;">สรุปและข้อเสนอ (จากไฟล์ V8)</div>
+    <ul style="margin-left:18px;font-size:12.5px;line-height:1.8;">${CARBON_SEED.notes.map(n=>`<li>${escapeHtml(n)}</li>`).join('')}</ul></div>`;
+}
+function setCarbonPlanField(id,field,val){
+  const pl=DB.carbon.plans.find(x=>x.id===id); if(!pl) return;
+  pl[field]=val;
+  if(field==='status' && val==='done' && !(Number(pl.progress)>0)) pl.progress=100;
+  logAction('อัปเดตมาตรการ Carbon', `${pl.name.slice(0,40)} · ${field}`);
+  saveDB(); render();
+}
+function openCarbonPlanForm(id){
+  ensureCarbonData();
+  const editing=!!id;
+  const pl = editing ? DB.carbon.plans.find(x=>x.id===id) : {id:null,no:(DB.carbon.plans.reduce((m,p)=>Math.max(m,p.no||0),0)+1),name:'',relevance:'กลาง',kind:'ปล่อย',scope:'',detail:'',carDays:0,roomDays:0,attendDays:0,directKwh:0,measure:'',reducePct:0,kr:'',projectCodes:[],ownerPersonId:'',status:'notstarted',progress:0};
+  const body=`
+    <div class="form-row"><label>โครงการ / กิจกรรม *</label><input class="input" id="cb_name" value="${escapeHtml(pl.name)}"></div>
+    <div class="form-2col">
+      <div class="form-row"><label>ระดับความเกี่ยวข้อง</label><select class="select" id="cb_rel">${['สูง','กลาง','ต่ำ'].map(x=>`<option ${x===pl.relevance?'selected':''}>${x}</option>`).join('')}</select></div>
+      <div class="form-row"><label>ลักษณะ (ปล่อย / ลด / ดูดซับ)</label><input class="input" id="cb_kind" value="${escapeHtml(pl.kind||'')}"></div>
+    </div>
+    <div class="form-row"><label>แหล่งปล่อยหลัก (Scope)</label><input class="input" id="cb_scope" value="${escapeHtml(pl.scope||'')}"></div>
+    <div class="section-title" style="margin-top:4px;">ข้อมูลกิจกรรมที่ใช้ประมาณการ<span class="line-flex"></span></div>
+    <div class="form-2col">
+      <div class="form-row"><label>วันใช้รถราชการ (คัน-วัน)</label><input class="input" type="number" min="0" step="any" id="cb_car" value="${pl.carDays}"></div>
+      <div class="form-row"><label>วันใช้ห้องประชุม (วัน)</label><input class="input" type="number" min="0" step="any" id="cb_room" value="${pl.roomDays}"></div>
+    </div>
+    <div class="form-2col">
+      <div class="form-row"><label>ผู้เข้าร่วม (คน-วัน)</label><input class="input" type="number" min="0" step="any" id="cb_att" value="${pl.attendDays}"></div>
+      <div class="form-row"><label>ไฟฟ้าโดยตรง (kWh/ปี) เช่น คลินิก</label><input class="input" type="number" min="0" step="any" id="cb_kwh" value="${pl.directKwh}"></div>
+    </div>
+    <div class="form-row"><label>มาตรการลดคาร์บอน</label><textarea class="input" id="cb_measure" rows="3">${escapeHtml(pl.measure||'')}</textarea></div>
+    <div class="form-2col">
+      <div class="form-row"><label>เป้าลดได้ (%)</label><input class="input" type="number" min="0" max="100" id="cb_red" value="${Math.round((Number(pl.reducePct)||0)*100)}"></div>
+      <div class="form-row"><label>ผู้รับผิดชอบ</label><select class="select" id="cb_owner"><option value="">— ไม่ระบุ —</option>${DB.personnel.map(p=>`<option value="${p.id}" ${p.id===pl.ownerPersonId?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-row"><label>KR ด้านคาร์บอน</label><textarea class="input" id="cb_kr" rows="2">${escapeHtml(pl.kr||'')}</textarea></div>
+    <div class="form-row"><label>รหัสโครงการที่เกี่ยวข้อง (คั่นด้วยจุลภาค)</label><input class="input" id="cb_codes" value="${escapeHtml((pl.projectCodes||[]).join(', '))}" style="font-family:monospace;"></div>`;
+  const footer=`${editing?`<button class="btn btn-danger" onclick="deleteCarbonPlan('${id}')">ลบ</button>`:''}<button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="saveCarbonPlan(${editing?`'${id}'`:'null'})">💾 บันทึก</button>`;
+  openModal(editing?'แก้ไขกิจกรรม Carbon':'เพิ่มกิจกรรม Carbon', body, footer, true);
+}
+function saveCarbonPlan(id){
+  const name=document.getElementById('cb_name').value.trim(); if(!name){ showToast('กรุณากรอกชื่อกิจกรรม'); return; }
+  const n=x=>Number(document.getElementById(x).value)||0;
+  let pl = id ? DB.carbon.plans.find(x=>x.id===id) : null;
+  if(!pl){ pl={id:uid('cbp'),no:DB.carbon.plans.reduce((m,p)=>Math.max(m,p.no||0),0)+1,status:'notstarted',progress:0}; DB.carbon.plans.push(pl); }
+  Object.assign(pl,{name, relevance:document.getElementById('cb_rel').value, kind:document.getElementById('cb_kind').value.trim(), scope:document.getElementById('cb_scope').value.trim(),
+    carDays:n('cb_car'), roomDays:n('cb_room'), attendDays:n('cb_att'), directKwh:n('cb_kwh'), measure:document.getElementById('cb_measure').value.trim(),
+    reducePct:Math.max(0,Math.min(100,n('cb_red')))/100, ownerPersonId:document.getElementById('cb_owner').value, kr:document.getElementById('cb_kr').value.trim(),
+    projectCodes:document.getElementById('cb_codes').value.split(',').map(s=>s.trim()).filter(Boolean)});
+  logAction(id?'แก้ไขกิจกรรม Carbon':'เพิ่มกิจกรรม Carbon', name.slice(0,50));
+  saveDB(); closeModal(); render(); showToast('บันทึกเรียบร้อย');
+}
+function deleteCarbonPlan(id){
+  if(!confirm('ลบกิจกรรมนี้หรือไม่? (บันทึกการปล่อยจริงที่ผูกไว้จะกลายเป็น “ไม่ระบุกิจกรรม”)')) return;
+  DB.carbon.plans=DB.carbon.plans.filter(x=>x.id!==id);
+  DB.carbon.logs.forEach(l=>{ if(l.planId===id) l.planId=''; });
+  saveDB(); closeModal(); render();
+}
+function viewCarbonLog(){
+  ensureCarbonData(); const c=DB.carbon; const logs=carbonLogsOfYear(c.year).slice().sort((a,b)=>b.date.localeCompare(a.date));
+  const sc={S1:0,S2:0,S3:0,'อื่นๆ':0}; logs.forEach(l=>{ sc[carbonLogScope(l)]=(sc[carbonLogScope(l)]||0)+carbonLogKg(l); });
+  const monthly=Array(12).fill(0); logs.forEach(l=>{ monthly[fyMonthIdx(l.date)]+=carbonLogKg(l); });
+  return `
+  <div class="grid grid-4" style="margin-bottom:14px;">
+    ${kpiCard('🚗','Scope 1 รถราชการ (kg)',fmtKg(sc.S1),'น้ำมันเชื้อเพลิง')}
+    ${kpiCard('💡','Scope 2 ไฟฟ้า (kg)',fmtKg(sc.S2),'ห้องประชุม/คลินิก')}
+    ${kpiCard('🚶','Scope 3 เดินทางผู้เข้าร่วม (kg)',fmtKg(sc.S3),'รถส่วนตัว')}
+    ${kpiCard('📒','รวมทั้งหมด (kgCO2e)',fmtKg(sc.S1+sc.S2+sc.S3+sc['อื่นๆ']),`${logs.length} รายการ`)}
+  </div>
+  <div class="filter-bar"><div class="spacer"></div><button class="btn btn-ghost btn-sm" onclick="exportCarbonExcel()">📥 ส่งออก Excel</button><button class="btn btn-primary btn-sm" onclick="openCarbonLogForm()">＋ บันทึกการปล่อยจริง</button></div>
+  <div class="card card-pad" style="margin-bottom:14px;"><div class="card-title" style="margin-bottom:6px;">รายเดือน (kgCO2e)</div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;">${FY_MONTHS_TH.map((m,i)=>`<div style="background:#F5F8F6;border-radius:8px;padding:6px 10px;"><div class="small-muted">${m}</div><div style="font-weight:700;">${fmtKg(monthly[i])}</div></div>`).join('')}</div></div>
+  <div class="card"><div class="tbl-wrap card-pad"><table><thead><tr><th>วันที่</th><th>กิจกรรม</th><th>ประเภทข้อมูล</th><th style="text-align:right">ปริมาณ</th><th>Scope</th><th style="text-align:right">kgCO2e</th><th>หมายเหตุ / หลักฐาน</th><th></th></tr></thead><tbody>
+  ${logs.length? logs.map(l=>{ const pl=c.plans.find(p=>p.id===l.planId); const ty=CARBON_LOG_TYPES.find(x=>x.id===l.type);
+    return `<tr><td>${fmtDateTH(l.date)}</td><td style="font-size:12px;">${pl?escapeHtml(pl.name.slice(0,60)):'<span class="small-muted">ไม่ระบุกิจกรรม</span>'}</td><td style="font-size:12px;">${ty?escapeHtml(ty.label):escapeHtml(l.type)}</td><td style="text-align:right;">${fmtKg(l.qty)} ${ty?escapeHtml(ty.unit):''}</td><td>${carbonLogScope(l)}</td><td style="text-align:right;font-weight:600;">${fmtKg(carbonLogKg(l))}</td><td class="small-muted">${escapeHtml(l.note||'')}</td><td><button class="icon-btn" onclick="openCarbonLogForm('${l.id}')">✏️</button></td></tr>`; }).join('')
+   : `<tr><td colspan="8"><div class="empty-state">ยังไม่มีบันทึก — กด “＋ บันทึกการปล่อยจริง” เมื่อมีเลขไมล์รถ ใบเติมน้ำมัน หรือบิลค่าไฟ ระบบจะคำนวณ kgCO2e ให้ด้วยค่า EF ในเมนู “ค่า EF / ค่าสมมติ”</div></td></tr>`}
+  </tbody></table></div></div>`;
+}
+function openCarbonLogForm(id, presetPlan){
+  ensureCarbonData();
+  const editing=!!id;
+  const l = editing ? DB.carbon.logs.find(x=>x.id===id) : {id:null,date:new Date().toISOString().slice(0,10),planId:presetPlan||'',type:'car_days',qty:0,note:''};
+  const body=`
+    <div class="form-2col">
+      <div class="form-row"><label>วันที่</label><input class="input" type="date" id="cl_date" value="${l.date}"></div>
+      <div class="form-row"><label>กิจกรรม</label><select class="select" id="cl_plan"><option value="">— ไม่ระบุกิจกรรม —</option>${DB.carbon.plans.map(p=>`<option value="${p.id}" ${p.id===l.planId?'selected':''}>${p.no}. ${escapeHtml(p.name.slice(0,60))}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-row"><label>ประเภทข้อมูล</label><select class="select" id="cl_type" onchange="updateCarbonLogPreview()">${CARBON_LOG_TYPES.map(t=>`<option value="${t.id}" ${t.id===l.type?'selected':''}>[${t.scope}] ${escapeHtml(t.label)}</option>`).join('')}</select></div>
+    <div class="form-row"><label>ปริมาณ</label><input class="input" type="number" step="any" id="cl_qty" value="${l.qty}" oninput="updateCarbonLogPreview()"></div>
+    <div class="card card-pad" style="background:#F5F8F6;margin-bottom:10px;">คำนวณได้ประมาณ <b id="cl_prev">0</b> kgCO2e</div>
+    <div class="form-row"><label>หมายเหตุ / หลักฐานอ้างอิง (เลขไมล์ ใบเติมน้ำมัน บิลค่าไฟ)</label><textarea class="input" id="cl_note" rows="2">${escapeHtml(l.note||'')}</textarea></div>`;
+  const footer=`${editing?`<button class="btn btn-danger" onclick="deleteCarbonLog('${id}')">ลบ</button>`:''}<button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="saveCarbonLog(${editing?`'${id}'`:'null'})">💾 บันทึก</button>`;
+  openModal(editing?'แก้ไขบันทึกการปล่อย':'บันทึกการปล่อยจริง', body, footer);
+  updateCarbonLogPreview();
+}
+function updateCarbonLogPreview(){
+  const el=document.getElementById('cl_prev'); if(!el) return;
+  el.textContent = fmtKg(carbonLogKg({type:document.getElementById('cl_type').value, qty:document.getElementById('cl_qty').value}));
+}
+function saveCarbonLog(id){
+  const qty=Number(document.getElementById('cl_qty').value);
+  if(!isFinite(qty) || qty===0){ showToast('กรุณากรอกปริมาณ'); return; }
+  let l = id ? DB.carbon.logs.find(x=>x.id===id) : null;
+  if(!l){ l={id:uid('cbl')}; DB.carbon.logs.push(l); }
+  Object.assign(l,{date:document.getElementById('cl_date').value||new Date().toISOString().slice(0,10), planId:document.getElementById('cl_plan').value, type:document.getElementById('cl_type').value, qty, note:document.getElementById('cl_note').value.trim()});
+  logAction('บันทึกการปล่อย Carbon', `${fmtKg(carbonLogKg(l))} kgCO2e`);
+  saveDB(); closeModal(); render(); showToast('บันทึกเรียบร้อย');
+}
+function deleteCarbonLog(id){ if(!confirm('ลบบันทึกนี้หรือไม่?')) return; DB.carbon.logs=DB.carbon.logs.filter(x=>x.id!==id); saveDB(); closeModal(); render(); }
+function viewCarbonEF(){
+  ensureCarbonData(); const e=DB.carbon.ef;
+  return `
+  <div class="card card-pad" style="margin-bottom:14px;font-size:12.5px;line-height:1.7;">ค่าเหล่านี้ใช้คำนวณประมาณการและบันทึกการปล่อยจริงทุกหน้า — แก้แล้วตัวเลขทั้งระบบคำนวณใหม่ทันที ควรแทนค่าสมมติด้วยเลขไมล์รถและบิลค่าไฟจริง และตรวจค่า EF ล่าสุดของ อบก. (TGO) ก่อนใช้รายงานจริง ผลลัพธ์เป็นการประมาณการเพื่อวางแผนลดคาร์บอน ไม่ใช่การรับรองคาร์บอนฟุตพริ้นท์องค์กร</div>
+  <div class="filter-bar"><div class="spacer"></div><button class="btn btn-ghost btn-sm" onclick="resetCarbonEF()">↩︎ คืนค่าตามไฟล์ V8</button></div>
+  <div class="card"><div class="tbl-wrap card-pad"><table><thead><tr><th>#</th><th>รายการ</th><th style="width:150px;">ค่า</th><th>หน่วย</th><th>แหล่งที่มา / หมายเหตุ</th></tr></thead><tbody>
+  ${CARBON_EF_KEYS.map((k,i)=>{ const m=CARBON_SEED.ef[i]; return `<tr><td>${i+1}</td><td style="font-weight:600;">${escapeHtml(m.label)}</td><td><input class="input" type="number" step="any" min="0" value="${e[k]}" style="width:130px;color:#1D5F94;font-weight:600;" onchange="setCarbonEF('${k}',this.value)"></td><td>${escapeHtml(m.unit)}</td><td class="small-muted">${escapeHtml(m.note)}</td></tr>`; }).join('')}
+  </tbody></table></div></div>`;
+}
+function setCarbonEF(k,v){ const n=Number(v); if(!isFinite(n)||n<0){ showToast('ค่าไม่ถูกต้อง'); render(); return; } DB.carbon.ef[k]=n; logAction('แก้ค่า EF Carbon', k+' = '+n); saveDB(); render(); showToast('บันทึกค่าแล้ว — คำนวณใหม่ทั้งระบบ'); }
+function resetCarbonEF(){ if(!confirm('คืนค่า EF/ค่าสมมติทั้งหมดเป็นค่าตามไฟล์ V8 หรือไม่?')) return; CARBON_EF_KEYS.forEach((k,i)=>{ DB.carbon.ef[k]=Number(CARBON_SEED.ef[i].value); }); saveDB(); render(); }
+function drawCarbonChart(){
+  if(typeof Chart==='undefined') return;
+  const el=document.getElementById('chartCarbonCum'); if(!el) return;
+  ensureCarbonData(); const t=carbonTotals(DB.carbon.year);
+  const monthly=Array(12).fill(0); carbonLogsOfYear(DB.carbon.year).forEach(l=>{ monthly[fyMonthIdx(l.date)]+=carbonLogKg(l); });
+  const cq=currentFYQuarter(DB.carbon.year); const now=new Date(); const sy=DB.carbon.year-543-1;
+  const curIdx=Math.max(0,Math.min(11,(now.getFullYear()*12+now.getMonth())-(sy*12+9)));
+  let run=0; const actual=monthly.map((v,i)=>{ run+=v; return (cq===5||i<=curIdx)? Math.round(run*10)/10 : null; });
+  const tgt=FY_MONTHS_TH.map((_,i)=>Math.round(t.target*(i+1)/12*10)/10);
+  const base=FY_MONTHS_TH.map((_,i)=>Math.round(t.est*(i+1)/12*10)/10);
+  chartRefs.push(new Chart(el,{type:'line', data:{labels:FY_MONTHS_TH, datasets:[
+    {label:'บันทึกจริงสะสม', data:actual, borderColor:'#146C43', backgroundColor:'#146C4333', fill:true, tension:.25, spanGaps:false},
+    {label:'เส้นเป้าหลังลด', data:tgt, borderColor:'#C89B3C', borderDash:[6,4], pointRadius:0},
+    {label:'ประมาณการไม่ลด', data:base, borderColor:'#D64545', borderDash:[2,3], pointRadius:0}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{y:{beginAtZero:true}}}}));
+}
+function exportCarbonExcel(){
+  if(typeof XLSX==='undefined'){ showToast('⚠️ โหลดไลบรารี Excel ไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต'); return; }
+  ensureCarbonData(); const c=DB.carbon; const logs=carbonLogsOfYear(c.year);
+  const a1=[[`Carbon Footprint ปี ${c.year} (ประมาณการเบื้องต้นเพื่อวางแผนลดคาร์บอน)`],[],['#','โครงการ/กิจกรรม','ความเกี่ยวข้อง','ลักษณะ','Scope','รหัสโครงการ','คัน-วัน','วันห้องประชุม','คน-วัน','kWh ตรง','S1 (kg)','S2 (kg)','S3 (kg)','รวมประมาณการ (kg)','ลดได้ (%)','เป้าหลังลด (kg)','บันทึกจริง (kg)','จริง/เป้า (%)','สถานะมาตรการ','ความคืบหน้า KR (%)','มาตรการ','KR คาร์บอน']];
+  c.plans.forEach(pl=>{ const cc=carbonCalc(pl), tg=carbonTarget(pl), ac=logs.filter(l=>l.planId===pl.id).reduce((s,l)=>s+carbonLogKg(l),0);
+    a1.push([pl.no,pl.name,pl.relevance,pl.kind,pl.scope,(pl.projectCodes||[]).join(', '),pl.carDays,pl.roomDays,pl.attendDays,pl.directKwh,cc.s1,cc.s2,cc.s3,cc.total,Math.round((pl.reducePct||0)*100),tg,ac,tg?Math.round(ac/tg*100):'',(CARBON_STATUS.find(s=>s.id===pl.status)||{}).label||'',pl.progress||0,pl.measure,pl.kr]); });
+  const a2=[['บันทึกการปล่อยจริง'],[],['วันที่','กิจกรรม','ประเภทข้อมูล','ปริมาณ','หน่วย','Scope','kgCO2e','หมายเหตุ']];
+  logs.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(l=>{ const pl=c.plans.find(p=>p.id===l.planId), ty=CARBON_LOG_TYPES.find(x=>x.id===l.type); a2.push([l.date,pl?pl.name:'',ty?ty.label:l.type,l.qty,ty?ty.unit:'',carbonLogScope(l),carbonLogKg(l),l.note||'']); });
+  const a3=[['ค่า EF และค่าสมมติ'],[],['รายการ','ค่า','หน่วย','หมายเหตุ']]; CARBON_EF_KEYS.forEach((k,i)=>{ const m=CARBON_SEED.ef[i]; a3.push([m.label,c.ef[k],m.unit,m.note]); });
+  const wb=XLSX.utils.book_new();
+  [['แผนและเป้า',a1,[5,46,10,10,30,22,9,10,9,9,10,10,10,14,8,12,12,9,16,10,50,40]],['บันทึกจริง',a2,[12,44,40,10,9,8,12,40]],['ค่า EF',a3,[44,10,14,70]]].forEach(([n,a,w])=>{ const ws=XLSX.utils.aoa_to_sheet(a); ws['!cols']=w.map(x=>({wch:x})); XLSX.utils.book_append_sheet(wb,ws,n); });
+  XLSX.writeFile(wb, `CarbonFootprint_ปีงบ${c.year}.xlsx`);
+  showToast('ส่งออก Carbon Footprint เรียบร้อย');
 }
 
 let chartRefs=[];
@@ -4014,6 +4749,7 @@ function afterRenderHook(){
   if(UI.route==='performance') drawPerfChart();
   if(UI.route==='yearcompare') drawYearCompareCharts();
   if(UI.route==='strategicalign') drawStrategicChart();
+  if(UI.route==='carbon') drawCarbonChart();
 }
 const CHART_GREEN_PALETTE=['#146C43','#2D6FA5','#C89B3C','#7C4FA0','#D64545','#22A05F','#4FC087','#8A9A92','#3B7BB0','#9C6B0B'];
 
@@ -4029,10 +4765,11 @@ function drawDashboardCharts(){
   const elB=document.getElementById('chartBudgetSource');
   if(elB) chartRefs.push(new Chart(elB,{type:'bar', data:{labels:Object.keys(bySource), datasets:[{data:Object.values(bySource), backgroundColor:CHART_GREEN_PALETTE}]}, options:{plugins:{legend:{display:false}}, scales:{x:{ticks:{font:{size:10}}},y:{beginAtZero:true}}}}));
 
-  const workload={};
-  DB.personnel.forEach(p=>{ workload[p.name]=DB.tasks.filter(t=>t.assigneeId===p.id && projs.some(pr=>pr.id===t.projectId)).length; });
+  const wLabels=DB.personnel.map(p=>p.name.replace(/^(นางสาว|นาง|นาย)/,''));
+  const wPrim=DB.personnel.map(p=>personRoleTasks(p.id,DB.currentYear).primary.length);
+  const wCo=DB.personnel.map(p=>personRoleTasks(p.id,DB.currentYear).co.length);
   const elW=document.getElementById('chartWorkload');
-  if(elW) chartRefs.push(new Chart(elW,{type:'bar', data:{labels:Object.keys(workload), datasets:[{data:Object.values(workload), backgroundColor:'#22A05F'}]}, options:{indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true, ticks:{stepSize:1}}}}}));
+  if(elW) chartRefs.push(new Chart(elW,{type:'bar', data:{labels:wLabels, datasets:[{label:'งานย่อย รับผิดชอบหลัก', data:wPrim, backgroundColor:'#146C43'},{label:'งานย่อย รับผิดชอบร่วม', data:wCo, backgroundColor:'#7DB8E8'}]}, options:{indexAxis:'y', plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}}, scales:{x:{stacked:true,beginAtZero:true, ticks:{stepSize:1}},y:{stacked:true}}}}));
 }
 function drawBudgetCharts(){
   const d=window.__budgetData||{bySource:{},byType:{}};
@@ -4063,6 +4800,9 @@ if(window.__versionMismatch){
   if(window.__autoImportedCount>0) noteLines.push(`นำเข้าโครงการที่ขาดหายไปให้อัตโนมัติแล้ว ${window.__autoImportedCount} โครงการ (เช่น โครงการปีงบประมาณใหม่ที่เพิ่มเข้ามาในไฟล์นี้)`);
   if(window.__autoRevisedCount>0) noteLines.push(`ปรับปรุงเนื้อหาโครงการเดิมให้ตรงกับไฟล์ฉบับล่าสุดแล้ว ${window.__autoRevisedCount} โครงการ`);
   if(window.__autoSourceFixedCount>0) noteLines.push(`ปรับแหล่งงบปี 2570 ให้เหลือ 2 แหล่ง (เงินบำรุง/กองทุนฯ) ตามไฟล์ล่าสุด ${window.__autoSourceFixedCount} โครงการ`);
+  if(window.__autoCoOwnerCount>0) noteLines.push(`เติมผู้รับผิดชอบร่วมให้ ${window.__autoCoOwnerCount} โครงการ (ผู้รับผิดชอบหลักไม่เปลี่ยน)`);
+  if(window.__autoOKRCount>0) noteLines.push(`เพิ่มเมนู OKR และนำเข้า OKR รายกิจกรรมปี 2570 ให้แล้ว ${window.__autoOKRCount} กิจกรรม`);
+  if(window.__autoCarbonCount>0) noteLines.push('เพิ่มเมนู Carbon Footprint พร้อมแผนประมาณการจากไฟล์ V8');
   if(window.__autoCodeFilledCount>0) noteLines.push(`เติมรหัสโครงการ (8 หลัก) ให้โครงการเดิมที่ยังไม่มีรหัสแล้ว ${window.__autoCodeFilledCount} โครงการ`);
   const importedNote = noteLines.length
     ? `<p class="small-muted">✅ ระบบตรวจพบและ${noteLines.join(' และ')} — ข้อมูลเดิมที่พี่จีเคยแก้ไขไว้ยังอยู่ครบ ไม่จำเป็นต้องล้างข้อมูลก็ได้</p>`
@@ -4078,12 +4818,14 @@ if(window.__versionMismatch){
       <button class="btn btn-primary" onclick="resetAllData();closeModal();">♻️ ล้างข้อมูล &amp; โหลดชุดใหม่</button>
     `);
   }, 400);
-} else if(window.__autoImportedCount>0 || window.__autoRevisedCount>0 || window.__autoCodeFilledCount>0 || window.__autoSourceFixedCount>0){
+} else if(window.__autoImportedCount>0 || window.__autoRevisedCount>0 || window.__autoCodeFilledCount>0 || window.__autoSourceFixedCount>0 || window.__autoOKRCount>0 || window.__autoCoOwnerCount>0){
   setTimeout(()=>{
     const parts=[];
     if(window.__autoImportedCount>0) parts.push(`เพิ่มโครงการใหม่ ${window.__autoImportedCount} โครงการ`);
     if(window.__autoRevisedCount>0) parts.push(`ปรับปรุงโครงการเดิม ${window.__autoRevisedCount} โครงการ`);
     if(window.__autoSourceFixedCount>0) parts.push(`ปรับแหล่งงบ ${window.__autoSourceFixedCount} โครงการ`);
+    if(window.__autoCoOwnerCount>0) parts.push(`เติมผู้รับผิดชอบร่วม ${window.__autoCoOwnerCount} โครงการ`);
+    if(window.__autoOKRCount>0) parts.push(`เพิ่ม OKR ${window.__autoOKRCount} กิจกรรม + เมนู Carbon`);
     if(window.__autoCodeFilledCount>0) parts.push(`เติมรหัสโครงการ ${window.__autoCodeFilledCount} โครงการ`);
     showToast(`✅ นำเข้าข้อมูลให้อัตโนมัติ: ${parts.join(' · ')}`);
   }, 400);
