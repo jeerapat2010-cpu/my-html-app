@@ -245,7 +245,7 @@ textarea.input{resize:vertical; min-height:70px;}
    ========================================================================= */
 
 const STORAGE_KEY = 'thaimed_ops_v1';
-const APP_VERSION = 'v3.18';
+const APP_VERSION = 'v3.22';
 const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const FY_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
 const STATUS_LIST = [
@@ -368,7 +368,7 @@ function seedData(){
   /* โครงการปีงบประมาณ 2570 นำเข้าจากไฟล์ร่าง_แผนปฏิบัติการแผนไทย70_V2.xlsx */
   const proj17=uid('proj'), proj18=uid('proj'), proj19=uid('proj'), proj20=uid('proj'), proj21=uid('proj'), proj22=uid('proj'), proj23=uid('proj'), proj24=uid('proj'), proj25=uid('proj'), proj26=uid('proj'), proj27=uid('proj'), proj28=uid('proj'), proj29=uid('proj'), proj30=uid('proj'), proj31=uid('proj');
   return {
-    meta:{ org:'สำนักงานสาธารณสุขจังหวัดสมุทรปราการ', group:'กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก', version:'v3.18' },
+    meta:{ org:'สำนักงานสาธารณสุขจังหวัดสมุทรปราการ', group:'กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก', version:'v3.20' },
     currentYear: 2569,
     fiscalYears:[2567,2568,2569,2570,2571],
     categories:[
@@ -820,6 +820,11 @@ const NAV_GROUPS = {
     {route:'evaluation', label:'ประเมินผลงาน'},
     {route:'heatmap', label:'ภาระงาน (Heatmap)'},
   ]},
+  compare: {label:'เปรียบเทียบโครงการ', icon:'⚖️', tabs:[
+    {route:'projcompare', label:'เปรียบเทียบเคียงข้างกัน'},
+    {route:'projrank', label:'จัดอันดับทุกโครงการ'},
+    {route:'yearvs', label:'เทียบปีงบ ก. กับ ข.'},
+  ]},
   okr: {label:'OKR', icon:'🎯', tabs:[
     {route:'okr', label:'ติดตาม OKR รายกิจกรรม'},
     {route:'okrperson', label:'OKR รายบุคคล (เชื่อมประเมิน)'},
@@ -1063,6 +1068,7 @@ function renderSidebar(){
       ${navItem('kanban','✅','ติดตามงานย่อย (Kanban)', upT)}
       ${navItem('timeline','📅','ปฏิทิน / Timeline')}
       ${navGroupItem('budget', nearDepletedCount())}
+      ${navGroupItem('compare')}
       ${navItem('exportsummary','📤','สรุป & ส่งออก Excel')}
 
       <div class="nav-leg"><span class="dot" style="background:#8FC4E8"></span>PART 2 · บริหารบุคลากร</div>
@@ -1102,6 +1108,9 @@ function pageTitleFor(route){
     people:['บุคลากรทั้งหมด','ทำเนียบบุคลากรกลุ่มงานและภาระงาน'],
     performance:['ผลงานรายบุคคล','เปรียบเทียบผลงานและภาระงานของบุคลากร'],
     heatmap:['ภาระงานบุคลากร (Heatmap)','ดูความหนาแน่นของภาระงานแต่ละคนรายเดือน เพื่อกระจายงานได้เหมาะสม'],
+    projcompare:['เปรียบเทียบโครงการ','เลือก 2-5 โครงการมาเทียบกันเคียงข้างกัน ทั้งงบประมาณ การเบิกจ่าย ความคืบหน้า OKR ความเสี่ยง และคาร์บอน'],
+    yearvs:['เทียบปีงบ ก. กับ ข.','เปรียบเทียบสองปีงบประมาณ ทั้งภาพรวม แหล่งงบ หมวดหมู่ และรายโครงการ'],
+    projrank:['จัดอันดับโครงการ','จัดอันดับทุกโครงการตามงบ การเบิกจ่าย ความคืบหน้า OKR ความเสี่ยง พร้อมข้อสังเกตอัตโนมัติ'],
     okr:['OKR รายกิจกรรม','ติดตามเป้าหมายและผลลัพธ์สำคัญ (O/KR) เช็คอินรายไตรมาส เทียบกับกำหนดเวลา'],
     okrperson:['OKR รายบุคคล','สรุปคะแนน OKR ของแต่ละคน เพื่อประกอบการประเมินผลงานบุคคล'],
     carbon:['Carbon Footprint — แผนและเป้าหมาย','ประมาณการก๊าซเรือนกระจกของแผนงาน มาตรการลดคาร์บอน และเทียบกับการปล่อยจริง'],
@@ -1158,6 +1167,9 @@ function renderRoute(){
     case 'performance': return viewPerformance();
     case 'heatmap': return viewResourceHeatmap();
     case 'evaluation': return viewEvaluation();
+    case 'projcompare': return viewProjCompare();
+    case 'yearvs': return viewYearVs();
+    case 'projrank': return viewProjRank();
     case 'okr': return viewOKR();
     case 'okrperson': return viewOKRPerson();
     case 'carbon': return viewCarbon();
@@ -1506,6 +1518,7 @@ function openProjectDetail(id){
     ${renderBudgetSplitCard(p)}
     ${p.strategicGoalId? `<div style="margin-top:10px;"><span class="small-muted">ยุทธศาสตร์ที่ตอบสนอง</span><div style="margin-top:2px;"><span class="tag-chip">${escapeHtml(p.strategicGoalId)}</span></div></div>` : ''}
 
+    ${renderPrevYearActCard(p)}
     <div class="section-title">✅ สถานะการอนุมัติ<span class="line-flex"></span></div>
     ${renderApprovalStepper(p)}
 
@@ -4746,6 +4759,426 @@ function exportCarbonExcel(){
   showToast('ส่งออก Carbon Footprint เรียบร้อย');
 }
 
+/* =========================================================================
+   v3.19 — เมนูเปรียบเทียบโครงการ (งบประมาณ การเบิกจ่าย ความคืบหน้า OKR ความเสี่ยง คาร์บอน)
+   อ่านข้อมูลจากโครงการที่มีอยู่เท่านั้น ไม่แก้ไขข้อมูลใดๆ
+   ========================================================================= */
+function cmpClamp(x,a,b){ return Math.max(a,Math.min(b,x)); }
+function cmpMetrics(p){
+  const budget=Number(p.budgetAmount)||0, disb=disbBySourceTotal(p), remain=budget-disb;
+  const tasks=tasksOfProject(p.id), done=tasks.filter(t=>t.status==='done').length;
+  const yearTotal=DB.projects.filter(x=>x.year===p.year).reduce((s,x)=>s+(Number(x.budgetAmount)||0),0);
+  const s=p.startDate?new Date(p.startDate+'T00:00:00'):null, e=p.endDate?new Date(p.endDate+'T00:00:00'):null;
+  const days=(s&&e&&e>=s)? Math.round((e-s)/864e5)+1 : null;
+  const timePct=days? Math.round(cmpClamp((Date.now()-s.getTime())/(days*864e5)*100,0,100)) : null;
+  const disbPct=budget>0? Math.round(disb/budget*100) : 0;
+  const risks=(p.risks||[]).filter(r=>r.status!=='closed');
+  const riskHigh=risks.filter(r=>riskScore(r)>=15).length;
+  const okrs=(typeof okrItems==='function' && p.projectCode)? okrItems(p.year).filter(i=>i.projectCode===p.projectCode) : [];
+  const okrAvg=okrs.length? Math.round(okrs.reduce((a,i)=>a+itemProgress(i),0)/okrs.length) : null;
+  const okrKR=okrs.reduce((a,i)=>a+(i.krs||[]).length,0);
+  let carbon=null;
+  if(p.projectCode && DB.carbon && Array.isArray(DB.carbon.plans)){
+    const pl=DB.carbon.plans.filter(x=>(x.projectCodes||[]).includes(p.projectCode));
+    if(pl.length) carbon=pl.reduce((a,x)=>a+carbonCalc(x).total/Math.max(1,(x.projectCodes||[]).length),0);
+  }
+  return {p, budget, disb, remain, disbPct, share: yearTotal>0? budget/yearTotal*100 : 0,
+    tasks:tasks.length, done, taskPct: tasks.length? Math.round(done/tasks.length*100) : null,
+    days, timePct, gap: (timePct!=null && budget>0)? disbPct-timePct : null,
+    perTask: tasks.length? budget/tasks.length : null, perDay: days? budget/days : null,
+    risks:risks.length, riskHigh, okrAvg, okrKR, okrN:okrs.length, carbon,
+    carbonPer1k: (carbon!=null && budget>0)? carbon/(budget/1000) : null};
+}
+const CMP_ROWS = [
+  {g:'ข้อมูลทั่วไป'},
+  {k:'code', l:'รหัสโครงการ', f:m=>escapeHtml(m.p.projectCode||'-')},
+  {k:'year', l:'ปีงบประมาณ', f:m=>m.p.year},
+  {k:'cat', l:'หมวดหมู่', f:m=>escapeHtml((getCategory(m.p.categoryId)||{}).name||'-')},
+  {k:'status', l:'สถานะ', f:m=>`<span class="badge ${statusObj(m.p.status).cls}">${statusObj(m.p.status).label}</span>`},
+  {k:'owner', l:'ผู้รับผิดชอบหลัก', f:m=>escapeHtml(getPersonName(projectOwnerIds(m.p)[0]))},
+  {k:'co', l:'ผู้รับผิดชอบร่วม', f:m=>escapeHtml(projectOwnerIds(m.p).slice(1).map(getPersonName).join(', ')||'-')},
+  {g:'งบประมาณ'},
+  {k:'budget', l:'งบประมาณรวม (บาท)', n:m=>m.budget, f:m=>money(m.budget), dir:0},
+  {k:'share', l:'สัดส่วนของงบทั้งปีงบ', n:m=>m.share, f:m=>m.share.toFixed(1)+'%', dir:0, bar:true},
+  {k:'source', l:'แหล่งงบ', f:m=>escapeHtml(isMixedBudget(m.p)?'งบผสม: '+budgetSplitText(m.p):(m.p.budgetSource||'-'))},
+  {k:'perTask', l:'งบเฉลี่ยต่องานย่อย', n:m=>m.perTask, f:m=>m.perTask==null?'-':money(m.perTask), dir:0},
+  {k:'perDay', l:'งบเฉลี่ยต่อวันดำเนินการ', n:m=>m.perDay, f:m=>m.perDay==null?'-':money(m.perDay), dir:0},
+  {g:'การเบิกจ่าย'},
+  {k:'disb', l:'เบิกจ่ายแล้ว (บาท)', n:m=>m.disb, f:m=>money(m.disb), dir:0},
+  {k:'remain', l:'คงเหลือ (บาท)', n:m=>m.remain, f:m=>money(m.remain), dir:0},
+  {k:'disbPct', l:'เบิกจ่าย (% ของงบ)', n:m=>m.disbPct, f:m=>m.disbPct+'%', dir:1, bar:true},
+  {k:'gap', l:'เบิกจ่ายเทียบเวลาที่ผ่านไป', n:m=>m.gap, f:m=>m.gap==null?'-':(m.gap>=0?'+':'')+m.gap+' จุด % '+(m.gap<-20?'(ช้ากว่าเวลา)':m.gap>20?'(เร็วกว่าเวลา)':'(สมดุล)'), dir:0},
+  {g:'ความคืบหน้า'},
+  {k:'tasks', l:'งานย่อย (เสร็จ/ทั้งหมด)', n:m=>m.tasks, f:m=>`${m.done}/${m.tasks}`, dir:0},
+  {k:'taskPct', l:'งานย่อยสำเร็จ (%)', n:m=>m.taskPct, f:m=>m.taskPct==null?'-':m.taskPct+'%', dir:1, bar:true},
+  {k:'days', l:'ระยะเวลาดำเนินการ (วัน)', n:m=>m.days, f:m=>m.days==null?'-':m.days, dir:0},
+  {k:'timePct', l:'เวลาที่ผ่านไป (%)', n:m=>m.timePct, f:m=>m.timePct==null?'-':m.timePct+'%', dir:0, bar:true},
+  {g:'OKR · ความเสี่ยง · คาร์บอน'},
+  {k:'okrAvg', l:'ความคืบหน้า OKR (เฉลี่ย)', n:m=>m.okrAvg, f:m=>m.okrAvg==null?'-':`${m.okrAvg}% (${m.okrN} กิจกรรม/${m.okrKR} KR)`, dir:1, bar:true},
+  {k:'riskHigh', l:'ความเสี่ยงสูงที่ยังเปิดอยู่', n:m=>m.riskHigh, f:m=>`${m.riskHigh} (จากทั้งหมด ${m.risks})`, dir:-1},
+  {k:'carbon', l:'ประมาณการคาร์บอน (kgCO2e)', n:m=>m.carbon, f:m=>m.carbon==null?'-':fmtKg(m.carbon), dir:-1},
+  {k:'carbonPer1k', l:'kgCO2e ต่องบ 1,000 บาท', n:m=>m.carbonPer1k, f:m=>m.carbonPer1k==null?'-':m.carbonPer1k.toFixed(2), dir:-1},
+];
+function cmpState(){
+  if(!UI.cmp) UI.cmp={year:'', sel:null, sortKey:'budget', sortDir:-1, cat:''};
+  const c=UI.cmp; if(c.year==='') c.year=String(DB.currentYear);
+  return c;
+}
+function cmpPool(){
+  const c=cmpState();
+  return DB.projects.filter(p=> (c.year==='all'||String(p.year)===c.year) && (!c.cat||p.categoryId===c.cat));
+}
+function cmpSelected(){
+  const c=cmpState(); const pool=DB.projects.filter(p=>c.year==='all'||String(p.year)===c.year);
+  if(!c.sel){ c.sel=pool.slice().sort((a,b)=>(Number(b.budgetAmount)||0)-(Number(a.budgetAmount)||0)).slice(0,3).map(p=>p.id); }
+  c.sel=c.sel.filter(id=>DB.projects.some(p=>p.id===id));
+  return c.sel.map(id=>getProject(id)).filter(Boolean);
+}
+function setCmpYear(v){ const c=cmpState(); c.year=v; c.sel=null; render(); }
+function setCmpCat(v){ cmpState().cat=v; render(); }
+function toggleCmp(id){
+  const c=cmpState(); cmpSelected();
+  if(c.sel.includes(id)) c.sel=c.sel.filter(x=>x!==id);
+  else { if(c.sel.length>=5){ showToast('เลือกเปรียบเทียบได้สูงสุด 5 โครงการ'); return; } c.sel.push(id); }
+  render();
+}
+function clearCmp(){ cmpState().sel=[]; render(); }
+function cmpFilterBar(){
+  const c=cmpState(); const years=DB.fiscalYears.slice().sort((a,b)=>b-a);
+  return `<select class="select" onchange="setCmpYear(this.value)"><option value="all" ${c.year==='all'?'selected':''}>ทุกปีงบ</option>${years.map(y=>`<option value="${y}" ${String(y)===c.year?'selected':''}>ปีงบ ${y}</option>`).join('')}</select>
+    <select class="select" onchange="setCmpCat(this.value)"><option value="">ทุกหมวดหมู่</option>${DB.categories.map(x=>`<option value="${x.id}" ${c.cat===x.id?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}</select>`;
+}
+function viewProjCompare(){
+  const c=cmpState(); const sel=cmpSelected(); const pool=cmpPool();
+  const ms=sel.map(cmpMetrics);
+  const chips=pool.slice().sort((a,b)=>String(a.projectCode||'').localeCompare(String(b.projectCode||''))||a.name.localeCompare(b.name)).map(p=>{
+    const on=c.sel.includes(p.id);
+    return `<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:5px 10px;border-radius:8px;cursor:pointer;border:1px solid ${on?'var(--g-500)':'var(--line)'};background:${on?'#E8F6EE':'#fff'};"><input type="checkbox" ${on?'checked':''} onchange="toggleCmp('${p.id}')"><span style="font-family:monospace;color:var(--g-700);">${escapeHtml(p.projectCode||'-')}</span> ${escapeHtml(p.name.replace(/^โครงการ/,'').slice(0,34))}</label>`; }).join('');
+  const best=(r)=>{ if(!r.n) return {}; const vals=ms.map(r.n).filter(v=>v!=null&&isFinite(v)); if(vals.length<2||r.dir===0&&false) return {}; return {max:Math.max(...vals),min:Math.min(...vals)}; };
+  return `
+  <div class="filter-bar">${cmpFilterBar()}<div class="spacer"></div>
+    <button class="btn btn-ghost btn-sm" onclick="clearCmp()">ล้างที่เลือก</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportCompareExcel()">📥 ส่งออก Excel</button></div>
+  <div class="card card-pad" style="margin-bottom:14px;">
+    <div class="card-title" style="margin-bottom:8px;">เลือกโครงการที่ต้องการเปรียบเทียบ (สูงสุด 5) — เลือกแล้ว ${sel.length}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;max-height:190px;overflow:auto;">${chips||'<span class="small-muted">ไม่พบโครงการ</span>'}</div>
+  </div>
+  ${sel.length<2? '<div class="card card-pad"><div class="empty-state">เลือกอย่างน้อย 2 โครงการเพื่อเปรียบเทียบ</div></div>' : `
+  <div class="card card-pad" style="margin-bottom:14px;"><div class="card-title" style="margin-bottom:8px;">งบประมาณ เบิกจ่าย และคงเหลือ (บาท)</div><div style="height:260px;"><canvas id="chartCmp"></canvas></div></div>
+  <div class="card"><div class="tbl-wrap card-pad">
+  <table><thead><tr><th style="min-width:190px;">หัวข้อเปรียบเทียบ</th>${ms.map(m=>`<th style="min-width:170px;vertical-align:top;"><a href="javascript:void(0)" onclick="openProjectDetail('${m.p.id}')" style="color:inherit;">${escapeHtml(m.p.name.replace(/^โครงการ/,'').slice(0,60))}</a></th>`).join('')}</tr></thead><tbody>
+  ${CMP_ROWS.map(r=>{
+    if(r.g) return `<tr><td colspan="${ms.length+1}" style="background:#EDF4EF;font-weight:700;color:var(--g-800);">${r.g}</td></tr>`;
+    const b=best(r);
+    return `<tr><td style="font-weight:600;">${r.l}</td>${ms.map(m=>{
+      const v=r.n?r.n(m):null; let st='';
+      if(r.n && v!=null && b.max!=null && b.max!==b.min){
+        if(r.dir===1){ if(v===b.max) st='background:#E1F5E9;font-weight:700;'; else if(v===b.min) st='background:#FDE4E4;'; }
+        else if(r.dir===-1){ if(v===b.min) st='background:#E1F5E9;font-weight:700;'; else if(v===b.max) st='background:#FDE4E4;'; }
+        else if(v===b.max) st='font-weight:700;';
+      }
+      return `<td style="vertical-align:top;${st}">${r.f(m)}${r.bar&&v!=null?pctBar(v):''}</td>`; }).join('')}</tr>`;
+  }).join('')}
+  </tbody></table></div></div>
+  <div class="small-muted" style="margin-top:8px;">สีเขียว = ค่าที่ดีที่สุดในกลุ่มที่เลือก · สีแดง = ค่าที่น่าห่วงที่สุด (เฉพาะตัวชี้วัดที่ตัดสินดี/ไม่ดีได้) · งบเฉลี่ยต่องานย่อย/ต่อวัน และ kgCO2e เป็นค่าประมาณเพื่อเปรียบเทียบเท่านั้น</div>`}`;
+}
+function drawCmpChart(){
+  if(typeof Chart==='undefined') return;
+  const el=document.getElementById('chartCmp'); if(!el) return;
+  const ms=cmpSelected().map(cmpMetrics);
+  const lab=ms.map(m=>(m.p.projectCode||'')+' '+m.p.name.replace(/^โครงการ/,'').slice(0,18));
+  chartRefs.push(new Chart(el,{type:'bar', data:{labels:lab, datasets:[
+    {label:'งบประมาณ', data:ms.map(m=>m.budget), backgroundColor:'#146C43'},
+    {label:'เบิกจ่ายแล้ว', data:ms.map(m=>m.disb), backgroundColor:'#C89B3C'},
+    {label:'คงเหลือ', data:ms.map(m=>m.remain), backgroundColor:'#7DB8E8'}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{y:{beginAtZero:true}}}}));
+}
+
+/* ---------- จัดอันดับโครงการทั้งหมด ---------- */
+const RANK_COLS = [
+  {k:'budget', l:'งบประมาณ', n:m=>m.budget, f:m=>money(m.budget), a:'right'},
+  {k:'share', l:'% ของงบปี', n:m=>m.share, f:m=>m.share.toFixed(1)+'%', a:'right'},
+  {k:'disbPct', l:'เบิกจ่าย %', n:m=>m.disbPct, f:m=>m.disbPct+'%', bar:true},
+  {k:'gap', l:'เบิกจ่ายเทียบเวลา', n:m=>m.gap, f:m=>m.gap==null?'-':(m.gap>=0?'+':'')+m.gap, a:'right'},
+  {k:'taskPct', l:'งานย่อยสำเร็จ %', n:m=>m.taskPct, f:m=>m.taskPct==null?'-':m.taskPct+'%', bar:true},
+  {k:'okrAvg', l:'OKR %', n:m=>m.okrAvg, f:m=>m.okrAvg==null?'-':m.okrAvg+'%', bar:true},
+  {k:'perDay', l:'งบ/วัน', n:m=>m.perDay, f:m=>m.perDay==null?'-':money(m.perDay), a:'right'},
+  {k:'riskHigh', l:'เสี่ยงสูง', n:m=>m.riskHigh, f:m=>m.riskHigh, a:'center'},
+  {k:'carbon', l:'kgCO2e', n:m=>m.carbon, f:m=>m.carbon==null?'-':fmtKg(m.carbon), a:'right'},
+];
+function setCmpSort(k){ const c=cmpState(); if(c.sortKey===k) c.sortDir=-c.sortDir; else { c.sortKey=k; c.sortDir=-1; } render(); }
+function rankedMetrics(){
+  const c=cmpState(); const col=RANK_COLS.find(x=>x.k===c.sortKey)||RANK_COLS[0];
+  const ms=cmpPool().map(cmpMetrics);
+  return ms.sort((a,b)=>{ const x=col.n(a), y=col.n(b); if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1; return (x-y)*c.sortDir; });
+}
+function viewProjRank(){
+  const c=cmpState(); const ms=rankedMetrics();
+  if(!ms.length) return `<div class="filter-bar">${cmpFilterBar()}</div><div class="card card-pad"><div class="empty-state">ไม่พบโครงการ</div></div>`;
+  const tot=ms.reduce((s,m)=>s+m.budget,0), dis=ms.reduce((s,m)=>s+m.disb,0);
+  const withGap=ms.filter(m=>m.gap!=null&&m.budget>0);
+  const slow=withGap.slice().sort((a,b)=>a.gap-b.gap)[0];
+  const top=ms.slice().sort((a,b)=>b.budget-a.budget)[0];
+  const top3=ms.slice().sort((a,b)=>b.budget-a.budget).slice(0,3).reduce((s,m)=>s+m.budget,0);
+  const lowTask=ms.filter(m=>m.taskPct!=null&&m.tasks>0).sort((a,b)=>a.taskPct-b.taskPct)[0];
+  return `
+  <div class="filter-bar">${cmpFilterBar()}<div class="spacer"></div><button class="btn btn-ghost btn-sm" onclick="exportCompareExcel('rank')">📥 ส่งออก Excel</button></div>
+  <div class="grid grid-4" style="margin-bottom:14px;">
+    ${kpiCard('📁','จำนวนโครงการ',ms.length,'ตามตัวกรองที่เลือก')}
+    ${kpiCard('💰','งบประมาณรวม',money(tot),`เบิกจ่ายแล้ว ${money(dis)} (${tot?Math.round(dis/tot*100):0}%)`)}
+    ${kpiCard('🏆','โครงการงบสูงสุด',top?money(top.budget):'-',top?escapeHtml((top.p.projectCode||'')+' '+top.p.name.replace(/^โครงการ/,'').slice(0,26)):'')}
+    ${kpiCard('📊','3 โครงการแรกคิดเป็น',tot?Math.round(top3/tot*100)+'%':'-','ของงบทั้งหมด (ความกระจุกตัวของงบ)')}
+  </div>
+  <div class="card card-pad" style="margin-bottom:14px;font-size:12.5px;line-height:1.8;">
+    <b>ข้อสังเกตอัตโนมัติ:</b>
+    ${slow&&slow.gap<-10?`<br>⏱ เบิกจ่ายช้ากว่าเวลามากที่สุด: <b>${escapeHtml((slow.p.projectCode||'')+' '+slow.p.name.replace(/^โครงการ/,'').slice(0,40))}</b> (เบิกจ่าย ${slow.disbPct}% แต่เวลาผ่านไป ${slow.timePct}%)`:'<br>⏱ ไม่พบโครงการที่เบิกจ่ายช้ากว่าเวลาเกิน 10 จุด %'}
+    ${lowTask?`<br>✅ งานย่อยสำเร็จต่ำสุด: <b>${escapeHtml((lowTask.p.projectCode||'')+' '+lowTask.p.name.replace(/^โครงการ/,'').slice(0,40))}</b> (${lowTask.taskPct}%)`:''}
+    ${ms.filter(m=>m.riskHigh>0).length?`<br>⚠️ มี ${ms.filter(m=>m.riskHigh>0).length} โครงการที่มีความเสี่ยงสูงเปิดอยู่`:''}
+  </div>
+  <div class="card"><div class="tbl-wrap card-pad">
+  <table><thead><tr><th>#</th><th style="min-width:260px;">โครงการ</th>${RANK_COLS.map(r=>`<th style="cursor:pointer;white-space:nowrap;text-align:${r.a||'left'};" onclick="setCmpSort('${r.k}')">${r.l}${c.sortKey===r.k?(c.sortDir<0?' ▼':' ▲'):''}</th>`).join('')}</tr></thead><tbody>
+  ${ms.map((m,i)=>`<tr class="tbl-row" onclick="openProjectDetail('${m.p.id}')"><td>${i+1}</td><td><div style="font-weight:600;">${escapeHtml(m.p.name.replace(/^โครงการ/,'').slice(0,70))}</div><div class="small-muted"><span style="font-family:monospace;">${escapeHtml(m.p.projectCode||'-')}</span> · ปี ${m.p.year} · ${escapeHtml(getPersonName(projectOwnerIds(m.p)[0]))}${isMixedBudget(m.p)?' · งบผสม':''}</div></td>
+    ${RANK_COLS.map(r=>{ const v=r.n(m); return `<td style="text-align:${r.a||'left'};min-width:${r.bar?90:0}px;${r.k==='gap'&&v!=null?(v<-20?'color:#B02A2A;font-weight:700;':v>20?'color:#9C6B0B;font-weight:700;':''):''}">${r.f(m)}${r.bar&&v!=null?pctBar(v):''}</td>`; }).join('')}</tr>`).join('')}
+  </tbody></table></div></div>
+  <div class="small-muted" style="margin-top:8px;">คลิกหัวคอลัมน์เพื่อเรียงลำดับ · “เบิกจ่ายเทียบเวลา” = % เบิกจ่าย ลบ % เวลาที่ผ่านไปของโครงการ (ติดลบมาก = เบิกจ่ายช้ากว่าเวลา)</div>`;
+}
+function buildCompareAOA(mode){
+  const head=['รหัส','โครงการ','ปีงบ','หมวดหมู่','สถานะ','ผู้รับผิดชอบหลัก','ผู้รับผิดชอบร่วม','งบ (บาท)','% ของงบปี','แหล่งงบ','เบิกจ่าย (บาท)','คงเหลือ (บาท)','เบิกจ่าย %','เวลาผ่านไป %','เบิกจ่ายเทียบเวลา','งานย่อยทั้งหมด','เสร็จ','งานสำเร็จ %','ระยะเวลา (วัน)','งบ/งานย่อย','งบ/วัน','OKR %','ความเสี่ยงสูง','kgCO2e'];
+  const rows=(mode==='rank'? rankedMetrics() : cmpSelected().map(cmpMetrics)).map(m=>[m.p.projectCode||'',m.p.name,m.p.year,(getCategory(m.p.categoryId)||{}).name||'',statusObj(m.p.status).label,getPersonName(projectOwnerIds(m.p)[0]),projectOwnerIds(m.p).slice(1).map(getPersonName).join(', '),m.budget,Math.round(m.share*10)/10,isMixedBudget(m.p)?'งบผสม: '+budgetSplitText(m.p):(m.p.budgetSource||''),m.disb,m.remain,m.disbPct,m.timePct==null?'':m.timePct,m.gap==null?'':m.gap,m.tasks,m.done,m.taskPct==null?'':m.taskPct,m.days==null?'':m.days,m.perTask==null?'':Math.round(m.perTask),m.perDay==null?'':Math.round(m.perDay),m.okrAvg==null?'':m.okrAvg,m.riskHigh,m.carbon==null?'':Math.round(m.carbon*10)/10]);
+  return [[mode==='rank'?'จัดอันดับ/เปรียบเทียบโครงการทั้งหมด':'เปรียบเทียบโครงการที่เลือก'],[],head].concat(rows);
+}
+function exportCompareExcel(mode){
+  if(typeof XLSX==='undefined'){ showToast('⚠️ โหลดไลบรารี Excel ไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต'); return; }
+  const m=mode||(UI.route==='projrank'?'rank':'sel');
+  const ws=XLSX.utils.aoa_to_sheet(buildCompareAOA(m)); ws['!cols']=[10,56,7,22,14,24,28,12,9,28,12,12,9,9,10,8,6,9,9,10,10,8,8,10].map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'เปรียบเทียบโครงการ');
+  XLSX.writeFile(wb,'เปรียบเทียบโครงการ.xlsx'); showToast('ส่งออกเรียบร้อย');
+}
+
+function normProjName(n){
+  return String(n||'').replace(/ปีงบประมาณ\s*(พ\.ศ\.)?\s*\d{4}/g,'').replace(/พ\.ศ\.\s*\d{4}/g,'').replace(/\b25\d{2}\b/g,'').replace(/\s+/g,' ').trim();
+}
+/* ---------- เทียบปีงบ ก. กับ ข. ---------- */
+function yearVsState(){
+  const ys=DB.fiscalYears.slice().sort((a,b)=>a-b);
+  if(!UI.yvs) UI.yvs={a:null,b:null};
+  const y=UI.yvs;
+  if(!ys.includes(y.b)) y.b = ys.includes(DB.currentYear)?DB.currentYear:ys[ys.length-1];
+  if(!ys.includes(y.a)) y.a = ys.filter(v=>v<y.b).pop() || ys[0];
+  return y;
+}
+function setYearVs(k,v){ yearVsState()[k]=Number(v); render(); }
+function swapYearVs(){ const y=yearVsState(); const t=y.a; y.a=y.b; y.b=t; render(); }
+function yearStats(y){
+  const ps=DB.projects.filter(p=>p.year===y);
+  const budget=ps.reduce((s,p)=>s+(Number(p.budgetAmount)||0),0), disb=ps.reduce((s,p)=>s+(disbBySourceTotal(p)||Number(p.disbAmount)||0),0);
+  const pids=new Set(ps.map(p=>p.id)); const yt=DB.tasks.filter(t=>pids.has(t.projectId));
+  const tasks=yt.length, done=yt.filter(t=>t.status==='done').length;
+  const bySource={}, byCat={}, byType={};
+  ps.forEach(p=>{
+    projectBudgetSplit(p).forEach(x=>{ bySource[x.source]=(bySource[x.source]||0)+(Number(x.amount)||0); });
+    const c=getCategory(p.categoryId); const cn=c?c.name:'-'; byCat[cn]=(byCat[cn]||0)+(Number(p.budgetAmount)||0);
+    const t=p.budgetType||'-'; byType[t]=(byType[t]||0)+(Number(p.budgetAmount)||0);
+  });
+  [bySource,byCat,byType].forEach(o=>Object.keys(o).forEach(k=>{ if(!(o[k]>0)) delete o[k]; }));
+  const people=new Set(); ps.forEach(p=>projectOwnerIds(p).forEach(i=>people.add(i)));
+  return {y, n:ps.length, budget, disb, disbPct:budget>0?Math.round(disb/budget*100):0, tasks, done, taskPct:tasks?Math.round(done/tasks*100):0,
+    projDone:ps.filter(p=>p.status==='done').length, delayed:ps.filter(p=>p.status==='delayed').length, avg:ps.length?Math.round(budget/ps.length):0,
+    funded:ps.filter(p=>(Number(p.budgetAmount)||0)>0).length, people:people.size, bySource, byCat, byType, ps};
+}
+/* ---- จับคู่โครงการข้ามปี: ใช้ "ชื่อที่ใกล้เคียง" + "ลักษณะโครงการ" (โครงการปีเก่าไม่มีรหัส) ---- */
+const PROJ_CONCEPTS = [
+  ['cannabis_pre',/ก่อนได้รับอนุญาต|ก่อนอนุญาต/],['cannabis_post',/หลังได้รับอนุญาต|เฝ้าระวัง/],['cannabis',/กัญชา|สถานประกอบการ/],
+  ['clinic',/คลินิก/],['serviceplan',/service\s*plan|เซอร์วิส/i],['folkdoc',/หมอพื้นบ้าน|ภูมิปัญญาไทย/],['massage',/นวด/],
+  ['innovation',/นวัตกรรม|ผลิตภัณฑ์/],['wellness',/wellness|เวลเนส|เศรษฐกิจสุขภาพ|ท่องเที่ยว/i],['protect',/คุ้มครอง/],
+  ['expo',/มหกรรม|นิทรรศการ/],['wisdomday',/วันภูมิปัญญา/],['promote',/ส่งเสริมการใช้ภูมิปัญญา/],['standard',/รพ\.?สส\.?พท|โรงพยาบาลส่งเสริมและสนับสนุน|ตามมาตรฐาน/],
+  ['expert',/ผู้ทรงคุณวุฒิ/],['capacity',/พัฒนาศักยภาพ/],['training',/อบรม/],['meeting',/ประชุม/],['dataSys',/ระบบข้อมูล/],['herb',/สมุนไพร/],['stroke',/หลอดเลือดสมอง|IMC|ระยะกลาง/i],
+  ['career',/สร้างงาน|สร้างอาชีพ/],['servicedev',/จัดบริการ|พัฒนาระบบบริการ|ระบบบริการ/],
+];
+function projConcepts(p){ const t=String(p.name||'')+' '+String(p.indicator||'')+' '+DB.tasks.filter(x=>x.projectId===p.id).map(x=>x.name).join(' '); return new Set(PROJ_CONCEPTS.filter(c=>c[1].test(t)).map(c=>c[0])); }
+function nameForMatch(n){
+
+  return normProjName(n).replace(/สำนักงานสาธารณสุขจังหวัดสมุทรปราการ|จังหวัดสมุทรปราการ|ประจำปี|โครงการ/g,'').replace(/[\s()（）:：,\-–]/g,'');
+}
+function bigrams(t){ const m=new Map(); for(let i=0;i<t.length-1;i++){ const g=t.substr(i,2); m.set(g,(m.get(g)||0)+1); } return m; }
+function diceSim(a,b){
+  if(!a||!b) return 0; if(a===b) return 1;
+  const A=bigrams(a), B=bigrams(b); let inter=0, na=0, nb=0;
+  A.forEach(v=>na+=v); B.forEach(v=>nb+=v); A.forEach((v,k)=>{ if(B.has(k)) inter+=Math.min(v,B.get(k)); });
+  return (na+nb)? 2*inter/(na+nb) : 0;
+}
+function projActNames(p){
+  const set=new Set();
+  DB.tasks.filter(x=>x.projectId===p.id).forEach(x=>{ const n=nameForMatch(String(x.name||'').replace(/^[\d.\s\-)]+/,'')); if(n.length>=3) set.add(n); });
+  if(DB.okr&&DB.okr.items) DB.okr.items.filter(i=>p.projectCode&&i.projectCode===p.projectCode&&i.year===p.year).forEach(i=>{ const n=nameForMatch(i.name||''); if(n.length>=3) set.add(n); });
+  return [...set];
+}
+function actSimilarity(pa,pb){
+  const A=projActNames(pa), B=projActNames(pb);
+  if(!A.length||!B.length) return {s:0,n:0,has:false};
+  const small=A.length<=B.length?A:B, big=A.length<=B.length?B:A; let sum=0, hit=0;
+  small.forEach(x=>{ let best=0; big.forEach(y=>{ const d=diceSim(x,y); if(d>best) best=d; }); sum+=best; if(best>=0.5) hit++; });
+  return {s:sum/small.length, n:hit, has:true};
+}
+function projSimilarity(pa,pb){
+  const ns=diceSim(nameForMatch(pa.name),nameForMatch(pb.name));
+  if(ns>=0.98) return {score:1, basis:'ชื่อเหมือนกัน'};
+  const ca=projConcepts(pa), cb=projConcepts(pb); const u=new Set([...ca,...cb]); let inter=0; ca.forEach(x=>{ if(cb.has(x)) inter++; });
+  const cj=u.size? inter/u.size : 0;
+  const sameCat = pa.categoryId===pb.categoryId ? 1 : 0;
+  const ac=actSimilarity(pa,pb);
+  let score;
+  if(ns>=0.9) score=ns;
+  else if(ac.has) score=0.40*ns + 0.30*cj + 0.25*ac.s + 0.05*sameCat;
+  else score=0.55*ns + 0.4*cj + 0.05*sameCat;
+  score=Math.min(0.99,score);
+  let basis;
+  if(ns>=0.6) basis='ชื่อใกล้เคียง';
+  else if(ac.has && ac.s>=0.45 && ac.n>=1) basis='กิจกรรมในโครงการคล้ายกัน ('+ac.n+' กิจกรรม)';
+  else if(cj>=0.5) basis='ลักษณะโครงการใกล้เคียง';
+  else basis='คล้ายบางส่วน';
+  return {score, basis};
+}
+function yearMatch(ya,yb,thr){
+  if(thr==null) thr=(UI.yvs&&UI.yvs.thr)||0.4;
+  const A=DB.projects.filter(p=>p.year===ya), B=DB.projects.filter(p=>p.year===yb);
+  const pairs=[];
+  A.forEach(pa=>B.forEach(pb=>{
+    let sim; if(pa.projectCode && pb.projectCode && pa.projectCode===pb.projectCode) sim={score:1,basis:'รหัสโครงการตรงกัน'}; else sim=projSimilarity(pa,pb);
+    if(sim.score>=thr) pairs.push({pa,pb,score:sim.score,basis:sim.basis});
+  }));
+  pairs.sort((x,y)=>y.score-x.score);
+  const usedA=new Set(), usedB=new Set(), match=new Map();
+  pairs.forEach(c=>{ if(usedA.has(c.pa.id)||usedB.has(c.pb.id)) return; usedA.add(c.pa.id); usedB.add(c.pb.id); match.set(c.pb.id,c); });
+  const rows=[];
+  B.forEach(pb=>{ const c=match.get(pb.id); rows.push({a:c?c.pa:null,b:pb,sim:c?c.score:0,basis:c?c.basis:''}); });
+  A.forEach(pa=>{ if(!usedA.has(pa.id)) rows.push({a:pa,b:null,sim:0,basis:''}); });
+  rows.forEach(r=>{ r.ba=r.a?(Number(r.a.budgetAmount)||0):0; r.bb=r.b?(Number(r.b.budgetAmount)||0):0; r.d=r.bb-r.ba; r.kind=!r.a?'new':!r.b?'removed':r.d>0?'up':r.d<0?'down':'same'; });
+  return rows;
+}
+/* ---- v3.22 เทียบกิจกรรมรายโครงการ (งานย่อย + กิจกรรม OKR) ---- */
+function projActivities(p){
+  const acts=DB.tasks.filter(t=>t.projectId===p.id).map(t=>({name:String(t.name||'').replace(/^\s*[\d.]+\s*[.)]?\s*/,'').trim()||String(t.name||''), key:'', statusId:t.status, owner:t.assigneeId?getPersonName(t.assigneeId):'', budget:null, pct:null}));
+  if(p.projectCode && DB.okr && DB.okr.items){
+    DB.okr.items.filter(i=>i.projectCode===p.projectCode && i.year===p.year).forEach(i=>{
+      const k=nameForMatch(i.name||''); let hit=null, best=0;
+      acts.forEach(a=>{ const d=diceSim(nameForMatch(a.name),k); if(d>best){best=d;hit=a;} });
+      const owner=(i.ownerPersonIds&&i.ownerPersonIds.length)?getPersonNames(i.ownerPersonIds):(i.ownerText||'');
+      if(hit && best>=0.6){ hit.budget=Number(i.budget)||0; hit.pct=itemProgress(i); if(!hit.owner) hit.owner=owner; }
+      else acts.push({name:i.name||'', statusId:null, owner, budget:Number(i.budget)||0, pct:itemProgress(i)});
+    });
+  }
+  acts.forEach(a=>{ a.key=nameForMatch(a.name); a.cn=new Set(PROJ_CONCEPTS.filter(c=>c[1].test(a.name)).map(c=>c[0])); });
+  return acts;
+}
+function actPairSim(x,y){
+  const d=diceSim(x.key,y.key); let inter=0; x.cn.forEach(c=>{ if(y.cn.has(c)) inter++; });
+  const u=new Set([...x.cn,...y.cn]).size; const cj=u?inter/u:0;
+  return d>=0.9? d : 0.7*d+0.3*cj;
+}
+function activityMatch(pa,pb,thr){
+  thr=thr||0.35; const A=projActivities(pa), B=projActivities(pb); const pairs=[];
+  A.forEach((x,i)=>B.forEach((y,j)=>{ const sc=actPairSim(x,y); if(sc>=thr) pairs.push({i,j,sc}); }));
+  pairs.sort((u,v)=>v.sc-u.sc); const ua=new Set(), ub=new Set(), mp=new Map();
+  pairs.forEach(c=>{ if(ua.has(c.i)||ub.has(c.j)) return; ua.add(c.i); ub.add(c.j); mp.set(c.j,c); });
+  const rows=[]; B.forEach((y,j)=>{ const c=mp.get(j); rows.push({a:c?A[c.i]:null,b:y,sc:c?c.sc:0}); });
+  A.forEach((x,i)=>{ if(!ua.has(i)) rows.push({a:x,b:null,sc:0}); });
+  return {rows, na:A.length, nb:B.length, matched:mp.size};
+}
+function actStatusBadge(a){
+  if(!a) return '';
+  if(a.statusId){ const st=statusObj(a.statusId); return `<span class="badge ${st.cls}">${st.label}</span>`; }
+  return a.pct!=null? `<span class="small-muted">OKR ${a.pct}%</span>` : '';
+}
+function actCompareTable(pa,pb,ya,yb){
+  const r=activityMatch(pa,pb);
+  if(!r.na && !r.nb) return '<div class="small-muted" style="padding:6px;">ไม่มีกิจกรรม/งานย่อยในทั้งสองปี</div>';
+  const bud=v=>(v==null?'-':money(v));
+  return `<div class="small-muted" style="margin-bottom:6px;">กิจกรรมปี ${ya}: <b>${r.na}</b> · ปี ${yb}: <b>${r.nb}</b> · จับคู่ได้ <b>${r.matched}</b> (ต่อเนื่อง) · ใหม่ใน ${yb}: <b>${r.nb-r.matched}</b> · ไม่มีใน ${yb}: <b>${r.na-r.matched}</b></div>
+  <div class="tbl-wrap"><table><thead><tr><th>กิจกรรม ปี ${yb}</th><th>กิจกรรมที่จับคู่ ปี ${ya}</th><th>ใกล้เคียง</th><th>สถานะ ${yb}</th><th>ผู้รับผิดชอบ ${yb}</th><th style="text-align:right">งบ ${ya}</th><th style="text-align:right">งบ ${yb}</th></tr></thead><tbody>
+  ${r.rows.map(x=>{ const tag=!x.a?'<span class="badge" style="background:#E1F5E9;color:#0F7A45;">ใหม่</span> ':!x.b?'<span class="badge" style="background:#FDE4E4;color:#B02A2A;">ไม่มีใน '+yb+'</span> ':'';
+    return `<tr><td style="font-size:12.5px;">${x.b?escapeHtml(x.b.name.slice(0,100)):'-'}</td><td style="font-size:12.5px;">${x.a?escapeHtml(x.a.name.slice(0,100)):(x.b?tag:'-')}${x.a&&!x.b?'<div>'+tag+'</div>':''}</td><td>${x.a&&x.b?Math.round(x.sc*100)+'%':'-'}</td><td>${x.b?actStatusBadge(x.b):''}</td><td style="font-size:12px;">${x.b?escapeHtml(x.b.owner||'-'):'-'}</td><td style="text-align:right">${x.a?bud(x.a.budget):'-'}</td><td style="text-align:right">${x.b?bud(x.b.budget):'-'}</td></tr>`; }).join('')}
+  </tbody></table></div><div class="small-muted" style="margin-top:4px;">งบรายกิจกรรมมีเฉพาะกิจกรรมที่อยู่ใน OKR (ปี 2570); งานย่อยทั่วไปไม่มีงบแยก</div>`;
+}
+function toggleYvsAct(id){ const e=document.getElementById('yvsA_'+id); if(e) e.style.display=(e.style.display==='none')?'table-row':'none'; }
+function toggleAllYvsAct(open){ document.querySelectorAll('[id^="yvsA_"]').forEach(e=>e.style.display=open?'table-row':'none'); }
+function renderPrevYearActCard(p){
+  try{
+    const ys=DB.fiscalYears.slice().sort((a,b)=>a-b).filter(v=>v<p.year); if(!ys.length) return '';
+    const ya=ys[ys.length-1];
+    const r=yearMatch(ya,p.year,0.4).find(r=>r.b&&r.b.id===p.id&&r.a); if(!r) return '';
+    return `<div class="section-title">🔁 เทียบกิจกรรมกับปี ${ya}<span class="line-flex"></span></div>
+    <div class="small-muted" style="margin-bottom:6px;">โครงการที่จับคู่ ปี ${ya}: <b>${escapeHtml(normProjName(r.a.name).slice(0,100))}</b> (${Math.round(r.sim*100)}% · ${escapeHtml(r.basis)}) · งบ ${money(r.ba)} → ${money(r.bb)}</div>
+    ${actCompareTable(r.a,p,ya,p.year)}`;
+  }catch(e){ return ''; }
+}
+function setYearVsThr(v){ yearVsState().thr=Number(v); render(); }
+function viewYearVs(){
+  const ys=DB.fiscalYears.slice().sort((a,b)=>a-b); const y=yearVsState();
+  const A=yearStats(y.a), B=yearStats(y.b);
+  const dl=(a,b,fmt,goodUp)=>{ const d=b-a; const pc=a? Math.round(d/a*1000)/10 : null; const col=d===0?'#5C6B63':((d>0)===(goodUp!==false)?'#0F7A45':'#B02A2A'); return `<td style="text-align:right;color:${col};font-weight:600;">${d>0?'+':''}${fmt(d)}</td><td style="text-align:right;color:${col};">${pc==null?'-':(d>0?'+':'')+pc+'%'}</td>`; };
+  const f0=v=>money(v), fp=v=>v+'%';
+  const metrics=[['จำนวนโครงการ',A.n,B.n,f0],['โครงการที่มีงบ',A.funded,B.funded,f0],['งบประมาณรวม (บาท)',A.budget,B.budget,f0],['เบิกจ่ายแล้ว (บาท)',A.disb,B.disb,f0],['เบิกจ่าย (%)',A.disbPct,B.disbPct,fp],['งบเฉลี่ยต่อโครงการ (บาท)',A.avg,B.avg,f0],['งานย่อยทั้งหมด',A.tasks,B.tasks,f0],['งานย่อยเสร็จสิ้น (%)',A.taskPct,B.taskPct,fp],['โครงการเสร็จสิ้น',A.projDone,B.projDone,f0],['โครงการล่าช้า',A.delayed,B.delayed,f0,false],['บุคลากรที่เกี่ยวข้อง (คน)',A.people,B.people,f0]];
+  const keysOf=(k)=>[...new Set(Object.keys(A[k]).concat(Object.keys(B[k])))];
+  const grp=(k,title)=>`<div class="card"><div class="card-head"><div class="card-title">${title}</div></div><div class="tbl-wrap card-pad"><table><thead><tr><th>${title.replace('งบประมาณตาม','')}</th><th style="text-align:right">${y.a}</th><th style="text-align:right">${y.b}</th><th style="text-align:right">ผลต่าง</th><th style="text-align:right">%</th></tr></thead><tbody>
+    ${keysOf(k).map(n=>{ const a=A[k][n]||0,b=B[k][n]||0,d=b-a; return `<tr><td>${escapeHtml(n)}</td><td style="text-align:right">${money(a)}</td><td style="text-align:right">${money(b)}</td><td style="text-align:right;font-weight:600;color:${d>0?'#0F7A45':d<0?'#B02A2A':'#5C6B63'};">${d>0?'+':''}${money(d)}</td><td style="text-align:right;">${a?((d>0?'+':'')+Math.round(d/a*1000)/10+'%'):'ใหม่'}</td></tr>`; }).join('')||'<tr><td colspan="5" class="small-muted">ไม่มีข้อมูล</td></tr>'}</tbody></table></div></div>`;
+  const rows=yearMatch(y.a,y.b).sort((p,q)=>Math.abs(q.d)-Math.abs(p.d));
+  const cnt=k=>rows.filter(r=>r.kind===k).length;
+  const kindBadge={new:['#E1F5E9','#0F7A45','ใหม่ใน '+y.b],removed:['#FDE4E4','#B02A2A','ไม่มีใน '+y.b],up:['#E3F1FB','#1D5F94','งบเพิ่ม'],down:['#FFF3D6','#9C6B0B','งบลด'],same:['#EEF1EF','#5C6B63','เท่าเดิม']};
+  return `
+  <div class="card card-pad" style="margin-bottom:14px;">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+      <div><label class="small-muted">ปีงบ ก. (ฐานเปรียบเทียบ)</label><br><select class="select" onchange="setYearVs('a',this.value)">${ys.map(v=>`<option ${v===y.a?'selected':''}>${v}</option>`).join('')}</select></div>
+      <button class="btn btn-ghost btn-sm" onclick="swapYearVs()">⇄ สลับ</button>
+      <div><label class="small-muted">ปีงบ ข. (ปีที่เทียบ)</label><br><select class="select" onchange="setYearVs('b',this.value)">${ys.map(v=>`<option ${v===y.b?'selected':''}>${v}</option>`).join('')}</select></div>
+      <div><label class="small-muted">ความเข้มการจับคู่โครงการ</label><br><select class="select" onchange="setYearVsThr(this.value)">${[[0.6,'เข้ม (≥60%) – เฉพาะที่เหมือนมาก'],[0.4,'ปานกลาง (≥40%) – แนะนำ'],[0.25,'หลวม (≥25%) – รวมที่คล้ายบางส่วน']].map(o=>`<option value="${o[0]}" ${(y.thr||0.4)===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>
+      <div class="spacer" style="flex:1"></div><button class="btn btn-ghost btn-sm" onclick="exportYearVsExcel()">📥 ส่งออก Excel</button>
+    </div>
+    ${y.a===y.b?'<div class="small-muted" style="margin-top:8px;">⚠️ เลือกปีเดียวกัน — เลือกปีต่างกันเพื่อดูผลต่าง</div>':''}
+  </div>
+  <div class="grid grid-4" style="margin-bottom:14px;">
+    ${kpiCard('📁',`จำนวนโครงการ ${y.a} → ${y.b}`,`${A.n} → ${B.n}`,(B.n-A.n>=0?'+':'')+(B.n-A.n)+' โครงการ')}
+    ${kpiCard('💰',`งบรวม ${y.a} → ${y.b}`,`${money(A.budget)} → ${money(B.budget)}`,(B.budget-A.budget>=0?'+':'')+money(B.budget-A.budget)+' บาท'+(A.budget?` (${Math.round((B.budget-A.budget)/A.budget*1000)/10}%)`:''))}
+    ${kpiCard('✅','เบิกจ่าย (%)',`${A.disbPct}% → ${B.disbPct}%`,`เบิกแล้ว ${money(A.disb)} → ${money(B.disb)}`)}
+    ${kpiCard('🔁','การจับคู่โครงการ',`${rows.filter(r=>r.a&&r.b).length} คู่`,`ใหม่ ${cnt('new')} · ไม่มีใน ${y.b} ${cnt('removed')}`)}
+  </div>
+  <div class="grid grid-2" style="margin-bottom:14px;">
+    <div class="card card-pad"><div class="card-title" style="margin-bottom:8px;">งบประมาณตามแหล่งงบ</div><div style="height:230px;"><canvas id="chartYvsSource"></canvas></div></div>
+    <div class="card card-pad"><div class="card-title" style="margin-bottom:8px;">งบประมาณตามหมวดหมู่</div><div style="height:230px;"><canvas id="chartYvsCat"></canvas></div></div>
+  </div>
+  <div class="card" style="margin-bottom:14px;"><div class="tbl-wrap card-pad"><table><thead><tr><th>ตัวชี้วัด</th><th style="text-align:right">${y.a}</th><th style="text-align:right">${y.b}</th><th style="text-align:right">ผลต่าง</th><th style="text-align:right">%</th></tr></thead><tbody>
+    ${metrics.map(m=>`<tr><td style="font-weight:600;">${m[0]}</td><td style="text-align:right">${m[3](m[1])}</td><td style="text-align:right">${m[3](m[2])}</td>${dl(m[1],m[2],m[3],m[4])}</tr>`).join('')}
+  </tbody></table></div></div>
+  <div class="grid grid-2" style="margin-bottom:14px;">${grp('bySource','งบประมาณตามแหล่งงบ')}${grp('byType','งบประมาณตามประเภทงบ')}</div>
+  <div class="card"><div class="card-head"><div class="card-title">เทียบรายโครงการ (โครงการปีเก่าไม่มีรหัส จึงจับคู่จากชื่อ ลักษณะโครงการ และกิจกรรมในโครงการที่ใกล้เคียง)</div></div>
+    <div class="card-pad" style="padding-top:0;display:flex;gap:6px;flex-wrap:wrap;">${['new','removed','up','down','same'].map(k=>`<span class="badge" style="background:${kindBadge[k][0]};color:${kindBadge[k][1]};">${kindBadge[k][2]} ${cnt(k)}</span>`).join('')}<button class="btn btn-ghost btn-sm" onclick="toggleAllYvsAct(true)">📂 ขยายกิจกรรมทุกโครงการ</button><button class="btn btn-ghost btn-sm" onclick="toggleAllYvsAct(false)">ย่อทั้งหมด</button></div>
+    <div class="tbl-wrap card-pad"><table><thead><tr><th>โครงการ (ปี ${y.b}) / โครงการที่จับคู่ (ปี ${y.a})</th><th>ความใกล้เคียง</th><th>กิจกรรม</th><th>รหัส ${y.b}</th><th style="text-align:right">งบ ${y.a}</th><th style="text-align:right">งบ ${y.b}</th><th style="text-align:right">ผลต่าง</th><th style="text-align:right">%</th><th>สถานะ</th></tr></thead><tbody>
+    ${rows.map(r=>{ const p=r.b||r.a; const kb=kindBadge[r.kind]; const am=(r.a&&r.b)?activityMatch(r.a,r.b):null; return `<tr class="tbl-row" onclick="openProjectDetail('${p.id}')"><td style="font-size:12.5px;">${r.b?escapeHtml(normProjName(r.b.name).slice(0,90)):''}${r.a?`<div class="small-muted" style="margin-top:2px;">${r.b?'↔ ปี '+y.a+': ':'ปี '+y.a+': '}${escapeHtml(normProjName(r.a.name).slice(0,90))}</div>`:''}</td><td style="font-size:12px;">${r.a&&r.b?`<b>${Math.round(r.sim*100)}%</b><div class="small-muted">${escapeHtml(r.basis)}</div>`:'-'}</td><td style="font-size:12px;" onclick="event.stopPropagation()">${am?`<button class="btn btn-ghost btn-sm" onclick="toggleYvsAct('${r.b.id}')">🔍 ${am.na}↔${am.nb}</button><div class="small-muted">จับคู่ ${am.matched}</div>`:'-'}</td><td style="font-family:monospace;">${escapeHtml(r.b&&r.b.projectCode||'-')}</td><td style="text-align:right">${r.a?money(r.ba):'-'}</td><td style="text-align:right">${r.b?money(r.bb):'-'}</td><td style="text-align:right;font-weight:600;color:${r.d>0?'#0F7A45':r.d<0?'#B02A2A':'#5C6B63'};">${r.a&&r.b?((r.d>0?'+':'')+money(r.d)):'-'}</td><td style="text-align:right">${r.a&&r.b&&r.ba?((r.d>0?'+':'')+Math.round(r.d/r.ba*1000)/10+'%'):'-'}</td><td><span class="badge" style="background:${kb[0]};color:${kb[1]};">${kb[2]}</span></td></tr>${am?`<tr id="yvsA_${r.b.id}" style="display:none;background:#F7FAF8;"><td colspan="9" style="padding:10px 14px;">${actCompareTable(r.a,r.b,y.a,y.b)}</td></tr>`:''}`; }).join('')||'<tr><td colspan="9"><div class="empty-state">ไม่มีโครงการในปีที่เลือก</div></td></tr>'}
+    </tbody></table></div></div>`;
+}
+function drawYearVsCharts(){
+  if(typeof Chart==='undefined') return; const y=yearVsState(); const A=yearStats(y.a), B=yearStats(y.b);
+  const mk=(id,k)=>{ const el=document.getElementById(id); if(!el) return; const labels=[...new Set(Object.keys(A[k]).concat(Object.keys(B[k])))];
+    chartRefs.push(new Chart(el,{type:'bar', data:{labels, datasets:[{label:'ปีงบ '+y.a, data:labels.map(l=>A[k][l]||0), backgroundColor:'#9CC7AE'},{label:'ปีงบ '+y.b, data:labels.map(l=>B[k][l]||0), backgroundColor:'#146C43'}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{y:{beginAtZero:true}}}})); };
+  mk('chartYvsSource','bySource'); mk('chartYvsCat','byCat');
+}
+function exportYearVsExcel(){
+  if(typeof XLSX==='undefined'){ showToast('⚠️ โหลดไลบรารี Excel ไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต'); return; }
+  const y=yearVsState(); const A=yearStats(y.a), B=yearStats(y.b);
+  const a1=[[`เทียบปีงบ ${y.a} กับ ${y.b}`],[],['ตัวชี้วัด',y.a,y.b,'ผลต่าง'],
+    ['จำนวนโครงการ',A.n,B.n,B.n-A.n],['งบประมาณรวม',A.budget,B.budget,B.budget-A.budget],['เบิกจ่ายแล้ว',A.disb,B.disb,B.disb-A.disb],['เบิกจ่าย (%)',A.disbPct,B.disbPct,B.disbPct-A.disbPct],['งานย่อยทั้งหมด',A.tasks,B.tasks,B.tasks-A.tasks],['งานย่อยเสร็จสิ้น (%)',A.taskPct,B.taskPct,B.taskPct-A.taskPct],[],['งบตามแหล่งงบ']];
+  [...new Set(Object.keys(A.bySource).concat(Object.keys(B.bySource)))].forEach(k=>a1.push([k,A.bySource[k]||0,B.bySource[k]||0,(B.bySource[k]||0)-(A.bySource[k]||0)]));
+  a1.push([],['งบตามหมวดหมู่']); [...new Set(Object.keys(A.byCat).concat(Object.keys(B.byCat)))].forEach(k=>a1.push([k,A.byCat[k]||0,B.byCat[k]||0,(B.byCat[k]||0)-(A.byCat[k]||0)]));
+  const a2=[['รายโครงการ'],[],['โครงการ ปี '+y.b,'โครงการที่จับคู่ ปี '+y.a,'ความใกล้เคียง (%)','เกณฑ์จับคู่','รหัส '+y.b,'งบ '+y.a,'งบ '+y.b,'ผลต่าง','สถานะ']];
+  const lab={new:'ใหม่',removed:'ไม่มีในปีที่เทียบ',up:'งบเพิ่ม',down:'งบลด',same:'เท่าเดิม'};
+  yearMatch(y.a,y.b).sort((p,q)=>Math.abs(q.d)-Math.abs(p.d)).forEach(r=>{ const p=r.b||r.a; a2.push([r.b?normProjName(r.b.name):'',r.a?normProjName(r.a.name):'',r.a&&r.b?Math.round(r.sim*100):'',r.basis||'',r.b&&r.b.projectCode||'',r.a?r.ba:'',r.b?r.bb:'',r.a&&r.b?r.d:'',lab[r.kind]]); });
+  const a3=[['เทียบกิจกรรมรายโครงการ'],[],['โครงการ ปี '+y.b,'กิจกรรม ปี '+y.b,'กิจกรรมที่จับคู่ ปี '+y.a,'ความใกล้เคียง (%)','สถานะ/OKR ปี '+y.b,'ผู้รับผิดชอบ ปี '+y.b,'งบ '+y.a,'งบ '+y.b,'ผลการจับคู่']];
+  yearMatch(y.a,y.b).forEach(r=>{ if(!(r.a&&r.b)) return; const m=activityMatch(r.a,r.b); m.rows.forEach(x=>{ a3.push([normProjName(r.b.name),x.b?x.b.name:'',x.a?x.a.name:'',x.a&&x.b?Math.round(x.sc*100):'',x.b?(x.b.statusId?statusObj(x.b.statusId).label:(x.b.pct!=null?'OKR '+x.b.pct+'%':'')):'',x.b?x.b.owner:'',x.a&&x.a.budget!=null?x.a.budget:'',x.b&&x.b.budget!=null?x.b.budget:'',x.a&&x.b?'จับคู่':(x.b?'ใหม่':'ไม่มีในปีที่เทียบ')]); }); });
+  const wb=XLSX.utils.book_new();
+  [['สรุปเทียบปี',a1,[34,16,16,16]],['รายโครงการ',a2,[60,60,12,22,12,14,14,14,18]],['เทียบกิจกรรม',a3,[50,50,50,12,18,22,12,12,18]]].forEach(([n,a,w])=>{ const ws=XLSX.utils.aoa_to_sheet(a); ws['!cols']=w.map(x=>({wch:x})); XLSX.utils.book_append_sheet(wb,ws,n); });
+  XLSX.writeFile(wb,`เทียบปีงบ_${y.a}_${y.b}.xlsx`); showToast('ส่งออกเรียบร้อย');
+}
+
 let chartRefs=[];
 function destroyCharts(){ chartRefs.forEach(c=>c.destroy()); chartRefs=[]; }
 function afterRenderHook(){
@@ -4756,6 +5189,8 @@ function afterRenderHook(){
   if(UI.route==='yearcompare') drawYearCompareCharts();
   if(UI.route==='strategicalign') drawStrategicChart();
   if(UI.route==='carbon') drawCarbonChart();
+  if(UI.route==='projcompare') drawCmpChart();
+  if(UI.route==='yearvs') drawYearVsCharts();
 }
 const CHART_GREEN_PALETTE=['#146C43','#2D6FA5','#C89B3C','#7C4FA0','#D64545','#22A05F','#4FC087','#8A9A92','#3B7BB0','#9C6B0B'];
 
