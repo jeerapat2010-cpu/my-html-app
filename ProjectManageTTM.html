@@ -230,7 +230,11 @@ textarea.input{resize:vertical; min-height:70px;}
   .content{ padding:0; }
   .card{ box-shadow:none; border:1px solid #ccc; break-inside:avoid; }
   a[href]:after{ content:''; }
+  .no-print, .tab-bar{ display:none !important; }
+  .print-only{ display:block !important; }
 }
+.print-only{ display:none; }
+body.viewer #btnQuickAddProject, body.viewer [onclick*="Form("], body.viewer [onclick*="delete"], body.viewer [onclick*="remove"], body.viewer [onclick*="resetAll"], body.viewer [onclick*="addFY"], body.viewer [onclick*="addCategory"], body.viewer [onclick*="addListItem"], body.viewer [onclick*="xlApply"], body.viewer [onclick*="saveQrNote"], body.viewer label.btn:has(input[type=file]), body.viewer .btn-danger{ display:none !important; }
 </style>
 </head>
 <body>
@@ -245,7 +249,7 @@ textarea.input{resize:vertical; min-height:70px;}
    ========================================================================= */
 
 const STORAGE_KEY = 'thaimed_ops_v1';
-const APP_VERSION = 'v3.22';
+const APP_VERSION = 'v3.24';
 const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const FY_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
 const STATUS_LIST = [
@@ -609,6 +613,7 @@ function loadDB(){
     window.__autoSourceFixedCount = normalizeFY70BudgetSources();
   }
   window.__autoOKRCount = ensureOKRData();
+  ensureKpiSeed();
   window.__autoCarbonCount = ensureCarbonData();
   window.__autoCoOwnerCount = backfillCoOwners();
   purgeOldTrash();
@@ -834,6 +839,12 @@ const NAV_GROUPS = {
     {route:'carbonlog', label:'บันทึกการปล่อยจริง'},
     {route:'carbonef', label:'ค่า EF / ค่าสมมติ'},
   ]},
+  report: {label:'รายงาน & KPI', icon:'📑', tabs:[
+    {route:'qreport', label:'รายงานรายไตรมาส'},
+    {route:'forecast', label:'พยากรณ์เบิกจ่าย'},
+    {route:'kpi', label:'KPI ตัวชี้วัด'},
+    {route:'xlimport', label:'นำเข้า Excel (ดูส่วนต่าง)'},
+  ]},
   system: {label:'ระบบ', icon:'⚙️', tabs:[
     {route:'trash', label:'ถังขยะ'},
     {route:'auditlog', label:'ประวัติการแก้ไข'},
@@ -1027,6 +1038,7 @@ function gsGoTask(pid){
    RENDER: layout
    ========================================================================= */
 function render(){
+  try{ document.body.classList.toggle('viewer', isViewer()); }catch(e){}
   const app=document.getElementById('app');
   app.innerHTML = `
     ${renderSidebar()}
@@ -1078,10 +1090,15 @@ function renderSidebar(){
       ${navGroupItem('okr')}
       ${navGroupItem('carbon')}
 
+      <div class="nav-leg"><span class="dot" style="background:#C98BDB"></span>PART 4 · แจ้งเตือน &amp; รายงาน</div>
+      ${navItem('alerts','🔔','ศูนย์แจ้งเตือน', alertsCount())}
+      ${navGroupItem('report')}
+
       <div class="nav-group-label">ระบบ</div>
       ${navGroupItem('system', trashN)}
     </div>
     <div class="sidebar-foot">
+      ${isViewer()?'<div style="background:rgba(255,255,255,.15);border-radius:8px;padding:6px 8px;margin-bottom:8px;font-size:12px;">👁️ โหมดอ่านอย่างเดียว</div>':''}
       <button class="btn btn-ghost btn-sm" style="width:100%;margin-bottom:8px;color:#fff;border-color:rgba(255,255,255,.3);" onclick="lockNow()">🔒 ล็อกหน้าจอ</button>
       จัดทำโดย ภก.จีรภัทร พลายงาม · 21 สิงหาคม 2569<br>ระบบ ${DB.meta.version} · ข้อมูลเก็บในเครื่องนี้ (Local Storage)
     </div>
@@ -1112,6 +1129,11 @@ function pageTitleFor(route){
     yearvs:['เทียบปีงบ ก. กับ ข.','เปรียบเทียบสองปีงบประมาณ ทั้งภาพรวม แหล่งงบ หมวดหมู่ และรายโครงการ'],
     projrank:['จัดอันดับโครงการ','จัดอันดับทุกโครงการตามงบ การเบิกจ่าย ความคืบหน้า OKR ความเสี่ยง พร้อมข้อสังเกตอัตโนมัติ'],
     okr:['OKR รายกิจกรรม','ติดตามเป้าหมายและผลลัพธ์สำคัญ (O/KR) เช็คอินรายไตรมาส เทียบกับกำหนดเวลา'],
+    alerts:['ศูนย์แจ้งเตือน','งาน โครงการ OKR การเบิกจ่าย ที่ต้องติดตาม'],
+    qreport:['รายงานรายไตรมาส','สรุปผลการดำเนินงานสำหรับผู้บริหาร พิมพ์หรือบันทึกเป็น PDF ได้'],
+    forecast:['พยากรณ์การเบิกจ่าย','เทียบอัตราเบิกจ่ายจริงกับแผน และเตือนโครงการเสี่ยงเหลือคืน'],
+    kpi:['KPI ตัวชี้วัด','ผูกตัวชี้วัดกับโครงการที่รองรับ'],
+    xlimport:['นำเข้าจาก Excel','เทียบไฟล์แผนปฏิบัติการกับข้อมูลในระบบก่อนนำเข้า'],
     okrperson:['OKR รายบุคคล','สรุปคะแนน OKR ของแต่ละคน เพื่อประกอบการประเมินผลงานบุคคล'],
     carbon:['Carbon Footprint — แผนและเป้าหมาย','ประมาณการก๊าซเรือนกระจกของแผนงาน มาตรการลดคาร์บอน และเทียบกับการปล่อยจริง'],
     carbonlog:['บันทึกการปล่อยจริง','บันทึกเลขไมล์รถ น้ำมัน บิลค่าไฟ เพื่อคำนวณ kgCO2e จริงของแต่ละกิจกรรม'],
@@ -1172,6 +1194,11 @@ function renderRoute(){
     case 'projrank': return viewProjRank();
     case 'okr': return viewOKR();
     case 'okrperson': return viewOKRPerson();
+    case 'alerts': return viewAlerts();
+    case 'qreport': return viewQReport();
+    case 'forecast': return viewForecast();
+    case 'kpi': return viewKPI();
+    case 'xlimport': return viewXlImport();
     case 'carbon': return viewCarbon();
     case 'carbonlog': return viewCarbonLog();
     case 'carbonef': return viewCarbonEF();
@@ -1285,6 +1312,7 @@ function viewDashboard(){
   const highRisks = allRisksInYear().filter(x=>riskScore(x.risk)>=15 && x.risk.status!=='closed');
 
   return `
+  ${renderAlertBanner()}
   <div class="two-leg-banner">
     <div class="leg-pill work"><span class="leg-ic">📁</span><div><div class="leg-t">PART “งาน” — ${projs.length} โครงการ</div><div class="leg-s">งบประมาณรวม ${money(totalBudget)} บาท · ปีงบ ${DB.currentYear}</div></div></div>
     <div class="leg-pill people"><span class="leg-ic">👥</span><div><div class="leg-t">PART “คน” — ${DB.personnel.length} คน</div><div class="leg-s">งานย่อยทั้งหมด ${allTasks.length} รายการ</div></div></div>
@@ -1518,6 +1546,7 @@ function openProjectDetail(id){
     ${renderBudgetSplitCard(p)}
     ${p.strategicGoalId? `<div style="margin-top:10px;"><span class="small-muted">ยุทธศาสตร์ที่ตอบสนอง</span><div style="margin-top:2px;"><span class="tag-chip">${escapeHtml(p.strategicGoalId)}</span></div></div>` : ''}
 
+    ${renderKpiChips(p)}
     ${renderPrevYearActCard(p)}
     <div class="section-title">✅ สถานะการอนุมัติ<span class="line-flex"></span></div>
     ${renderApprovalStepper(p)}
@@ -2794,7 +2823,7 @@ function updateDisbBySource(projectId, code, value){
   const d = ensureDisbBySource(p);
   let v = Number(value); if(isNaN(v)||v<0) v=0;
   d[code] = v;
-  p.disbAmount = disbBySourceTotal(p); // คงฟิลด์เดิม (ยอดรวม) ไว้ให้ใช้งานต่อเนื่องกับส่วนอื่นของแอป (เช่น badge สถานะในหน้ารายละเอียดโครงการ)
+  p.disbAmount = disbBySourceTotal(p); recordDisbSnapshot(); // คงฟิลด์เดิม (ยอดรวม) ไว้ให้ใช้งานต่อเนื่องกับส่วนอื่นของแอป (เช่น badge สถานะในหน้ารายละเอียดโครงการ)
   logAction('บันทึกการเบิกจ่ายตามแหล่งงบ', `${p.name} — ${budgetSourceCodeLabel(code)}: ${money(v)} บาท (รวมเบิกจ่ายแล้ว ${money(p.disbAmount)} บาท)`);
   saveDB();
 }
@@ -3880,7 +3909,7 @@ function viewSettings(){
     <div class="card card-pad">
       <div class="card-title" style="margin-bottom:8px;">🔒 รหัสผ่านเข้าระบบ</div>
       <div class="small-muted" style="margin-bottom:10px;">ระบบขอรหัสผ่านทุกครั้งที่เปิดแท็บใหม่ (รหัสเริ่มต้น 8888) · เป็นการล็อกหน้าจอเพื่อกันผู้อื่นเปิดดู ไม่ใช่การเข้ารหัสข้อมูล</div>
-      <button class="btn btn-ghost btn-sm" onclick="openChangePasswordForm()">เปลี่ยนรหัสผ่าน</button> <button class="btn btn-ghost btn-sm" onclick="lockNow()">🔒 ล็อกตอนนี้</button>
+      <button class="btn btn-ghost btn-sm" onclick="openChangePasswordForm()">เปลี่ยนรหัสผ่าน</button> <button class="btn btn-ghost btn-sm" onclick="openViewerPasswordForm()">👁️ ${(DB.security&&DB.security.viewerHash)?'เปลี่ยน/ยกเลิก':'ตั้ง'}รหัสผู้ดู (อ่านอย่างเดียว)</button> <button class="btn btn-ghost btn-sm" onclick="lockNow()">🔒 ล็อกตอนนี้</button>
     </div>
     <div class="card card-pad">
       <div class="card-title" style="margin-bottom:12px;">ปีงบประมาณ</div>
@@ -3950,9 +3979,11 @@ function exportJSON(){
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a'); a.href=url; a.download='WorkPeopleOps_backup_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
   URL.revokeObjectURL(url);
+  try{ DB.meta.lastBackup=new Date().toISOString(); if(!isViewer()) saveDB(); }catch(e){}
   showToast('ส่งออกไฟล์สำรองเรียบร้อย');
 }
 function resetAllData(){
+  if(viewerBlock()) return;
   if(!confirm('ยืนยันล้างข้อมูลทั้งหมดและเริ่มต้นใหม่ด้วยข้อมูลตัวอย่าง? การกระทำนี้ไม่สามารถย้อนกลับได้')) return;
   DB=seedData(); saveDB(); render();
   showToast('รีเซ็ตข้อมูลเรียบร้อย');
@@ -4106,6 +4137,7 @@ function refreshBackground(){
   }
 }
 function handleImportJSON(e){
+  if(viewerBlock()) return;
   const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader();
   reader.onload=()=>{
@@ -4113,7 +4145,7 @@ function handleImportJSON(e){
       const data=JSON.parse(reader.result);
       if(!data.projects || !data.personnel){ showToast('ไฟล์ไม่ถูกต้อง'); return; }
       if(confirm('นำเข้าข้อมูลนี้จะแทนที่ข้อมูลปัจจุบันทั้งหมด ยืนยันหรือไม่?')){
-        DB=data; ensureOKRData(); ensureCarbonData(); saveDB(); render(); showToast('นำเข้าข้อมูลเรียบร้อย');
+        DB=data; ensureOKRData(); ensureCarbonData(); ensureKpiSeed(); saveDB(); render(); showToast('นำเข้าข้อมูลเรียบร้อย');
       }
     }catch(err){ showToast('อ่านไฟล์ไม่สำเร็จ: ไฟล์ไม่ใช่ JSON ที่ถูกต้อง'); }
   };
@@ -5042,17 +5074,23 @@ function projSimilarity(pa,pb){
 function yearMatch(ya,yb,thr){
   if(thr==null) thr=(UI.yvs&&UI.yvs.thr)||0.4;
   const A=DB.projects.filter(p=>p.year===ya), B=DB.projects.filter(p=>p.year===yb);
+  const ov=yearPairsList();
+  const idsA=new Set(A.map(p=>p.id)), idsB=new Set(B.map(p=>p.id));
+  const noneA=new Set(), noneB=new Set(), forced=[];
+  ov.forEach(o=>{ if(o.type==='none'){ if(o.a&&idsA.has(o.a)) noneA.add(o.a); if(o.b&&idsB.has(o.b)) noneB.add(o.b); } else if(o.type==='pair' && idsA.has(o.a) && idsB.has(o.b)) forced.push(o); });
+  const usedA=new Set(), usedB=new Set(), match=new Map();
+  forced.forEach(o=>{ const pa=A.find(x=>x.id===o.a), pb=B.find(x=>x.id===o.b); if(usedA.has(pa.id)||usedB.has(pb.id)) return; usedA.add(pa.id); usedB.add(pb.id);
+    match.set(pb.id,{pa,pb,score:projSimilarity(pa,pb).score,basis:'กำหนดเองโดยผู้ใช้',locked:true}); });
   const pairs=[];
-  A.forEach(pa=>B.forEach(pb=>{
+  A.forEach(pa=>{ if(usedA.has(pa.id)||noneA.has(pa.id)) return; B.forEach(pb=>{ if(usedB.has(pb.id)||noneB.has(pb.id)) return;
     let sim; if(pa.projectCode && pb.projectCode && pa.projectCode===pb.projectCode) sim={score:1,basis:'รหัสโครงการตรงกัน'}; else sim=projSimilarity(pa,pb);
     if(sim.score>=thr) pairs.push({pa,pb,score:sim.score,basis:sim.basis});
-  }));
+  }); });
   pairs.sort((x,y)=>y.score-x.score);
-  const usedA=new Set(), usedB=new Set(), match=new Map();
   pairs.forEach(c=>{ if(usedA.has(c.pa.id)||usedB.has(c.pb.id)) return; usedA.add(c.pa.id); usedB.add(c.pb.id); match.set(c.pb.id,c); });
   const rows=[];
-  B.forEach(pb=>{ const c=match.get(pb.id); rows.push({a:c?c.pa:null,b:pb,sim:c?c.score:0,basis:c?c.basis:''}); });
-  A.forEach(pa=>{ if(!usedA.has(pa.id)) rows.push({a:pa,b:null,sim:0,basis:''}); });
+  B.forEach(pb=>{ const c=match.get(pb.id); rows.push({a:c?c.pa:null,b:pb,sim:c?c.score:0,basis:c?c.basis:'',locked:!!(c&&c.locked),forcedNone:noneB.has(pb.id)}); });
+  A.forEach(pa=>{ if(!usedA.has(pa.id)) rows.push({a:pa,b:null,sim:0,basis:'',locked:false,forcedNone:noneA.has(pa.id)}); });
   rows.forEach(r=>{ r.ba=r.a?(Number(r.a.budgetAmount)||0):0; r.bb=r.b?(Number(r.b.budgetAmount)||0):0; r.d=r.bb-r.ba; r.kind=!r.a?'new':!r.b?'removed':r.d>0?'up':r.d<0?'down':'same'; });
   return rows;
 }
@@ -5112,6 +5150,502 @@ function renderPrevYearActCard(p){
     ${actCompareTable(r.a,p,ya,p.year)}`;
   }catch(e){ return ''; }
 }
+
+/* =========================================================================
+   v3.23 — ล็อกคู่จับคู่ข้ามปี · ศูนย์แจ้งเตือน · รายงานรายไตรมาส · พยากรณ์เบิกจ่าย · KPI ·
+           นำเข้า Excel (ดูส่วนต่างก่อน) · โหมดอ่านอย่างเดียว
+   ========================================================================= */
+function gotoRoute(r){ UI.route=r; UI.personDetailId=null; render(); try{ window.scrollTo(0,0); }catch(e){} }
+function shortProjName(p){ return normProjName(p.name).slice(0,70); }
+function parseISODate(s){ if(!s) return null; const d=new Date(String(s).slice(0,10)+'T00:00:00'); return isNaN(d)?null:d; }
+
+/* ---------- โหมดอ่านอย่างเดียว (ผู้ดู) ---------- */
+function isViewer(){ try{ return sessionStorage.getItem('thaimed_viewer')==='1'; }catch(e){ return !!window.__viewerMem; } }
+function setViewer(v){ window.__viewerMem=!!v; try{ if(v) sessionStorage.setItem('thaimed_viewer','1'); else sessionStorage.removeItem('thaimed_viewer'); }catch(e){} }
+function viewerBlock(){ if(isViewer()){ showToast('👁️ โหมดอ่านอย่างเดียว — ไม่สามารถแก้ไขข้อมูลได้'); return true; } return false; }
+const __saveDBOrig = saveDB;
+saveDB = function(){
+  if(!isViewer()) return __saveDBOrig();
+  try{
+    const stored=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null'); if(!stored) return;
+    const a=Object.assign({},DB), b=Object.assign({},stored);
+    ['currentYear','auditLog'].forEach(k=>{ delete a[k]; delete b[k]; });
+    if(JSON.stringify(a)!==JSON.stringify(b)){
+      const y=DB.currentYear; DB=stored; DB.currentYear=y;
+      showToast('👁️ โหมดอ่านอย่างเดียว — ระบบไม่บันทึกการเปลี่ยนแปลง');
+      setTimeout(()=>{ try{ closeModal(); }catch(e){} render(); },0);
+    }
+  }catch(e){}
+};
+function openViewerPasswordForm(){
+  if(viewerBlock()) return;
+  const has=!!(DB.security&&DB.security.viewerHash);
+  openModal('รหัสผ่านสำหรับผู้ดู (อ่านอย่างเดียว)', `
+    <div class="small-muted" style="margin-bottom:10px;">ผู้ที่ใส่รหัสนี้ที่หน้าล็อกจะเปิดดูข้อมูลได้ แต่แก้ไข/ลบ/นำเข้าไม่ได้ (เป็นการล็อกฝั่งเครื่องนี้ ไม่ใช่ระบบสิทธิ์ผู้ใช้จริง)</div>
+    <div class="form-row"><label>รหัสผ่านผู้ดูใหม่ (อย่างน้อย 4 ตัว${has?' · เว้นว่างแล้วบันทึก = ยกเลิกรหัสผู้ดู':''})</label><input class="input" type="password" id="vw_new" autocomplete="off"></div>
+    <div class="form-row"><label>รหัสผ่านผู้ดูแล (ยืนยันสิทธิ์)</label><input class="input" type="password" id="vw_admin" autocomplete="off"></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="saveViewerPassword()">💾 บันทึก</button>`);
+}
+function saveViewerPassword(){
+  if(viewerBlock()) return;
+  const n=document.getElementById('vw_new').value, a=document.getElementById('vw_admin').value;
+  if(lockHash(a)!==lockCurrentHash()){ showToast('รหัสผ่านผู้ดูแลไม่ถูกต้อง'); return; }
+  DB.security=Object.assign({},DB.security||{});
+  if(!n){ delete DB.security.viewerHash; logAction('ยกเลิกรหัสผู้ดู',''); saveDB(); closeModal(); render(); showToast('ยกเลิกรหัสผู้ดูแล้ว'); return; }
+  if(n.length<4){ showToast('รหัสผู้ดูต้องมีอย่างน้อย 4 ตัว'); return; }
+  if(lockHash(n)===lockCurrentHash()){ showToast('รหัสผู้ดูต้องไม่ซ้ำกับรหัสผู้ดูแล'); return; }
+  DB.security.viewerHash=lockHash(n); logAction('ตั้งรหัสผู้ดู (อ่านอย่างเดียว)',''); saveDB(); closeModal(); render(); showToast('ตั้งรหัสผู้ดูเรียบร้อย');
+}
+
+/* ---------- จับคู่โครงการข้ามปีด้วยมือ ---------- */
+function yearPairsList(){ if(!Array.isArray(DB.yearPairs)) DB.yearPairs=[]; return DB.yearPairs; }
+function openYearPairForm(side,id){
+  if(viewerBlock()) return;
+  const y=yearVsState(); const me=getProject(id); if(!me) return;
+  const otherYear = side==='b' ? y.a : y.b;
+  const others=DB.projects.filter(p=>p.year===otherYear);
+  const L=yearPairsList(); let cur='';
+  const ov=L.find(o=> side==='b' ? o.b===id : o.a===id);
+  if(ov) cur = ov.type==='none' ? 'none' : (side==='b'?ov.a:ov.b);
+  const auto=yearMatch(y.a,y.b).find(r=> side==='b' ? (r.b&&r.b.id===id) : (r.a&&r.a.id===id));
+  const autoTxt = auto && auto.a && auto.b ? normProjName((side==='b'?auto.a:auto.b).name).slice(0,60)+' ('+Math.round(auto.sim*100)+'%)' : 'ไม่พบคู่';
+  openModal('กำหนดคู่โครงการข้ามปีด้วยมือ', `
+    <div class="small-muted">โครงการ ปี ${side==='b'?y.b:y.a}</div>
+    <div style="font-weight:700;margin-bottom:10px;">${escapeHtml(normProjName(me.name))}</div>
+    <div class="form-row"><label>จับคู่กับโครงการ ปี ${otherYear}</label>
+      <select class="input" id="yp_sel">
+        <option value="" ${cur===''?'selected':''}>ให้ระบบจับคู่อัตโนมัติ (ตอนนี้: ${escapeHtml(autoTxt)})</option>
+        <option value="none" ${cur==='none'?'selected':''}>ไม่มีคู่ — ถือเป็นโครงการใหม่/ยุติ</option>
+        ${others.map(o=>`<option value="${o.id}" ${cur===o.id?'selected':''}>${escapeHtml(normProjName(o.name).slice(0,80))}${o.projectCode?' ['+o.projectCode+']':''}</option>`).join('')}
+      </select></div>
+    <div class="small-muted">คู่ที่กำหนดเองจะถูกจำไว้ในข้อมูล (1 โครงการมีได้ 1 คู่) และไม่ถูกแก้โดยระบบอัตโนมัติ</div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="saveYearPairForm('${side}','${id}')">💾 บันทึก</button>`);
+}
+function saveYearPairForm(side,id){
+  if(viewerBlock()) return;
+  const v=document.getElementById('yp_sel').value; const L=yearPairsList();
+  const aId = side==='a' ? id : (v&&v!=='none'?v:null), bId = side==='b' ? id : (v&&v!=='none'?v:null);
+  DB.yearPairs=L.filter(o=>!(o.a===id||o.b===id|| (aId&&o.a===aId) || (bId&&o.b===bId)));
+  if(v==='none') DB.yearPairs.push({a:side==='a'?id:null,b:side==='b'?id:null,type:'none'});
+  else if(v) DB.yearPairs.push({a:aId,b:bId,type:'pair'});
+  logAction('กำหนดคู่โครงการข้ามปี', v===''?'กลับเป็นอัตโนมัติ':(v==='none'?'ไม่มีคู่':'จับคู่ด้วยมือ'));
+  saveDB(); closeModal(); render(); showToast('บันทึกการจับคู่แล้ว');
+}
+
+/* ---------- พยากรณ์เบิกจ่าย ---------- */
+function fcWindow(p,y){
+  const fs=new Date(y-543-1,9,1), fe=new Date(y-543,8,30);
+  let ps=parseISODate(p.startDate)||fs, pe=parseISODate(p.endDate)||fe;
+  if(ps<fs) ps=fs; if(pe>fe) pe=fe; if(pe<=ps){ ps=fs; pe=fe; }
+  return {ps,pe,fs,fe};
+}
+const FC_RISK = {high:['#FDE4E4','#B02A2A','เสี่ยงเหลือคืน/เลยกำหนด',0], mid:['#FFF3D6','#9C6B0B','เบิกช้ากว่าแผน',1], early:['#EEF1EF','#5C6B63','ยังเร็วเกินไปที่จะประเมิน',2], ok:['#E1F5E9','#0F7A45','เป็นไปตามแผน',3], done:['#E3F1FB','#1D5F94','เสร็จ/เบิกครบ',4]};
+function forecastRows(year){
+  year=year||DB.currentYear; const today=new Date(); today.setHours(0,0,0,0);
+  return DB.projects.filter(p=>p.year===year && (Number(p.budgetAmount)||0)>0 && p.status!=='cancelled').map(p=>{
+    const w=fcWindow(p,year); const budget=Number(p.budgetAmount)||0; const disb=disbBySourceTotal(p); const actual=disb/budget;
+    const planned = today<=w.ps?0 : today>=w.pe?1 : (today-w.ps)/(w.pe-w.ps);
+    const remain=Math.max(0,budget-disb); const monthsLeft=Math.max(0.5,(w.pe-today)/(30.4*864e5));
+    let proj=null, risk='ok', note='';
+    if(p.status==='done'||disb>=budget){ proj=Math.min(1,actual); risk='done'; }
+    else if(today>w.pe){ proj=actual; risk=remain>0?'high':'ok'; note='พ้นกำหนดสิ้นสุดโครงการแล้ว ยังเหลืองบ'; }
+    else if(planned<0.15){ risk='early'; }
+    else { proj=Math.min(1,actual/planned); risk=proj>=0.8?'ok':proj>=0.5?'mid':'high'; }
+    return {p,budget,disb,actual,planned,remain,monthsLeft,needPerMonth:remain/monthsLeft,proj,risk,note,w};
+  });
+}
+function recordDisbSnapshot(){
+  try{
+    const y=DB.currentYear; if(!Array.isArray(DB.disbHistory)) DB.disbHistory=[];
+    const day=new Date().toISOString().slice(0,10); const by={}; let tot=0;
+    DB.projects.filter(p=>p.year===y).forEach(p=>{ const t=disbBySourceTotal(p); by[p.id]=t; tot+=t; });
+    const ex=DB.disbHistory.find(h=>h.date===day&&h.year===y);
+    if(ex){ ex.total=tot; ex.by=by; } else DB.disbHistory.push({date:day,year:y,total:tot,by});
+    if(DB.disbHistory.length>400) DB.disbHistory.splice(0,DB.disbHistory.length-400);
+  }catch(e){}
+}
+function pctBar(v,color){ const w=Math.max(0,Math.min(100,Math.round((v||0)*100))); return `<div style="background:#E6ECE8;border-radius:4px;height:7px;min-width:70px;"><div style="width:${w}%;height:7px;border-radius:4px;background:${color||'#146C43'};"></div></div>`; }
+function viewForecast(){
+  const y=DB.currentYear; const rows=forecastRows(y).sort((a,b)=>FC_RISK[a.risk][3]-FC_RISK[b.risk][3] || b.remain-a.remain);
+  const tb=rows.reduce((s,r)=>s+r.budget,0), td=rows.reduce((s,r)=>s+r.disb,0), tp=rows.reduce((s,r)=>s+r.budget*r.planned,0);
+  const tproj=rows.reduce((s,r)=>s+r.budget*(r.proj!=null?r.proj:r.actual),0);
+  const cnt=k=>rows.filter(r=>r.risk===k).length;
+  const hist=(DB.disbHistory||[]).filter(h=>h.year===y).slice(-8).reverse();
+  return `
+  <div class="grid grid-4">
+    <div class="card card-pad"><div class="small-muted">งบรวม (โครงการที่มีงบ)</div><div style="font-size:22px;font-weight:700;">${money(tb)}</div></div>
+    <div class="card card-pad"><div class="small-muted">เบิกจ่ายแล้ว</div><div style="font-size:22px;font-weight:700;color:#0F7A45;">${money(td)}</div><div class="small-muted">${tb?Math.round(td/tb*100):0}% ของงบ · แผน ณ วันนี้ ${tb?Math.round(tp/tb*100):0}%</div></div>
+    <div class="card card-pad"><div class="small-muted">คาดเบิกจ่ายสิ้นสุดโครงการ</div><div style="font-size:22px;font-weight:700;">${money(tproj)}</div><div class="small-muted">${tb?Math.round(tproj/tb*100):0}% ของงบ (ประมาณจากอัตราเบิกเทียบแผน)</div></div>
+    <div class="card card-pad"><div class="small-muted">คาดเหลือคืน/ไม่ได้ใช้</div><div style="font-size:22px;font-weight:700;color:${tb-tproj>0?'#B02A2A':'#0F7A45'};">${money(Math.max(0,tb-tproj))}</div><div class="small-muted">เสี่ยง ${cnt('high')} · ช้ากว่าแผน ${cnt('mid')} โครงการ</div></div>
+  </div>
+  <div class="card" style="margin-top:16px;"><div class="card-head"><div class="card-title">พยากรณ์การเบิกจ่ายรายโครงการ ปีงบ ${y}</div></div>
+    <div class="card-pad small-muted" style="padding-top:0;">วิธีคิด: "แผน ณ วันนี้" = สัดส่วนเวลาที่ผ่านไปในช่วง เริ่ม–สิ้นสุดของโครงการ (ถ้าไม่มีวันที่ใช้ทั้งปีงบ) · "คาดสิ้นสุด" = อัตราเบิกจริง ÷ แผน ณ วันนี้ (ไม่เกิน 100%) · เป็นการประมาณเพื่อเตือนล่วงหน้า ไม่ใช่ตัวเลขทางการ · ควรกรอกวันเริ่ม/สิ้นสุดโครงการให้ครบเพื่อความแม่นยำ</div>
+    <div class="tbl-wrap card-pad"><table><thead><tr><th>โครงการ</th><th style="text-align:right">งบ</th><th>เบิกจริง</th><th>แผน ณ วันนี้</th><th style="text-align:right">คาดสิ้นสุด</th><th style="text-align:right">ต้องเบิก/เดือน</th><th>สถานะ</th></tr></thead><tbody>
+    ${rows.map(r=>{ const k=FC_RISK[r.risk]; return `<tr class="tbl-row" onclick="openProjectDetail('${r.p.id}')"><td style="font-size:12.5px;">${escapeHtml(shortProjName(r.p))}<div class="small-muted" style="font-family:monospace;">${escapeHtml(r.p.projectCode||'')} ${r.note?'· '+escapeHtml(r.note):''}</div></td>
+      <td style="text-align:right">${money(r.budget)}</td><td style="min-width:110px;"><b>${Math.round(r.actual*100)}%</b> <span class="small-muted">${money(r.disb)}</span>${pctBar(r.actual)}</td>
+      <td style="min-width:90px;">${Math.round(r.planned*100)}%${pctBar(r.planned,'#8FA79A')}</td>
+      <td style="text-align:right;font-weight:600;">${r.proj!=null?Math.round(r.proj*100)+'%':'-'}</td>
+      <td style="text-align:right;">${r.remain>0?money(r.needPerMonth):'-'}</td>
+      <td><span class="badge" style="background:${k[0]};color:${k[1]};">${k[2]}</span></td></tr>`; }).join('')||'<tr><td colspan="7"><div class="empty-state">ไม่มีโครงการที่มีงบในปีนี้</div></td></tr>'}
+    </tbody></table></div></div>
+  <div class="card" style="margin-top:16px;"><div class="card-head"><div class="card-title">ประวัติยอดเบิกจ่ายสะสม (บันทึกอัตโนมัติเมื่อกรอกเบิกจ่าย)</div></div>
+    <div class="tbl-wrap card-pad"><table><thead><tr><th>วันที่</th><th style="text-align:right">ยอดเบิกสะสม</th><th style="text-align:right">% ของงบ</th></tr></thead><tbody>
+    ${hist.map(h=>`<tr><td>${fmtDateTH(h.date)}</td><td style="text-align:right">${money(h.total)}</td><td style="text-align:right">${tb?Math.round(h.total/tb*100):0}%</td></tr>`).join('')||'<tr><td colspan="3" class="small-muted">ยังไม่มีประวัติ — จะเริ่มบันทึกเมื่อมีการกรอกยอดเบิกจ่ายในเมนู "ติดตามการเบิกจ่าย"</td></tr>'}
+    </tbody></table></div></div>`;
+}
+
+/* ---------- ศูนย์แจ้งเตือน ---------- */
+function alertsBuild(){
+  const out=[]; const yr=DB.currentYear; const today=new Date(); today.setHours(0,0,0,0);
+  const projs=yearProjects();
+  DB.tasks.forEach(t=>{
+    const p=projs.find(x=>x.id===t.projectId); if(!p||t.status==='done'||t.status==='cancelled') return;
+    const d=parseISODate(t.dueDate); if(!d) return; const diff=Math.round((d-today)/864e5);
+    if(diff<0) out.push({kind:'งานเลยกำหนด',sev:3,text:t.name,sub:`${shortProjName(p)} · เลยมา ${-diff} วัน`,go:`openProjectDetail('${p.id}')`});
+    else if(diff<=7) out.push({kind:'งานใกล้ครบกำหนด (ภายใน 7 วัน)',sev:2,text:t.name,sub:`${shortProjName(p)} · อีก ${diff} วัน`,go:`openProjectDetail('${p.id}')`});
+  });
+  projs.forEach(p=>{
+    const e=parseISODate(p.endDate);
+    if(p.status==='delayed') out.push({kind:'โครงการสถานะล่าช้า',sev:3,text:shortProjName(p),sub:p.projectCode||'',go:`openProjectDetail('${p.id}')`});
+    else if(e && e<today && !['done','cancelled'].includes(p.status)) out.push({kind:'โครงการพ้นวันสิ้นสุดแต่ยังไม่เสร็จ',sev:3,text:shortProjName(p),sub:`สิ้นสุด ${fmtDateTH(p.endDate)}`,go:`openProjectDetail('${p.id}')`});
+  });
+  try{
+    const oy=okrActiveYear(); const q=currentFYQuarter(oy);
+    const items=(DB.okr&&DB.okr.items||[]).filter(i=>i.year===oy);
+    if(q>=1&&q<=4){
+      const start=new Date(oy-543-1,9+(q-1)*3,1); const sev=(today-start)/864e5>=30?2:1;
+      items.filter(i=>i.qStart<=q&&q<=i.qEnd&&!(i.checkins||[]).some(c=>c.quarter===q)).forEach(i=>
+        out.push({kind:`OKR ยังไม่ check-in ไตรมาส ${q}`,sev,text:i.name,sub:i.projectCode+' · '+(itemProgress(i))+'%',go:`gotoRoute('okr')`}));
+      if((today-start)/864e5>=45) items.forEach(i=>{ const h=itemHealth(i); if(h.key==='late') out.push({kind:'OKR ล่าช้ากว่าแผน',sev:3,text:i.name,sub:`ทำได้ ${itemProgress(i)}% · คาดหวัง ${itemExpected(i)}%`,go:`gotoRoute('okr')`}); else if(h.key==='risk') out.push({kind:'OKR เสี่ยงล่าช้า',sev:2,text:i.name,sub:`ทำได้ ${itemProgress(i)}% · คาดหวัง ${itemExpected(i)}%`,go:`gotoRoute('okr')`}); });
+    }
+  }catch(e){}
+  try{ forecastRows(yr).forEach(r=>{ if(r.risk==='high') out.push({kind:'เบิกจ่ายเสี่ยงเหลือคืน/เลยกำหนด',sev:3,text:shortProjName(r.p),sub:`เบิกแล้ว ${Math.round(r.actual*100)}% · คงเหลือ ${money(r.remain)} บาท`,go:`gotoRoute('forecast')`}); else if(r.risk==='mid') out.push({kind:'เบิกจ่ายช้ากว่าแผน',sev:2,text:shortProjName(r.p),sub:`เบิกแล้ว ${Math.round(r.actual*100)}% · แผน ${Math.round(r.planned*100)}%`,go:`gotoRoute('forecast')`}); }); }catch(e){}
+  try{
+    if(DB.carbon && DB.carbon.year){ const q=currentFYQuarter(DB.carbon.year); const now=new Date(); const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+      if(q>=1&&q<=4 && now.getDate()>=5 && !(DB.carbon.logs||[]).some(l=>String(l.date).slice(0,7)===ym)) out.push({kind:'Carbon ยังไม่ได้บันทึกเดือนนี้',sev:1,text:'ยังไม่มีบันทึกการปล่อยคาร์บอนของเดือนนี้',sub:'',go:`gotoRoute('carbonlog')`}); }
+  }catch(e){}
+  (DB.kpis||[]).filter(k=>k.year===yr && !(k.projectIds||[]).length).forEach(k=>out.push({kind:'KPI ยังไม่มีโครงการรองรับ',sev:2,text:(k.code?k.code+' · ':'')+k.name,sub:'',go:`gotoRoute('kpi')`}));
+  const lb=DB.meta&&DB.meta.lastBackup; const days=lb?Math.floor((Date.now()-new Date(lb).getTime())/864e5):null;
+  if(days===null||days>=7) out.push({kind:'ควรสำรองข้อมูล',sev:days===null?2:(days>=14?2:1),text:days===null?'ยังไม่เคยสำรองข้อมูลจากเครื่องนี้':`สำรองล่าสุดเมื่อ ${days} วันก่อน`,sub:'ส่งออกไฟล์ JSON ที่เมนูตั้งค่า',go:`gotoRoute('settings')`});
+  return out;
+}
+function alertsCount(){ try{ return alertsBuild().filter(a=>a.sev>=2).length; }catch(e){ return 0; } }
+function viewAlerts(){
+  const all=alertsBuild(); const groups={};
+  all.forEach(a=>{ (groups[a.kind]=groups[a.kind]||{kind:a.kind,sev:0,items:[]}); groups[a.kind].items.push(a); groups[a.kind].sev=Math.max(groups[a.kind].sev,a.sev); });
+  const gl=Object.values(groups).sort((a,b)=>b.sev-a.sev||b.items.length-a.items.length);
+  const sevC={3:['#FDE4E4','#B02A2A','ด่วน'],2:['#FFF3D6','#9C6B0B','ควรดู'],1:['#EEF1EF','#5C6B63','แจ้งทราบ']};
+  const n3=all.filter(a=>a.sev===3).length, n2=all.filter(a=>a.sev===2).length, n1=all.filter(a=>a.sev===1).length;
+  return `
+  <div class="card card-pad" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+    <span class="badge" style="background:${sevC[3][0]};color:${sevC[3][1]};">ด่วน ${n3}</span>
+    <span class="badge" style="background:${sevC[2][0]};color:${sevC[2][1]};">ควรดู ${n2}</span>
+    <span class="badge" style="background:${sevC[1][0]};color:${sevC[1][1]};">แจ้งทราบ ${n1}</span>
+    <span class="small-muted">คำนวณสดจากข้อมูลปีงบ ${DB.currentYear} (งาน/โครงการ/OKR/เบิกจ่าย/Carbon/KPI/สำรองข้อมูล) ณ วันที่เปิดหน้านี้</span>
+  </div>
+  ${gl.length? gl.map(g=>{ const c=sevC[g.sev]; return `<div class="card" style="margin-top:12px;"><div class="card-head"><div class="card-title"><span class="badge" style="background:${c[0]};color:${c[1]};">${c[2]}</span> ${escapeHtml(g.kind)} <span class="small-muted">(${g.items.length})</span></div></div>
+    <div class="card-pad" style="padding-top:0;">${g.items.slice(0,40).map(a=>`<div style="padding:7px 0;border-bottom:1px solid var(--line);cursor:pointer;font-size:13px;" onclick="${a.go}">${escapeHtml(String(a.text).slice(0,110))}${a.sub?`<div class="small-muted">${escapeHtml(a.sub)}</div>`:''}</div>`).join('')}${g.items.length>40?`<div class="small-muted" style="padding-top:6px;">…และอีก ${g.items.length-40} รายการ</div>`:''}</div></div>`; }).join('')
+   : '<div class="card card-pad" style="margin-top:12px;"><div class="empty-state">🎉 ไม่มีรายการที่ต้องติดตามในขณะนี้</div></div>'}`;
+}
+function renderAlertBanner(){
+  try{ const all=alertsBuild(); const n3=all.filter(a=>a.sev===3).length, n2=all.filter(a=>a.sev===2).length; if(!n3&&!n2) return '';
+    return `<div class="card card-pad" style="margin-bottom:14px;cursor:pointer;border-left:4px solid ${n3?'#B02A2A':'#C89B3C'};" onclick="gotoRoute('alerts')">🔔 <b>${n3?`ด่วน ${n3} รายการ`:''}${n3&&n2?' · ':''}${n2?`ควรดู ${n2} รายการ`:''}</b> <span class="small-muted">— คลิกเพื่อเปิดศูนย์แจ้งเตือน</span></div>`; }catch(e){ return ''; }
+}
+
+/* ---------- รายงานรายไตรมาส ---------- */
+function qrState(){
+  if(!UI.qr) UI.qr={};
+  if(!UI.qr.year||!DB.fiscalYears.includes(UI.qr.year)) UI.qr.year=DB.currentYear;
+  if(!UI.qr.q){ const q=currentFYQuarter(UI.qr.year); UI.qr.q=q<1?1:(q>4?4:q); }
+  return UI.qr;
+}
+function setQr(k,v){ qrState()[k]=Number(v); render(); }
+function qRange(y,q){ const sy=y-543-1, sm=9+(q-1)*3; return [new Date(sy,sm,1), new Date(sy,sm+3,0)]; }
+function saveQrNote(){
+  if(viewerBlock()) return; const s=qrState(); const el=document.getElementById('qrNote'); if(!el) return;
+  if(!DB.qNotes) DB.qNotes={}; DB.qNotes[s.year+'-'+s.q]=el.value; saveDB(); showToast('บันทึกหมายเหตุรายงานแล้ว');
+}
+function viewQReport(){
+  const s=qrState(); const y=s.year, q=s.q; const [qs,qe]=qRange(y,q);
+  const projs=DB.projects.filter(p=>p.year===y);
+  const tasks=DB.tasks.filter(t=>projs.some(p=>p.id===t.projectId));
+  const tb=projs.reduce((a,p)=>a+(Number(p.budgetAmount)||0),0), td=projs.reduce((a,p)=>a+disbBySourceTotal(p),0);
+  const done=tasks.filter(t=>t.status==='done').length, delayedT=tasks.filter(t=>t.status==='delayed').length;
+  const cats=DB.categories.map(c=>{ const l=projs.filter(p=>p.categoryId===c.id); return {c,n:l.length,b:l.reduce((a,p)=>a+(Number(p.budgetAmount)||0),0),d:l.reduce((a,p)=>a+disbBySourceTotal(p),0)}; }).filter(x=>x.n);
+  const inQ=projs.filter(p=>{ const a=parseISODate(p.startDate), b=parseISODate(p.endDate); if(!a||!b) return true; return a<=qe && b>=qs; });
+  const risky=forecastRows(y).filter(r=>r.risk==='high'||r.risk==='mid').slice(0,15);
+  const delayedP=projs.filter(p=>p.status==='delayed');
+  const oy=okrActiveYear(); const okrItems=(DB.okr&&DB.okr.items||[]).filter(i=>i.year===oy);
+  const okrAvg=okrItems.length?Math.round(okrItems.reduce((a,i)=>a+itemProgress(i),0)/okrItems.length):0;
+  const hc=k=>okrItems.filter(i=>itemHealth(i).key===k).length;
+  const ciQ=okrItems.filter(i=>(i.checkins||[]).some(c=>c.quarter===q)).length;
+  let carbonHtml='';
+  try{ if(DB.carbon&&DB.carbon.plans&&DB.carbon.plans.length){ const t=carbonTotals(DB.carbon.year); carbonHtml=`<div class="section-title">🌱 Carbon Footprint (ปี ${DB.carbon.year})<span class="line-flex"></span></div><div class="small-muted">ประมาณการตามแผน ${fmtKg(t.est)} kgCO₂e · เป้าหมาย ${fmtKg(t.target)} · บันทึกจริงสะสม ${fmtKg(t.actual)} kgCO₂e (${t.target?Math.round(t.actual/t.target*100):0}% ของเป้า)</div>`; } }catch(e){}
+  const kp=(DB.kpis||[]).filter(k=>k.year===y);
+  const note=(DB.qNotes&&DB.qNotes[y+'-'+q])||'';
+  const tile=(l,v,sub)=>`<div class="card card-pad"><div class="small-muted">${l}</div><div style="font-size:20px;font-weight:700;">${v}</div>${sub?`<div class="small-muted">${sub}</div>`:''}</div>`;
+  return `
+  <div class="card card-pad no-print" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+    <label class="small-muted">ปีงบ</label><select class="input" style="max-width:110px;" onchange="setQr('year',this.value)">${DB.fiscalYears.slice().sort((a,b)=>b-a).map(v=>`<option ${v===y?'selected':''}>${v}</option>`).join('')}</select>
+    <label class="small-muted">ไตรมาส</label><select class="input" style="max-width:170px;" onchange="setQr('q',this.value)">${[1,2,3,4].map(v=>`<option value="${v}" ${v===q?'selected':''}>ไตรมาส ${v} (${QUARTER_MONTHS[v]})</option>`).join('')}</select>
+    <div class="spacer"></div><button class="btn btn-primary" onclick="window.print()">🖨️ พิมพ์ / บันทึกเป็น PDF</button>
+  </div>
+  <div class="card card-pad report-sheet">
+    <div style="text-align:center;margin-bottom:10px;"><div style="font-size:18px;font-weight:700;">รายงานผลการดำเนินงาน ไตรมาสที่ ${q} ปีงบประมาณ ${y}</div>
+      <div class="small-muted">${escapeHtml(DB.meta.group)} · ${escapeHtml(DB.meta.org)}</div><div class="small-muted">ช่วง ${QUARTER_MONTHS[q]} · ข้อมูล ณ วันที่ ${fmtDateTH(new Date().toISOString().slice(0,10))}</div></div>
+    <div class="grid grid-4">
+      ${tile('จำนวนโครงการ',projs.length,`ดำเนินการในไตรมาสนี้ ${inQ.length}`)}
+      ${tile('งบประมาณรวม (บาท)',money(tb),'')}
+      ${tile('เบิกจ่ายสะสม (บาท)',money(td),(tb?Math.round(td/tb*100):0)+'% ของงบ')}
+      ${tile('งานย่อยเสร็จ',tasks.length?Math.round(done/tasks.length*100)+'%':'-',`${done}/${tasks.length} · ล่าช้า ${delayedT}`)}
+    </div>
+    <div class="section-title">งบประมาณและการเบิกจ่ายตามหมวดหมู่<span class="line-flex"></span></div>
+    <div class="tbl-wrap"><table><thead><tr><th>หมวดหมู่</th><th style="text-align:right">โครงการ</th><th style="text-align:right">งบ</th><th style="text-align:right">เบิกจ่าย</th><th style="text-align:right">%</th></tr></thead><tbody>
+    ${cats.map(x=>`<tr><td>${escapeHtml(x.c.name)}</td><td style="text-align:right">${x.n}</td><td style="text-align:right">${money(x.b)}</td><td style="text-align:right">${money(x.d)}</td><td style="text-align:right">${x.b?Math.round(x.d/x.b*100):0}%</td></tr>`).join('')}</tbody></table></div>
+    <div class="section-title">โครงการที่ดำเนินการในไตรมาสนี้ (${inQ.length})<span class="line-flex"></span></div>
+    <div class="tbl-wrap"><table><thead><tr><th>โครงการ</th><th>ผู้รับผิดชอบ</th><th>สถานะ</th><th style="text-align:right">งานเสร็จ</th><th style="text-align:right">งบ</th><th style="text-align:right">เบิก %</th></tr></thead><tbody>
+    ${inQ.map(p=>{ const st=statusObj(p.status), pg=projectProgress(p.id); return `<tr><td style="font-size:12.5px;">${escapeHtml(shortProjName(p))}</td><td style="font-size:12px;">${escapeHtml(projectOwnerNames(p))}</td><td>${st.label}</td><td style="text-align:right">${pg==null?'-':Math.round(pg)+'%'}</td><td style="text-align:right">${money(p.budgetAmount)}</td><td style="text-align:right">${disbBySourcePercent(p)}%</td></tr>`; }).join('')||'<tr><td colspan="6" class="small-muted">ไม่มี</td></tr>'}</tbody></table></div>
+    <div class="section-title">⚠️ โครงการที่ต้องติดตาม<span class="line-flex"></span></div>
+    ${delayedP.length||risky.length? `<ul style="margin:4px 0 0;padding-left:20px;font-size:13px;line-height:1.8;">${delayedP.map(p=>`<li>ล่าช้า: ${escapeHtml(shortProjName(p))}</li>`).join('')}${risky.map(r=>`<li>${FC_RISK[r.risk][2]}: ${escapeHtml(shortProjName(r.p))} (เบิก ${Math.round(r.actual*100)}% / แผน ${Math.round(r.planned*100)}%)</li>`).join('')}</ul>` : '<div class="small-muted">ไม่พบรายการ</div>'}
+    <div class="section-title">🎯 OKR ปีงบ ${oy}<span class="line-flex"></span></div>
+    <div class="small-muted">${okrItems.length} กิจกรรม · ความคืบหน้าเฉลี่ย <b>${okrAvg}%</b> · สำเร็จ ${hc('done')} · ตามแผน ${hc('ontrack')} · เสี่ยง ${hc('risk')} · ล่าช้า ${hc('late')} · check-in ไตรมาส ${q} แล้ว ${ciQ}/${okrItems.filter(i=>i.qStart<=q&&q<=i.qEnd).length||0} กิจกรรมที่อยู่ในช่วง</div>
+    ${kp.length? `<div class="section-title">📈 ตัวชี้วัด KPI<span class="line-flex"></span></div><div class="tbl-wrap"><table><thead><tr><th>KPI</th><th style="text-align:right">เป้าหมาย</th><th style="text-align:right">ผลล่าสุด</th><th style="text-align:right">%</th><th style="text-align:right">โครงการที่รองรับ</th></tr></thead><tbody>${kp.map(k=>`<tr><td>${escapeHtml((k.code?k.code+' · ':'')+k.name)}</td><td style="text-align:right">${escapeHtml(String(k.target||'-'))} ${escapeHtml(k.unit||'')}</td><td style="text-align:right">${escapeHtml(String(k.actual===''||k.actual==null?'-':k.actual))}</td><td style="text-align:right">${kpiProgress(k)==null?'-':kpiProgress(k)+'%'}</td><td style="text-align:right">${(k.projectIds||[]).length}</td></tr>`).join('')}</tbody></table></div>`:''}
+    ${carbonHtml}
+    <div class="section-title">หมายเหตุ / ข้อเสนอแนะ<span class="line-flex"></span></div>
+    <textarea id="qrNote" class="input no-print" rows="4" placeholder="พิมพ์หมายเหตุของไตรมาสนี้ที่จะแสดงในรายงาน" onchange="saveQrNote()">${escapeHtml(note)}</textarea>
+    <div class="print-only" style="white-space:pre-wrap;font-size:13px;">${escapeHtml(note)||'-'}</div>
+    <div class="print-only" style="margin-top:40px;text-align:right;font-size:13px;">ลงชื่อ ................................................ ผู้รายงาน<br>(ภก.จีรภัทร พลายงาม)</div>
+  </div>`;
+}
+
+/* ---------- KPI ---------- */
+function kpiList(){ if(!Array.isArray(DB.kpis)) DB.kpis=[]; return DB.kpis; }
+const KPI_SEED_YEAR = 2570;
+const KPI_SEED = [
+  {code:'14', name:'ร้อยละของประชาชนที่มารับบริการในระดับปฐมภูมิได้รับการรักษาด้วยการแพทย์แผนไทยและการแพทย์ทางเลือก', unit:'ร้อยละ'},
+  {code:'15', name:'มูลค่าการใช้ยาสมุนไพรในสิทธิ UC', unit:'บาท'},
+  {code:'26', name:'ร้อยละของจำนวนผู้ป่วยที่มีการวินิจฉัยโรคหลอดเลือดสมอง อัมพฤกษ์ อัมพาต ระยะกลาง (Intermediate Care) ที่ได้รับการดูแลด้วยการแพทย์แผนไทยและการแพทย์ทางเลือก (Community base)', unit:'ร้อยละ'},
+];
+function ensureKpiSeed(){
+  if(!Array.isArray(DB.kpis)) DB.kpis=[];
+  if(DB.kpiSeeded) return 0;
+  let n=0;
+  KPI_SEED.forEach(k=>{
+    if(DB.kpis.some(x=>x.year===KPI_SEED_YEAR && String(x.code)===k.code)) return;
+    DB.kpis.push({id:uid('kpi'),year:KPI_SEED_YEAR,code:k.code,name:k.name,unit:k.unit,target:'',actual:'',actualDate:'',note:'ชื่อเต็มตามระบบ Health KPI — กรอกค่าเป้าหมาย/ผลล่าสุด และผูกโครงการที่รองรับ',projectIds:[],history:[]}); n++;
+  });
+  DB.kpiSeeded=true;
+  if(n){ if(!DB.auditLog) DB.auditLog=[]; DB.auditLog.unshift({id:uid('log'),action:'เพิ่ม KPI ตั้งต้นอัตโนมัติ',detail:`KPI 14, 15, 26 ปีงบ ${KPI_SEED_YEAR} (${n} รายการ)`,actor:'ระบบ (อัตโนมัติ)',at:new Date().toISOString()}); saveDB(); }
+  return n;
+}
+function copyKpisFromYear(from){
+  if(viewerBlock()) return; const y=DB.currentYear; let n=0;
+  kpiList().filter(k=>k.year===from).forEach(k=>{ if(DB.kpis.some(x=>x.year===y&&String(x.code)===String(k.code)&&x.name===k.name)) return;
+    DB.kpis.push({id:uid('kpi'),year:y,code:k.code,name:k.name,unit:k.unit,target:'',actual:'',actualDate:'',note:k.note||'',projectIds:[],history:[]}); n++; });
+  logAction('คัดลอก KPI จากปี '+from,n+' รายการ'); saveDB(); render(); showToast('คัดลอก KPI '+n+' รายการ (ยังไม่ผูกโครงการ/ไม่มีเป้าหมาย)');
+}
+function kpiProgress(k){ const t=Number(k.target), a=Number(k.actual); if(!t||isNaN(t)||k.actual===''||k.actual==null||isNaN(a)) return null; return Math.round(a/t*100); }
+function viewKPI(){
+  const y=DB.currentYear; const list=kpiList().filter(k=>k.year===y); const projs=yearProjects();
+  const linked=new Set(); list.forEach(k=>(k.projectIds||[]).forEach(id=>linked.add(id)));
+  const unlinked=projs.filter(p=>!linked.has(p.id));
+  return `
+  <div class="card card-pad" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <div class="small-muted" style="flex:1;min-width:240px;">ผูกตัวชี้วัด (เช่น KPI 14, 15, 26) กับโครงการที่รองรับ เพื่อดูว่าตัวชี้วัดใดยังไม่มีโครงการ และโครงการใดยังไม่ตอบ KPI · ปีงบ ${y}</div>
+    <button class="btn btn-primary" onclick="openKpiForm()">＋ เพิ่ม KPI</button>
+  </div>
+  <div class="card" style="margin-top:14px;"><div class="tbl-wrap card-pad"><table><thead><tr><th>KPI</th><th style="text-align:right">เป้าหมาย</th><th style="text-align:right">ผลล่าสุด</th><th>ความคืบหน้า</th><th>โครงการที่รองรับ</th><th style="text-align:right">งบที่รองรับ</th><th></th></tr></thead><tbody>
+  ${list.map(k=>{ const ps=(k.projectIds||[]).map(getProject).filter(Boolean); const pg=kpiProgress(k);
+    return `<tr><td style="font-size:12.5px;"><b>${escapeHtml(k.code||'')}</b> ${escapeHtml(k.name)}${k.note?`<div class="small-muted">${escapeHtml(k.note)}</div>`:''}</td>
+    <td style="text-align:right">${escapeHtml(String(k.target||'-'))} ${escapeHtml(k.unit||'')}</td>
+    <td style="text-align:right">${k.actual===''||k.actual==null?'-':escapeHtml(String(k.actual))}${k.actualDate?`<div class="small-muted">${fmtDateTH(k.actualDate)}</div>`:''}</td>
+    <td style="min-width:100px;">${pg==null?'-':'<b>'+pg+'%</b>'+pctBar(Math.min(1,pg/100))}</td>
+    <td style="font-size:12px;">${ps.length? ps.map(p=>`<div style="cursor:pointer;" onclick="openProjectDetail('${p.id}')">• ${escapeHtml(shortProjName(p).slice(0,50))}</div>`).join('') : '<span class="badge" style="background:#FDE4E4;color:#B02A2A;">ยังไม่มีโครงการรองรับ</span>'}</td>
+    <td style="text-align:right">${money(ps.reduce((a,p)=>a+(Number(p.budgetAmount)||0),0))}</td>
+    <td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm" onclick="openKpiForm('${k.id}')">✏️ แก้ไข</button> <button class="btn btn-ghost btn-sm" onclick="deleteKpi('${k.id}')">🗑️</button></td></tr>`; }).join('')
+   || `<tr><td colspan="7"><div class="empty-state">ยังไม่มี KPI ในปีงบนี้ — กด "＋ เพิ่ม KPI" เพื่อเริ่ม${[...new Set(kpiList().map(k=>k.year))].filter(v=>v!==y).map(v=>` · <a href="#" onclick="copyKpisFromYear(${v});return false;">คัดลอกจากปี ${v}</a>`).join('')}</div></td></tr>`}
+  </tbody></table></div></div>
+  ${list.length? `<div class="card" style="margin-top:14px;"><div class="card-head"><div class="card-title">โครงการปี ${y} ที่ยังไม่ผูกกับ KPI (${unlinked.length})</div></div><div class="card-pad" style="padding-top:0;font-size:12.5px;">${unlinked.map(p=>`<div style="padding:4px 0;cursor:pointer;" onclick="openProjectDetail('${p.id}')">• ${escapeHtml(shortProjName(p))}</div>`).join('')||'<span class="small-muted">ทุกโครงการผูก KPI แล้ว</span>'}</div></div>`:''}`;
+}
+function kpiProjChecklist(year,sel){
+  return DB.projects.filter(p=>p.year===year).map(p=>`<label style="display:flex;gap:6px;align-items:flex-start;font-size:12.5px;padding:3px 0;"><input type="checkbox" class="kpiChk" value="${p.id}" ${sel.has(p.id)?'checked':''}> <span>${escapeHtml(shortProjName(p))}</span></label>`).join('')||'<span class="small-muted">ไม่มีโครงการในปีนี้</span>';
+}
+function kpiYearChanged(){
+  const sel=new Set([...document.querySelectorAll('.kpiChk:checked')].map(e=>e.value));
+  window.__kpiSel=(window.__kpiSel||new Set()); sel.forEach(v=>window.__kpiSel.add(v));
+  const y=Number(document.getElementById('k_year').value); document.getElementById('kpiProjBox').innerHTML=kpiProjChecklist(y,window.__kpiSel);
+}
+function openKpiForm(id){
+  if(viewerBlock()) return;
+  const k=id? kpiList().find(x=>x.id===id) : {id:null,year:DB.currentYear,code:'',name:'',unit:'',target:'',actual:'',actualDate:'',note:'',projectIds:[]};
+  if(!k) return; window.__kpiSel=new Set(k.projectIds||[]);
+  openModal(id?'แก้ไข KPI':'เพิ่ม KPI', `
+    <div class="form-2col"><div class="form-row"><label>รหัส/ลำดับตัวชี้วัด</label><input class="input" id="k_code" value="${escapeHtml(k.code)}" placeholder="เช่น 14"></div>
+    <div class="form-row"><label>ปีงบประมาณ</label><select class="input" id="k_year" onchange="kpiYearChanged()">${DB.fiscalYears.slice().sort((a,b)=>b-a).map(v=>`<option ${v===k.year?'selected':''}>${v}</option>`).join('')}</select></div></div>
+    <div class="form-row"><label>ชื่อตัวชี้วัด</label><input class="input" id="k_name" value="${escapeHtml(k.name)}"></div>
+    <div class="form-2col"><div class="form-row"><label>ค่าเป้าหมาย (ตัวเลข)</label><input class="input" type="number" step="any" id="k_target" value="${escapeHtml(String(k.target))}"></div>
+    <div class="form-row"><label>หน่วย</label><input class="input" id="k_unit" value="${escapeHtml(k.unit)}" placeholder="เช่น ร้อยละ / แห่ง"></div></div>
+    <div class="form-2col"><div class="form-row"><label>ผลล่าสุด (ตัวเลข)</label><input class="input" type="number" step="any" id="k_actual" value="${escapeHtml(String(k.actual))}"></div>
+    <div class="form-row"><label>ณ วันที่</label><input class="input" type="date" id="k_date" value="${escapeHtml(k.actualDate||'')}"></div></div>
+    <div class="form-row"><label>หมายเหตุ / วิธีวัด</label><input class="input" id="k_note" value="${escapeHtml(k.note)}"></div>
+    <div class="form-row"><label>โครงการที่รองรับ KPI นี้</label><div id="kpiProjBox" style="max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:6px 10px;">${kpiProjChecklist(k.year,window.__kpiSel)}</div></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="saveKpiForm('${id||''}')">💾 บันทึก</button>`, true);
+}
+function saveKpiForm(id){
+  if(viewerBlock()) return;
+  const name=document.getElementById('k_name').value.trim(); if(!name){ showToast('กรุณากรอกชื่อตัวชี้วัด'); return; }
+  const sel=new Set(window.__kpiSel||[]); const y=Number(document.getElementById('k_year').value);
+  document.querySelectorAll('.kpiChk').forEach(e=>{ if(e.checked) sel.add(e.value); else sel.delete(e.value); });
+  const ids=[...sel].filter(pid=>{ const p=getProject(pid); return p && p.year===y; });
+  let k= id? kpiList().find(x=>x.id===id) : null;
+  if(!k){ k={id:uid('kpi'),history:[]}; kpiList().push(k); }
+  const actual=document.getElementById('k_actual').value, date=document.getElementById('k_date').value||new Date().toISOString().slice(0,10);
+  if(String(actual)!==String(k.actual??'') && actual!==''){ (k.history=k.history||[]).push({date,value:Number(actual)}); }
+  Object.assign(k,{year:y,code:document.getElementById('k_code').value.trim(),name,unit:document.getElementById('k_unit').value.trim(),
+    target:document.getElementById('k_target').value,actual:actual===''?'':Number(actual),actualDate:actual===''?'':date,note:document.getElementById('k_note').value.trim(),projectIds:ids});
+  logAction(id?'แก้ไข KPI':'เพิ่ม KPI',name); saveDB(); closeModal(); render();
+}
+function deleteKpi(id){
+  if(viewerBlock()) return; const k=kpiList().find(x=>x.id===id); if(!k) return;
+  if(!confirm('ลบ KPI "'+k.name+'" ?')) return;
+  DB.kpis=DB.kpis.filter(x=>x.id!==id); logAction('ลบ KPI',k.name); saveDB(); render();
+}
+function renderKpiChips(p){
+  const l=(DB.kpis||[]).filter(k=>(k.projectIds||[]).includes(p.id)); if(!l.length) return '';
+  return `<div class="section-title">📈 KPI ที่โครงการนี้รองรับ<span class="line-flex"></span></div><div>${l.map(k=>{ const pg=kpiProgress(k); return `<span class="tag-chip" style="margin:0 6px 6px 0;">${escapeHtml((k.code?k.code+' · ':'')+k.name.slice(0,60))}${pg==null?'':' · '+pg+'%'}</span>`; }).join('')}</div>`;
+}
+
+/* ---------- นำเข้าจาก Excel แบบดูส่วนต่างก่อน ---------- */
+const XL_SRC_MAP = {'เงินบำรุง':'เงินบำรุง','กองทุนฯ':'งบกองทุนส่งเสริมภูมิปัญญา'};
+function xlCell(v){ return v==null?'':String(v).replace(/\s+/g,' ').trim(); }
+function xlParse(wb){
+  const out={projects:[],acts:[],warn:[]};
+  const rowsOf=n=>wb.Sheets[n]?XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:''}):null;
+  const okrRows=rowsOf('OKR รายกิจกรรม'); const projBudget={};
+  if(okrRows){
+    const hi=okrRows.findIndex(r=>r.some(c=>/รหัสโครงการ/.test(xlCell(c))) && r.some(c=>/งบประมาณ/.test(xlCell(c))));
+    if(hi<0) out.warn.push('ไม่พบหัวตารางในชีต "OKR รายกิจกรรม"');
+    else{
+      const h=okrRows[hi].map(c=>xlCell(c)); const col=re=>h.findIndex(x=>re.test(x));
+      const c={no:col(/^ลำดับ/),code:col(/^รหัสโครงการ/),name:col(/โครงการ\s*\/\s*กิจกรรม/),bud:col(/^งบประมาณ/),src:col(/^แหล่งงบ/),k1:col(/^KR\s*1/),k2:col(/^KR\s*2/),k3:col(/^KR\s*3/),ev:col(/^หลักฐาน/),q:col(/^ไตรมาส/),ow:col(/^ผู้รับผิดชอบ/)};
+      let cur=null;
+      okrRows.slice(hi+1).forEach(r=>{
+        const code=xlCell(r[c.code]), name=xlCell(r[c.name]); if(!name) return;
+        if(/^\d{8}$/.test(code)){ cur={code,name,budget:Number(r[c.bud])||0}; projBudget[code]=cur.budget; return; }
+        const no=xlCell(r[c.no]); if(!cur||!/^\d+$/.test(no)) return;
+        const kr=[r[c.k1],r[c.k2],r[c.k3]].map(xlCell).filter(x=>x&&x!=='–'&&x!=='-');
+        out.acts.push({code:cur.code,no,name,budget:Number(r[c.bud])||0,src:xlCell(r[c.src]),kr,evidence:xlCell(r[c.ev]),quarter:xlCell(r[c.q]),owner:xlCell(r[c.ow])});
+      });
+    }
+  } else out.warn.push('ไม่พบชีต "OKR รายกิจกรรม"');
+  const reg=rowsOf('ทะเบียนรหัสโครงการ');
+  if(reg){
+    const hi=reg.findIndex(r=>r.some(c=>/ชื่อโครงการ/.test(xlCell(c))) && r.some(c=>/รหัสโครงการ/.test(xlCell(c))));
+    if(hi<0) out.warn.push('ไม่พบหัวตารางในชีต "ทะเบียนรหัสโครงการ"');
+    else{
+      const h=reg[hi].map(c=>xlCell(c).replace(/\s+/g,'')); const col=re=>h.findIndex(x=>re.test(x));
+      const c={name:col(/^ชื่อโครงการ/),code:col(/^รหัสโครงการ/),src:h.findIndex(x=>x==='แหล่งงบประมาณ'),q:col(/ไตรมาส/),type:col(/^ประเภท/)};
+      reg.slice(hi+1).forEach(r=>{ const code=xlCell(r[c.code]); if(!/^\d{8}$/.test(code)) return;
+        out.projects.push({code,name:xlCell(r[c.name]),source:xlCell(r[c.src]),quarter:xlCell(r[c.q]),type:xlCell(r[c.type]),budget:projBudget[code]}); });
+    }
+  } else out.warn.push('ไม่พบชีต "ทะเบียนรหัสโครงการ"');
+  return out;
+}
+function xlDiff(parsed){
+  const diffs=[]; let n=0;
+  parsed.projects.forEach(r=>{
+    const year=2500+Number(r.code.slice(0,2));
+    let p=DB.projects.find(x=>x.projectCode===r.code);
+    if(!p){ const nm=nameForMatch(r.name); p=DB.projects.find(x=>x.year===year && !x.projectCode && nameForMatch(x.name)===nm);
+      if(p){ diffs.push({id:'d'+(n++),type:'setcode',label:'เติมรหัสโครงการ',code:r.code,title:r.name,pid:p.id,changes:[{f:'projectCode',t:'รหัสโครงการ',old:'(ว่าง)',nu:r.code}]}); return; } }
+    if(!p){ diffs.push({id:'d'+(n++),type:'newproj',label:'โครงการใหม่',code:r.code,title:r.name,year,data:r,changes:[{t:'เพิ่มโครงการ',old:'-',nu:`งบ ${money(r.budget||0)} · ${r.source||'-'} · ${r.quarter||''}`}]}); return; }
+    const ch=[];
+    if(normProjName(p.name)!==normProjName(r.name)) ch.push({f:'name',t:'ชื่อโครงการ',old:normProjName(p.name),nu:r.name});
+    if(r.budget!=null && Number(p.budgetAmount)!==Number(r.budget)){
+      if(isMixedBudget(p)) ch.push({f:'budgetAmount',t:'งบรวม (โครงการงบผสม — ปรับด้วยมือ)',old:money(p.budgetAmount),nu:money(r.budget),manual:true});
+      else ch.push({f:'budgetAmount',t:'งบประมาณ',old:money(p.budgetAmount),nu:money(r.budget),raw:r.budget});
+    }
+    const ms=XL_SRC_MAP[r.source];
+    if(ms && DB.budgetSources.includes(ms) && !isMixedBudget(p) && p.budgetSource!==ms && !(r.source==='' )) ch.push({f:'budgetSource',t:'แหล่งงบ',old:p.budgetSource||'-',nu:ms});
+    if(ch.length) diffs.push({id:'d'+(n++),type:'chgproj',label:'แก้ไขโครงการ',code:r.code,title:normProjName(p.name),pid:p.id,changes:ch});
+  });
+  parsed.acts.forEach(a=>{
+    const year=2500+Number(a.code.slice(0,2));
+    const it=(DB.okr&&DB.okr.items||[]).find(i=>i.projectCode===a.code && String(i.no)===String(a.no) && i.year===year);
+    if(!it){ diffs.push({id:'d'+(n++),type:'newokr',label:'กิจกรรม OKR ใหม่',code:a.code,title:a.name,year,data:a,changes:[{t:'เพิ่มกิจกรรม',old:'-',nu:`งบ ${money(a.budget)} · ${a.quarter} · KR ${a.kr.length} ข้อ`}]}); return; }
+    const ch=[]; const [qs,qe]=parseQuarters(a.quarter);
+    if(nameForMatch(it.name)!==nameForMatch(a.name)) ch.push({f:'name',t:'ชื่อกิจกรรม',old:it.name,nu:a.name});
+    if(Number(it.budget)!==Number(a.budget)) ch.push({f:'budget',t:'งบ',old:money(it.budget),nu:money(a.budget),raw:a.budget});
+    if(['เงินบำรุง','กองทุนฯ','ไม่ใช้งบ'].includes(a.src) && it.source!==a.src) ch.push({f:'source',t:'แหล่งงบ',old:it.source||'-',nu:a.src});
+    if(it.qStart!==qs||it.qEnd!==qe) ch.push({f:'quarter',t:'ไตรมาส',old:qLabel(it),nu:a.quarter,raw:[qs,qe]});
+    const oldKr=(it.krs||[]).map(k=>k.text);
+    if(a.kr.some((t,i)=>oldKr[i]!==t) ) ch.push({f:'kr',t:'ข้อความ KR',old:oldKr.join(' | ').slice(0,160),nu:a.kr.join(' | ').slice(0,160),raw:a.kr});
+    if(a.evidence && a.evidence!==it.evidence) ch.push({f:'evidence',t:'หลักฐาน/วิธีวัด',old:(it.evidence||'-').slice(0,80),nu:a.evidence.slice(0,80)});
+    if(ch.length) diffs.push({id:'d'+(n++),type:'chgokr',label:'แก้ไขกิจกรรม OKR',code:a.code,title:a.name,iid:it.id,changes:ch});
+  });
+  return diffs;
+}
+function xlLoadFile(inp){
+  if(viewerBlock()) return;
+  if(typeof XLSX==='undefined'){ showToast('⚠️ ไม่พบไลบรารี Excel (ต้องต่ออินเทอร์เน็ตครั้งแรกเพื่อโหลด)'); return; }
+  const f=inp.files&&inp.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ try{
+    const wb=XLSX.read(new Uint8Array(rd.result),{type:'array'}); const parsed=xlParse(wb);
+    window.__xl={name:f.name,warn:parsed.warn,diffs:xlDiff(parsed),np:parsed.projects.length,na:parsed.acts.length,sel:new Set()};
+    window.__xl.diffs.filter(d=>d.type==='newproj'||d.type==='newokr'||d.type==='setcode').forEach(d=>window.__xl.sel.add(d.id));
+    render();
+  }catch(e){ showToast('อ่านไฟล์ Excel ไม่สำเร็จ: '+e.message); } };
+  rd.readAsArrayBuffer(f);
+}
+function xlToggle(id,on){ const s=window.__xl.sel; if(on) s.add(id); else s.delete(id); const el=document.getElementById('xlCount'); if(el) el.textContent=s.size; }
+function xlSelAll(on){ const x=window.__xl; if(!x) return; x.sel.clear(); if(on) x.diffs.forEach(d=>{ if(!d.changes.every(c=>c.manual)) x.sel.add(d.id); }); render(); }
+function viewXlImport(){
+  const x=window.__xl;
+  const head=`<div class="card card-pad"><div class="card-title" style="margin-bottom:6px;">นำเข้าจากไฟล์แผนปฏิบัติการ (Excel) — ดูส่วนต่างก่อนนำเข้า</div>
+    <div class="small-muted" style="margin-bottom:10px;">อ่านชีต "ทะเบียนรหัสโครงการ" และ "OKR รายกิจกรรม" แล้วเทียบกับข้อมูลในระบบโดยใช้รหัสโครงการ · ไม่แก้ไขอะไรจนกว่าจะติ๊กเลือกรายการและกด "นำเข้ารายการที่เลือก" · ไม่ลบข้อมูล ไม่แตะความคืบหน้า/check-in/การเบิกจ่าย · ต้องโหลดไลบรารี Excel ผ่านอินเทอร์เน็ต</div>
+    <label class="btn btn-primary" style="cursor:pointer;">📂 เลือกไฟล์ Excel (.xlsx)<input type="file" accept=".xlsx,.xls" style="display:none" onchange="xlLoadFile(this)"></label>
+    ${x?`<span class="small-muted" style="margin-left:10px;">${escapeHtml(x.name)} · พบ ${x.np} โครงการ · ${x.na} กิจกรรม</span>`:''}</div>`;
+  if(!x) return head;
+  const tc={newproj:['#E1F5E9','#0F7A45'],newokr:['#E1F5E9','#0F7A45'],setcode:['#E3F1FB','#1D5F94'],chgproj:['#FFF3D6','#9C6B0B'],chgokr:['#FFF3D6','#9C6B0B']};
+  return head+`${x.warn.length?`<div class="card card-pad" style="margin-top:12px;color:#9C6B0B;">${x.warn.map(w=>'⚠️ '+escapeHtml(w)).join('<br>')}</div>`:''}
+  <div class="card" style="margin-top:12px;"><div class="card-head"><div class="card-title">ผลเทียบ: ${x.diffs.length} รายการที่แตกต่าง <span class="small-muted">(เลือกแล้ว <span id="xlCount">${x.sel.size}</span>)</span></div>
+    <div style="display:flex;gap:6px;"><button class="btn btn-ghost btn-sm" onclick="xlSelAll(true)">เลือกทั้งหมด</button><button class="btn btn-ghost btn-sm" onclick="xlSelAll(false)">ยกเลิกทั้งหมด</button><button class="btn btn-primary btn-sm" onclick="xlApply()">✅ นำเข้ารายการที่เลือก</button></div></div>
+    <div class="tbl-wrap card-pad"><table><thead><tr><th></th><th>ประเภท</th><th>รหัส</th><th>รายการ</th><th>สิ่งที่เปลี่ยน (เดิม → ใหม่)</th></tr></thead><tbody>
+    ${x.diffs.map(d=>{ const allManual=d.changes.every(c=>c.manual); const c=tc[d.type]; return `<tr><td><input type="checkbox" ${x.sel.has(d.id)?'checked':''} ${allManual?'disabled':''} onchange="xlToggle('${d.id}',this.checked)"></td>
+      <td><span class="badge" style="background:${c[0]};color:${c[1]};">${d.label}</span></td><td style="font-family:monospace;">${d.code}</td><td style="font-size:12.5px;">${escapeHtml(String(d.title).slice(0,90))}</td>
+      <td style="font-size:12px;">${d.changes.map(ch=>`<div><b>${escapeHtml(ch.t)}</b>: <span style="color:#B02A2A;">${escapeHtml(String(ch.old))}</span> → <span style="color:#0F7A45;">${escapeHtml(String(ch.nu))}</span>${ch.manual?' <span class="small-muted">(ไม่นำเข้าอัตโนมัติ)</span>':''}</div>`).join('')}</td></tr>`; }).join('')||'<tr><td colspan="5"><div class="empty-state">✅ ข้อมูลในระบบตรงกับไฟล์ Excel แล้ว ไม่มีส่วนต่าง</div></td></tr>'}
+    </tbody></table></div></div>`;
+}
+function xlApply(){
+  if(viewerBlock()) return; const x=window.__xl; if(!x) return;
+  const picks=x.diffs.filter(d=>x.sel.has(d.id)); if(!picks.length){ showToast('ยังไม่ได้เลือกรายการ'); return; }
+  if(!confirm('นำเข้า '+picks.length+' รายการที่เลือก? (แนะนำให้สำรองข้อมูล JSON ก่อน)')) return;
+  let np=0, cp=0, no=0, co=0;
+  picks.forEach(d=>{
+    if(d.type==='setcode'){ const p=getProject(d.pid); if(p){ p.projectCode=d.code; cp++; } }
+    else if(d.type==='chgproj'){ const p=getProject(d.pid); if(!p) return; d.changes.forEach(c=>{ if(c.manual) return; if(c.f==='budgetAmount') p.budgetAmount=Number(c.raw); else p[c.f]=c.nu; }); cp++; }
+    else if(d.type==='newproj'){
+      const r=d.data; if(!DB.fiscalYears.includes(d.year)) DB.fiscalYears.push(d.year);
+      const cat=/ภาระงาน|ประจำ/.test(r.type)? (DB.categories[1]||DB.categories[0]) : DB.categories[0];
+      const maxSort=Math.max(0,...DB.projects.filter(p=>p.year===d.year).map(p=>p.sortOrder||0));
+      const ms=XL_SRC_MAP[r.source]; 
+      DB.projects.push({id:uid('proj'),year:d.year,projectCode:r.code,name:r.name,categoryId:cat?cat.id:'',ownerPersonIds:[],ownerPersonId:'',priority:'mid',status:'notstarted',startDate:'',endDate:'',budgetAmount:Number(r.budget)||0,budgetType:'งบดำเนินงาน',budgetSource:(ms&&DB.budgetSources.includes(ms))?ms:(DB.budgetSources[0]||''),target:'',indicator:'',description:'นำเข้าจากไฟล์ Excel '+x.name+' (ไตรมาส: '+(r.quarter||'-')+') โปรดตรวจสอบและกรอกผู้รับผิดชอบ/วันที่/รายละเอียด',attachments:[],disbRequestDate:'',disbCompleteDate:'',disbAmount:0,disbNote:'',sortOrder:maxSort+1,createdAt:new Date().toISOString()});
+      np++; }
+    else if(d.type==='chgokr'){ const it=DB.okr.items.find(i=>i.id===d.iid); if(!it) return;
+      d.changes.forEach(c=>{
+        if(c.f==='budget') it.budget=Number(c.raw); else if(c.f==='quarter'){ it.qStart=c.raw[0]; it.qEnd=c.raw[1]; }
+        else if(c.f==='kr'){ it.krs=it.krs||[]; c.raw.forEach((t,i)=>{ if(it.krs[i]) it.krs[i].text=t; else it.krs.push({id:uid('kr'),text:t,progress:0}); }); }
+        else it[c.f]=c.nu; });
+      co++; }
+    else if(d.type==='newokr'){ const a=d.data; const [qs,qe]=parseQuarters(a.quarter);
+      DB.okr.items.push({id:uid('okri'),year:d.year,projectCode:a.code,no:a.no,name:a.name,budget:Number(a.budget)||0,source:['เงินบำรุง','กองทุนฯ','ไม่ใช้งบ'].includes(a.src)?a.src:'',qStart:qs,qEnd:qe,ownerPersonIds:matchOwnerIds(a.owner),ownerText:a.owner||'',evidence:a.evidence||'',krs:a.kr.map(t=>({id:uid('kr'),text:t,progress:0})),checkins:[]});
+      DB.okr.seeded.push(a.code+'|'+a.no); no++; }
+  });
+  logAction('นำเข้าจาก Excel (เลือกจากส่วนต่าง)',`${x.name}: โครงการใหม่ ${np} · แก้โครงการ ${cp} · OKR ใหม่ ${no} · แก้ OKR ${co}`);
+  saveDB(); window.__xl=null; render(); showToast(`✅ นำเข้าแล้ว: โครงการใหม่ ${np} · แก้ไขโครงการ ${cp} · OKR ใหม่ ${no} · แก้ OKR ${co}`);
+}
+
 function setYearVsThr(v){ yearVsState().thr=Number(v); render(); }
 function viewYearVs(){
   const ys=DB.fiscalYears.slice().sort((a,b)=>a-b); const y=yearVsState();
@@ -5153,7 +5687,7 @@ function viewYearVs(){
   <div class="card"><div class="card-head"><div class="card-title">เทียบรายโครงการ (โครงการปีเก่าไม่มีรหัส จึงจับคู่จากชื่อ ลักษณะโครงการ และกิจกรรมในโครงการที่ใกล้เคียง)</div></div>
     <div class="card-pad" style="padding-top:0;display:flex;gap:6px;flex-wrap:wrap;">${['new','removed','up','down','same'].map(k=>`<span class="badge" style="background:${kindBadge[k][0]};color:${kindBadge[k][1]};">${kindBadge[k][2]} ${cnt(k)}</span>`).join('')}<button class="btn btn-ghost btn-sm" onclick="toggleAllYvsAct(true)">📂 ขยายกิจกรรมทุกโครงการ</button><button class="btn btn-ghost btn-sm" onclick="toggleAllYvsAct(false)">ย่อทั้งหมด</button></div>
     <div class="tbl-wrap card-pad"><table><thead><tr><th>โครงการ (ปี ${y.b}) / โครงการที่จับคู่ (ปี ${y.a})</th><th>ความใกล้เคียง</th><th>กิจกรรม</th><th>รหัส ${y.b}</th><th style="text-align:right">งบ ${y.a}</th><th style="text-align:right">งบ ${y.b}</th><th style="text-align:right">ผลต่าง</th><th style="text-align:right">%</th><th>สถานะ</th></tr></thead><tbody>
-    ${rows.map(r=>{ const p=r.b||r.a; const kb=kindBadge[r.kind]; const am=(r.a&&r.b)?activityMatch(r.a,r.b):null; return `<tr class="tbl-row" onclick="openProjectDetail('${p.id}')"><td style="font-size:12.5px;">${r.b?escapeHtml(normProjName(r.b.name).slice(0,90)):''}${r.a?`<div class="small-muted" style="margin-top:2px;">${r.b?'↔ ปี '+y.a+': ':'ปี '+y.a+': '}${escapeHtml(normProjName(r.a.name).slice(0,90))}</div>`:''}</td><td style="font-size:12px;">${r.a&&r.b?`<b>${Math.round(r.sim*100)}%</b><div class="small-muted">${escapeHtml(r.basis)}</div>`:'-'}</td><td style="font-size:12px;" onclick="event.stopPropagation()">${am?`<button class="btn btn-ghost btn-sm" onclick="toggleYvsAct('${r.b.id}')">🔍 ${am.na}↔${am.nb}</button><div class="small-muted">จับคู่ ${am.matched}</div>`:'-'}</td><td style="font-family:monospace;">${escapeHtml(r.b&&r.b.projectCode||'-')}</td><td style="text-align:right">${r.a?money(r.ba):'-'}</td><td style="text-align:right">${r.b?money(r.bb):'-'}</td><td style="text-align:right;font-weight:600;color:${r.d>0?'#0F7A45':r.d<0?'#B02A2A':'#5C6B63'};">${r.a&&r.b?((r.d>0?'+':'')+money(r.d)):'-'}</td><td style="text-align:right">${r.a&&r.b&&r.ba?((r.d>0?'+':'')+Math.round(r.d/r.ba*1000)/10+'%'):'-'}</td><td><span class="badge" style="background:${kb[0]};color:${kb[1]};">${kb[2]}</span></td></tr>${am?`<tr id="yvsA_${r.b.id}" style="display:none;background:#F7FAF8;"><td colspan="9" style="padding:10px 14px;">${actCompareTable(r.a,r.b,y.a,y.b)}</td></tr>`:''}`; }).join('')||'<tr><td colspan="9"><div class="empty-state">ไม่มีโครงการในปีที่เลือก</div></td></tr>'}
+    ${rows.map(r=>{ const p=r.b||r.a; const kb=kindBadge[r.kind]; const am=(r.a&&r.b)?activityMatch(r.a,r.b):null; return `<tr class="tbl-row" onclick="openProjectDetail('${p.id}')"><td style="font-size:12.5px;">${r.b?escapeHtml(normProjName(r.b.name).slice(0,90)):''}<span class="no-print" onclick="event.stopPropagation();openYearPairForm('${r.b?'b':'a'}','${(r.b||r.a).id}')" title="กำหนดคู่ด้วยมือ" style="cursor:pointer;margin-left:6px;">✏️</span>${r.locked?' <span title="กำหนดเอง">🔒</span>':''}${r.forcedNone?' <span class="small-muted">(กำหนดว่าไม่มีคู่)</span>':''}${r.a?`<div class="small-muted" style="margin-top:2px;">${r.b?'↔ ปี '+y.a+': ':'ปี '+y.a+': '}${escapeHtml(normProjName(r.a.name).slice(0,90))}</div>`:''}</td><td style="font-size:12px;">${r.a&&r.b?`<b>${Math.round(r.sim*100)}%</b><div class="small-muted">${escapeHtml(r.basis)}</div>`:'-'}</td><td style="font-size:12px;" onclick="event.stopPropagation()">${am?`<button class="btn btn-ghost btn-sm" onclick="toggleYvsAct('${r.b.id}')">🔍 ${am.na}↔${am.nb}</button><div class="small-muted">จับคู่ ${am.matched}</div>`:'-'}</td><td style="font-family:monospace;">${escapeHtml(r.b&&r.b.projectCode||'-')}</td><td style="text-align:right">${r.a?money(r.ba):'-'}</td><td style="text-align:right">${r.b?money(r.bb):'-'}</td><td style="text-align:right;font-weight:600;color:${r.d>0?'#0F7A45':r.d<0?'#B02A2A':'#5C6B63'};">${r.a&&r.b?((r.d>0?'+':'')+money(r.d)):'-'}</td><td style="text-align:right">${r.a&&r.b&&r.ba?((r.d>0?'+':'')+Math.round(r.d/r.ba*1000)/10+'%'):'-'}</td><td><span class="badge" style="background:${kb[0]};color:${kb[1]};">${kb[2]}</span></td></tr>${am?`<tr id="yvsA_${r.b.id}" style="display:none;background:#F7FAF8;"><td colspan="9" style="padding:10px 14px;">${actCompareTable(r.a,r.b,y.a,y.b)}</td></tr>`:''}`; }).join('')||'<tr><td colspan="9"><div class="empty-state">ไม่มีโครงการในปีที่เลือก</div></td></tr>'}
     </tbody></table></div></div>`;
 }
 function drawYearVsCharts(){
@@ -5249,7 +5783,7 @@ function lockHash(str){
 }
 function lockCurrentHash(){ return (DB && DB.security && DB.security.pwHash) || LOCK_DEFAULT_HASH; }
 function isUnlocked(){ try{ return sessionStorage.getItem('thaimed_unlocked')==='1'; }catch(e){ return !!window.__unlockedMem; } }
-function setUnlocked(v){ window.__unlockedMem=v; try{ if(v) sessionStorage.setItem('thaimed_unlocked','1'); else sessionStorage.removeItem('thaimed_unlocked'); }catch(e){} }
+function setUnlocked(v){ window.__unlockedMem=v; if(!v) setViewer(false); try{ if(v) sessionStorage.setItem('thaimed_unlocked','1'); else sessionStorage.removeItem('thaimed_unlocked'); }catch(e){} }
 function showLockScreen(){
   if(document.getElementById('lockScreen')) return;
   const app=document.getElementById('app'); if(app) app.style.display='none';
@@ -5268,7 +5802,9 @@ function showLockScreen(){
   let fails=0, until=0;
   const tryUnlock=()=>{
     const now=Date.now(); if(now<until){ msg.textContent=`ลองใหม่อีก ${Math.ceil((until-now)/1000)} วินาที`; return; }
-    if(lockHash(inp.value)===lockCurrentHash()){ setUnlocked(true); d.remove(); if(app) app.style.display=''; }
+    const hv=lockHash(inp.value);
+    if(hv===lockCurrentHash()){ setViewer(false); setUnlocked(true); d.remove(); if(app) app.style.display=''; render(); }
+    else if(DB.security && DB.security.viewerHash && hv===DB.security.viewerHash){ setUnlocked(true); setViewer(true); d.remove(); if(app) app.style.display=''; render(); }
     else{ fails++; inp.value=''; msg.textContent='รหัสผ่านไม่ถูกต้อง'; if(fails>=5){ until=Date.now()+15000; fails=0; msg.textContent='ใส่ผิดหลายครั้ง กรุณารอ 15 วินาที'; } inp.focus(); }
   };
   d.querySelector('#lockBtn').addEventListener('click', tryUnlock);
@@ -5285,11 +5821,12 @@ function openChangePasswordForm(){
     `<button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button><button class="btn btn-primary" onclick="saveNewPassword()">💾 บันทึก</button>`);
 }
 function saveNewPassword(){
+  if(viewerBlock()) return;
   const o=document.getElementById('pw_old').value, n=document.getElementById('pw_new').value, n2=document.getElementById('pw_new2').value;
   if(lockHash(o)!==lockCurrentHash()){ showToast('รหัสผ่านปัจจุบันไม่ถูกต้อง'); return; }
   if(n.length<4){ showToast('รหัสผ่านใหม่ต้องมีอย่างน้อย 4 ตัว'); return; }
   if(n!==n2){ showToast('ยืนยันรหัสผ่านไม่ตรงกัน'); return; }
-  DB.security={pwHash:lockHash(n)}; logAction('เปลี่ยนรหัสผ่าน',''); saveDB(); closeModal(); showToast('เปลี่ยนรหัสผ่านเรียบร้อย');
+  DB.security=Object.assign({},DB.security||{},{pwHash:lockHash(n)}); logAction('เปลี่ยนรหัสผ่าน',''); saveDB(); closeModal(); showToast('เปลี่ยนรหัสผ่านเรียบร้อย');
 }
 
 loadDB();
