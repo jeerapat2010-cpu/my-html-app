@@ -1,0 +1,47 @@
+# สร้างไฟล์ dates.json (วันที่อัปเดตล่าสุด + ข้อความ commit ของทุกไฟล์ .html)
+# ทำงานอัตโนมัติทุกครั้งที่ push — พอร์ทัลจะอ่านไฟล์นี้ไฟล์เดียว
+# แทนการถาม GitHub API ทีละไฟล์ (ซึ่งติดลิมิต 60 ครั้ง/ชั่วโมง)
+name: Update dates.json
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['dates.json']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  dates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # ต้องมีประวัติทั้งหมดถึงจะรู้วันที่แต่ละไฟล์
+
+      - name: Build dates.json
+        run: |
+          python3 - <<'PY'
+          import json, subprocess, glob, datetime
+          files = {}
+          for f in sorted(glob.glob('*.html')):
+              out = subprocess.run(
+                  ['git', 'log', '-1', '--format=%cI%x1f%s', '--', f],
+                  capture_output=True, text=True).stdout.strip()
+              if out:
+                  d, m = out.split('\x1f', 1)
+                  files[f] = {'d': d, 'm': m}
+          data = {'generated': datetime.datetime.utcnow().isoformat() + 'Z', 'files': files}
+          json.dump(data, open('dates.json', 'w', encoding='utf-8'),
+                    ensure_ascii=False, indent=1)
+          print(len(files), 'files')
+          PY
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dates.json
+          git diff --cached --quiet || git commit -m "chore: update dates.json [skip ci]"
+          git push

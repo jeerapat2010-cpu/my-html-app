@@ -5,7 +5,7 @@
    • ไอคอน/ฟอนต์/CDN -> ใช้ของที่เก็บไว้ก่อน (เร็ว) แล้วอัปเดตเบื้องหลัง
    ⚠️ ทุกครั้งที่แก้ไฟล์นี้ ให้เปลี่ยนเลข VERSION เพื่อบังคับอัปเดต
    ============================================================ */
-const VERSION = 'ttm-v1';
+const VERSION = 'ttm-v2';
 const SHELL   = `${VERSION}-shell`;
 const PAGES   = `${VERSION}-pages`;
 const ASSETS  = `${VERSION}-assets`;
@@ -16,7 +16,8 @@ const PRECACHE = [
   './index.html',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './hero.jpg'
 ];
 
 self.addEventListener('install', e => {
@@ -52,7 +53,18 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
 
   /* ข้าม GitHub API และรูปจากภายนอกที่เปลี่ยนบ่อย — ปล่อยผ่านตามปกติ */
-  if (url.hostname === 'api.github.com' || url.hostname === 'loremflickr.com') return;
+  if (url.hostname === 'api.github.com') return;
+
+  /* ---------- ไฟล์ข้อมูล .json (dates.json, announce.json) : Network-first ---------- */
+  if (url.origin === location.origin && url.pathname.toLowerCase().endsWith('.json')
+      && !url.pathname.endsWith('manifest.json')) {
+    e.respondWith(fetch(req).then(res => {
+      if (res.ok) { const cp = res.clone(); caches.open(PAGES).then(c => c.put(req, cp)); }
+      return res;
+    }).catch(() => caches.match(req, { ignoreSearch: true })
+        .then(r => r || new Response('null', { status: 404 }))));
+    return;
+  }
 
   /* ---------- หน้า HTML : Network-first ---------- */
   if (isHTML(req)) {
