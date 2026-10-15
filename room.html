@@ -410,7 +410,7 @@ const WALL_PHOTOS = [
 ];
 
 /* ================= เวอร์ชัน ================= */
-const ROOM_VERSION='3.0', ROOM_BUILD='2026-10-15';
+const ROOM_VERSION='3.1', ROOM_BUILD='2026-10-15';
 function paintVersion(iso){
   const d=new Date(iso||ROOM_BUILD); const t=isNaN(d)?ROOM_BUILD:new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'short',year:'2-digit',timeZone:'Asia/Bangkok'}).format(d);
   document.querySelectorAll('.ver').forEach(el=>el.textContent='เวอร์ชัน '+ROOM_VERSION+' (อัปเดต '+t+')');
@@ -421,7 +421,7 @@ fetch('dates.json?_='+Math.floor(Date.now()/3e5),{cache:'no-store'}).then(r=>r.o
 /* ================= ชั้น 1 / ชั้น 2 ================= */
 const FLOOR = new URLSearchParams(location.search).get('floor')==='2' ? 2 : 1;
 const F2_BASE = new URL('../my-second-web/', location.href).href;   // ชั้น 2 = Digital Portal Varity
-let HOP=false; try{ HOP=sessionStorage.getItem('room-hop')==='1'; sessionStorage.removeItem('room-hop'); }catch(e){}
+let HOP=false, HOP_LIFT=false; try{ const v=sessionStorage.getItem('room-hop'); HOP=!!v; HOP_LIFT=v==='lift'; sessionStorage.removeItem('room-hop'); }catch(e){}
 (function floorTexts(){
   const fb=document.getElementById('floorBtn');
   if(FLOOR===2){
@@ -436,13 +436,18 @@ let HOP=false; try{ HOP=sessionStorage.getItem('room-hop')==='1'; sessionStorage
     document.getElementById('scene').setAttribute('aria-label','ชั้น 2 ห้องกระจกชมวิว (ห้องสามมิติ)');
     paintVersion();
   }
-  fb.addEventListener('click',e=>{ e.preventDefault(); const to=fb.getAttribute('href');
-    try{ sessionStorage.setItem('room-hop','1'); }catch(_){}
-    try{ ttmEvent('floor_change',{to_floor:FLOOR===2?1:2}); }catch(_){}
-    try{ speechSynthesis.cancel(); }catch(_){}
-    try{ sfx.steps(4); }catch(_){}
-    document.getElementById('fade').classList.add('on'); setTimeout(()=>location.href=to,600); });
+  fb.addEventListener('click',e=>{ e.preventDefault(); goFloor('button'); });
 })();
+let floorGoing=false;
+function goFloor(via){
+  if(floorGoing) return; floorGoing=true;
+  const to=document.getElementById('floorBtn').getAttribute('href');
+  try{ sessionStorage.setItem('room-hop',via==='lift'?'lift':'1'); }catch(_){}
+  try{ ttmEvent('floor_change',{to_floor:FLOOR===2?1:2,via}); }catch(_){}
+  try{ speechSynthesis.cancel(); }catch(_){}
+  try{ via==='lift'?liftDing():sfx.steps(4); }catch(_){}
+  document.getElementById('fade').classList.add('on'); setTimeout(()=>location.href=to, via==='lift'?900:600);
+}
 
 /* ชั้น 2: อ่านหมวดจากหน้า Digital Portal Varity (my-second-web) */
 async function loadCats2(){
@@ -961,9 +966,12 @@ function buildRoom(){
   shaftMat = new THREE.MeshBasicMaterial({map:shaftTex, transparent:true, opacity:.28, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide, toneMapped:false});
   const photos = FLOOR===2 ? [] : WALL_PHOTOS.slice(0,N);
   const photoSlots = new Map(photos.map((p,k)=>[Math.floor(k*N/photos.length) % N, p]));
+  ELEV_SLOT = FLOOR===2 ? 1 : (()=>{ for(let i=N-1;i>=0;i--) if(!photoSlots.has(i)) return i; return N-1; })();
+  if(FLOOR===1 && photoSlots.has(ELEV_SLOT)) photoSlots.delete(ELEV_SLOT);
   for(let i=0;i<N;i++){
     const yaw = -(i+.5)*STEP, apo = ROOM_R*Math.cos(Math.PI/(N*2)) - .02;
     const dir = new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));
+    if(i===ELEV_SLOT){ buildLift(dir, apo, yaw, faceW); continue; }
     if(photoSlots.has(i)){ hangPhoto(photoSlots.get(i), dir, apo, yaw, faceW); continue; }
     if(FLOOR===2){ if(i%2===0) hangCurtains(dir, apo, yaw, winW, winH); continue; }   // ชั้น 2: ผนังกระจกทั้งแผง มีม่านโปร่งบางช่อง
     hangCurtains(dir, apo, yaw, winW, winH);
@@ -1026,6 +1034,54 @@ function hangCurtains(dir, apo, yaw, winW, winH){
   for(const sx of [-1,1]){ const f=new THREE.Mesh(new THREE.SphereGeometry(.04,14,10),M.gold); f.position.set(sx*(winW/2+PW+.17),top+.02,.04); G.add(f); }
 }
 // ม่านพลิ้วตามลม (ใต้จุดผูกพลิ้วมากกว่า)
+/* ================= ลิฟต์ขึ้น-ลงชั้น ================= */
+let lift=null, ELEV_SLOT=-1;
+const liftTex=(txt,sub)=>tex(256,128,(g,w,h)=>{ g.fillStyle='#1a120c'; g.fillRect(0,0,w,h); g.strokeStyle='#c9a24f'; g.lineWidth=3; g.strokeRect(4,4,w-8,h-8);
+  g.fillStyle='#ffcf6a'; g.shadowColor='#ffb84a'; g.shadowBlur=12; g.font='bold 64px Sarabun, sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(txt,w/2,h/2-8);
+  g.shadowBlur=0; g.font='600 20px Sarabun, sans-serif'; g.fillStyle='#e8d2a0'; g.fillText(sub,w/2,h-20); });
+function buildLift(dir, apo, yaw, faceW){
+  const G=new THREE.Group(); G.position.copy(dir.clone().multiplyScalar(apo-.03)); G.rotation.y=yaw; scene.add(G);
+  const W=Math.min(1.3,faceW*.72), H=2.35;
+  const ivory=new THREE.MeshStandardMaterial({color:'#efe6d3',roughness:.45}), gold=new THREE.MeshStandardMaterial({color:'#c9a24f',metalness:.75,roughness:.3});
+  const brass=new THREE.MeshStandardMaterial({color:'#d8bf8a',metalness:.85,roughness:.22});
+  const add=(m,x,y,z)=>{ m.position.set(x,y,z); G.add(m); return m; };
+  // ผนังรอบประตูลิฟต์ (ทึบ) + กรอบ
+  add(new THREE.Mesh(new THREE.PlaneGeometry(faceW*1.02,WALL_H),ivory),0,WALL_H/2,-.01);
+  add(new THREE.Mesh(new THREE.BoxGeometry(W+.24,.12,.08),ivory),0,H+.06,.04);
+  for(const sx of [-1,1]) add(new THREE.Mesh(new THREE.BoxGeometry(.12,H,.08),ivory),sx*(W/2+.06),H/2,.04);
+  add(new THREE.Mesh(new THREE.BoxGeometry(W+.26,.012,.09),gold),0,H+.125,.045);
+  for(const sx of [-1,1]) add(new THREE.Mesh(new THREE.BoxGeometry(.012,H,.09),gold),sx*(W/2+.125),H/2,.045);
+  // ห้องโดยสารด้านใน (แสงอุ่น)
+  add(new THREE.Mesh(new THREE.PlaneGeometry(W,H),new THREE.MeshBasicMaterial({color:'#f6e2b4'})),0,H/2,-.005);
+  // บานประตูทองเหลือง 2 บาน
+  const doors=[]; for(const sx of [-1,1]){ const d=add(new THREE.Mesh(new THREE.BoxGeometry(W/2,H,.03),brass),sx*W/4,H/2,.02);
+    const ln=new THREE.Mesh(new THREE.BoxGeometry(.006,H*.9,.005),gold); ln.position.set(-sx*W/4+sx*.004,0,.018); d.add(ln); d.userData.home=sx*W/4; doors.push(d); }
+  // ป้ายบอกชั้นเหนือประตู
+  const ind=add(new THREE.Mesh(new THREE.PlaneGeometry(.5,.25),new THREE.MeshBasicMaterial({map:liftTex(FLOOR===2?'๒ ▼':'๑ ▲', FLOOR===2?'ลิฟต์ลงชั้น ๑':'ลิฟต์ขึ้นชั้น ๒'),toneMapped:false})),0,H+.34,.05);
+  // ปุ่มเรียกลิฟต์
+  const plate=add(new THREE.Mesh(new THREE.BoxGeometry(.12,.26,.02),brass),W/2+.3,1.15,.02);
+  const btnM=new THREE.MeshStandardMaterial({color:'#fff1c4',emissive:'#ffb84a',emissiveIntensity:.6,roughness:.3});
+  const btn=add(new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.02,20),btnM),W/2+.3,FLOOR===2?1.1:1.2,.04); btn.rotation.x=Math.PI/2;
+  const hit=[]; G.traverse(o=>{ if(o.isMesh) hit.push(o); });
+  lift={G,doors,btnM,hit,open:0,openT:0,W,ind,pos:G.position.clone(),dir:dir.clone()};
+}
+function updateLift(dt,t){
+  if(!lift) return;
+  lift.open += (lift.openT-lift.open)*Math.min(1,dt*2.2);
+  lift.doors.forEach(d=>{ const sc=1-lift.open*.9, sg=Math.sign(d.userData.home); d.scale.x=sc; d.position.x=sg*(lift.W/2-lift.W/4*sc); });   // บานเลื่อนเก็บเข้าข้าง
+  lift.btnM.emissiveIntensity = lift.openT ? 1.6 : .45+Math.sin(t*2.4)*.2;
+}
+function liftDing(){ const a=ac(); if(!a) return; const t=a.currentTime+.02; tone(t,1318,.9,{peak:.12}); tone(t+.22,1046,1.1,{peak:.1}); }
+function liftHit(ray){ return lift && ray.intersectObjects(lift.hit,false).length>0; }
+function useLift(){
+  if(!lift || floorGoing) return;
+  liftDing(); lift.openT=1; if(mode==='focus') closeDrawer(); hideLedger();
+  if(buddy){ buddy.dock=false; buddy.follow=null; buddy.target.copy(lift.pos.clone().sub(lift.dir.clone().multiplyScalar(.9)).setY(1.2)); buddy.action='wave'; buddy.scaleT=.7; }
+  say(FLOOR===2?'ลงไปชั้นหนึ่ง กันค่ะ':'ขึ้นไปชั้นสอง กันค่ะ').catch(()=>{});
+  setTimeout(()=>goFloor('lift'),1500);
+}
+function faceLift(){ if(ELEV_SLOT<0) return; const want=ELEV_SLOT+.5, cur=-yawTarget/STEP; let d=((want-cur)%N+N)%N; if(d>N/2) d-=N; yawTarget=-(cur+d)*STEP; }
+
 function windCurtains(t){
   if(reduceMotion) return;
   const gust = .6+.4*Math.sin(t*.37)*Math.sin(t*.23+1.3);
@@ -1092,6 +1148,7 @@ function placePlants(){
   const kinds=['jasmine','gardenia','box','jasmine','gardenia','box','jasmine','gardenia','box'];
   for(let i=0;i<N;i++){
     const yaw=-(i+.5)*STEP, R0=ROOM_R*Math.cos(Math.PI/(N*2))-.42;
+    if(i===ELEV_SLOT) continue;   // หน้าลิฟต์ต้องโล่ง
     const pos=new THREE.Vector3(-Math.sin(yaw)*R0,0,-Math.cos(yaw)*R0);
     buildPlant(kinds[i%kinds.length], pos, yaw);
   }
@@ -1556,6 +1613,8 @@ canvas.addEventListener('pointermove',e=>{
   if(e.pointerType==='mouse' && buddy && buddy.B.visible){ ndc.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1); ray.setFromCamera(ndc,camera);
     const onB=ray.intersectObject(buddy.B,true).length>0; if(onB){ canvas.classList.add('hand'); canvas.title='คุยกับน้องลูกประคบ'; if(buddy.dock) buddy.action='wave'; return; } else { canvas.title=''; if(buddy.dock&&buddy.action==='wave') buddy.action='idle'; } }
   const h = e.pointerType==='mouse' ? pick(e.clientX,e.clientY) : -1;
+  if(e.pointerType==='mouse' && lift){ ndc.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1); ray.setFromCamera(ndc,camera);
+    if(liftHit(ray)){ hover=-1; canvas.classList.add('hand'); canvas.title=FLOOR===2?'ลิฟต์ลงชั้น 1':'ลิฟต์ขึ้นชั้น 2'; return; } else if(canvas.title.startsWith('ลิฟต์')) canvas.title=''; }
   if(h!==hover){ hover=h; canvas.classList.toggle('hand',h>=0); }
 });
 canvas.addEventListener('pointerup',e=>{
@@ -1563,6 +1622,7 @@ canvas.addEventListener('pointerup',e=>{
   if(moved>6 && mode==='walk'){ const k0=kCur; kCur=Math.round(-yawTarget/STEP); yawTarget=-kCur*STEP; updateHud(); if(kCur!==k0) sfx.steps(Math.min(3,Math.abs(kCur-k0))); if(pitchTarget<.12) setPitch(0); }
   else if(moved<=6){
     ndc.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1); ray.setFromCamera(ndc,camera);
+    if(liftHit(ray) && !(buddy&&buddy.B.visible&&ray.intersectObject(buddy.B,true).length)){ down=null; useLift(); return; }
     const ph=photoMeshes.length && ray.intersectObjects(photoMeshes,false)[0];
     if(buddy && buddy.B.visible){ ndc.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1); ray.setFromCamera(ndc,camera);
       if(ray.intersectObject(buddy.B,true).length){ down=null; canvas.classList.remove('grabbing'); if(buddy.dock||!chat.classList.contains('show')) openChat(); return; } }
@@ -1955,7 +2015,13 @@ async function startGuide(){
       buddy.follow={d:1.85,s:.62,h:1.25}; await sleep(400);
       buddy.pointAt=camera.position.clone().add(camBasis().f.multiplyScalar(2)).setY(3.2);
       return 'ถ้าหาระบบไม่เจอ | พิมพ์ชื่อ ที่ช่องค้นหา ด้านบน ได้เลยค่ะ | ระบบที่ใช้บ่อย | กดรูปดาว | เก็บไว้ในลิ้นชักโปรด ได้นะคะ'; },
-    async()=>{ buddy.pointAt=null; buddy.action='wai'; buddy.follow={d:1.8,s:-.5,h:1.18};
+    async()=>{ buddy.pointAt=null; buddy.follow=null; faceLift(); await sleep(900); if(!lift) return 'ขึ้นลงชั้น กดปุ่มด้านบนได้ค่ะ';
+      buddy.action='point'; buddy.target.copy(lift.pos.clone().sub(lift.dir.clone().multiplyScalar(1.0)).add(new THREE.Vector3(-lift.dir.z,0,lift.dir.x).multiplyScalar(.75)).setY(1.2));
+      buddy.pointAt=lift.pos.clone().setY(1.3);
+      setTimeout(()=>{ if(alive()&&lift){ lift.openT=1; liftDing(); setTimeout(()=>{ if(lift) lift.openT=0; },2600); } },1800);
+      return FLOOR===2 ? 'ตรงนี้คือ ลิฟต์ ค่ะ | แตะที่ลิฟต์ | หรือกดปุ่ม ชั้น 1 ด้านบน | เพื่อลงไป หอข้อมูลงานแพทย์แผนไทย นะคะ'
+        : 'ตรงนี้คือ ลิฟต์ ค่ะ | แตะที่ลิฟต์ | หรือกดปุ่ม ชั้น 2 ด้านบน | ขึ้นไปห้องกระจกชมวิว | มีตู้อีเวนต์ ไลฟ์สไตล์ | และแอปทั่วไป นะคะ'; },
+    async()=>{ buddy.pointAt=null; buddy.action='wai'; buddy.follow={d:1.8,s:-.5,h:1.18}; goTo(0);
       return 'ถ้าสงสัยอะไร | กดปุ่ม น้องลูกประคบ ด้านบน | แล้วพิมพ์ หรือพูดถามหนู ได้เลยนะคะ | ขอให้มีความสุข กับการทำงานนะคะ | สวัสดีค่ะ'; },
   ];
   for(guideStep=0; guideStep<steps.length; guideStep++){
@@ -2054,7 +2120,7 @@ async function localAnswer(q){
   if(/ดาว|โปรด/.test(t)) return {text:'เปิดลิ้นชักตู้ไหนก็ได้ แล้วกดรูปดาว ☆ หน้าชื่อระบบนะคะ ระบบนั้นจะไปอยู่ในปุ่ม ⭐ โปรด ด้านบน และใช้ร่วมกับหน้าพอร์ทัลบนเครื่องนี้ด้วยค่ะ'};
   if(/ข่าว/.test(t)) return {text:'กดปุ่ม 📰 ข่าว สีแดงด้านบน หรือดูหัวข้อข่าวในป้ายประกาศวิ่งได้เลยค่ะ อัปเดตทุกวันนะคะ'};
   if(/ใหม่|อัปเดต|ล่าสุด/.test(t)){ const up=await withTimeout(recentUpdates().catch(()=>[]),6000,[]); if(up.length) return {text:'ระบบที่อัปเดตล่าสุดมีตามนี้ค่ะ',apps:up.slice(0,5).map(x=>({...x.app,catShort:(cats.find(c=>c.apps.includes(x.app))||{}).short||''}))}; return {text:'ดูระบบที่อัปเดตใหม่ได้ที่ป้ายประกาศวิ่งด้านบน ป้ายสีทองคำว่า "อัปเดต" ค่ะ'}; }
-  if(/ชั้น\s*(2|๒|สอง|1|๑|หนึ่ง|บน|ล่าง)|ขึ้นชั้น|ลงชั้น/.test(t)) return {text: FLOOR===2 ? 'ตอนนี้อยู่ชั้นสอง ห้องกระจกชมวิวค่ะ ถ้าจะกลับไปหอข้อมูลงานแพทย์แผนไทย กดปุ่ม ⬇️ ชั้น 1 ด้านบนได้เลยนะคะ' : 'ชั้นสองเป็นห้องกระจกชมวิว มีตู้อีเวนต์ & ไลฟ์สไตล์ และแอปทั่วไปของ Digital Portal Varity ค่ะ กดปุ่ม ⬆️ ชั้น 2 ด้านบนได้เลยนะคะ'};
+  if(/ชั้น\s*(2|๒|สอง|1|๑|หนึ่ง|บน|ล่าง)|ขึ้นชั้น|ลงชั้น/.test(t)) return {text: FLOOR===2 ? 'ตอนนี้อยู่ชั้นสอง ห้องกระจกชมวิวค่ะ ถ้าจะกลับไปหอข้อมูลงานแพทย์แผนไทย แตะที่ลิฟต์ หรือกดปุ่ม ⬇️ ชั้น 1 ด้านบนได้เลยนะคะ' : 'ชั้นสองเป็นห้องกระจกชมวิว มีตู้อีเวนต์ & ไลฟ์สไตล์ และแอปทั่วไปของ Digital Portal Varity ค่ะ แตะที่ลิฟต์ในห้อง หรือกดปุ่ม ⬆️ ชั้น 2 ด้านบนได้เลยนะคะ'};
   if(/เสียง|ปิดเสียง/.test(t)) return {text:'ปุ่มลำโพงมุมขวาบนใช้เปิดปิดเสียงทั้งหมดค่ะ'};
   if(/เวลา|เช้า|ค่ำ|กลางวัน|บรรยากาศ/.test(t)) return {text:'กดปุ่มรูปพระอาทิตย์ด้านบน เพื่อเปลี่ยนบรรยากาศเป็นเช้า กลางวัน เย็น หรือค่ำได้ค่ะ'};
   if(/ใคร.*(ทำ|สร้าง)|ผู้จัดทำ|ผู้พัฒนา/.test(t)) return {text:'หอข้อมูลนี้จัดทำโดย ภก.จีรภัทร พลายงาม กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สสจ.สมุทรปราการค่ะ'};
@@ -2173,7 +2239,7 @@ function frame(){
   });
   updateDownlights(dt);
   windCurtains(t);
-  updateBuddy(dt,t);
+  updateBuddy(dt,t); updateLift(dt,t);
   if(!reduceMotion){ const gust=.6+.4*Math.sin(t*.37)*Math.sin(t*.23+1.3);
     for(const p of plants) p.layers.forEach((L,k)=>{ L.rotation.z=Math.sin(t*(1.6+k*.4)+p.ph+k)*.04*gust; L.rotation.x=Math.cos(t*(1.3+k*.3)+p.ph)*.03*gust; }); }
   if(chand){
@@ -2231,7 +2297,8 @@ function enterRoom(){
   camPos.set(0,EYE,2.2); camPosT.set(0,EYE,0);
   try{ speechSynthesis.speak(new SpeechSynthesisUtterance(' ')); }catch(e){}   // ปลดล็อกเสียงพูดบนมือถือ
   let hide=false; try{ hide=localStorage.getItem('room-guide-hide')==='1'; }catch(e){}
-  if(HOP){ setTimeout(()=>{ dock(); say(FLOOR===2?'ถึงชั้นสอง | ห้องกระจกชมวิว แล้วค่ะ':'กลับมาชั้นหนึ่ง | หอข้อมูลงานแพทย์แผนไทย แล้วค่ะ').catch(()=>{}); },1600); return; }
+  if(HOP){ if(HOP_LIFT&&lift){ lift.open=1; lift.openT=1; setTimeout(()=>{ if(lift) lift.openT=0; },1800); }
+    setTimeout(()=>{ dock(); say(FLOOR===2?'ถึงชั้นสอง | ห้องกระจกชมวิว แล้วค่ะ':'กลับมาชั้นหนึ่ง | หอข้อมูลงานแพทย์แผนไทย แล้วค่ะ').catch(()=>{}); },1600); return; }
   if(!hide) setTimeout(()=>startGuide(),1900); else setTimeout(dock,1600);   // ออกมาต้อนรับทุกครั้ง เว้นแต่ติ๊ก "ไม่ต้องแสดงอีก"
 }
 enterBtn.onclick=e=>{ e.stopPropagation(); enterRoom(); };
