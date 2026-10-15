@@ -512,21 +512,30 @@ const teakDarkTex = tex(512,512,(g,w,h)=>woodGrain(g,w,h,{base:'#6b3e1c',dark:'#
 
 /* ---------- พื้นไม้ ---------- */
 const floorTex = tex(1024,1024,(g,w,h)=>{
-  // ลายก้างปลา (herringbone)
-  g.fillStyle='#9a6431'; g.fillRect(0,0,w,h);
-  const r=rng(21), L=200, T=50, tones=['#b47a42','#a86f39','#c08a50','#9c6534','#b9834b'];
-  const plank=(x,y,ang)=>{ g.save(); g.translate(x,y); g.rotate(ang);
-    g.save(); g.beginPath(); g.rect(0,0,L,T); g.clip(); woodGrain(g,L,T,{base:tones[Math.floor(r()*tones.length)],dark:'#6e4320',light:'#d6a368',seed:Math.floor(r()*1e6)}); g.restore();
-    g.strokeStyle='rgba(60,32,12,.55)'; g.lineWidth=2; g.strokeRect(0,0,L,T); g.restore(); };
-  const dx=T*Math.SQRT2, dy=T*Math.SQRT2;
-  for(let col=-2;col<w/(L*.7071)+2;col++){
-    const x0=col*L*.7071*2;
-    for(let k=-6;k<h/dy+6;k++){
-      plank(x0, k*dy, Math.PI/4);
-      plank(x0+L*.7071+dx*.0, k*dy+L*.7071-dy*.0, -Math.PI/4);
-    }
+  // หินอ่อนสีงาช้างอ่อน 2x2 แผ่น + ลายเส้นธรรมชาติ + ฝังลายดาวที่มุม
+  const r=rng(77), T=w/2;
+  for(let i=0;i<2;i++) for(let j=0;j<2;j++){
+    const x=i*T, y=j*T;
+    const base=g.createLinearGradient(x,y,x+T,y+T); base.addColorStop(0,'#f6efe2'); base.addColorStop(.5,'#efe6d4'); base.addColorStop(1,'#f4ecdd');
+    g.fillStyle=base; g.fillRect(x,y,T,T);
+    // เมฆหมอกในเนื้อหิน
+    for(let k=0;k<26;k++){ const cx=x+r()*T, cy=y+r()*T, rr=40+r()*120; const cg=g.createRadialGradient(cx,cy,0,cx,cy,rr);
+      cg.addColorStop(0,`rgba(${200+r()*30|0},${185+r()*30|0},${160+r()*30|0},.12)`); cg.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=cg; g.fillRect(x,y,T,T); }
+    // เส้นลายหินอ่อน
+    g.save(); g.beginPath(); g.rect(x,y,T,T); g.clip();
+    for(let v=0;v<7;v++){ let px=x+r()*T, py=y-20, ang=.6+r()*.8; g.beginPath(); g.moveTo(px,py);
+      for(let s2=0;s2<40;s2++){ ang+= (r()-.5)*.5; px+=Math.cos(ang)*18; py+=Math.sin(ang)*18; g.lineTo(px,py); }
+      g.strokeStyle=`rgba(${150+r()*40|0},${135+r()*30|0},${115+r()*30|0},${.18+r()*.25})`; g.lineWidth=.6+r()*2.2; g.stroke(); }
+    g.restore();
+    // ร่องยาแนวสีทองอ่อน
+    g.strokeStyle='rgba(201,162,79,.55)'; g.lineWidth=3; g.strokeRect(x+1.5,y+1.5,T-3,T-3);
   }
-  const v=g.createRadialGradient(w/2,h/2,w*.1,w/2,h/2,w*.75); v.addColorStop(0,'rgba(255,240,210,.08)'); v.addColorStop(1,'rgba(60,30,10,.12)'); g.fillStyle=v; g.fillRect(0,0,w,h);
+  // ลายฝังมุมแผ่น (ดาวสีเซลาดอน/กลีบบัว)
+  for(const [cx,cy] of [[0,0],[T,0],[w,0],[0,T],[T,T],[w,T],[0,h],[T,h],[w,h]]) daoPedan(g,cx,cy,58,'#b9c9b0','#e2c9a8','#c9a24f');
+  // เส้นคาดทองแนวทแยงจาง ๆ ระหว่างแผ่น
+  g.strokeStyle='rgba(201,162,79,.25)'; g.lineWidth=2;
+  for(const [cx,cy] of [[T/2,T/2],[T*1.5,T/2],[T/2,T*1.5],[T*1.5,T*1.5]]){ g.beginPath(); g.moveTo(cx-60,cy); g.lineTo(cx,cy-60); g.lineTo(cx+60,cy); g.lineTo(cx,cy+60); g.closePath(); g.stroke();
+    prajamyam(g,cx,cy,16,'rgba(201,162,79,.55)','#f4ecdd'); }
 },{rep:[3,3]});
 
 /* ---------- ลายไทย (วาดด้วยโค้ด) ---------- */
@@ -703,7 +712,7 @@ let N = 9, STEP = Math.PI*2/9, CAB_R = 4.25;
 
 function buildRoom(){
   // พื้น
-  const floor = new THREE.Mesh(new THREE.CircleGeometry(ROOM_R+.4,64), new THREE.MeshStandardMaterial({map:floorTex, roughness:.62}));
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(ROOM_R+.4,64), new THREE.MeshPhysicalMaterial({map:floorTex, roughness:.22, clearcoat:.6, clearcoatRoughness:.18}));
   floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; scene.add(floor);
   const rug = new THREE.Mesh(new THREE.CircleGeometry(1.75,64), new THREE.MeshStandardMaterial({map:rugTex, roughness:.95}));
   rug.rotation.x=-Math.PI/2; rug.position.y=.006; rug.receiveShadow=true; scene.add(rug);
@@ -746,6 +755,7 @@ function buildRoom(){
 
   // แชนเดอเลียร์คริสตัล (แบบโคมฝรั่งในราชสำนักยุค ร.๕)
   buildChandelier();
+  placePlants();
 
   // แสงรวม
   hemi=new THREE.HemisphereLight('#ffe9c4','#3a1f0e',1.05); scene.add(hemi);
@@ -763,35 +773,114 @@ function buildRoom(){
   scene.add(dust);
 }
 let curtainMat=null, curtainTex=null;
+const curtains=[];   // {geo, base:Float32Array, H, sx}
 function hangCurtains(dir, apo, yaw, winW, winH){
   if(!curtainMat){
     curtainTex = tex(256,512,(g,w,h)=>{
-      for(let x=0;x<w;x++){ const f=.5+.5*Math.sin(x/w*Math.PI*8); g.fillStyle=`rgb(${Math.round(196+f*36)},${Math.round(146+f*36)},${Math.round(140+f*34)})`; g.fillRect(x,0,1,h); }
-      g.fillStyle='rgba(217,184,106,.9)'; g.fillRect(0,h-26,w,8); g.fillRect(0,h-12,w,3);   // ขอบชายทอง
+      for(let x=0;x<w;x++){ const f=.5+.5*Math.sin(x/w*Math.PI*10); const v=Math.round(236+f*19); g.fillStyle=`rgb(${v},${v},${Math.round(v-4)})`; g.fillRect(x,0,1,h); }
+      g.globalAlpha=.08; g.fillStyle='#c9a24f'; for(let y=24;y<h;y+=40) for(let x=16;x<w;x+=32) g.fillRect(x,y,2,2);   // ลายทอผ้าจาง
+      g.globalAlpha=1; g.fillStyle='rgba(217,184,106,.8)'; g.fillRect(0,h-18,w,5);
     });
-    curtainMat=new THREE.MeshStandardMaterial({map:curtainTex,roughness:.85,side:THREE.DoubleSide});
+    curtainMat=new THREE.MeshStandardMaterial({map:curtainTex,roughness:.9,side:THREE.DoubleSide,transparent:true,opacity:.82,depthWrite:false});
   }
   const G=new THREE.Group(); G.position.copy(dir.clone().multiplyScalar(apo-.09)); G.rotation.y=yaw; scene.add(G);
-  const top=Math.min(1.0+winH+.06, WALL_H-.2), H=top-.18, PW=.42;
+  const top=Math.min(1.0+winH+.06, WALL_H-.2), H=top-.06, PW=.46;
   for(const sx of [-1,1]){
-    const geo=new THREE.PlaneGeometry(PW,H,24,16), p=geo.attributes.position;
+    const geo=new THREE.PlaneGeometry(PW,H,22,22), p=geo.attributes.position;
     for(let k=0;k<p.count;k++){
-      const x=p.getX(k), y=p.getY(k), t=(y+H/2)/H;                       // t: 0 ล่าง → 1 บน
-      const pinch = 1 - .55*Math.exp(-Math.pow((t-.42)/.12,2));          // รวบผูกช่วงกลาง
-      p.setX(k, x*pinch + sx*(1-pinch)*PW*.25);
-      p.setZ(k, Math.sin((x/PW+.5)*Math.PI*6)*.022*(.6+.4*pinch) + (1-pinch)*.05);
+      const x=p.getX(k), y=p.getY(k), t=(y+H/2)/H;
+      const pinch = 1 - .45*Math.exp(-Math.pow((t-.4)/.1,2));      // รวบผูกหลวม ๆ
+      p.setX(k, x*pinch + sx*(1-pinch)*PW*.22);
+      p.setZ(k, Math.sin((x/PW+.5)*Math.PI*7)*.03*(.6+.4*pinch) + (1-pinch)*.05);
     }
     geo.computeVertexNormals();
-    const c=new THREE.Mesh(geo,curtainMat); c.position.set(sx*(winW/2+.06),.18+H/2,0); c.castShadow=true; G.add(c);
-    const tie=new THREE.Mesh(new THREE.TorusGeometry(.05,.012,8,20),M.gold); tie.position.set(sx*(winW/2+.06+PW*.11),.18+H*.42,.05); G.add(tie);
+    const c=new THREE.Mesh(geo,curtainMat); c.position.set(sx*(winW/2+.04),.06+H/2,0); G.add(c);
+    curtains.push({geo, base:Float32Array.from(p.array), H, PW, sx});
+    const tie=new THREE.Mesh(new THREE.TorusGeometry(.045,.01,8,20),M.gold); tie.position.set(sx*(winW/2+.04+PW*.1),.06+H*.4,.05); G.add(tie);
   }
-  // คิ้วม่าน (pelmet) ทอง
-  const pel=new THREE.Mesh(new THREE.BoxGeometry(winW+PW*2+.2,.16,.1),new THREE.MeshStandardMaterial({color:'#f3ead6',roughness:.5})); pel.position.set(0,top,.02); G.add(pel);
-  const pg=new THREE.Mesh(new THREE.BoxGeometry(winW+PW*2+.22,.025,.11),M.gold); pg.position.set(0,top-.08,.025); G.add(pg);
-  const pg2=pg.clone(); pg2.position.y=top+.08; G.add(pg2);
+  const rod=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,winW+PW*2+.3,12),M.gold); rod.rotation.z=Math.PI/2; rod.position.set(0,top+.02,.04); G.add(rod);
+  for(const sx of [-1,1]){ const f=new THREE.Mesh(new THREE.SphereGeometry(.04,14,10),M.gold); f.position.set(sx*(winW/2+PW+.17),top+.02,.04); G.add(f); }
 }
+// ม่านพลิ้วตามลม (ใต้จุดผูกพลิ้วมากกว่า)
+function windCurtains(t){
+  if(reduceMotion) return;
+  const gust = .6+.4*Math.sin(t*.37)*Math.sin(t*.23+1.3);
+  for(const c of curtains){
+    const p=c.geo.attributes.position, b=c.base;
+    for(let k=0;k<p.count;k++){
+      const x=b[k*3], y=b[k*3+1], tt=(y+c.H/2)/c.H;
+      const free = tt<.4 ? (1-tt/.4)*.9+.1 : Math.max(0,(1-tt))*.6;   // ล่างพลิ้วมาก บนติดราว
+      const wave = Math.sin(t*1.7 + y*2.4 + x*5) * .045 + Math.sin(t*2.9 + y*4.1) * .018;
+      p.setZ(k, b[k*3+2] + wave*free*gust + .05*free*gust);
+      p.setX(k, b[k*3]   + Math.sin(t*1.3 + y*1.7)*.025*free*gust*c.sx);
+    }
+    p.needsUpdate=true; c.geo.computeVertexNormals();
+  }
+}
+
 let dust, bulb, sun, hemi, shaftMat, lampShade, winMatRef;
 const photoMeshes=[];
+const plants=[];
+function buildPlant(kind, pos, yaw){
+  const G=new THREE.Group(); G.position.copy(pos); G.rotation.y=yaw; G.scale.setScalar(kind==='orchid'?1.5:1.65); scene.add(G);
+  // กระถางเซรามิกเคลือบ (ขาว/เซลาดอน) ขอบทอง
+  const potCol = kind==='orchid' ? '#f6f1e6' : kind==='fern' ? '#b9c9b0' : '#f3ede0';
+  const prof=[[.0,0],[.13,0],[.15,.02],[.13,.05],[.17,.16],[.2,.3],[.19,.4],[.16,.44],[.18,.47],[.17,.5]].map(([r,y])=>new THREE.Vector2(r,y));
+  const pot=new THREE.Mesh(new THREE.LatheGeometry(prof,32),new THREE.MeshPhysicalMaterial({color:potCol,roughness:.2,clearcoat:.8}));
+  pot.castShadow=true; pot.receiveShadow=true; G.add(pot);
+  for(const y of [.03,.47]){ const b=new THREE.Mesh(new THREE.TorusGeometry(y<.1?.14:.175,.009,8,40),M.gold); b.rotation.x=Math.PI/2; b.position.y=y; G.add(b); }
+  const band=new THREE.Mesh(new THREE.CylinderGeometry(.201,.196,.05,40,1,true),new THREE.MeshStandardMaterial({map:friezeTex,roughness:.4,metalness:.2})); band.position.y=.3; G.add(band);
+  const soil=new THREE.Mesh(new THREE.CircleGeometry(.16,24),new THREE.MeshStandardMaterial({color:'#3a2a1c',roughness:1})); soil.rotation.x=-Math.PI/2; soil.position.y=.46; G.add(soil);
+  const leafM=new THREE.MeshStandardMaterial({color:'#2f6b3a',roughness:.45,side:THREE.DoubleSide});
+  const leafM2=new THREE.MeshStandardMaterial({color:'#3f8a4a',roughness:.45,side:THREE.DoubleSide});
+  const whiteM=new THREE.MeshStandardMaterial({color:'#fbfaf6',roughness:.5,side:THREE.DoubleSide,emissive:'#ffffff',emissiveIntensity:.05});
+  const stemM=new THREE.MeshStandardMaterial({color:'#4f7d3a',roughness:.6});
+  const sway=new THREE.Group(); sway.position.y=.46; G.add(sway);
+  // ใบเรียวยาวโค้ง (สร้างจากระนาบดัดโค้ง)
+  const leaf=(len,wid,bend)=>{ const g=new THREE.PlaneGeometry(wid,len,4,10); g.translate(0,len/2,0); const p=g.attributes.position;
+    for(let k=0;k<p.count;k++){ const x=p.getX(k), y=p.getY(k), t=y/len; p.setX(k, x*Math.sin(Math.PI*Math.min(1,t*1.05+.05))); p.setZ(k, bend*t*t*len + Math.abs(x)*.25); }
+    g.computeVertexNormals(); return g; };
+  const r=rng(Math.round(pos.x*100+pos.z*37));
+  if(kind==='lily' || kind==='orchid'){
+    const n = kind==='lily'?16:7;
+    for(let k=0;k<n;k++){ const m=new THREE.Mesh(leaf(kind==='lily'?.4+r()*.18:.22,kind==='lily'?.14:.12,kind==='lily'?.45:.9), k%2?leafM:leafM2);
+      m.rotation.set(-.15-r()*.5,k/n*Math.PI*2+r()*.3,0); m.rotation.order='YXZ'; m.castShadow=true; sway.add(m); }
+  }
+  if(kind==='lily'){   // เดหลี: กาบดอกขาว + เกสรเหลือง
+    for(let k=0;k<5;k++){ const h=.5+r()*.18, a=k/5*Math.PI*2+r(), lean=.12+r()*.08;
+      const stem=new THREE.Mesh(new THREE.CylinderGeometry(.006,.008,h,6),stemM); stem.position.set(Math.cos(a)*lean*.5,h/2,Math.sin(a)*lean*.5); stem.rotation.set(Math.sin(a)*lean,0,-Math.cos(a)*lean); sway.add(stem);
+      const top=new THREE.Vector3(Math.cos(a)*lean*h*.9,h,Math.sin(a)*lean*h*.9);
+      const sp=new THREE.Mesh(leaf(.13,.075,-.6),whiteM); sp.position.copy(top).add(new THREE.Vector3(0,-.03,0)); sp.rotation.set(-.25,a+Math.PI,0); sp.rotation.order='YXZ'; sway.add(sp);
+      const sd=new THREE.Mesh(new THREE.CylinderGeometry(.008,.012,.06,8),new THREE.MeshStandardMaterial({color:'#f2e2a0',roughness:.6})); sd.position.copy(top).add(new THREE.Vector3(0,.0,0)); sway.add(sd); }
+  } else if(kind==='orchid'){   // กล้วยไม้ขาว: ก้านโค้ง + ดอกกลม
+    const flowerG=new THREE.CircleGeometry(.03,16);
+    for(let s2=0;s2<2;s2++){ const a=s2*Math.PI+r(); const pts=[]; for(let i=0;i<=12;i++){ const t=i/12; pts.push(new THREE.Vector3(Math.cos(a)*t*.22, .05+t*.55-Math.max(0,t-.6)*t*.35, Math.sin(a)*t*.22)); }
+      const curve=new THREE.CatmullRomCurve3(pts); sway.add(new THREE.Mesh(new THREE.TubeGeometry(curve,20,.004,5,false),stemM));
+      const stake=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.5,5),new THREE.MeshStandardMaterial({color:'#8a6a44'})); stake.position.set(Math.cos(a)*.04,.25,Math.sin(a)*.04); sway.add(stake);
+      for(let i=5;i<=12;i++){ const p=curve.getPoint(i/12); const fl=new THREE.Group(); fl.position.copy(p); fl.lookAt(p.clone().add(new THREE.Vector3(Math.cos(a),0.2,Math.sin(a))));
+        for(let q=0;q<5;q++){ const pe=new THREE.Mesh(flowerG,whiteM); pe.position.set(Math.cos(q/5*Math.PI*2)*.022,Math.sin(q/5*Math.PI*2)*.022,0); pe.scale.setScalar(q===4?.8:1); fl.add(pe); }
+        const lip=new THREE.Mesh(new THREE.SphereGeometry(.009,8,6),new THREE.MeshStandardMaterial({color:'#e8c45a'})); lip.position.z=.005; fl.add(lip);
+        fl.scale.setScalar(.8+((i%3)*.12)); sway.add(fl); } }
+  } else { // fern: ใบเฟิร์นยาวห้อยโค้ง
+    for(let k=0;k<22;k++){ const fr=new THREE.Group(); const len=.45+r()*.25;
+      const rach=leaf(len,.012,1.1); fr.add(new THREE.Mesh(rach,leafM));
+      for(let q=1;q<14;q++){ const t=q/14; const pin=new THREE.Mesh(leaf(.085*(1-t*.6),.03,.2), q%2?leafM:leafM2);
+        pin.position.set(0,t*len,1.1*t*t*len); pin.rotation.set(1.1*t,0,(q%2?1:-1)*1.2); fr.add(pin);
+        const pin2=pin.clone(); pin2.rotation.z*=-1; fr.add(pin2); }
+      fr.rotation.set(-.2-r()*.6,k/22*Math.PI*2,0); fr.rotation.order='YXZ'; sway.add(fr); }
+  }
+  plants.push({sway,ph:r()*9});
+}
+function placePlants(){
+  // วางกระถางชิดผนังระหว่างตู้ สลับชนิด
+  const kinds=['lily','orchid','fern','lily','fern','orchid','lily','fern','orchid'];
+  for(let i=0;i<N;i++){
+    const yaw=-(i+.5)*STEP, R0=ROOM_R*Math.cos(Math.PI/(N*2))-.42;
+    const pos=new THREE.Vector3(-Math.sin(yaw)*R0,0,-Math.cos(yaw)*R0);
+    buildPlant(kinds[i%kinds.length], pos, yaw);
+  }
+}
+
 
 /* กรอบรูปทองแบบตะวันตกยุค ร.๕ */
 function hangPhoto(p, dir, apo, yaw, faceW){
@@ -924,12 +1013,23 @@ function drawerTex(sty, w0, label){
   });
 }
 const pedTex = tex(768,240,(g,w,h)=>{
-  woodGrain(g,w,h,{seed:61,base:'#4a2712'});
-  g.save(); g.translate(w/2,h); g.strokeStyle='#d4a640'; g.lineWidth=3.2;
-  for(let i=0;i<=18;i++){ const a=Math.PI+i/18*Math.PI; g.beginPath(); g.moveTo(Math.cos(a)*70,Math.sin(a)*70); g.lineTo(Math.cos(a)*330,Math.sin(a)*330); g.stroke(); }
-  g.lineWidth=5; for(const r of [70,200]){ g.beginPath(); g.arc(0,0,r,Math.PI,0); g.stroke(); }
-  g.fillStyle='#120703'; for(let i=1;i<18;i++){ const a=Math.PI+(i)/18*Math.PI; g.beginPath(); g.arc(Math.cos(a)*240,Math.sin(a)*240,6,0,7); g.fill(); }
+  woodGrain(g,w,h,{seed:61,base:'#5a3017'});
+  // ลายกระจังเรียงตามฐาน + กรวยเชิงชี้ขึ้น
+  kruayChoeng(g,0,h,w,h*.42,14,'#d9b86a',-1,'#5a3017');
+  // ลายกนกเปลวแผ่จากกลาง (กลีบไทยปลายสะบัด)
+  g.save(); g.translate(w/2,h-6); g.fillStyle='#d9b86a';
+  for(let i=0;i<=10;i++){ const a=-Math.PI/2+(i-5)*.26; g.save(); g.rotate(a+Math.PI/2); g.translate(0,-70); thaiPetal(g,110-Math.abs(i-5)*9,22); g.fill(); g.restore(); }
   g.restore();
+  // ดอกประจำยามใหญ่กลางหน้าจั่ว
+  prajamyam(g,w/2,h-46,42,'#e8c97a','#7a1f1a');
+  for(const x of [w*.2,w*.8]) prajamyam(g,x,h-40,18,'#d9b86a','#5a3017');
+});
+/* แถบลายไทยหน้าบัวหัวตู้ (ใช้กับหัวตู้แบบระเบียง/บัวซ้อน) */
+const friezeTex = tex(1024,128,(g,w,h)=>{
+  g.fillStyle='#5a3017'; g.fillRect(0,0,w,h);
+  g.fillStyle='#d9b86a'; g.fillRect(0,0,w,6); g.fillRect(0,h-6,w,6);
+  kruayChoeng(g,0,6,w,46,16,'#d9b86a',1,'#5a3017');
+  for(let x=32;x<w;x+=64) prajamyam(g,x,h-34,15,'#e8c97a','#7a1f1a');
 });
 function emojiTex(emoji){
   return tex(256,256,(g,w,h)=>{
@@ -1041,15 +1141,16 @@ function buildCabinet(cat,i){
       add(new THREE.Mesh(new THREE.CylinderGeometry(.014,.02,.18,8),M.gold),x,CT+.1,FZ-.01,false); }
     for(const sx of [-1,1]) add(new THREE.Mesh(new THREE.BoxGeometry(.07,.24,.07),trimM),sx*(W/2+.02),CT+.12,FZ-.01);
     for(const sx of [-1,1]) add(new THREE.Mesh(new THREE.SphereGeometry(.04,12,10),M.gold),sx*(W/2+.02),CT+.27,FZ-.01,false);
+    add(new THREE.Mesh(new THREE.PlaneGeometry(W+.1,.11),new THREE.MeshStandardMaterial({map:friezeTex,roughness:.5,metalness:.15})),0,CT-.035,FZ+.064,false);
     medalY = CT+.17;
   } else { // stepped — บัวซ้อนชั้นแบบเรือนขนมปังขิง
     add(new THREE.Mesh(new THREE.BoxGeometry(W+.04,.08,D+.04),trimM),0,CT+.04,0);
     add(new THREE.Mesh(new THREE.BoxGeometry(W-.24,.08,D-.08),bodyM),0,CT+.12,0);
     add(new THREE.Mesh(new THREE.BoxGeometry(W-.24,.018,.02),M.gold),0,CT+.165,FZ-.02,false);
     add(new THREE.Mesh(new THREE.BoxGeometry(W-.6,.08,D-.2),trimM),0,CT+.2,0);
-    // ระบายฉลุ (scallop) ใต้บัว
-    for(let k=0;k<9;k++){ const x=-W/2+.12+k*(W-.24)/8;
-      add(new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.02,16,1,false,0,Math.PI),M.gold),x,CT-.005,FZ+.06,false).rotation.set(Math.PI/2,0,Math.PI/2); }
+    // แถบลายไทยหน้าบัว
+    add(new THREE.Mesh(new THREE.PlaneGeometry(W-.24,.075),new THREE.MeshStandardMaterial({map:friezeTex,roughness:.5,metalness:.15})),0,CT+.12,FZ-.039,false);
+    add(new THREE.Mesh(new THREE.PlaneGeometry(W+.04,.07),new THREE.MeshStandardMaterial({map:friezeTex,roughness:.5,metalness:.15})),0,CT+.04,FZ+.021,false);
     medalY = CT+.2;
   }
   const glowMats=[];
@@ -1472,6 +1573,8 @@ function frame(){
     });
   });
   updateDownlights(dt);
+  windCurtains(t);
+  if(!reduceMotion) for(const p of plants){ p.sway.rotation.z=Math.sin(t*.9+p.ph)*.025; p.sway.rotation.x=Math.cos(t*.7+p.ph)*.018; }
   if(chand){
     if(!reduceMotion){ chand.rotation.z=Math.sin(t*.55)*.012; chand.rotation.x=Math.cos(t*.43)*.009; }
     const fl=1+Math.sin(t*13.1)*.025+Math.sin(t*7.3)*.03;
