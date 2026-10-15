@@ -4,6 +4,29 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>หอลิ้นชัก TTM</title>
+<!-- Google Analytics 4 (รหัสเดียวกับพอร์ทัล) -->
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+window.ttmAnalyticsEnabled = location.hostname === 'jeerapat2010-cpu.github.io'
+  && location.pathname.startsWith('/my-html-app/');
+if(window.ttmAnalyticsEnabled){
+  gtag('js', new Date());
+  gtag('config', 'G-DT9E54XRZZ', {
+    page_location: location.origin + location.pathname,
+    allow_google_signals: false,
+    allow_ad_personalization_signals: false
+  });
+  var ttmTag = document.createElement('script');
+  ttmTag.async = true;
+  ttmTag.src = 'https://www.googletagmanager.com/gtag/js?id=G-DT9E54XRZZ';
+  document.head.appendChild(ttmTag);
+}
+function ttmEvent(name, params){
+  if(!window.ttmAnalyticsEnabled) return;
+  try{ gtag('event', name, Object.assign({send_to:'G-DT9E54XRZZ'}, params||{})); }catch(e){}
+}
+</script>
 <meta name="description" content="ห้องตู้ลิ้นชักโบราณ รวมระบบงานการแพทย์แผนไทย สสจ.สมุทรปราการ">
 <meta name="theme-color" content="#1a0d06">
 <link rel="icon" href="favicon-64.png">
@@ -249,6 +272,9 @@ async function loadCats(){
         href: a.getAttribute('href'),
         title: (a.querySelector('.card-title')?.textContent || a.dataset.name || '').trim(),
         icon: a.querySelector('.card-ico i')?.className || 'fas fa-file-lines',
+        gaName: (a.dataset.name || a.textContent.trim()).slice(0,100),
+        gaCat: a.dataset.cat || sec.id,
+        private: !!a.dataset.private,
         key: ((a.dataset.name||'')+' '+(a.querySelector('.card-title')?.textContent||'')).toLowerCase()
       }))
     };
@@ -683,6 +709,7 @@ function openDrawer(i=curIdx()){
   if(wideScreen) lookT.add(right.multiplyScalar(.62));   // เว้นที่ด้านขวาให้สมุดรายการ
   setTimeout(()=>{ cab.main.target=1; slideSound(true); },380);
   setTimeout(()=>showLedger(cats[i]),760);
+  ttmEvent('cabinet_open',{app_category:cats[i].id,cabinet_name:cats[i].short});
 }
 function closeDrawer(){
   if(mode!=='focus') return;
@@ -700,6 +727,9 @@ function renderList(items,showCat){
   items.forEach((a,n)=>{
     const li=document.createElement('li'), el=document.createElement('a');
     el.href=a.href; if(/^https?:/i.test(a.href)) el.rel='noopener';
+    const track=()=>{ if(a.private) return; let path=''; try{ path=new URL(a.href,location.href).pathname.slice(0,100); }catch(e){}
+      ttmEvent('app_click',{app_name:a.gaName,app_path:path,app_category:a.gaCat,click_source:showCat?'room_search':'room',transport_type:'beacon'}); };
+    el.addEventListener('click',track); el.addEventListener('auxclick',e=>{ if(e.button===1) track(); });
     el.innerHTML=`<span class="ico"><i class=""></i></span><span class="t"></span><span class="no">${thaiNum(n+1)}</span>`;
     el.querySelector('i').className=a.icon;
     const t=el.querySelector('.t'); t.textContent=a.title;
@@ -722,8 +752,10 @@ document.getElementById('lclose').onclick=()=>{ closeDrawer(); hideLedger(); };
 
 // ค้นทุกลิ้นชัก
 const gs=document.getElementById('gsearch');
+let gsT=0;
 gs.addEventListener('input',()=>{
   const q=gs.value.trim().toLowerCase();
+  clearTimeout(gsT); if(q.length>1) gsT=setTimeout(()=>ttmEvent('search',{search_term:q.slice(0,100),search_source:'room'}),1200);
   if(!q){ if(mode!=='focus') hideLedger(); return; }
   const all=cats.flatMap(c=>c.apps.map(a=>({...a,cat:c.emoji+' '+c.short})));
   document.getElementById('lemo').textContent='🔎';
@@ -847,6 +879,7 @@ const gate=document.getElementById('gate'), enterBtn=document.getElementById('en
 function enterRoom(){
   if(enterBtn.disabled || gate.classList.contains('open')) return;
   gate.classList.add('open'); slideSound(true);
+  ttmEvent('room_enter',{cabinets:N});
   setTimeout(()=>{ gate.classList.add('gone'); ready=true; }, reduceMotion?50:1500);
   // เดินเข้าห้องเล็กน้อย
   camPos.set(0,EYE,2.2); camPosT.set(0,EYE,0);
