@@ -401,7 +401,7 @@ const WALL_PHOTOS = [
 ];
 
 /* ================= เวอร์ชัน ================= */
-const ROOM_VERSION='2.4', ROOM_BUILD='2026-10-15';
+const ROOM_VERSION='2.5', ROOM_BUILD='2026-10-15';
 function paintVersion(iso){
   const d=new Date(iso||ROOM_BUILD); const t=isNaN(d)?ROOM_BUILD:new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'short',year:'2-digit',timeZone:'Asia/Bangkok'}).format(d);
   document.querySelectorAll('.ver').forEach(el=>el.textContent='เวอร์ชัน '+ROOM_VERSION+' (อัปเดต '+t+')');
@@ -1556,7 +1556,7 @@ async function recentUpdates(){
   const byFile=new Map(apps.map(a=>[decodeURIComponent(a.href.split('#')[0].split('?')[0]),a]));
   const dated=new Map();
   // 1) dates.json (สร้างโดย GitHub Action)
-  try{ const r=await fetch('dates.json?_='+Math.floor(Date.now()/3e5),{cache:'no-store'}); if(r.ok){ const j=await r.json(); for(const [f,x] of Object.entries(j.files||{})) if(byFile.has(f)&&x.d) dated.set(f,x.d); } }catch(e){}
+  try{ const r=await fetchT('dates.json?_='+Math.floor(Date.now()/3e5),{cache:'no-store'},5000); if(r.ok){ const j=await r.json(); for(const [f,x] of Object.entries(j.files||{})) if(byFile.has(f)&&x.d) dated.set(f,x.d); } }catch(e){}
   // 2) วันที่ที่หน้าพอร์ทัลเคยดึงไว้ในเครื่องนี้
   if(dated.size<3){ try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); const m=k&&k.match(/^ghd:jeerapat2010-cpu\/my-html-app:(.+)$/); if(m&&byFile.has(m[1])){ const v=JSON.parse(localStorage.getItem(k)); if(v&&v.d) dated.set(m[1],v.d); } } }catch(e){} }
   // 3) ถาม GitHub ครั้งเดียว (เก็บไว้ 1 ชม.)
@@ -1564,9 +1564,9 @@ async function recentUpdates(){
     let cache=null; try{ cache=JSON.parse(localStorage.getItem('room-recent')); }catch(e){}
     if(cache && Date.now()-cache.ts<36e5){ cache.list.forEach(([f,d])=>byFile.has(f)&&!dated.has(f)&&dated.set(f,d)); }
     else try{
-      const r=await fetch('https://api.github.com/repos/jeerapat2010-cpu/my-html-app/commits?per_page=12',{headers:{Accept:'application/vnd.github+json'}});
+      const r=await fetchT('https://api.github.com/repos/jeerapat2010-cpu/my-html-app/commits?per_page=12',{headers:{Accept:'application/vnd.github+json'}},5000);
       if(r.ok){ const cs=await r.json(), list=[];
-        for(const c of cs.slice(0,6)){ const d=await fetch(c.url,{headers:{Accept:'application/vnd.github+json'}}); if(!d.ok) break; const j=await d.json();
+        for(const c of cs.slice(0,6)){ const d=await fetchT(c.url,{headers:{Accept:'application/vnd.github+json'}},4000); if(!d.ok) break; const j=await d.json();
           for(const f of (j.files||[])) if(byFile.has(f.filename)&&!list.some(x=>x[0]===f.filename)) list.push([f.filename,c.commit.committer.date]); }
         try{ localStorage.setItem('room-recent',JSON.stringify({ts:Date.now(),list})); }catch(e){}
         list.forEach(([f,d])=>!dated.has(f)&&dated.set(f,d)); }
@@ -1622,19 +1622,28 @@ function buildBuddy(){
   // ผ้าดิบห่อสมุนไพร: ลายทอ + รอยขมิ้น/ไพล + รอยย่นจากจุกผ้า
   const clothCanvas=document.createElement('canvas'); clothCanvas.width=512; clothCanvas.height=256;
   { const g=clothCanvas.getContext('2d'), w=512, h=256, r=rng(5);
-    g.fillStyle='#efe6cf'; g.fillRect(0,0,w,h);
-    g.globalAlpha=.12; g.strokeStyle='#b9a77f'; for(let x=0;x<w;x+=3){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,h); g.stroke(); } for(let y=0;y<h;y+=3){ g.beginPath(); g.moveTo(0,y); g.lineTo(w,y); g.stroke(); }
+    g.fillStyle='#fbf9f4'; g.fillRect(0,0,w,h);
+    g.globalAlpha=.07; g.strokeStyle='#a89f8c'; for(let x=0;x<w;x+=3){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,h); g.stroke(); } for(let y=0;y<h;y+=3){ g.beginPath(); g.moveTo(0,y); g.lineTo(w,y); g.stroke(); }
     g.globalAlpha=1;
-    for(let k=0;k<28;k++){ const x=r()*w, y=40+r()*(h-40), rr=12+r()*46, col=r()<.6?'216,178,74':'150,168,96'; const cg=g.createRadialGradient(x,y,0,x,y,rr); cg.addColorStop(0,`rgba(${col},.32)`); cg.addColorStop(1,`rgba(${col},0)`); g.fillStyle=cg; g.fillRect(x-rr,y-rr,rr*2,rr*2); }
-    g.strokeStyle='rgba(120,98,60,.35)'; g.lineWidth=2;
+    g.strokeStyle='rgba(140,132,118,.22)'; g.lineWidth=2;
     for(let k=0;k<26;k++){ const x=k/26*w+r()*8; g.beginPath(); g.moveTo(x,0); g.bezierCurveTo(x+r()*20-10,h*.15,x+r()*30-15,h*.3,x+r()*20-10,h*(.35+r()*.2)); g.stroke(); } }
   const clothTex=new THREE.CanvasTexture(clothCanvas); clothTex.colorSpace=THREE.SRGBColorSpace;
-  const clothM=new THREE.MeshStandardMaterial({map:clothTex,bumpMap:clothTex,bumpScale:.015,roughness:.92});
+  const clothM=new THREE.MeshStandardMaterial({map:clothTex,bumpMap:clothTex,bumpScale:.012,roughness:.86});
+  const flapM=new THREE.MeshStandardMaterial({map:clothTex,roughness:.86,side:THREE.DoubleSide});
   const ball=new THREE.Mesh(new THREE.SphereGeometry(.22,40,30),clothM); ball.scale.set(1,.92,1); ball.castShadow=true; body.add(ball);
   // คอผ้ารวบ + จุกผ้าบิด + เชือกกล้วยผูก
   const neck=new THREE.Mesh(new THREE.LatheGeometry([[.13,0],[.08,.06],[.042,.11],[.038,.15],[.06,.2],[.085,.24],[.07,.25]].map(([a,b])=>new THREE.Vector2(a,b)),24),clothM);
   neck.position.y=.15; neck.castShadow=true; body.add(neck);
-  for(let k=0;k<7;k++){ const fr=new THREE.Mesh(new THREE.ConeGeometry(.03,.09,6),clothM); const a=k/7*Math.PI*2; fr.position.set(Math.cos(a)*.05,.4,Math.sin(a)*.05); fr.rotation.set(Math.sin(a)*.6,0,-Math.cos(a)*.6); body.add(fr); }
+  // ชายผ้าเหนือปมเชือก: แผ่นผ้าแบ่งช่อง ขยับพลิ้วตามลมทุกเฟรม
+  const flaps=[];
+  const mkFlap=(w,len,mat,parent,pos,rx,ry,rz,amp)=>{ const geo=new THREE.PlaneGeometry(w,len,2,10); geo.translate(0,len/2,0);
+    const m=new THREE.Mesh(geo,mat); const piv=new THREE.Group(); piv.position.copy(pos); piv.rotation.set(rx,ry,rz,'YXZ'); piv.add(m); parent.add(piv);
+    flaps.push({geo,base:Float32Array.from(geo.attributes.position.array),len,ph:Math.random()*6,amp}); };
+  for(let k=0;k<8;k++){ const a=k/8*Math.PI*2+.2, ln=.11+(k%3)*.025;
+    mkFlap(.06,ln,flapM,body,new THREE.Vector3(Math.cos(a)*.03,.36,Math.sin(a)*.03),.55+(k%2)*.2,-a+Math.PI/2,0,1); }
+  // ปลายเชือกที่ผูก 2 เส้น ห้อยลงและไหวตามลม
+  const ropeM=new THREE.MeshStandardMaterial({color:'#7a5a32',roughness:.9,side:THREE.DoubleSide});
+  for(const sx of [-1,1]) mkFlap(.014,.13,ropeM,body,new THREE.Vector3(.055*sx,.29,.025),Math.PI-.25,0,sx*.35,.7);
   const rope=new THREE.Mesh(new THREE.TorusGeometry(.045,.012,8,24),new THREE.MeshStandardMaterial({color:'#7a5a32',roughness:.9})); rope.rotation.x=Math.PI/2; rope.position.y=.28; body.add(rope);
   const rope2=rope.clone(); rope2.position.y=.3; rope2.scale.setScalar(.92); body.add(rope2);
   // ดอกมะลิเหน็บที่เชือก
@@ -1667,7 +1676,7 @@ function buildBuddy(){
   const steam=[]; for(let k=0;k<7;k++){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:steamTex,transparent:true,opacity:0,depthWrite:false})); sp.userData.ph=k/7; B.add(sp); steam.push(sp); }
   // เงาใต้ตัว
   const shadow=new THREE.Mesh(new THREE.CircleGeometry(.2,24),new THREE.MeshBasicMaterial({color:'#000',transparent:true,opacity:.18,depthWrite:false})); shadow.rotation.x=-Math.PI/2; scene.add(shadow);
-  buddy={B,body,arms,eyes,mouthOpen,steam,shadow,pos:new THREE.Vector3(),target:new THREE.Vector3(),scale:0,scaleT:0,action:'idle',pointAt:null,talk:0,blink:0,follow:null,hopT:0};
+  buddy={B,body,flaps,arms,eyes,mouthOpen,steam,shadow,pos:new THREE.Vector3(),target:new THREE.Vector3(),scale:0,scaleT:0,action:'idle',pointAt:null,talk:0,blink:0,follow:null,hopT:0};
 }
 const _bv=new THREE.Vector3(), _bq=new THREE.Quaternion(), _bm=new THREE.Matrix4();
 function camBasis(){ const f=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)), r=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw)); return {f,r}; }
@@ -1718,6 +1727,12 @@ function updateBuddy(dt,t){
   b.mouthOpen.scale.y = b.talk ? .25+Math.abs(Math.sin(t*16))*.9 : .2;
   b.blink -= dt; const bl = b.blink<.12 && b.blink>0 ? .15 : 1; if(b.blink<0) b.blink=2+Math.random()*3;
   b.eyes.forEach(e=>e.scale.y=1.15*bl);
+  // ผ้าและเชือกพลิ้วตามลม (แรงขึ้นตอนลอยไปมา)
+  const gust=(moving?1.8:1)*(.75+.25*Math.sin(t*.7));
+  b.flaps.forEach(f=>{ const p=f.geo.attributes.position, a=p.array, o=f.base;
+    for(let i=0;i<a.length;i+=3){ const v=o[i+1]/f.len, v2=v*v, w=Math.sin(t*6.5+f.ph-v*3.2)*v2*.045*gust*f.amp;
+      a[i]=o[i]+Math.sin(t*4.1+f.ph+o[i]*30)*v2*.012*gust*f.amp; a[i+2]=o[i+2]+w+v2*.02*gust*f.amp; }
+    p.needsUpdate=true; f.geo.computeVertexNormals(); });
   // ไอน้ำ
   b.steam.forEach(sp=>{ const ph=(t*.35+sp.userData.ph)%1; sp.position.set(Math.sin(ph*9+sp.userData.ph*20)*.05, .4+ph*.45, Math.cos(ph*7)*.03); sp.scale.setScalar(.06+ph*.16); sp.material.opacity=Math.sin(ph*Math.PI)*.35; });
   b.shadow.position.set(b.pos.x,.006,b.pos.z); b.shadow.scale.setScalar(b.scale*(1-hop*2));
@@ -1898,7 +1913,7 @@ async function localAnswer(q){
   if(/ขอบคุณ|thank/.test(t)) return {text:'ยินดีค่ะ ขอให้ทำงานราบรื่นนะคะ 🌿'};
   if(/ดาว|โปรด/.test(t)) return {text:'เปิดลิ้นชักตู้ไหนก็ได้ แล้วกดรูปดาว ☆ หน้าชื่อระบบนะคะ ระบบนั้นจะไปอยู่ในปุ่ม ⭐ โปรด ด้านบน และใช้ร่วมกับหน้าพอร์ทัลบนเครื่องนี้ด้วยค่ะ'};
   if(/ข่าว/.test(t)) return {text:'กดปุ่ม 📰 ข่าว สีแดงด้านบน หรือดูหัวข้อข่าวในป้ายประกาศวิ่งได้เลยค่ะ อัปเดตทุกวันนะคะ'};
-  if(/ใหม่|อัปเดต|ล่าสุด/.test(t)){ const up=await recentUpdates().catch(()=>[]); if(up.length) return {text:'ระบบที่อัปเดตล่าสุดมีตามนี้ค่ะ',apps:up.slice(0,5).map(x=>({...x.app,catShort:(cats.find(c=>c.apps.includes(x.app))||{}).short||''}))}; return {text:'ดูระบบที่อัปเดตใหม่ได้ที่ป้ายประกาศวิ่งด้านบน ป้ายสีทองคำว่า "อัปเดต" ค่ะ'}; }
+  if(/ใหม่|อัปเดต|ล่าสุด/.test(t)){ const up=await withTimeout(recentUpdates().catch(()=>[]),6000,[]); if(up.length) return {text:'ระบบที่อัปเดตล่าสุดมีตามนี้ค่ะ',apps:up.slice(0,5).map(x=>({...x.app,catShort:(cats.find(c=>c.apps.includes(x.app))||{}).short||''}))}; return {text:'ดูระบบที่อัปเดตใหม่ได้ที่ป้ายประกาศวิ่งด้านบน ป้ายสีทองคำว่า "อัปเดต" ค่ะ'}; }
   if(/เสียง|ปิดเสียง/.test(t)) return {text:'ปุ่มลำโพงมุมขวาบนใช้เปิดปิดเสียงทั้งหมดค่ะ'};
   if(/เวลา|เช้า|ค่ำ|กลางวัน|บรรยากาศ/.test(t)) return {text:'กดปุ่มรูปพระอาทิตย์ด้านบน เพื่อเปลี่ยนบรรยากาศเป็นเช้า กลางวัน เย็น หรือค่ำได้ค่ะ'};
   if(/ใคร.*(ทำ|สร้าง)|ผู้จัดทำ|ผู้พัฒนา/.test(t)) return {text:'หอข้อมูลนี้จัดทำโดย ภก.จีรภัทร พลายงาม กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สสจ.สมุทรปราการค่ะ'};
@@ -1911,6 +1926,8 @@ async function localAnswer(q){
   return {text:'หนูยังหาไม่เจอค่ะ ลองพิมพ์ชื่อระบบสั้น ๆ เช่น "กัญชา" "สมุนไพร UC" หรือ "นิเทศ" ดูนะคะ หรือเปิดโหมด AI ให้หนูช่วยคิดได้ค่ะ'};
 }
 // ---------- โหมด AI (Claude) ----------
+const fetchT=(url,opt={},ms=15000)=>{ const ac=new AbortController(); const tm=setTimeout(()=>ac.abort(),ms); return fetch(url,{...opt,signal:ac.signal}).finally(()=>clearTimeout(tm)); };
+const withTimeout=(p,ms,fb)=>Promise.race([p,new Promise(r=>setTimeout(()=>r(fb),ms))]);
 async function aiAnswer(q,key){
   const catalog=cats.map(c=>`# ตู้${c.short} (${c.name})\n`+c.apps.map(a=>`- ${a.title} => ${a.href}`).join('\n')).join('\n');
   const sys=`คุณคือ "น้องลูกประคบ" มาสคอตเด็กผู้หญิงน่ารัก เป็นไกด์ของ "หอข้อมูลงานแพทย์แผนไทยและแพทย์ทางเลือก สมุทรปราการ" (จัดทำโดย ภก.จีรภัทร พลายงาม สสจ.สมุทรปราการ)
@@ -1920,9 +1937,9 @@ async function aiAnswer(q,key){
 รายการระบบ:\n${catalog}
 ตอบเป็น JSON เท่านั้น ห้ามมีข้อความอื่น: {"reply":"ข้อความตอบ","picks":["href ไม่เกิน 5 รายการที่เกี่ยวข้อง หรือว่าง"],"cabinet":"ชื่อย่อตู้ที่ควรพาไป หรือว่าง"}`;
   const msgs=[...chatHist.slice(-6),{role:'user',content:q}];
-  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+  const r=await fetchT('https://api.anthropic.com/v1/messages',{method:'POST',
     headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model:'claude-sonnet-5-5',max_tokens:600,system:sys,messages:msgs})});
+    body:JSON.stringify({model:'claude-sonnet-5-5',max_tokens:600,system:sys,messages:msgs})},20000);
   if(!r.ok) throw new Error('HTTP '+r.status);
   const d=await r.json();
   const txt=(d.content||[]).filter(x=>x.type==='text').map(x=>x.text).join('').replace(/```json|```/g,'').trim();
@@ -1933,20 +1950,35 @@ async function aiAnswer(q,key){
   if(goCat<0 && apps.length) goCat=apps[0].ci;
   return {text:j.reply||'ค่ะ',apps,goCat:goCat>=0?goCat:null};
 }
+let asking=false, lastQ='', lastQT=0;
 async function ask(q){
-  q=(q||'').trim(); if(!q) return; chatIn.value=''; document.getElementById('chatSug').innerHTML='';
+  q=(q||'').trim(); if(!q) return;
+  if(q===lastQ && Date.now()-lastQT<1500) return;          // กันส่งซ้ำ (ไมค์/กด Enter รัว)
+  lastQ=q; lastQT=Date.now();
+  if(asking) return; asking=true;
+  try{ speechSynthesis.cancel(); }catch(e){}
+  chatIn.value=''; document.getElementById('chatSug').innerHTML='';
   addMsg('me',q); const typing=addMsg('bot typing','น้องลูกประคบกำลังคิด…');
   if(buddy){ buddy.action='idle'; }
-  const key=AIKEY(); let ans, modeUsed='local';
-  if(key){ try{ ans=await aiAnswer(q,key); modeUsed='ai'; }catch(e){ ans=null; } }
-  if(!ans) ans=await localAnswer(q);
-  typing.remove();
-  addMsg('bot',ans.text,ans.apps,ans.goCat);
-  chatHist.push({role:'user',content:q},{role:'assistant',content:ans.text});
+  let ans=null, modeUsed='local';
+  try{
+    const key=AIKEY();
+    if(key){ try{ ans=await aiAnswer(q,key); modeUsed='ai'; }catch(e){ ans=null; } }
+    if(!ans) ans=await withTimeout(localAnswer(q),8000,null);
+  }catch(e){ ans=null; }
+  finally{
+    typing.remove(); asking=false;
+    if(!ans) ans={text:'ขอโทษค่ะ ตอนนี้หนูตอบไม่ทัน ลองถามใหม่อีกครั้งนะคะ'};
+    addMsg('bot',ans.text,ans.apps,ans.goCat);
+    chatHist.push({role:'user',content:q},{role:'assistant',content:ans.text});
+    if(matchMedia('(pointer:fine)').matches) chatIn.focus({preventScroll:true});
+  }
   ttmEvent('buddy_ask',{mode:modeUsed,q_len:q.length});
   if(buddy){ buddy.action = ans.apps&&ans.apps.length ? 'cheer' : 'idle'; setTimeout(()=>{ if(buddy) buddy.action='idle'; },1600); }
-  say(ans.text);
+  say(ans.text).catch(()=>{});
 }
+chatIn.addEventListener('input',()=>{ try{ speechSynthesis.cancel(); }catch(e){} if(buddy) buddy.talk=0; });
+if(window.visualViewport){ const vv=visualViewport, fit=()=>{ const kb=Math.max(0,innerHeight-vv.height-vv.offsetTop); chat.style.bottom=kb>60?(kb+8)+'px':''; chat.style.maxHeight=kb>60?(vv.height-24)+'px':''; }; vv.addEventListener('resize',fit); vv.addEventListener('scroll',fit); }
 document.getElementById('chatForm').onsubmit=e=>{ e.preventDefault(); ask(chatIn.value); };
 // ถามด้วยเสียง (Chrome/Edge)
 (function(){
@@ -1958,9 +1990,9 @@ document.getElementById('chatForm').onsubmit=e=>{ e.preventDefault(); ask(chatIn
     try{ speechSynthesis.cancel(); }catch(e){}
     rec=new SR(); rec.lang='th-TH'; rec.interimResults=true; rec.maxAlternatives=1;
     mic.classList.add('rec'); chatIn.placeholder='กำลังฟัง… พูดคำถามได้เลยค่ะ';
-    rec.onresult=e=>{ const r=e.results[e.results.length-1]; chatIn.value=r[0].transcript; if(r.isFinal){ ask(chatIn.value); } };
+    let sent=false; rec.onresult=e=>{ const r=e.results[e.results.length-1]; chatIn.value=r[0].transcript; if(r.isFinal&&!sent){ sent=true; const q=chatIn.value; try{rec.stop();}catch(_){ } ask(q); } };
     rec.onend=()=>{ mic.classList.remove('rec'); chatIn.placeholder='พิมพ์คำถาม เช่น ระบบกัญชาอยู่ตู้ไหน'; rec=null; };
-    rec.onerror=()=>{ rec&&rec.stop(); };
+    rec.onerror=()=>{ try{ rec&&rec.stop(); }catch(_){ } mic.classList.remove('rec'); rec=null; };
     rec.start();
   };
 })();
