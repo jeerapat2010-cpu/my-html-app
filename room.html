@@ -401,7 +401,7 @@ const WALL_PHOTOS = [
 ];
 
 /* ================= เวอร์ชัน ================= */
-const ROOM_VERSION='2.5', ROOM_BUILD='2026-10-15';
+const ROOM_VERSION='2.7', ROOM_BUILD='2026-10-15';
 function paintVersion(iso){
   const d=new Date(iso||ROOM_BUILD); const t=isNaN(d)?ROOM_BUILD:new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'short',year:'2-digit',timeZone:'Asia/Bangkok'}).format(d);
   document.querySelectorAll('.ver').forEach(el=>el.textContent='เวอร์ชัน '+ROOM_VERSION+' (อัปเดต '+t+')');
@@ -680,24 +680,17 @@ const rugTex = tex(1024,1024,(g,w,h)=>{
 const WALL_H = 3.5;
 const wallTex = tex(420,880,(g,w,h)=>{
   g.fillStyle='#f4ebd9'; g.fillRect(0,0,w,h);
-  // ลายประจำยามก้ามปู สีทองจาง เรียงแบบสลับฟันปลา
-  g.globalAlpha=.2;
-  for(let row=0,y=160;y<h*0.66;y+=64,row++) for(let x=(row%2)*35+18;x<w+35;x+=70) prajamyam(g,x,y,15,'#c9a24f','#f4ebd9');
-  g.globalAlpha=1;
-  // ฝาปะกนเขียวเซลาดอน ขอบงาช้าง + เส้นทอง + ประจำยามกลางแผง
+  // ผนังเรียบไม่มีลาย / ฝาปะกนเขียวเซลาดอน ขอบงาช้าง + เส้นทอง
   const dadoTop=h*0.70;
   g.fillStyle='#c9d6c0'; g.fillRect(0,dadoTop,w,h-dadoTop);
   g.fillStyle='#b9c8b0'; g.fillRect(34,dadoTop+40,w-68,h-dadoTop-80);
   g.strokeStyle='#f6efe0'; g.lineWidth=8; g.strokeRect(34,dadoTop+40,w-68,h-dadoTop-80);
   g.strokeStyle='#c9a24f'; g.lineWidth=2; g.strokeRect(46,dadoTop+52,w-92,h-dadoTop-104);
-  prajamyam(g,w/2,dadoTop+(h-dadoTop)/2,34,'#c9a24f','#f6efe0');
-  for(const [x,y] of [[60,dadoTop+66],[w-60,dadoTop+66],[60,h-66],[w-60,h-66]]) prajamyam(g,x,y,12,'#c9a24f','#f6efe0');
   // บัวคาดเอว + ลายกรวยเชิงชี้ขึ้น
   g.fillStyle='#f6efe0'; g.fillRect(0,dadoTop-12,w,16); g.fillStyle='#c9a24f'; g.fillRect(0,dadoTop-14,w,3); g.fillRect(0,dadoTop+3,w,2);
   // คิ้วบัวบน: แถบเซลาดอน + ระบายงาช้าง + กรวยเชิงห้อยลง
   g.fillStyle='#b9c9b0'; g.fillRect(0,0,w,92);
   g.fillStyle='#f6efe0'; g.fillRect(0,0,w,18); g.fillStyle='#c9a24f'; g.fillRect(0,18,w,3);
-  for(let x=21;x<w;x+=42) prajamyam(g,x,52,13,'#f6efe0','#c9a24f');
   g.fillStyle='#c9a24f'; g.fillRect(0,88,w,4);
 });
 
@@ -1038,15 +1031,9 @@ function buildChandelier(){
 /* ================= ตู้ลิ้นชัก ================= */
 function plaqueTex(cat){
   return tex(1024,256,(g,w,h)=>{
-    g.fillStyle='#120703'; g.fillRect(0,0,w,h);
-    const sh=g.createLinearGradient(0,0,0,h); sh.addColorStop(0,'rgba(255,255,255,.08)'); sh.addColorStop(.5,'rgba(255,255,255,0)'); g.fillStyle=sh; g.fillRect(0,0,w,h);
-    g.strokeStyle='#d4a640'; g.lineWidth=8; g.strokeRect(14,14,w-28,h-28);
-    g.lineWidth=2; g.strokeRect(28,28,w-56,h-56);
+    g.fillStyle='#f7f0e2'; g.fillRect(0,0,w,h);
+    g.strokeStyle='#c9a24f'; g.lineWidth=3; g.strokeRect(16,16,w-32,h-32);
     g.fillStyle='#d4a640';
-    for(const [x,y] of [[28,28],[w-28,28],[28,h-28],[w-28,h-28]]){ g.save(); g.translate(x,y); g.rotate(Math.PI/4); g.fillRect(-12,-12,24,24); g.restore(); }
-    // ลายกระหนกเล็ก ๆ สองข้าง
-    for(const s of [-1,1]){ g.save(); g.translate(w/2+s*(w/2-70),h/2); g.scale(s,1);
-      g.beginPath(); g.moveTo(-14,30); g.bezierCurveTo(-30,0,-6,-30,14,-34); g.bezierCurveTo(0,-14,4,6,-14,30); g.fill(); g.restore(); }
     // ชื่อหมวด (ตัดบรรทัดตามช่องว่าง)
     const words=cat.name.replace(/\s*&\s*/g,' & ').replace(/\([^)]*\)/g,m=>m.replace(/ /g,'\u00a0')).split(' ');
     let size=58, lines;
@@ -1054,8 +1041,7 @@ function plaqueTex(cat){
       for(const wd of words){ const t=cur?cur+' '+wd:wd; if(g.measureText(t).width>w-200 && cur){ lines.push(cur); cur=wd; } else cur=t; }
       lines.push(cur); return lines.length<=2 && lines.every(l=>g.measureText(l).width<=w-200); };
     while(!fit() && size>30) size-=3;
-    const grad=g.createLinearGradient(0,40,0,h-40); grad.addColorStop(0,'#fff0b8'); grad.addColorStop(.5,'#e3b955'); grad.addColorStop(1,'#a87a28');
-    g.fillStyle=grad; g.textAlign='center'; g.textBaseline='middle'; g.shadowColor='#000'; g.shadowBlur=6;
+    g.fillStyle='#6b4220'; g.textAlign='center'; g.textBaseline='middle';
     const lh=size*1.18, y0=h/2-(lines.length-1)*lh/2;
     lines.forEach((l,i)=>g.fillText(l,w/2,y0+i*lh+4));
   });
@@ -1067,10 +1053,9 @@ function drawerTex(sty, w0, label){
     if(sty.finish==='wood') woodGrain(g,w,h,{seed:Math.round(w0*100)+(label?7:3),base:sty.drawerBase});
     else { g.fillStyle=sty.drawerBase; g.fillRect(0,0,w,h);
       const sh=g.createLinearGradient(0,0,0,h); sh.addColorStop(0,'rgba(255,255,255,.10)'); sh.addColorStop(.5,'rgba(255,255,255,0)'); g.fillStyle=sh; g.fillRect(0,0,w,h); }
-    g.strokeStyle=sty.inset; g.lineWidth=7; g.strokeRect(14,14,w-28,h-28);
-    g.strokeStyle=sty.line; g.lineWidth=2.5; g.strokeRect(24,24,w-48,h-48);
-    g.fillStyle=sty.line;
-    for(const [x,y] of [[24,24],[w-24,24],[24,h-24],[w-24,h-24]]){ g.beginPath(); g.arc(x,y,6,0,7); g.fill(); }
+    g.strokeStyle=sty.inset; g.lineWidth=sty.finish==='paint'?2:7; g.strokeRect(14,14,w-28,h-28);
+    g.strokeStyle=sty.line; g.lineWidth=sty.finish==='paint'?1.5:2.5; g.strokeRect(24,24,w-48,h-48);
+    if(sty.finish!=='paint'){ g.fillStyle=sty.line; for(const [x,y] of [[24,24],[w-24,24],[24,h-24],[w-24,h-24]]){ g.beginPath(); g.arc(x,y,6,0,7); g.fill(); } }
     if(sty.finish==='lacquer' && w>300){ // ลายรดน้ำเล็ก ๆ มุมลิ้นชัก
       g.strokeStyle=sty.line; g.lineWidth=2;
       for(const sx of [1,-1]){ g.save(); g.translate(sx>0?44:w-44,h/2); g.scale(sx,1);
@@ -1078,28 +1063,28 @@ function drawerTex(sty, w0, label){
     }
     if(label){
       const pw=Math.min(240,w-70);
-      g.fillStyle='#d9b25a'; g.fillRect(w/2-pw/2,h/2-34,pw,68);
-      g.strokeStyle='#7a5a1e'; g.lineWidth=3; g.strokeRect(w/2-pw/2+8,h/2-26,pw-16,52);
-      g.fillStyle='#3b2112'; let fs=34; do{ g.font=fs+'px Chonburi, Sarabun, serif'; fs-=1; }while(g.measureText(label).width>pw-40 && fs>14);
+      g.fillStyle='#fbf6ea'; g.fillRect(w/2-pw/2,h/2-34,pw,68);
+      g.strokeStyle='#c9a24f'; g.lineWidth=1.5; g.strokeRect(w/2-pw/2+6,h/2-28,pw-12,56);
+      g.fillStyle='#6b4220'; let fs=34; do{ g.font=fs+'px Chonburi, Sarabun, serif'; fs-=1; }while(g.measureText(label).width>pw-40 && fs>14);
       g.textAlign='center'; g.textBaseline='middle'; g.fillText(label,w/2,h/2+3);
     }
   });
 }
 const pedTex = tex(768,240,(g,w,h)=>{
   // หัวตู้เรียบ: ไม้น้ำตาลเข้ม + เส้นทองบางตามฐาน
-  woodGrain(g,w,h,{seed:61,base:'#4a2712',dark:'#2b1508',light:'#6a3a1c'});
-  g.fillStyle='#d9b86a'; g.fillRect(0,h-10,w,4);
+  g.fillStyle='#efe6d3'; g.fillRect(0,0,w,h);
+  g.fillStyle='#c9a24f'; g.fillRect(0,h-8,w,2);
 });
 /* แถบหน้าบัวหัวตู้ (เรียบ ไม่มีลาย) */
 const friezeTex = tex(1024,128,(g,w,h)=>{
-  woodGrain(g,w,h,{seed:62,base:'#4a2712',dark:'#2b1508',light:'#6a3a1c'});
-  g.fillStyle='#d9b86a'; g.fillRect(0,0,w,5); g.fillRect(0,h-5,w,5);
+  g.fillStyle='#ebe1cc'; g.fillRect(0,0,w,h);
+  g.fillStyle='#c9a24f'; g.fillRect(0,4,w,2); g.fillRect(0,h-6,w,2);
 });
 function emojiTex(emoji){
   return tex(256,256,(g,w,h)=>{
     const rg=g.createRadialGradient(w*.38,h*.32,10,w/2,h/2,w/2); rg.addColorStop(0,'#fff1bf'); rg.addColorStop(.6,'#d4a640'); rg.addColorStop(1,'#7a5a1e');
     g.fillStyle=rg; g.beginPath(); g.arc(w/2,h/2,w/2-4,0,7); g.fill();
-    g.fillStyle='#160a05'; g.beginPath(); g.arc(w/2,h/2,w/2-26,0,7); g.fill();
+    g.fillStyle='#fbf6ea'; g.beginPath(); g.arc(w/2,h/2,w/2-10,0,7); g.fill();
     g.font='118px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; g.textAlign='center'; g.textBaseline='middle';
     g.fillText(emoji,w/2,h/2+8);
   });
@@ -1114,7 +1099,7 @@ const FIN = {
   rosewood:{ finish:'wood',    body:()=>new THREE.MeshStandardMaterial({map:teakTex,color:'#b5654a',roughness:.45}), trim:()=>new THREE.MeshStandardMaterial({map:teakDarkTex,color:'#8a3a2a',roughness:.5}), drawerBase:'#6e2a1a', inset:'#2a0c06', line:'#d2a24a' },
   red:     { finish:'lacquer', body:()=>new THREE.MeshStandardMaterial({color:'#7c1a14',roughness:.32,metalness:.05}), trim:()=>new THREE.MeshStandardMaterial({color:'#3a0b07',roughness:.35}), drawerBase:'#86201a', inset:'#3a0b07', line:'#e0b553' },
   black:   { finish:'lacquer', body:()=>new THREE.MeshStandardMaterial({color:'#17110e',roughness:.25,metalness:.08}), trim:()=>new THREE.MeshStandardMaterial({color:'#0b0705',roughness:.3}), drawerBase:'#1c1410', inset:'#070403', line:'#d8ad4c' },
-  ivory:   { finish:'paint',   body:()=>new THREE.MeshStandardMaterial({color:'#f1e9d8',roughness:.45}), trim:()=>new THREE.MeshStandardMaterial({map:teakDarkTex,color:'#7a4a2a',roughness:.5}), drawerBase:'#f4ecdc', inset:'#4a2a14', line:'#c9a24f' },
+  ivory:   { finish:'paint',   body:()=>new THREE.MeshStandardMaterial({color:'#f1e9d8',roughness:.45}), trim:()=>new THREE.MeshStandardMaterial({color:'#e7dcc5',roughness:.45}), drawerBase:'#f6efe1', inset:'#d8c7a2', line:'#c9a24f' },
   celadon: { finish:'paint',   body:()=>new THREE.MeshStandardMaterial({color:'#aebfa6',roughness:.55}), trim:()=>new THREE.MeshStandardMaterial({color:'#f1e8d4',roughness:.5}), drawerBase:'#b8c9b0', inset:'#8ea186', line:'#b8913f' },
   sage:    { finish:'paint',   body:()=>new THREE.MeshStandardMaterial({color:'#6f8160',roughness:.7}), trim:()=>new THREE.MeshStandardMaterial({color:'#efe4c6',roughness:.6}), drawerBase:'#738665', inset:'#4b5a40', line:'#f1e6c8' },
 };
