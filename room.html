@@ -410,7 +410,7 @@ const WALL_PHOTOS = [
 ];
 
 /* ================= เวอร์ชัน ================= */
-const ROOM_VERSION='3.3', ROOM_BUILD='2026-10-15';
+const ROOM_VERSION='3.4', ROOM_BUILD='2026-10-15';
 function paintVersion(iso){
   const d=new Date(iso||ROOM_BUILD); const t=isNaN(d)?ROOM_BUILD:new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'short',year:'2-digit',timeZone:'Asia/Bangkok'}).format(d);
   document.querySelectorAll('.ver').forEach(el=>el.textContent='เวอร์ชัน '+ROOM_VERSION+' (อัปเดต '+t+')');
@@ -1307,6 +1307,7 @@ const FIN = {
   red:     { finish:'lacquer', body:()=>new THREE.MeshStandardMaterial({color:'#7c1a14',roughness:.32,metalness:.05}), trim:()=>new THREE.MeshStandardMaterial({color:'#3a0b07',roughness:.35}), drawerBase:'#86201a', inset:'#3a0b07', line:'#e0b553' },
   black:   { finish:'lacquer', body:()=>new THREE.MeshStandardMaterial({color:'#17110e',roughness:.25,metalness:.08}), trim:()=>new THREE.MeshStandardMaterial({color:'#0b0705',roughness:.3}), drawerBase:'#1c1410', inset:'#070403', line:'#d8ad4c' },
   ivory:   { finish:'paint',   body:()=>new THREE.MeshStandardMaterial({color:'#f1e9d8',roughness:.45}), trim:()=>new THREE.MeshStandardMaterial({color:'#e7dcc5',roughness:.45}), drawerBase:'#f6efe1', inset:'#d8c7a2', line:'#c9a24f' },
+  burgundy:{ finish:'paint',   body:()=>new THREE.MeshStandardMaterial({color:'#6b1626',roughness:.38,metalness:.05}), trim:()=>new THREE.MeshStandardMaterial({color:'#561020',roughness:.4}), drawerBase:'#74202f', inset:'#a8485a', line:'#d9b86a', tint:'#7a2236' },   // แดงเบอร์กันดี (ตู้อีเวนต์ ชั้น 2)
   celadon: { finish:'paint',   body:()=>new THREE.MeshStandardMaterial({color:'#aebfa6',roughness:.55}), trim:()=>new THREE.MeshStandardMaterial({color:'#f1e8d4',roughness:.5}), drawerBase:'#b8c9b0', inset:'#8ea186', line:'#b8913f' },
   sage:    { finish:'paint',   body:()=>new THREE.MeshStandardMaterial({color:'#6f8160',roughness:.7}), trim:()=>new THREE.MeshStandardMaterial({color:'#efe4c6',roughness:.6}), drawerBase:'#738665', inset:'#4b5a40', line:'#f1e6c8' },
 };
@@ -1324,7 +1325,7 @@ const STYLES = [
 ];
 
 function buildCabinet(cat,i){
-  const st = STYLES[i % STYLES.length], F = FIN[st.fin];
+  const st = STYLES[i % STYLES.length], F = (FLOOR===2 && isUpstairs(cat)) ? FIN.burgundy : FIN[st.fin];
   const bodyM = F.body(), trimM = F.trim();
   const G=new THREE.Group();
   const yaw=-i*STEP;
@@ -1492,6 +1493,7 @@ function buildCabinet(cat,i){
   // ผนังหลังตู้เกลี้ยงทั้งแผง: พื้นถึงเพดาน ไม่มีลาย ไม่มีบัว
   const plain=new THREE.Mesh(new THREE.PlaneGeometry(faceW*1.03,WALL_H),new THREE.MeshStandardMaterial({color:'#f4ebd9',roughness:.85}));
   plain.position.set(0,WALL_H/2,wallZ); plain.receiveShadow=true; G.add(plain);
+  if(F.tint) G.traverse(o=>{ if(!o.isMesh) return; (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(m.map && (m.map===friezeTex || m.map.image===pedTex.image)) m.color.set(F.tint); }); });   // หัวตู้/แถบบัว ย้อมสีเดียวกับตัวตู้
   scene.add(G);
   cabinets.push({group:G,plaqueMat,drawers,main,yaw,doors,glowMats,glow:0});
 }
