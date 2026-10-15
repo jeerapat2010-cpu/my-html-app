@@ -1724,11 +1724,16 @@ function updateBuddy(dt,t){
 }
 
 /* ---------- เสียงพูดภาษาไทย (เสียงสังเคราะห์ในเครื่อง ปรับให้แหลมแบบเด็กหญิง) ---------- */
-let thVoice=null;
+let thVoice=null, voiceIsMale=false;
+const FEMALE=['premwadee','achara','kanya','narisa','ploy','google','female','หญิง'];
+const MALE=['pattara','niwat','male','ชาย'];
 function pickVoice(){
-  try{ const vs=speechSynthesis.getVoices().filter(v=>/^th/i.test(v.lang));
-    const pref=['Premwadee','Achara','Narisa','Kanya','Pattara','female','Google'];
-    thVoice = pref.map(p=>vs.find(v=>v.name.toLowerCase().includes(p.toLowerCase()))).find(Boolean) || vs[0] || null; }catch(e){}
+  try{ const vs=speechSynthesis.getVoices().filter(v=>/^th/i.test(v.lang)); const nm=v=>v.name.toLowerCase();
+    // เลือกเสียงผู้หญิงก่อน (Edge: Premwadee Natural, iPad/Mac: Kanya/Narisa, Chrome: Google ไทย)
+    thVoice = FEMALE.map(p=>vs.find(v=>nm(v).includes(p)&&!MALE.some(m=>nm(v).includes(m)&&m!=='male'))).find(Boolean)
+           || vs.find(v=>!MALE.some(m=>nm(v).includes(m))) || vs[0] || null;
+    voiceIsMale = !!thVoice && MALE.some(m=>nm(thVoice).includes(m)) && !nm(thVoice).includes('female');
+  }catch(e){}
 }
 try{ pickVoice(); speechSynthesis.onvoiceschanged=pickVoice; }catch(e){}
 /* แบ่งเป็นวลีสั้น ๆ: ใช้ | เป็นจุดเว้นวรรคหายใจ + ตัดหลัง ค่ะ/คะ/นะคะ อัตโนมัติ */
@@ -1752,7 +1757,7 @@ function say(text){
       if(id!==sayId || done) return fin();
       if(k>=list.length) return fin();
       const u=new SpeechSynthesisUtterance(list[k++]); u.lang='th-TH'; if(thVoice) u.voice=thVoice;
-      u.pitch=1.32; u.rate=1.0; u.volume=.92;          // นุ่ม อ่อนโยน ไม่แหลมเกิน
+      if(voiceIsMale){ u.pitch=1.95; u.rate=1.18; } else { u.pitch=1.32; u.rate=1.0; } u.volume=.92;   // มีแต่เสียงชาย: ดึงให้แหลมและเร็วขึ้น          // นุ่ม อ่อนโยน ไม่แหลมเกิน
       u.onstart=()=>{ if(buddy) buddy.talk=1; };
       u.onend=()=>{ if(buddy) buddy.talk=0; setTimeout(next, /[ค่ะคะ]$/.test(u.text)?200:110); };   // เว้นจังหวะระหว่างวลี
       u.onerror=()=>setTimeout(next,200);
