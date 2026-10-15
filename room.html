@@ -410,7 +410,7 @@ const WALL_PHOTOS = [
 ];
 
 /* ================= เวอร์ชัน ================= */
-const ROOM_VERSION='3.1', ROOM_BUILD='2026-10-15';
+const ROOM_VERSION='3.2', ROOM_BUILD='2026-10-15';
 function paintVersion(iso){
   const d=new Date(iso||ROOM_BUILD); const t=isNaN(d)?ROOM_BUILD:new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'short',year:'2-digit',timeZone:'Asia/Bangkok'}).format(d);
   document.querySelectorAll('.ver').forEach(el=>el.textContent='เวอร์ชัน '+ROOM_VERSION+' (อัปเดต '+t+')');
@@ -966,7 +966,7 @@ function buildRoom(){
   shaftMat = new THREE.MeshBasicMaterial({map:shaftTex, transparent:true, opacity:.28, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide, toneMapped:false});
   const photos = FLOOR===2 ? [] : WALL_PHOTOS.slice(0,N);
   const photoSlots = new Map(photos.map((p,k)=>[Math.floor(k*N/photos.length) % N, p]));
-  ELEV_SLOT = FLOOR===2 ? 1 : (()=>{ for(let i=N-1;i>=0;i--) if(!photoSlots.has(i)) return i; return N-1; })();
+  ELEV_SLOT = FLOOR===2 ? N-1 : (()=>{ for(let i=N-1;i>=0;i--) if(!photoSlots.has(i)) return i; return N-1; })();   // ลิฟต์อยู่มุมซ้ายของตู้แรก ทั้งสองชั้น
   if(FLOOR===1 && photoSlots.has(ELEV_SLOT)) photoSlots.delete(ELEV_SLOT);
   for(let i=0;i<N;i++){
     const yaw = -(i+.5)*STEP, apo = ROOM_R*Math.cos(Math.PI/(N*2)) - .02;
@@ -2297,7 +2297,7 @@ function enterRoom(){
   camPos.set(0,EYE,2.2); camPosT.set(0,EYE,0);
   try{ speechSynthesis.speak(new SpeechSynthesisUtterance(' ')); }catch(e){}   // ปลดล็อกเสียงพูดบนมือถือ
   let hide=false; try{ hide=localStorage.getItem('room-guide-hide')==='1'; }catch(e){}
-  if(HOP){ if(HOP_LIFT&&lift){ lift.open=1; lift.openT=1; setTimeout(()=>{ if(lift) lift.openT=0; },1800); }
+  if(HOP){ if(lift){ faceLift(); yaw=yawTarget; if(HOP_LIFT){ lift.open=1; lift.openT=1; setTimeout(()=>{ if(lift) lift.openT=0; },1800); } setTimeout(()=>{ if(mode==='walk') goTo(0); },4200); }   // ออกจากลิฟต์ แล้วหันเข้าห้อง
     setTimeout(()=>{ dock(); say(FLOOR===2?'ถึงชั้นสอง | ห้องกระจกชมวิว แล้วค่ะ':'กลับมาชั้นหนึ่ง | หอข้อมูลงานแพทย์แผนไทย แล้วค่ะ').catch(()=>{}); },1600); return; }
   if(!hide) setTimeout(()=>startGuide(),1900); else setTimeout(dock,1600);   // ออกมาต้อนรับทุกครั้ง เว้นแต่ติ๊ก "ไม่ต้องแสดงอีก"
 }
