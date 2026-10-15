@@ -142,6 +142,16 @@ body.focus #hint,body.focus #navrow,body.focus #dots{display:none}
 #gateCard h1{font-family:'Chonburi';font-weight:400;font-size:1.9rem;color:var(--gold-lt);line-height:1.25;text-shadow:0 2px 0 #000}
 #gateCard .orn{color:var(--gold);letter-spacing:8px;font-size:.9rem}
 #gateCard p{font-size:.92rem;color:#e7d3a3;margin:8px 0 18px;line-height:1.55}
+#enterBtn{
+  height:52px;padding:0 30px;font:600 1.05rem 'Sarabun';color:#2b1409;cursor:pointer;border:0;border-radius:8px;
+  background:linear-gradient(180deg,var(--gold-lt),var(--gold) 55%,var(--gold-d));
+  box-shadow:0 0 0 1px #2b1409,0 0 0 3px var(--gold-d),0 10px 24px #000a;display:inline-flex;align-items:center;gap:10px;
+  animation:pulse 2.2s ease-in-out infinite;
+}
+#enterBtn:disabled{animation:none;opacity:.7;cursor:wait}
+#enterBtn:hover{filter:brightness(1.08)}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 1px #2b1409,0 0 0 3px var(--gold-d),0 10px 24px #000a}50%{box-shadow:0 0 0 1px #2b1409,0 0 0 3px var(--gold-d),0 0 28px 6px #d4a64088}}
+#gate.ready{cursor:pointer}
 #gateCard .alt{display:inline-block;margin-top:14px;color:#d9c08a;font-size:.8rem}
 #gateMsg{font-size:.82rem;color:#e7d3a3;min-height:1.2em;margin-top:10px}
 
@@ -825,7 +835,7 @@ const gate=document.getElementById('gate'), enterBtn=document.getElementById('en
     const dots=document.getElementById('dots');
     cats.forEach((c,i)=>{ const b=document.createElement('button'); b.title=c.short; b.setAttribute('role','tab'); b.setAttribute('aria-label',c.short); b.onclick=()=>{ if(mode==='focus') closeDrawer(); goTo(i); }; dots.appendChild(b); });
     updateHud(); frame(); window.__room={cabinets,get mode(){return mode}};
-    enterBtn.disabled=false; enterBtn.innerHTML='<i class="fas fa-door-open"></i>ผลักประตูเข้าห้อง';
+    enterBtn.disabled=false; enterBtn.innerHTML='🚪 ผลักประตูเข้าห้อง'; gate.classList.add('ready'); setTimeout(()=>enterBtn.focus(),100);
   }catch(err){
     console.error(err);
     enterBtn.innerHTML='เปิดห้องไม่สำเร็จ';
@@ -834,12 +844,16 @@ const gate=document.getElementById('gate'), enterBtn=document.getElementById('en
       : 'โหลดรายชื่อระบบไม่สำเร็จ ลองรีเฟรชอีกครั้ง หรือใช้หน้าแบบปกติ';
   }
 })();
-enterBtn.onclick=()=>{
+function enterRoom(){
+  if(enterBtn.disabled || gate.classList.contains('open')) return;
   gate.classList.add('open'); slideSound(true);
   setTimeout(()=>{ gate.classList.add('gone'); ready=true; }, reduceMotion?50:1500);
   // เดินเข้าห้องเล็กน้อย
   camPos.set(0,EYE,2.2); camPosT.set(0,EYE,0);
-};
+}
+enterBtn.onclick=e=>{ e.stopPropagation(); enterRoom(); };
+gate.addEventListener('click',e=>{ if(!e.target.closest('a')) enterRoom(); });   // แตะตรงไหนของประตูก็เข้าได้
+addEventListener('keydown',e=>{ if(!ready && (e.key==='Enter'||e.key===' ')) { e.preventDefault(); enterRoom(); } });
 </script>
 </body>
 </html>
