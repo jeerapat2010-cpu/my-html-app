@@ -822,58 +822,50 @@ let dust, bulb, sun, hemi, shaftMat, lampShade, winMatRef;
 const photoMeshes=[];
 const plants=[];
 function buildPlant(kind, pos, yaw){
-  const G=new THREE.Group(); G.position.copy(pos); G.rotation.y=yaw; G.scale.setScalar(kind==='orchid'?1.5:1.65); scene.add(G);
-  // กระถางเซรามิกเคลือบ (ขาว/เซลาดอน) ขอบทอง
-  const potCol = kind==='orchid' ? '#f6f1e6' : kind==='fern' ? '#b9c9b0' : '#f3ede0';
-  const prof=[[.0,0],[.13,0],[.15,.02],[.13,.05],[.17,.16],[.2,.3],[.19,.4],[.16,.44],[.18,.47],[.17,.5]].map(([r,y])=>new THREE.Vector2(r,y));
-  const pot=new THREE.Mesh(new THREE.LatheGeometry(prof,32),new THREE.MeshPhysicalMaterial({color:potCol,roughness:.2,clearcoat:.8}));
+  // ไม้พุ่มเตี้ยใบแน่นในกระถางทรงชาม (สูงไม่เกินระดับเข่า — ไม่บังรูป)
+  const G=new THREE.Group(); G.position.copy(pos); G.rotation.y=yaw; scene.add(G);
+  const r=rng(Math.round(pos.x*100+pos.z*37)+7);
+  const potCol = kind==='box' ? '#b9c9b0' : '#f4efe4';
+  const prof=[[.0,0],[.16,0],[.18,.02],[.17,.04],[.24,.12],[.28,.2],[.27,.24],[.29,.26],[.285,.28]].map(([a,b])=>new THREE.Vector2(a,b));
+  const pot=new THREE.Mesh(new THREE.LatheGeometry(prof,36),new THREE.MeshPhysicalMaterial({color:potCol,roughness:.2,clearcoat:.8}));
   pot.castShadow=true; pot.receiveShadow=true; G.add(pot);
-  for(const y of [.03,.47]){ const b=new THREE.Mesh(new THREE.TorusGeometry(y<.1?.14:.175,.009,8,40),M.gold); b.rotation.x=Math.PI/2; b.position.y=y; G.add(b); }
-  const band=new THREE.Mesh(new THREE.CylinderGeometry(.201,.196,.05,40,1,true),new THREE.MeshStandardMaterial({map:friezeTex,roughness:.4,metalness:.2})); band.position.y=.3; G.add(band);
-  const soil=new THREE.Mesh(new THREE.CircleGeometry(.16,24),new THREE.MeshStandardMaterial({color:'#3a2a1c',roughness:1})); soil.rotation.x=-Math.PI/2; soil.position.y=.46; G.add(soil);
-  const leafM=new THREE.MeshStandardMaterial({color:'#2f6b3a',roughness:.45,side:THREE.DoubleSide});
-  const leafM2=new THREE.MeshStandardMaterial({color:'#3f8a4a',roughness:.45,side:THREE.DoubleSide});
-  const whiteM=new THREE.MeshStandardMaterial({color:'#fbfaf6',roughness:.5,side:THREE.DoubleSide,emissive:'#ffffff',emissiveIntensity:.05});
-  const stemM=new THREE.MeshStandardMaterial({color:'#4f7d3a',roughness:.6});
-  const sway=new THREE.Group(); sway.position.y=.46; G.add(sway);
-  // ใบเรียวยาวโค้ง (สร้างจากระนาบดัดโค้ง)
-  const leaf=(len,wid,bend)=>{ const g=new THREE.PlaneGeometry(wid,len,4,10); g.translate(0,len/2,0); const p=g.attributes.position;
-    for(let k=0;k<p.count;k++){ const x=p.getX(k), y=p.getY(k), t=y/len; p.setX(k, x*Math.sin(Math.PI*Math.min(1,t*1.05+.05))); p.setZ(k, bend*t*t*len + Math.abs(x)*.25); }
-    g.computeVertexNormals(); return g; };
-  const r=rng(Math.round(pos.x*100+pos.z*37));
-  if(kind==='lily' || kind==='orchid'){
-    const n = kind==='lily'?16:7;
-    for(let k=0;k<n;k++){ const m=new THREE.Mesh(leaf(kind==='lily'?.4+r()*.18:.22,kind==='lily'?.14:.12,kind==='lily'?.45:.9), k%2?leafM:leafM2);
-      m.rotation.set(-.15-r()*.5,k/n*Math.PI*2+r()*.3,0); m.rotation.order='YXZ'; m.castShadow=true; sway.add(m); }
+  for(const [y,rad] of [[.02,.17],[.265,.285]]){ const b=new THREE.Mesh(new THREE.TorusGeometry(rad,.009,8,44),M.gold); b.rotation.x=Math.PI/2; b.position.y=y; G.add(b); }
+  const band=new THREE.Mesh(new THREE.CylinderGeometry(.262,.235,.06,44,1,true),new THREE.MeshStandardMaterial({map:friezeTex,roughness:.4,metalness:.2})); band.position.y=.15; G.add(band);
+  // พุ่มใบ: 3 ชั้น แต่ละชั้นไหวคนละจังหวะ
+  const leafG=new THREE.PlaneGeometry(.045,.075,1,2); { const p=leafG.attributes.position; for(let k=0;k<p.count;k++){ const y=p.getY(k); p.setX(k,p.getX(k)*(1-Math.abs(y)/.06)); p.setZ(k,Math.abs(y)*.25); } leafG.computeVertexNormals(); }
+  const leafCols=['#2e6b35','#3b7d40','#27592d','#4a8a45'];
+  const flowerG = kind==='gardenia' ? new THREE.IcosahedronGeometry(.032,1) : new THREE.IcosahedronGeometry(.016,0);
+  const flowerM=new THREE.MeshStandardMaterial({color:'#fffdf7',roughness:.5,emissive:'#ffffff',emissiveIntensity:.06});
+  const layers=[];
+  const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), e=new THREE.Euler(), v=new THREE.Vector3(), sc=new THREE.Vector3();
+  const R0=.3, H0=kind==='box'?.26:.3;
+  for(let L=0;L<3;L++){
+    const layer=new THREE.Group(); layer.position.y=.26; G.add(layer);
+    const n=170;
+    const inst=new THREE.InstancedMesh(leafG,new THREE.MeshStandardMaterial({color:leafCols[L],roughness:.55,side:THREE.DoubleSide}),n);
+    for(let k=0;k<n;k++){
+      // จุดบนผิวโดมรูปไข่ (พุ่มแน่น)
+      const th=r()*Math.PI*2, ph=Math.acos(1-r()*1.05), rr=.82+r()*.2;
+      v.set(Math.sin(ph)*Math.cos(th)*R0*rr, Math.cos(ph)*H0*rr+.02, Math.sin(ph)*Math.sin(th)*R0*rr);
+      e.set(-ph*.8+(r()-.5)*.6, -th+Math.PI/2+(r()-.5)*.8, (r()-.5)*.8); q.setFromEuler(e);
+      sc.setScalar(.8+r()*.5); m4.compose(v,q,sc); inst.setMatrixAt(k,m4);
+    }
+    inst.castShadow=true; layer.add(inst);
+    // ดอกขาว
+    const fn = kind==='box'?6 : kind==='gardenia'?12 : 34;
+    const fl=new THREE.InstancedMesh(flowerG,flowerM,fn);
+    for(let k=0;k<fn;k++){ const th=r()*Math.PI*2, ph=Math.acos(1-r()*.9);
+      v.set(Math.sin(ph)*Math.cos(th)*R0*1.02, Math.cos(ph)*H0*1.02+.02, Math.sin(ph)*Math.sin(th)*R0*1.02);
+      q.setFromEuler(e.set(r()*3,r()*3,r()*3)); sc.set(1,kind==='gardenia'?.6:1,1); m4.compose(v,q,sc); fl.setMatrixAt(k,m4); }
+    layer.add(fl);
+    layer.rotation.y=L*2.1; layer.scale.setScalar(1-L*.06);
+    layers.push(layer);
   }
-  if(kind==='lily'){   // เดหลี: กาบดอกขาว + เกสรเหลือง
-    for(let k=0;k<5;k++){ const h=.5+r()*.18, a=k/5*Math.PI*2+r(), lean=.12+r()*.08;
-      const stem=new THREE.Mesh(new THREE.CylinderGeometry(.006,.008,h,6),stemM); stem.position.set(Math.cos(a)*lean*.5,h/2,Math.sin(a)*lean*.5); stem.rotation.set(Math.sin(a)*lean,0,-Math.cos(a)*lean); sway.add(stem);
-      const top=new THREE.Vector3(Math.cos(a)*lean*h*.9,h,Math.sin(a)*lean*h*.9);
-      const sp=new THREE.Mesh(leaf(.13,.075,-.6),whiteM); sp.position.copy(top).add(new THREE.Vector3(0,-.03,0)); sp.rotation.set(-.25,a+Math.PI,0); sp.rotation.order='YXZ'; sway.add(sp);
-      const sd=new THREE.Mesh(new THREE.CylinderGeometry(.008,.012,.06,8),new THREE.MeshStandardMaterial({color:'#f2e2a0',roughness:.6})); sd.position.copy(top).add(new THREE.Vector3(0,.0,0)); sway.add(sd); }
-  } else if(kind==='orchid'){   // กล้วยไม้ขาว: ก้านโค้ง + ดอกกลม
-    const flowerG=new THREE.CircleGeometry(.03,16);
-    for(let s2=0;s2<2;s2++){ const a=s2*Math.PI+r(); const pts=[]; for(let i=0;i<=12;i++){ const t=i/12; pts.push(new THREE.Vector3(Math.cos(a)*t*.22, .05+t*.55-Math.max(0,t-.6)*t*.35, Math.sin(a)*t*.22)); }
-      const curve=new THREE.CatmullRomCurve3(pts); sway.add(new THREE.Mesh(new THREE.TubeGeometry(curve,20,.004,5,false),stemM));
-      const stake=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.5,5),new THREE.MeshStandardMaterial({color:'#8a6a44'})); stake.position.set(Math.cos(a)*.04,.25,Math.sin(a)*.04); sway.add(stake);
-      for(let i=5;i<=12;i++){ const p=curve.getPoint(i/12); const fl=new THREE.Group(); fl.position.copy(p); fl.lookAt(p.clone().add(new THREE.Vector3(Math.cos(a),0.2,Math.sin(a))));
-        for(let q=0;q<5;q++){ const pe=new THREE.Mesh(flowerG,whiteM); pe.position.set(Math.cos(q/5*Math.PI*2)*.022,Math.sin(q/5*Math.PI*2)*.022,0); pe.scale.setScalar(q===4?.8:1); fl.add(pe); }
-        const lip=new THREE.Mesh(new THREE.SphereGeometry(.009,8,6),new THREE.MeshStandardMaterial({color:'#e8c45a'})); lip.position.z=.005; fl.add(lip);
-        fl.scale.setScalar(.8+((i%3)*.12)); sway.add(fl); } }
-  } else { // fern: ใบเฟิร์นยาวห้อยโค้ง
-    for(let k=0;k<22;k++){ const fr=new THREE.Group(); const len=.45+r()*.25;
-      const rach=leaf(len,.012,1.1); fr.add(new THREE.Mesh(rach,leafM));
-      for(let q=1;q<14;q++){ const t=q/14; const pin=new THREE.Mesh(leaf(.085*(1-t*.6),.03,.2), q%2?leafM:leafM2);
-        pin.position.set(0,t*len,1.1*t*t*len); pin.rotation.set(1.1*t,0,(q%2?1:-1)*1.2); fr.add(pin);
-        const pin2=pin.clone(); pin2.rotation.z*=-1; fr.add(pin2); }
-      fr.rotation.set(-.2-r()*.6,k/22*Math.PI*2,0); fr.rotation.order='YXZ'; sway.add(fr); }
-  }
-  plants.push({sway,ph:r()*9});
+  plants.push({layers,ph:r()*9});
 }
 function placePlants(){
   // วางกระถางชิดผนังระหว่างตู้ สลับชนิด
-  const kinds=['lily','orchid','fern','lily','fern','orchid','lily','fern','orchid'];
+  const kinds=['jasmine','gardenia','box','jasmine','gardenia','box','jasmine','gardenia','box'];
   for(let i=0;i<N;i++){
     const yaw=-(i+.5)*STEP, R0=ROOM_R*Math.cos(Math.PI/(N*2))-.42;
     const pos=new THREE.Vector3(-Math.sin(yaw)*R0,0,-Math.cos(yaw)*R0);
@@ -1574,7 +1566,8 @@ function frame(){
   });
   updateDownlights(dt);
   windCurtains(t);
-  if(!reduceMotion) for(const p of plants){ p.sway.rotation.z=Math.sin(t*.9+p.ph)*.025; p.sway.rotation.x=Math.cos(t*.7+p.ph)*.018; }
+  if(!reduceMotion){ const gust=.6+.4*Math.sin(t*.37)*Math.sin(t*.23+1.3);
+    for(const p of plants) p.layers.forEach((L,k)=>{ L.rotation.z=Math.sin(t*(1.6+k*.4)+p.ph+k)*.04*gust; L.rotation.x=Math.cos(t*(1.3+k*.3)+p.ph)*.03*gust; }); }
   if(chand){
     if(!reduceMotion){ chand.rotation.z=Math.sin(t*.55)*.012; chand.rotation.x=Math.cos(t*.43)*.009; }
     const fl=1+Math.sin(t*13.1)*.025+Math.sin(t*7.3)*.03;
