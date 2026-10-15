@@ -670,7 +670,7 @@ function buildChandelier(){
   // แกนกลางกลึง
   const prof=[[.02,0],[.05,.04],[.035,.1],[.075,.18],[.11,.26],[.06,.32],[.04,.38],[.09,.46],[.13,.5],[.05,.58],[.03,.66],[.06,.72],[.0,.8]]
     .map(([r,y])=>new THREE.Vector2(r,-y));
-  const stem=new THREE.Mesh(new THREE.LatheGeometry(prof,28),brass); stem.position.y=-.5; stem.castShadow=true; chand.add(stem);
+  const stem=new THREE.Mesh(new THREE.LatheGeometry(prof,28),brass); stem.position.y=-.5; stem.castShadow=false; chand.add(stem);
   const glowBowl=new THREE.Mesh(new THREE.SphereGeometry(.09,24,16),new THREE.MeshStandardMaterial({color:'#fff4dc',emissive:'#ffcf80',emissiveIntensity:1.6,transparent:true,opacity:.85}));
   glowBowl.position.y=-.86; chand.add(glowBowl); lampShade=glowBowl;
 
@@ -681,7 +681,7 @@ function buildChandelier(){
     for(let k=0;k<T.n;k++){
       const a=k/T.n*Math.PI*2+(ti?Math.PI/T.n:0), ca=Math.cos(a), sa=Math.sin(a);
       const pts=[[.06,0],[T.r*.35,-.08],[T.r*.75,-.06],[T.r,T.lift*.5],[T.r,T.lift]].map(([r,y])=>new THREE.Vector3(ca*r,T.y+y,sa*r));
-      const arm=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),24,.011,8,false),brass); arm.castShadow=true; chand.add(arm);
+      const arm=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),24,.011,8,false),brass); arm.castShadow=false; chand.add(arm);
       const tip=new THREE.Vector3(ca*T.r,T.y+T.lift,sa*T.r);
       const cup=new THREE.Mesh(new THREE.CylinderGeometry(.035,.022,.04,16),brass); cup.position.copy(tip); chand.add(cup);
       const bob=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.006,20),crystalMat); bob.position.copy(tip); bob.position.y+=.012; chand.add(bob);
@@ -884,7 +884,9 @@ function buildCabinet(cat,i){
       add(new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.02,16,1,false,0,Math.PI),M.gold),x,CT-.005,FZ+.06,false).rotation.set(Math.PI/2,0,Math.PI/2); }
     medalY = CT+.2;
   }
-  const medal=new THREE.Mesh(new THREE.CircleGeometry(.12,40),new THREE.MeshStandardMaterial({map:emojiTex(cat.emoji),roughness:.4,metalness:.2}));
+  const glowMats=[];
+  const medalT=emojiTex(cat.emoji), medalM=new THREE.MeshStandardMaterial({map:medalT,emissive:'#ffffff',emissiveMap:medalT,emissiveIntensity:0,roughness:.4,metalness:.2}); glowMats.push(medalM);
+  const medal=new THREE.Mesh(new THREE.CircleGeometry(.12,40),medalM);
   add(medal,0,medalY,FZ+.03);
 
   /* ----- ป้ายชื่อหมวด ----- */
@@ -898,7 +900,8 @@ function buildCabinet(cat,i){
   const knobM = st.fin==='sage' ? new THREE.MeshStandardMaterial({color:'#f3ead3',roughness:.4}) : M.brass;
   const mkDrawer=(w,h,x,y,label,kn=1)=>{
     const dg=new THREE.Group(); dg.position.set(x,y,FZ+.02); G.add(dg);
-    const front=new THREE.Mesh(new THREE.BoxGeometry(w,h,.04),[bodyM,bodyM,bodyM,bodyM,new THREE.MeshStandardMaterial({map:drawerTex(F,w,label),roughness:F.finish==='lacquer'?.3:.5}),bodyM]);
+    const dT=drawerTex(F,w,label), fM=new THREE.MeshStandardMaterial({map:dT,emissive:'#ffd9a0',emissiveMap:dT,emissiveIntensity:0,roughness:F.finish==='lacquer'?.3:.5}); glowMats.push(fM);
+    const front=new THREE.Mesh(new THREE.BoxGeometry(w,h,.04),[bodyM,bodyM,bodyM,bodyM,fM,bodyM]);
     front.castShadow=true; front.userData.cab=i; dg.add(front); hitMeshes.push(front);
     const depth=.46, tw=w-.05, th=h-.06;
     const bottom=new THREE.Mesh(new THREE.BoxGeometry(tw,.012,depth),M.teakDark); bottom.position.set(0,-th/2,-depth/2); dg.add(bottom);
@@ -960,7 +963,7 @@ function buildCabinet(cat,i){
   }
 
   scene.add(G);
-  cabinets.push({group:G,plaqueMat,drawers,main,yaw,doors});
+  cabinets.push({group:G,plaqueMat,drawers,main,yaw,doors,glowMats,glow:0});
 }
 
 /* ================= การควบคุมกล้อง ================= */
@@ -1117,49 +1120,41 @@ sb.onclick=()=>{ soundOn=!soundOn; try{localStorage.setItem('room-sound',soundOn
 
 /* ================= ดาวน์ไลท์ส่องตู้ที่อยู่ตรงหน้า ================= */
 const downs=[]; let spot=null;
-function buildDownlights(){
-  const coneTex = tex(64,256,(g,w,h)=>{ const v=g.createLinearGradient(0,0,0,h); v.addColorStop(0,'rgba(255,255,255,.9)'); v.addColorStop(.6,'rgba(255,255,255,.25)'); v.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=v; g.fillRect(0,0,w,h); },{srgb:false});
-  // โคมดาวน์ไลท์ทองเหลืองบนเพดานเหนือตู้ทุกใบ (เรืองแสงเมื่อลำแสงผ่าน)
+function buildDownlights(){   // (ชื่อเดิม) ตู้เรืองแสงเองแบบค่อย ๆ สว่าง
+  const haloTex = tex(256,256,(g,w,h)=>{ const r=g.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2); r.addColorStop(0,'rgba(255,255,255,1)'); r.addColorStop(.45,'rgba(255,255,255,.35)'); r.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=r; g.fillRect(0,0,w,h); },{srgb:false});
   cabinets.forEach(c=>{
-    const dir=new THREE.Vector3(-Math.sin(c.yaw),0,-Math.cos(c.yaw));
-    const fx=dir.clone().multiplyScalar(CAB_R-1.05); fx.y=WALL_H-.012;
-    const ring=new THREE.Mesh(new THREE.CylinderGeometry(.12,.13,.03,28),M.brass); ring.position.copy(fx); scene.add(ring);
-    const lensM=new THREE.MeshStandardMaterial({color:'#fff1d0',emissive:'#ffd894',emissiveIntensity:.05,roughness:.3});
-    const lens=new THREE.Mesh(new THREE.CircleGeometry(.085,24),lensM); lens.rotation.x=Math.PI/2; lens.position.copy(fx); lens.position.y-=.017; scene.add(lens);
-    downs.push({yaw:c.yaw,lensM,on:0});
+    // รัศมีเรืองบนผนังหลังตู้
+    const hm=new THREE.MeshBasicMaterial({color:'#ffcf86',alphaMap:haloTex,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false});
+    const halo=new THREE.Mesh(new THREE.PlaneGeometry(2.8,3.2),hm); halo.position.set(0,1.45,-.32); c.group.add(halo);
+    c.haloM=hm;
   });
-  // ลำแสงเดียวที่เลื่อนตามสายตา
-  const L=3.2; const cg=new THREE.CylinderGeometry(.05,.6,L,32,1,true); cg.translate(0,-L/2,0);
-  spotCone=new THREE.Mesh(cg,new THREE.MeshBasicMaterial({color:'#ffe2a8',alphaMap:coneTex,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,toneMapped:false}));
-  scene.add(spotCone);
-  spot=new THREE.SpotLight('#ffe0a6',0,0,.42,.55,2);
-  spot.castShadow=renderer.shadowMap.enabled; spot.shadow.mapSize.set(1024,1024); spot.shadow.bias=-.0008; spot.shadow.normalBias=.02;
-  scene.add(spot); scene.add(spot.target);
+  // แสงนวลออกจากหน้าตู้ (ดวงเดียว ย้ายไปตู้ที่หันหา)
+  spot=new THREE.PointLight('#ffd49a',0,3.2,1.6);
+  spot.castShadow=false; scene.add(spot);
 }
-let spotYaw=0, spotCone=null;
-const _p=new THREE.Vector3(), _t=new THREE.Vector3(), _d=new THREE.Vector3(), _down=new THREE.Vector3(0,-1,0);
+let glowIdx=-1;
 function updateDownlights(dt){
   if(!spot) return;
-  // ลำแสงเลื่อนตามมุมมองแบบหน่วงนิด ๆ (เหมือนไฟติดตามบนเวที)
-  spotYaw += (yaw-spotYaw)*Math.min(1,dt*2.4);
-  const lag=Math.min(1,Math.abs(yaw-spotYaw)/STEP);
-  _p.set(-Math.sin(spotYaw)*(CAB_R-1.05),WALL_H-.06,-Math.cos(spotYaw)*(CAB_R-1.05));
-  _t.set(-Math.sin(spotYaw)*CAB_R,1.35,-Math.cos(spotYaw)*CAB_R);
-  spot.position.copy(_p); spot.target.position.copy(_t); spot.target.updateMatrixWorld();
-  const base = SKY==='night'?60:SKY==='evening'?55:48;
-  const want = base*(1-.3*lag);
-  spot.intensity += (want-spot.intensity)*Math.min(1,dt*3);
-  spotCone.position.copy(_p); spotCone.quaternion.setFromUnitVectors(_down,_d.copy(_t).sub(_p).normalize());
-  spotCone.material.opacity=(spot.intensity/base)*(SKY==='night'?.2:.14);
+  const idx=curIdx(), t=clock.elapsedTime;
+  const settle=Math.max(0,1-Math.abs(yaw-yawTarget)/(STEP*.4));
+  // ย้ายแสงไปตู้ใหม่ตอนที่ตู้เดิมมืดลงแล้ว
+  if(idx!==glowIdx && (glowIdx<0 || cabinets[glowIdx].glow<.08)){
+    glowIdx=idx; const c=cabinets[idx];
+    spot.position.set(-Math.sin(c.yaw)*(CAB_R-.75),1.45,-Math.cos(c.yaw)*(CAB_R-.75));
+  }
+  const breath = reduceMotion ? 1 : .86+.14*Math.sin(t*1.5);
   let best=0;
-  downs.forEach(d=>{
-    let df=Math.abs(((spotYaw-d.yaw)%(Math.PI*2)+Math.PI*3)%(Math.PI*2)-Math.PI);
-    const t=Math.max(0,1-df/(STEP*.5))*(spot.intensity/base);
-    d.on += (t-d.on)*Math.min(1,dt*8); best=Math.max(best,d.on);
-    d.lensM.emissiveIntensity=.05+d.on*2.2;
+  cabinets.forEach((c,i)=>{
+    const want = (i===glowIdx && i===idx) ? settle : 0;
+    c.glow += (want-c.glow)*Math.min(1,dt*(want>c.glow?1.1:3));   // สว่างขึ้นช้า ๆ ดับเร็วกว่า
+    const g=c.glow*breath; best=Math.max(best,c.glow);
+    c.glowMats.forEach(m=>m.emissiveIntensity=g*.45);
+    c.haloM.opacity=g*(SKY==='night'?.42:SKY==='evening'?.34:.26);
   });
-  // หรี่แสงรวมลงนิดหน่อย ให้ตู้ที่ถูกส่องเด่นขึ้น
-  if(hemi) hemi.intensity=PERIODS[SKY].hemi[1]*(1-.18*best);
+  const lvl=glowIdx>=0?cabinets[glowIdx].glow*breath:0;
+  spot.intensity = lvl*(SKY==='night'?7:5);
+  // หรี่แสงรวมลงนิดหน่อย ให้ตู้ที่เรืองแสงเด่นขึ้น
+  if(hemi) hemi.intensity=PERIODS[SKY].hemi[1]*(1-.15*best);
 }
 
 /* ================= ช่วงเวลาของห้อง ================= */
@@ -1296,7 +1291,7 @@ function frame(){
   cabinets.forEach((c,i)=>{
     const active = i===curIdx() || i===hover;
     const ei = (active?.42:.1) + (i===hover? Math.sin(t*4)*.06:0);
-    c.plaqueMat.emissiveIntensity += (ei-c.plaqueMat.emissiveIntensity)*Math.min(1,dt*6);
+    c.plaqueMat.emissiveIntensity += (ei+c.glow*.35-c.plaqueMat.emissiveIntensity)*Math.min(1,dt*2);
     c.doors.forEach(dr=>{ dr.g.rotation.y = dr.s * c.main.open * 1.25; });
     c.drawers.forEach(d=>{
       const peek = (d===c.main && i===hover && mode==='walk') ? .1 : 0;
