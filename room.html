@@ -581,7 +581,7 @@ function buildRoom(){
   const corn=new THREE.Mesh(ringGeo(ROOM_R-.06,.14),new THREE.MeshStandardMaterial({color:'#caa045',metalness:.7,roughness:.35,side:THREE.BackSide})); corn.position.y=WALL_H-.07; scene.add(corn);
   // เพดาน
   const ceil=new THREE.Mesh(new THREE.CircleGeometry(ROOM_R+.1,64),new THREE.MeshStandardMaterial({map:ceilTex,roughness:.7}));
-  ceil.rotation.x=Math.PI/2; ceil.position.y=WALL_H; scene.add(ceil);
+  ceil.rotation.x=Math.PI/2; ceil.position.y=WALL_H; ceil.receiveShadow=true; scene.add(ceil);
 
   // หน้าต่าง + ลำแสงเช้า
   const faceW = 2*ROOM_R*Math.sin(Math.PI/(N*2));
@@ -604,15 +604,8 @@ function buildRoom(){
     }
   }
 
-  // โคมไฟแขวน
-  const lampG=new THREE.Group(); lampG.position.set(0,WALL_H,0);
-  const rod=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,.7,8),M.brass); rod.position.y=-.35; lampG.add(rod);
-  const pts=[]; for(let i=0;i<=16;i++){ const t=i/16; pts.push(new THREE.Vector2(.05+Math.sin(t*Math.PI*.9)*.28+t*.08,-t*.42)); }
-  const shade=new THREE.Mesh(new THREE.LatheGeometry(pts,40),new THREE.MeshStandardMaterial({color:'#f7e6bc',emissive:'#ffc66b',emissiveIntensity:1.4,side:THREE.DoubleSide,roughness:.6}));
-  shade.position.y=-.7; lampG.add(shade);
-  const crown=new THREE.Mesh(new THREE.TorusGeometry(.1,.018,8,30),M.gold); crown.rotation.x=Math.PI/2; crown.position.y=-.7; lampG.add(crown);
-  scene.add(lampG);
-  bulb=new THREE.PointLight('#ffcf8a', 9, 0, 2); lampShade=shade; bulb.position.set(0,WALL_H-.95,0); scene.add(bulb);
+  // แชนเดอเลียร์คริสตัล (แบบโคมฝรั่งในราชสำนักยุค ร.๕)
+  buildChandelier();
 
   // แสงรวม
   hemi=new THREE.HemisphereLight('#ffe9c4','#3a1f0e',1.05); scene.add(hemi);
@@ -659,6 +652,57 @@ function hangPhoto(p, dir, apo, yaw, faceW){
     plate.position.set(0,-fh/2-F-.11,.03); G.add(plate);
   };
   img.src=p.src;
+}
+
+/* ================= แชนเดอเลียร์ ================= */
+let chand=null, flameMat=null, crystalMat=null;
+function buildChandelier(){
+  chand=new THREE.Group(); chand.position.set(0,WALL_H,0); scene.add(chand);
+  const brass=M.brass;
+  crystalMat=new THREE.MeshPhysicalMaterial({color:'#ffffff',metalness:0,roughness:.05,transmission:.0,transparent:true,opacity:.55,emissive:'#fff0d0',emissiveIntensity:.35,clearcoat:1});
+  flameMat=new THREE.MeshBasicMaterial({color:'#ffd27a',toneMapped:false});
+  const candleM=new THREE.MeshStandardMaterial({color:'#fbf3e0',roughness:.6,emissive:'#ffb860',emissiveIntensity:.15});
+  // ดอกเพดาน + โซ่
+  const rose=new THREE.Mesh(new THREE.CylinderGeometry(.22,.16,.05,32),brass); rose.position.y=-.025; chand.add(rose);
+  for(let k=0;k<7;k++){ const l=new THREE.Mesh(new THREE.TorusGeometry(.035,.009,8,16),brass); l.position.y=-.09-k*.06; l.rotation.y=k%2?Math.PI/2:0; chand.add(l); }
+  // แกนกลางกลึง
+  const prof=[[.02,0],[.05,.04],[.035,.1],[.075,.18],[.11,.26],[.06,.32],[.04,.38],[.09,.46],[.13,.5],[.05,.58],[.03,.66],[.06,.72],[.0,.8]]
+    .map(([r,y])=>new THREE.Vector2(r,-y));
+  const stem=new THREE.Mesh(new THREE.LatheGeometry(prof,28),brass); stem.position.y=-.5; stem.castShadow=true; chand.add(stem);
+  const glowBowl=new THREE.Mesh(new THREE.SphereGeometry(.09,24,16),new THREE.MeshStandardMaterial({color:'#fff4dc',emissive:'#ffcf80',emissiveIntensity:1.6,transparent:true,opacity:.85}));
+  glowBowl.position.y=-.86; chand.add(glowBowl); lampShade=glowBowl;
+
+  // แขนโค้งตัว S + เทียน
+  const tiers=[{n:8,r:.62,y:-.98,lift:.2},{n:6,r:.36,y:-.78,lift:.16}];
+  const drop=new THREE.OctahedronGeometry(.028,0); drop.scale(1,1.8,1);
+  tiers.forEach((T,ti)=>{
+    for(let k=0;k<T.n;k++){
+      const a=k/T.n*Math.PI*2+(ti?Math.PI/T.n:0), ca=Math.cos(a), sa=Math.sin(a);
+      const pts=[[.06,0],[T.r*.35,-.08],[T.r*.75,-.06],[T.r,T.lift*.5],[T.r,T.lift]].map(([r,y])=>new THREE.Vector3(ca*r,T.y+y,sa*r));
+      const arm=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),24,.011,8,false),brass); arm.castShadow=true; chand.add(arm);
+      const tip=new THREE.Vector3(ca*T.r,T.y+T.lift,sa*T.r);
+      const cup=new THREE.Mesh(new THREE.CylinderGeometry(.035,.022,.04,16),brass); cup.position.copy(tip); chand.add(cup);
+      const bob=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.006,20),crystalMat); bob.position.copy(tip); bob.position.y+=.012; chand.add(bob);
+      const candle=new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,.12,12),candleM); candle.position.copy(tip); candle.position.y+=.075; chand.add(candle);
+      const flame=new THREE.Mesh(new THREE.SphereGeometry(.014,10,8),flameMat); flame.scale.set(1,2.1,1); flame.position.copy(tip); flame.position.y+=.155; flame.userData.ph=Math.random()*9; chand.add(flame);
+      // คริสตัลห้อยใต้แขน
+      const d=new THREE.Mesh(drop,crystalMat); d.position.set(ca*T.r*.7,T.y-.12,sa*T.r*.7); chand.add(d);
+      const d2=new THREE.Mesh(drop,crystalMat); d2.position.set(ca*T.r,T.y+T.lift-.06,sa*T.r); d2.scale.setScalar(.7); chand.add(d2);
+    }
+  });
+  // วงพวงคริสตัลระย้า
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.48,.008,8,64),brass); ring.rotation.x=Math.PI/2; ring.position.y=-1.04; chand.add(ring);
+  for(let k=0;k<28;k++){ const a=k/28*Math.PI*2; const len=2+(k%3);
+    for(let m=0;m<len;m++){ const d=new THREE.Mesh(drop,crystalMat); d.position.set(Math.cos(a)*.48,-1.08-m*.055,Math.sin(a)*.48); d.scale.setScalar(m===len-1?1.1:.6); chand.add(d); } }
+  // ลูกตุ้มล่าง
+  const fin=new THREE.Mesh(new THREE.SphereGeometry(.045,16,12),brass); fin.position.y=-1.32; chand.add(fin);
+  const tear=new THREE.Mesh(new THREE.OctahedronGeometry(.05,0),crystalMat); tear.scale.set(1,2,1); tear.position.y=-1.43; chand.add(tear);
+
+  // แสงจากโคม (มีเงา) — ติดกับตัวโคม เงาจึงแกว่งตามโคม
+  bulb=new THREE.PointLight('#ffcf8a', 9, 0, 2); bulb.position.set(0,-.9,0);
+  bulb.castShadow=renderer.shadowMap.enabled; bulb.shadow.mapSize.set(1024,1024); bulb.shadow.bias=-.002; bulb.shadow.normalBias=.03; bulb.shadow.radius=4;
+  bulb.shadow.camera.near=.3; bulb.shadow.camera.far=9;
+  chand.add(bulb);
 }
 
 /* ================= ตู้ลิ้นชัก ================= */
@@ -1066,6 +1110,53 @@ const sb=document.getElementById('soundBtn');
 const paintSound=()=>{ sb.innerHTML=soundOn?'<i class="fas fa-volume-high"></i>':'<i class="fas fa-volume-xmark"></i>'; sb.title=soundOn?'ปิดเสียง':'เปิดเสียง'; };
 sb.onclick=()=>{ soundOn=!soundOn; try{localStorage.setItem('room-sound',soundOn?'1':'0');}catch(e){} paintSound(); }; paintSound();
 
+/* ================= ดาวน์ไลท์ส่องตู้ที่อยู่ตรงหน้า ================= */
+const downs=[]; let spot=null;
+function buildDownlights(){
+  const coneTex = tex(64,256,(g,w,h)=>{ const v=g.createLinearGradient(0,0,0,h); v.addColorStop(0,'rgba(255,255,255,.9)'); v.addColorStop(.6,'rgba(255,255,255,.25)'); v.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=v; g.fillRect(0,0,w,h); },{srgb:false});
+  // โคมดาวน์ไลท์ทองเหลืองบนเพดานเหนือตู้ทุกใบ (เรืองแสงเมื่อลำแสงผ่าน)
+  cabinets.forEach(c=>{
+    const dir=new THREE.Vector3(-Math.sin(c.yaw),0,-Math.cos(c.yaw));
+    const fx=dir.clone().multiplyScalar(CAB_R-1.05); fx.y=WALL_H-.012;
+    const ring=new THREE.Mesh(new THREE.CylinderGeometry(.12,.13,.03,28),M.brass); ring.position.copy(fx); scene.add(ring);
+    const lensM=new THREE.MeshStandardMaterial({color:'#fff1d0',emissive:'#ffd894',emissiveIntensity:.05,roughness:.3});
+    const lens=new THREE.Mesh(new THREE.CircleGeometry(.085,24),lensM); lens.rotation.x=Math.PI/2; lens.position.copy(fx); lens.position.y-=.017; scene.add(lens);
+    downs.push({yaw:c.yaw,lensM,on:0});
+  });
+  // ลำแสงเดียวที่เลื่อนตามสายตา
+  const L=3.2; const cg=new THREE.CylinderGeometry(.05,.6,L,32,1,true); cg.translate(0,-L/2,0);
+  spotCone=new THREE.Mesh(cg,new THREE.MeshBasicMaterial({color:'#ffe2a8',alphaMap:coneTex,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,toneMapped:false}));
+  scene.add(spotCone);
+  spot=new THREE.SpotLight('#ffe0a6',0,0,.42,.55,2);
+  spot.castShadow=renderer.shadowMap.enabled; spot.shadow.mapSize.set(1024,1024); spot.shadow.bias=-.0008; spot.shadow.normalBias=.02;
+  scene.add(spot); scene.add(spot.target);
+}
+let spotYaw=0, spotCone=null;
+const _p=new THREE.Vector3(), _t=new THREE.Vector3(), _d=new THREE.Vector3(), _down=new THREE.Vector3(0,-1,0);
+function updateDownlights(dt){
+  if(!spot) return;
+  // ลำแสงเลื่อนตามมุมมองแบบหน่วงนิด ๆ (เหมือนไฟติดตามบนเวที)
+  spotYaw += (yaw-spotYaw)*Math.min(1,dt*2.4);
+  const lag=Math.min(1,Math.abs(yaw-spotYaw)/STEP);
+  _p.set(-Math.sin(spotYaw)*(CAB_R-1.05),WALL_H-.06,-Math.cos(spotYaw)*(CAB_R-1.05));
+  _t.set(-Math.sin(spotYaw)*CAB_R,1.35,-Math.cos(spotYaw)*CAB_R);
+  spot.position.copy(_p); spot.target.position.copy(_t); spot.target.updateMatrixWorld();
+  const base = SKY==='night'?60:SKY==='evening'?55:48;
+  const want = base*(1-.3*lag);
+  spot.intensity += (want-spot.intensity)*Math.min(1,dt*3);
+  spotCone.position.copy(_p); spotCone.quaternion.setFromUnitVectors(_down,_d.copy(_t).sub(_p).normalize());
+  spotCone.material.opacity=(spot.intensity/base)*(SKY==='night'?.2:.14);
+  let best=0;
+  downs.forEach(d=>{
+    let df=Math.abs(((spotYaw-d.yaw)%(Math.PI*2)+Math.PI*3)%(Math.PI*2)-Math.PI);
+    const t=Math.max(0,1-df/(STEP*.5))*(spot.intensity/base);
+    d.on += (t-d.on)*Math.min(1,dt*8); best=Math.max(best,d.on);
+    d.lensM.emissiveIntensity=.05+d.on*2.2;
+  });
+  // หรี่แสงรวมลงนิดหน่อย ให้ตู้ที่ถูกส่องเด่นขึ้น
+  if(hemi) hemi.intensity=PERIODS[SKY].hemi[1]*(1-.18*best);
+}
+
 /* ================= ช่วงเวลาของห้อง ================= */
 let timeAuto=true;
 function applyPeriod(key){
@@ -1195,6 +1286,13 @@ function frame(){
       d.g.position.z=d.z0+e*.5;
     });
   });
+  updateDownlights(dt);
+  if(chand){
+    if(!reduceMotion){ chand.rotation.z=Math.sin(t*.55)*.012; chand.rotation.x=Math.cos(t*.43)*.009; }
+    const fl=1+Math.sin(t*13.1)*.025+Math.sin(t*7.3)*.03;
+    if(bulb) bulb.intensity=PERIODS[SKY].lamp*fl;
+    chand.children.forEach(o=>{ if(o.material===flameMat){ const k=1+Math.sin(t*16+o.userData.ph)*.12; o.scale.set(1,2.1*k,1); } });
+  }
   if(dust){ const p=dust.geometry.attributes.position; for(let i=0;i<p.count;i++){ p.array[i*3+1]+=Math.sin(t*.4+i)*.0006; p.array[i*3]+=Math.cos(t*.3+i*.7)*.0004; } p.needsUpdate=true; }
   renderer.render(scene,camera);
   requestAnimationFrame(frame);
@@ -1216,9 +1314,10 @@ const gate=document.getElementById('gate'), enterBtn=document.getElementById('en
     N=cats.length; STEP=Math.PI*2/N; CAB_R = ROOM_R*Math.cos(Math.PI/(N*2)) - .42;
     buildRoom();
     cats.forEach(buildCabinet);
+    buildDownlights();
     const dots=document.getElementById('dots');
     cats.forEach((c,i)=>{ const b=document.createElement('button'); b.title=c.short; b.setAttribute('role','tab'); b.setAttribute('aria-label',c.short); b.onclick=()=>{ if(mode==='focus') closeDrawer(); goTo(i); }; dots.appendChild(b); });
-    updateHud(); applyPeriod(SKY); paintFav(); frame(); window.__room={cabinets,get mode(){return mode},applyPeriod};
+    updateHud(); applyPeriod(SKY); paintFav(); frame(); window.__room={cabinets,get mode(){return mode},applyPeriod,get spot(){return [spotIdx,curIdx(),spot&&spot.intensity,yaw,yawTarget]}};
     buildSign();
     enterBtn.disabled=false; enterBtn.innerHTML='🚪 ผลักประตูเข้าห้อง'; gate.classList.add('ready'); setTimeout(()=>enterBtn.focus(),100);
   }catch(err){
