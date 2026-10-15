@@ -332,7 +332,7 @@ async function loadCats(){
       color: c1 ? c1[1] : '#d4a640',
       apps: [...sec.querySelectorAll('a.card')].map(a=>({
         href: a.getAttribute('href'),
-        title: (a.querySelector('.card-title')?.textContent || a.dataset.name || '').trim(),
+        title: (()=>{ const t=a.querySelector('.card-title'); const x=t?[...t.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join(''):''; return (x.trim()||a.dataset.name||'').replace(/\s+/g,' ').trim(); })(),
         icon: a.querySelector('.card-ico i')?.className || 'fas fa-file-lines',
         gaName: (a.dataset.name || a.textContent.trim()).slice(0,100),
         gaCat: a.dataset.cat || sec.id,
@@ -686,17 +686,27 @@ function plaqueTex(cat){
     lines.forEach((l,i)=>g.fillText(l,w/2,y0+i*lh+4));
   });
 }
-function drawerTex(wide, label){
-  return tex(wide?768:384, 208,(g,w,h)=>{
-    woodGrain(g,w,h,{seed:wide?41:43,base:'#62381b'});
-    g.strokeStyle='#2a1307'; g.lineWidth=7; g.strokeRect(14,14,w-28,h-28);
-    g.strokeStyle='#c99d42'; g.lineWidth=2.5; g.strokeRect(24,24,w-48,h-48);
-    g.fillStyle='#c99d42';
+/* ลวดลายหน้าลิ้นชัก ตามผิวตู้ (ไม้ / ลงรัก / ทาสี) */
+function drawerTex(sty, w0, label){
+  const W = Math.round(Math.max(200, Math.min(900, w0*560))), H = 208;
+  return tex(W, H, (g,w,h)=>{
+    if(sty.finish==='wood') woodGrain(g,w,h,{seed:Math.round(w0*100)+(label?7:3),base:sty.drawerBase});
+    else { g.fillStyle=sty.drawerBase; g.fillRect(0,0,w,h);
+      const sh=g.createLinearGradient(0,0,0,h); sh.addColorStop(0,'rgba(255,255,255,.10)'); sh.addColorStop(.5,'rgba(255,255,255,0)'); g.fillStyle=sh; g.fillRect(0,0,w,h); }
+    g.strokeStyle=sty.inset; g.lineWidth=7; g.strokeRect(14,14,w-28,h-28);
+    g.strokeStyle=sty.line; g.lineWidth=2.5; g.strokeRect(24,24,w-48,h-48);
+    g.fillStyle=sty.line;
     for(const [x,y] of [[24,24],[w-24,24],[24,h-24],[w-24,h-24]]){ g.beginPath(); g.arc(x,y,6,0,7); g.fill(); }
-    if(label){ // ป้ายทองเหลืองกลางลิ้นชัก
-      g.fillStyle='#d9b25a'; g.fillRect(w/2-120,h/2-34,240,68);
-      g.strokeStyle='#7a5a1e'; g.lineWidth=3; g.strokeRect(w/2-112,h/2-26,224,52);
-      g.fillStyle='#3b2112'; g.font='34px Chonburi, Sarabun, serif'; g.textAlign='center'; g.textBaseline='middle';
+    if(sty.finish==='lacquer' && w>300){ // ลายรดน้ำเล็ก ๆ มุมลิ้นชัก
+      g.strokeStyle=sty.line; g.lineWidth=2;
+      for(const sx of [1,-1]){ g.save(); g.translate(sx>0?44:w-44,h/2); g.scale(sx,1);
+        g.beginPath(); g.moveTo(0,-30); g.bezierCurveTo(26,-26,30,0,10,6); g.bezierCurveTo(24,8,24,26,0,30); g.stroke(); g.restore(); }
+    }
+    if(label){
+      const pw=Math.min(240,w-70);
+      g.fillStyle='#d9b25a'; g.fillRect(w/2-pw/2,h/2-34,pw,68);
+      g.strokeStyle='#7a5a1e'; g.lineWidth=3; g.strokeRect(w/2-pw/2+8,h/2-26,pw-16,52);
+      g.fillStyle='#3b2112'; g.font=(pw<200?26:34)+'px Chonburi, Sarabun, serif'; g.textAlign='center'; g.textBaseline='middle';
       g.fillText(label,w/2,h/2+3);
     }
   });
@@ -719,78 +729,192 @@ function emojiTex(emoji){
   });
 }
 
-const cabinets=[];       // {group, plaqueMat, drawers:[], main}
+const cabinets=[];       // {group, plaqueMat, drawers:[], main, doors:[]}
 const hitMeshes=[];
+
+/* ---------- ผิวตู้ 5 แบบ ---------- */
+const FIN = {
+  teak:    { finish:'wood',    body:()=>M.teak,                                  trim:()=>M.teakDark, drawerBase:'#62381b', inset:'#2a1307', line:'#c99d42' },
+  rosewood:{ finish:'wood',    body:()=>new THREE.MeshStandardMaterial({map:teakTex,color:'#b5654a',roughness:.45}), trim:()=>new THREE.MeshStandardMaterial({map:teakDarkTex,color:'#8a3a2a',roughness:.5}), drawerBase:'#6e2a1a', inset:'#2a0c06', line:'#d2a24a' },
+  red:     { finish:'lacquer', body:()=>new THREE.MeshStandardMaterial({color:'#7c1a14',roughness:.32,metalness:.05}), trim:()=>new THREE.MeshStandardMaterial({color:'#3a0b07',roughness:.35}), drawerBase:'#86201a', inset:'#3a0b07', line:'#e0b553' },
+  black:   { finish:'lacquer', body:()=>new THREE.MeshStandardMaterial({color:'#17110e',roughness:.25,metalness:.08}), trim:()=>new THREE.MeshStandardMaterial({color:'#0b0705',roughness:.3}), drawerBase:'#1c1410', inset:'#070403', line:'#d8ad4c' },
+  sage:    { finish:'paint',   body:()=>new THREE.MeshStandardMaterial({color:'#6f8160',roughness:.7}), trim:()=>new THREE.MeshStandardMaterial({color:'#efe4c6',roughness:.6}), drawerBase:'#738665', inset:'#4b5a40', line:'#f1e6c8' },
+};
+/* ---------- แบบตู้ประจำหมวด (หัวตู้ · ลิ้นชัก · ขา) ---------- */
+const STYLES = [
+  { fin:'teak',     crown:'gable',   layout:'classic',    legs:'ball'    },  // ตัวชี้วัด
+  { fin:'sage',     crown:'arch',    layout:'chest',      legs:'bracket' },  // รายอำเภอ
+  { fin:'rosewood', crown:'gallery', layout:'apothecary', legs:'plinth'  },  // สมุนไพร — ตู้ยาไทยลิ้นชักเล็ก
+  { fin:'black',    crown:'stepped', layout:'doors',      legs:'bracket' },  // คลินิก — ตู้กระจกโถยา
+  { fin:'teak',     crown:'arch',    layout:'apothecary', legs:'ball'    },  // กัญชา
+  { fin:'red',      crown:'gable',   layout:'classic',    legs:'plinth'  },  // คุณภาพ & บุคลากร
+  { fin:'sage',     crown:'gallery', layout:'doors',      legs:'ball'    },  // Wellness
+  { fin:'rosewood', crown:'stepped', layout:'chest',      legs:'bracket' },  // สำนักงาน
+  { fin:'red',      crown:'arch',    layout:'classic',    legs:'ball'    },  // ไลฟ์สไตล์
+];
+
 function buildCabinet(cat,i){
+  const st = STYLES[i % STYLES.length], F = FIN[st.fin];
+  const bodyM = F.body(), trimM = F.trim();
   const G=new THREE.Group();
   const yaw=-i*STEP;
   G.position.set(-Math.sin(yaw)*CAB_R,0,-Math.cos(yaw)*CAB_R);
   G.rotation.y=yaw;
-  const W=1.45, D=.56, BOT=.26, TOP=2.2, FZ=D/2;
-  const add=(m,x,y,z)=>{ m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; m.userData.cab=i; G.add(m); hitMeshes.push(m); return m; };
+  const W = st.layout==='apothecary'?1.5:1.45, D=.56, BOT = st.legs==='plinth'?.16:.26, TOP=2.2, FZ=D/2;
+  const add=(m,x,y,z,hit=true)=>{ m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; m.userData.cab=i; G.add(m); if(hit) hitMeshes.push(m); return m; };
 
-  add(new THREE.Mesh(new THREE.BoxGeometry(W,TOP-BOT,D),M.teak),0,(TOP+BOT)/2,0);
-  add(new THREE.Mesh(new THREE.PlaneGeometry(W-.08,1.36),M.recess),0,1.04,FZ+.001);
-  // ขา + ลูกแก้ว
-  for(const sx of [-1,1]) for(const sz of [-1,1]){
-    add(new THREE.Mesh(new THREE.CylinderGeometry(.045,.03,BOT-.05,12),M.teakDark),sx*(W/2-.08),(BOT-.05)/2+.05,sz*(D/2-.07));
-    add(new THREE.Mesh(new THREE.SphereGeometry(.042,12,10),M.brass),sx*(W/2-.08),.042,sz*(D/2-.07));
+  if(st.layout==='doors'){
+    const SPLIT=1.28;   // ส่วนบนทึบ ส่วนล่างเป็นตู้โชว์โถยา
+    add(new THREE.Mesh(new THREE.BoxGeometry(W,TOP-SPLIT,D),bodyM),0,(TOP+SPLIT)/2,0);
+    add(new THREE.Mesh(new THREE.PlaneGeometry(W-.08,TOP-SPLIT-.5),M.recess),0,SPLIT+.02+(TOP-SPLIT-.5)/2,FZ+.001,false);
+    const inner=new THREE.MeshStandardMaterial({color:'#3a2214',roughness:.85});
+    add(new THREE.Mesh(new THREE.BoxGeometry(W,SPLIT-BOT,.03),inner),0,(SPLIT+BOT)/2,-D/2+.015);
+    for(const sx of [-1,1]) add(new THREE.Mesh(new THREE.BoxGeometry(.04,SPLIT-BOT,D),bodyM),sx*(W/2-.02),(SPLIT+BOT)/2,0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(W,.04,D),bodyM),0,BOT+.02,0);
+  } else {
+    add(new THREE.Mesh(new THREE.BoxGeometry(W,TOP-BOT,D),bodyM),0,(TOP+BOT)/2,0);
+    add(new THREE.Mesh(new THREE.PlaneGeometry(W-.08,TOP-BOT-.5),M.recess),0,(TOP+BOT-.5)/2+.02,FZ+.001,false);
   }
-  add(new THREE.Mesh(new THREE.BoxGeometry(W+.04,.07,D+.04),M.teakDark),0,BOT+.02,0);
-  add(new THREE.Mesh(new THREE.BoxGeometry(W+.02,.018,.02),M.gold),0,BOT+.06,FZ+.025);
-  // บัวหัวตู้
-  add(new THREE.Mesh(new THREE.BoxGeometry(W+.16,.09,D+.12),M.teakDark),0,TOP+.045,0);
-  add(new THREE.Mesh(new THREE.BoxGeometry(W+.18,.022,.02),M.gold),0,TOP+.01,FZ+.07);
-  // เสาเหลี่ยมประดับสองข้าง
+
+  /* ----- ขา ----- */
+  if(st.legs==='ball'){
+    for(const sx of [-1,1]) for(const sz of [-1,1]){
+      add(new THREE.Mesh(new THREE.CylinderGeometry(.045,.03,BOT-.05,12),trimM),sx*(W/2-.08),(BOT-.05)/2+.05,sz*(D/2-.07));
+      add(new THREE.Mesh(new THREE.SphereGeometry(.042,12,10),M.brass),sx*(W/2-.08),.042,sz*(D/2-.07));
+    }
+  } else if(st.legs==='bracket'){
+    for(const sx of [-1,1]) for(const sz of [-1,1]){
+      add(new THREE.Mesh(new THREE.BoxGeometry(.16,BOT,.12),trimM),sx*(W/2-.08),BOT/2,sz*(D/2-.06));
+      add(new THREE.Mesh(new THREE.BoxGeometry(.17,.02,.13),M.gold),sx*(W/2-.08),BOT-.03,sz*(D/2-.06),false);
+    }
+  } else { // ฐานทึบ
+    add(new THREE.Mesh(new THREE.BoxGeometry(W+.08,BOT,D+.08),trimM),0,BOT/2,0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(W+.1,.022,.02),M.gold),0,BOT-.02,FZ+.05,false);
+  }
+  add(new THREE.Mesh(new THREE.BoxGeometry(W+.04,.07,D+.04),trimM),0,BOT+.02,0);
+  add(new THREE.Mesh(new THREE.BoxGeometry(W+.02,.018,.02),M.gold),0,BOT+.06,FZ+.025,false);
+
+  /* ----- บัวหัวตู้ + เสาประดับ ----- */
+  add(new THREE.Mesh(new THREE.BoxGeometry(W+.16,.09,D+.12),trimM),0,TOP+.045,0);
+  add(new THREE.Mesh(new THREE.BoxGeometry(W+.18,.022,.02),M.gold),0,TOP+.01,FZ+.07,false);
   for(const sx of [-1,1]){
-    add(new THREE.Mesh(new THREE.BoxGeometry(.07,TOP-BOT-.1,.05),M.teakDark),sx*(W/2-.01),(TOP+BOT)/2,FZ+.02);
-    add(new THREE.Mesh(new THREE.BoxGeometry(.075,.04,.055),M.gold),sx*(W/2-.01),TOP-.08,FZ+.02);
-    add(new THREE.Mesh(new THREE.BoxGeometry(.075,.04,.055),M.gold),sx*(W/2-.01),BOT+.12,FZ+.02);
+    add(new THREE.Mesh(new THREE.BoxGeometry(.07,TOP-BOT-.1,.05),trimM),sx*(W/2-.01),(TOP+BOT)/2,FZ+.02);
+    add(new THREE.Mesh(new THREE.BoxGeometry(.075,.04,.055),M.gold),sx*(W/2-.01),TOP-.08,FZ+.02,false);
+    add(new THREE.Mesh(new THREE.BoxGeometry(.075,.04,.055),M.gold),sx*(W/2-.01),BOT+.12,FZ+.02,false);
   }
-  // หน้าจั่ว (ลายพระอาทิตย์ฉลุ) + ช่อฟ้า
-  const sh=new THREE.Shape(); const PW=.78, PH=.44;
-  sh.moveTo(-PW,0); sh.lineTo(PW,0); sh.quadraticCurveTo(PW*.55,.06,PW*.16,PH*.8); sh.lineTo(0,PH); sh.lineTo(-PW*.16,PH*.8); sh.quadraticCurveTo(-PW*.55,.06,-PW,0);
-  const pedGeo=new THREE.ExtrudeGeometry(sh,{depth:.05,bevelEnabled:true,bevelSize:.012,bevelThickness:.012,bevelSegments:2});
-  const pedFrontMat=new THREE.MeshStandardMaterial({map:pedTex,roughness:.55,metalness:.1});
-  pedTex.repeat.set(1/(PW*2),1/PH); pedTex.offset.set(.5,0);
-  add(new THREE.Mesh(pedGeo,[pedFrontMat,M.teakDark]),0,TOP+.09,FZ-.04);
-  const fin=new THREE.Mesh(new THREE.ConeGeometry(.03,.2,10),M.gold); fin.rotation.z=-.35; add(fin,.03,TOP+.09+PH+.08,FZ-.015);
-  for(const sx of [-1,1]){ const t=new THREE.Mesh(new THREE.ConeGeometry(.025,.14,8),M.gold); t.rotation.z=sx*1.1; add(t,sx*(PW+.02),TOP+.16,FZ-.015); }
-  const medal=new THREE.Mesh(new THREE.CircleGeometry(.12,40),new THREE.MeshStandardMaterial({map:emojiTex(cat.emoji),roughness:.4,metalness:.2}));
-  add(medal,0,TOP+.09+.17,FZ+.03);
 
-  // ป้ายชื่อหมวด (รักดำลายทอง)
+  /* ----- หัวตู้ 4 แบบ (ไม่มียอดแหลม) ----- */
+  const CT = TOP+.09;
+  let medalY = CT+.17;
+  if(st.crown==='gable' || st.crown==='arch'){
+    const sh=new THREE.Shape(); const PW=.78, PH = st.crown==='gable'?.44:.4;
+    if(st.crown==='gable'){
+      sh.moveTo(-PW,0); sh.lineTo(PW,0); sh.quadraticCurveTo(PW*.55,.06,PW*.16,PH*.8); sh.quadraticCurveTo(0,PH*1.02,-PW*.16,PH*.8); sh.quadraticCurveTo(-PW*.55,.06,-PW,0);
+    } else {
+      sh.moveTo(-PW,0); sh.lineTo(PW,0); sh.lineTo(PW,.05); sh.bezierCurveTo(PW*.95,PH*1.05,-PW*.95,PH*1.05,-PW,.05); sh.lineTo(-PW,0);
+    }
+    const geo=new THREE.ExtrudeGeometry(sh,{depth:.05,bevelEnabled:true,bevelSize:.012,bevelThickness:.012,bevelSegments:2});
+    const t=pedTex.clone(); t.needsUpdate=true; t.repeat.set(1/(PW*2),1/PH); t.offset.set(.5,0);
+    add(new THREE.Mesh(geo,[new THREE.MeshStandardMaterial({map:t,roughness:.55,metalness:.1,color:st.fin==='sage'?'#c9d1b0':st.fin==='red'?'#e0a090':'#ffffff'}),trimM]),0,CT,FZ-.04);
+    // ปุ่มทองกลม ๆ ปลายหน้าจั่ว (แทนยอดแหลม)
+    for(const sx of [-1,1]) add(new THREE.Mesh(new THREE.SphereGeometry(.04,14,10),M.gold),sx*(PW-.02),CT+.05,FZ-.01,false);
+    add(new THREE.Mesh(new THREE.SphereGeometry(.035,14,10),M.gold),0,CT+PH+.03,FZ-.015,false);
+    medalY = CT + (st.crown==='gable'?.17:.16);
+  } else if(st.crown==='gallery'){
+    // ระเบียงลูกกรงกลึง + ป้ายกลาง
+    add(new THREE.Mesh(new THREE.BoxGeometry(W+.12,.03,.1),trimM),0,CT+.2,FZ-.01);
+    const n=13; for(let k=0;k<n;k++){ const x=-W/2+.04+k*(W-.08)/(n-1); if(Math.abs(x)<.2) continue;
+      add(new THREE.Mesh(new THREE.CylinderGeometry(.014,.02,.18,8),M.gold),x,CT+.1,FZ-.01,false); }
+    for(const sx of [-1,1]) add(new THREE.Mesh(new THREE.BoxGeometry(.07,.24,.07),trimM),sx*(W/2+.02),CT+.12,FZ-.01);
+    for(const sx of [-1,1]) add(new THREE.Mesh(new THREE.SphereGeometry(.04,12,10),M.gold),sx*(W/2+.02),CT+.27,FZ-.01,false);
+    medalY = CT+.17;
+  } else { // stepped — บัวซ้อนชั้นแบบเรือนขนมปังขิง
+    add(new THREE.Mesh(new THREE.BoxGeometry(W+.04,.08,D+.04),trimM),0,CT+.04,0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(W-.24,.08,D-.08),bodyM),0,CT+.12,0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(W-.24,.018,.02),M.gold),0,CT+.165,FZ-.02,false);
+    add(new THREE.Mesh(new THREE.BoxGeometry(W-.6,.08,D-.2),trimM),0,CT+.2,0);
+    // ระบายฉลุ (scallop) ใต้บัว
+    for(let k=0;k<9;k++){ const x=-W/2+.12+k*(W-.24)/8;
+      add(new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.02,16,1,false,0,Math.PI),M.gold),x,CT-.005,FZ+.06,false).rotation.set(Math.PI/2,0,Math.PI/2); }
+    medalY = CT+.2;
+  }
+  const medal=new THREE.Mesh(new THREE.CircleGeometry(.12,40),new THREE.MeshStandardMaterial({map:emojiTex(cat.emoji),roughness:.4,metalness:.2}));
+  add(medal,0,medalY,FZ+.03);
+
+  /* ----- ป้ายชื่อหมวด ----- */
   const pt=plaqueTex(cat);
   const plaqueMat=new THREE.MeshStandardMaterial({map:pt,emissive:'#ffffff',emissiveMap:pt,emissiveIntensity:.12,roughness:.35,metalness:.15});
   add(new THREE.Mesh(new THREE.PlaneGeometry(W-.12,(W-.12)/4),plaqueMat),0,1.94,FZ+.012);
-  add(new THREE.Mesh(new THREE.BoxGeometry(W-.06,.02,.025),M.gold),0,1.76,FZ+.012);
+  add(new THREE.Mesh(new THREE.BoxGeometry(W-.06,.02,.025),M.gold),0,1.76,FZ+.012,false);
 
-  // ลิ้นชัก
-  const drawers=[];
-  const mkDrawer=(w,h,x,y,wide,label)=>{
+  /* ----- ลิ้นชัก ----- */
+  const drawers=[], doors=[];
+  const knobM = st.fin==='sage' ? new THREE.MeshStandardMaterial({color:'#f3ead3',roughness:.4}) : M.brass;
+  const mkDrawer=(w,h,x,y,label,kn=1)=>{
     const dg=new THREE.Group(); dg.position.set(x,y,FZ+.02); G.add(dg);
-    const front=new THREE.Mesh(new THREE.BoxGeometry(w,h,.04),[M.teak,M.teak,M.teak,M.teak,new THREE.MeshStandardMaterial({map:drawerTex(wide,label),roughness:.5}),M.teak]);
+    const front=new THREE.Mesh(new THREE.BoxGeometry(w,h,.04),[bodyM,bodyM,bodyM,bodyM,new THREE.MeshStandardMaterial({map:drawerTex(F,w,label),roughness:F.finish==='lacquer'?.3:.5}),bodyM]);
     front.castShadow=true; front.userData.cab=i; dg.add(front); hitMeshes.push(front);
     const depth=.46, tw=w-.05, th=h-.06;
     const bottom=new THREE.Mesh(new THREE.BoxGeometry(tw,.012,depth),M.teakDark); bottom.position.set(0,-th/2,-depth/2); dg.add(bottom);
-    for(const sx of [-1,1]){ const s=new THREE.Mesh(new THREE.BoxGeometry(.012,th,depth),M.teakDark); s.position.set(sx*tw/2,0,-depth/2); dg.add(s); }
+    for(const sx of [-1,1]){ const sd=new THREE.Mesh(new THREE.BoxGeometry(.012,th,depth),M.teakDark); sd.position.set(sx*tw/2,0,-depth/2); dg.add(sd); }
     const back=new THREE.Mesh(new THREE.BoxGeometry(tw,th,.012),M.teakDark); back.position.set(0,0,-depth); dg.add(back);
-    if(wide){ // สมุดบัญชีในลิ้นชัก
-      for(let k=0;k<3;k++){ const p=new THREE.Mesh(new THREE.BoxGeometry(.32,.03,.24),k===1?new THREE.MeshStandardMaterial({color:'#7a1f1a',roughness:.8}):M.paper);
-        p.position.set(-.35+k*.35,-th/2+.02+k*.008,-.2); p.rotation.y=(k-1)*.12; dg.add(p); }
-    }
-    const knobs = wide?[-w*.3,w*.3]:[0];
-    for(const kx of knobs){
-      const k=new THREE.Mesh(new THREE.SphereGeometry(.024,14,10),M.brass); k.position.set(kx,wide?-.005:0,.045); dg.add(k);
-      const ro=new THREE.Mesh(new THREE.CylinderGeometry(.034,.034,.006,20),M.gold); ro.rotation.x=Math.PI/2; ro.position.set(kx,wide?-.005:0,.022); dg.add(ro);
+    if(label){ for(let k=0;k<3;k++){ const p=new THREE.Mesh(new THREE.BoxGeometry(Math.min(.32,tw/3.4),.03,.24),k===1?new THREE.MeshStandardMaterial({color:'#7a1f1a',roughness:.8}):M.paper);
+        p.position.set((k-1)*tw/3,-th/2+.02+k*.008,-.2); p.rotation.y=(k-1)*.12; dg.add(p); } }
+    const xs = kn===2?[-w*.3,w*.3]:[0];
+    for(const kx of xs){
+      const ky = (label&&kn===2)?-.005:0;
+      const k=new THREE.Mesh(new THREE.SphereGeometry(h<.3?.018:.024,14,10),knobM); k.position.set(kx,label&&kn===1?-h*.28:ky,.045); dg.add(k);
+      const ro=new THREE.Mesh(new THREE.CylinderGeometry(h<.3?.026:.034,h<.3?.026:.034,.006,20),M.gold); ro.rotation.x=Math.PI/2; ro.position.set(kx,k.position.y,.022); dg.add(ro);
     }
     const d={g:dg,z0:FZ+.02,open:0,target:0}; drawers.push(d); return d;
   };
-  const main=mkDrawer(W-.14,.38,0,1.5,true,'บรรจุ '+thaiNum(cat.apps.length)+' ระบบ');
-  for(const [r,y] of [[1,1.06],[2,.62]]) for(const sx of [-1,1]) mkDrawer((W-.18)/2,.38,sx*((W-.18)/4+.02),y,false,null);
+  const DW=W-.14, lab='บรรจุ '+thaiNum(cat.apps.length)+' ระบบ';
+  const main=mkDrawer(DW,.38,0,1.5,lab,2);
+  if(st.layout==='classic'){
+    for(const y of [1.06,.62]) for(const sx of [-1,1]) mkDrawer((W-.18)/2,.38,sx*((W-.18)/4+.02),y,null);
+  } else if(st.layout==='chest'){
+    for(const y of [1.12,.8,.48]) mkDrawer(DW,.28,0,y,null,2);
+  } else if(st.layout==='apothecary'){
+    // ตู้ยาไทยโบราณ: ลิ้นชักเล็ก 3 x 3 พร้อมป้ายชื่อสมุนไพร
+    const herbs=['ขมิ้นชัน','ฟ้าทะลายโจร','ขิง','ไพล','กระชาย','มะขามแขก','บอระเพ็ด','ตะไคร้','เพชรสังฆาต'];
+    const cw=(DW-.04)/3, rh=.25;
+    for(let r=0;r<3;r++) for(let c=0;c<3;c++){
+      const d=mkDrawer(cw-.02,rh,(c-1)*cw,1.165-r*(rh+.035),null);
+      const tag=new THREE.Mesh(new THREE.PlaneGeometry(cw*.62,.06),new THREE.MeshStandardMaterial({map:tex(256,60,(g,w,h)=>{
+        g.fillStyle='#efe1bb'; g.fillRect(0,0,w,h); g.strokeStyle='#7a5a1e'; g.lineWidth=3; g.strokeRect(3,3,w-6,h-6);
+        g.fillStyle='#3b2112'; g.font='30px Sarabun, sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(herbs[r*3+c],w/2,h/2+2);
+      }),roughness:.8}));
+      tag.position.set(0,.06,.021); d.g.add(tag);
+    }
+  } else if(st.layout==='doors'){
+    // ตู้บานกระจก มีชั้นวางโถยาเบญจรงค์
+    const dh=.86, dy=.83, dw=(DW)/2;
+    const shelfM=new THREE.MeshStandardMaterial({color:'#2a160a',roughness:.8});
+    for(const y of [dy-dh/2+.05,dy+.02]) add(new THREE.Mesh(new THREE.BoxGeometry(DW,.02,D-.06),shelfM),0,y,0,false);
+    const glow=new THREE.PointLight('#ffd9a0',.6,1.4,2); glow.position.set(0,dy+.38,.1); G.add(glow);
+    const jarCols=['#2d5a7a','#b8433a','#3f6b47','#d9b25a','#6d3b78'];
+    for(const [y,cnt] of [[dy-dh/2+.06,4],[dy+.03,4]]) for(let k=0;k<cnt;k++){
+      const jc=jarCols[(k+i+(y>dy?2:0))%jarCols.length], jh=.16+((k+i)%3)*.03;
+      const jar=new THREE.Mesh(new THREE.LatheGeometry([0,.06,.07,.065,.04,.035,.045].map((r,n,a)=>new THREE.Vector2(r,n/(a.length-1)*jh)),20),new THREE.MeshStandardMaterial({color:jc,roughness:.25,metalness:.1}));
+      jar.position.set(-DW/2+.16+k*(DW-.32)/(cnt-1),y,0); jar.castShadow=true; G.add(jar);
+      const lid=new THREE.Mesh(new THREE.SphereGeometry(.03,10,8),M.gold); lid.position.set(jar.position.x,y+jh+.015,0); G.add(lid);
+    }
+    const glassM=new THREE.MeshStandardMaterial({color:'#bcd6d0',transparent:true,opacity:.18,roughness:.05,metalness:.2,depthWrite:false});
+    for(const sx of [-1,1]){
+      const hinge=new THREE.Group(); hinge.position.set(sx*DW/2,dy,FZ+.02); G.add(hinge);
+      const frameT=.05;
+      for(const [bw,bh,x,y] of [[dw,frameT,0,dh/2-frameT/2],[dw,frameT,0,-dh/2+frameT/2],[frameT,dh,dw/2-frameT/2,0],[frameT,dh,-dw/2+frameT/2,0]]){
+        const b=new THREE.Mesh(new THREE.BoxGeometry(bw,bh,.035),bodyM); b.position.set(-sx*dw/2+x,y,0); b.userData.cab=i; hinge.add(b); hitMeshes.push(b);
+      }
+      const gl=new THREE.Mesh(new THREE.PlaneGeometry(dw-frameT*2,dh-frameT*2),glassM); gl.position.set(-sx*dw/2,0,0); gl.userData.cab=i; hinge.add(gl); hitMeshes.push(gl);
+      const mull=new THREE.Mesh(new THREE.BoxGeometry(dw-frameT*2,.02,.02),M.gold); mull.position.set(-sx*dw/2,0,.01); hinge.add(mull);
+      const kn=new THREE.Mesh(new THREE.SphereGeometry(.022,12,10),knobM); kn.position.set(-sx*(dw-.07),0,.035); hinge.add(kn);
+      doors.push({g:hinge,s:sx});
+    }
+  }
 
   scene.add(G);
-  cabinets.push({group:G,plaqueMat,drawers,main,yaw});
+  cabinets.push({group:G,plaqueMat,drawers,main,yaw,doors});
 }
 
 /* ================= การควบคุมกล้อง ================= */
@@ -1062,6 +1186,7 @@ function frame(){
     const active = i===curIdx() || i===hover;
     const ei = (active?.42:.1) + (i===hover? Math.sin(t*4)*.06:0);
     c.plaqueMat.emissiveIntensity += (ei-c.plaqueMat.emissiveIntensity)*Math.min(1,dt*6);
+    c.doors.forEach(dr=>{ dr.g.rotation.y = dr.s * c.main.open * 1.25; });
     c.drawers.forEach(d=>{
       const peek = (d===c.main && i===hover && mode==='walk') ? .1 : 0;
       const tgt = Math.max(d.target,peek);
