@@ -147,11 +147,17 @@ body.guiding #hint,body.guiding #navrow,body.guiding #dots,body.focus #hint,body
 #bubble .row{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
 #bubble button{height:32px;padding:0 14px;border-radius:16px;border:1px solid #c9a24f;background:#fffaf0;color:#5a3412;font:600 .8rem 'Sarabun';cursor:pointer}
 #bubble button.pri{background:linear-gradient(180deg,#f3d68a,#d4a640);border-color:#9a7224;color:#2b1409}
+#bubble .nomore{display:flex;align-items:center;gap:5px;font-size:.74rem;color:#8a6a44;cursor:pointer;white-space:nowrap}
+#bubble .nomore input{accent-color:#c9a24f}
 #bubble .dots{flex:1;display:flex;gap:5px;align-items:center}
 #bubble .dots i{width:6px;height:6px;border-radius:50%;background:#e2d2ad}
 #bubble .dots i.on{background:#c9a24f}
 @media(max-width:700px){#buddyBtn .tx{display:none}}
 
+#dockTip{position:fixed;z-index:6;right:22px;bottom:calc(max(18px,env(safe-area-inset-bottom)) + 178px);padding:7px 12px;border-radius:14px 14px 4px 14px;
+  background:#fffdf6;border:1px solid #c9a24f;color:#5a3412;font:600 .78rem 'Sarabun';box-shadow:0 6px 18px #3b211230;opacity:0;transform:translateY(6px);transition:.35s;pointer-events:none}
+#dockTip.show{opacity:1;transform:none}
+body.chatting #dockTip,body.guiding #dockTip{display:none}
 /* ---------- แชตถามน้องลูกประคบ ---------- */
 #chat{position:fixed;z-index:9;left:16px;bottom:16px;width:min(400px,calc(100vw - 32px));max-height:min(70vh,620px);display:flex;flex-direction:column;
   border-radius:18px;background:linear-gradient(180deg,#fffdf6,#f6ecd4);border:1.5px solid #c9a24f;color:#4a2c14;
@@ -341,11 +347,12 @@ body.chatting #navrow,body.chatting #dots,body.chatting #hint{display:none}
   <ul id="llist"></ul>
 </aside>
 
+<div id="dockTip">💬 แตะหนู เพื่อถามได้นะคะ</div>
 <!-- น้องลูกประคบ -->
 <div id="bubble" role="dialog" aria-live="polite" aria-label="น้องลูกประคบแนะนำการใช้งาน">
   <div class="who">🌿 น้องลูกประคบ</div>
   <div class="txt" id="bubbleTxt"></div>
-  <div class="row"><span class="dots" id="bubbleDots"></span><button id="guideSkip">ข้าม ⏭</button><button class="pri" id="guideNext">ถัดไป ▶</button></div>
+  <div class="row"><label class="nomore"><input type="checkbox" id="guideHide"> ไม่ต้องแสดงอีก</label><span class="dots" id="bubbleDots"></span><button id="guideSkip">ข้าม ⏭</button><button class="pri" id="guideNext">ถัดไป ▶</button></div>
 </div>
 
 <!-- แชตถามน้องลูกประคบ -->
@@ -394,7 +401,7 @@ const WALL_PHOTOS = [
 ];
 
 /* ================= เวอร์ชัน ================= */
-const ROOM_VERSION='2.2', ROOM_BUILD='2026-10-15';
+const ROOM_VERSION='2.4', ROOM_BUILD='2026-10-15';
 function paintVersion(iso){
   const d=new Date(iso||ROOM_BUILD); const t=isNaN(d)?ROOM_BUILD:new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'short',year:'2-digit',timeZone:'Asia/Bangkok'}).format(d);
   document.querySelectorAll('.ver').forEach(el=>el.textContent='เวอร์ชัน '+ROOM_VERSION+' (อัปเดต '+t+')');
@@ -1408,6 +1415,8 @@ canvas.addEventListener('pointermove',e=>{
     if(moved>6 && mode==='walk'){ canvas.classList.add('grabbing'); yawTarget=down.yaw0+dx*(Math.PI*1.1/innerWidth); setPitch(down.p0+dy*(1.2/innerHeight)); }
     return;
   }
+  if(e.pointerType==='mouse' && buddy && buddy.B.visible){ ndc.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1); ray.setFromCamera(ndc,camera);
+    const onB=ray.intersectObject(buddy.B,true).length>0; if(onB){ canvas.classList.add('hand'); canvas.title='คุยกับน้องลูกประคบ'; if(buddy.dock) buddy.action='wave'; return; } else { canvas.title=''; if(buddy.dock&&buddy.action==='wave') buddy.action='idle'; } }
   const h = e.pointerType==='mouse' ? pick(e.clientX,e.clientY) : -1;
   if(h!==hover){ hover=h; canvas.classList.toggle('hand',h>=0); }
 });
@@ -1417,6 +1426,8 @@ canvas.addEventListener('pointerup',e=>{
   else if(moved<=6){
     ndc.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1); ray.setFromCamera(ndc,camera);
     const ph=photoMeshes.length && ray.intersectObjects(photoMeshes,false)[0];
+    if(buddy && buddy.B.visible){ ndc.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1); ray.setFromCamera(ndc,camera);
+      if(ray.intersectObject(buddy.B,true).length){ down=null; canvas.classList.remove('grabbing'); if(buddy.dock||!chat.classList.contains('show')) openChat(); return; } }
     const h=pick(e.clientX,e.clientY);
     const ch=ray.intersectObjects(hitMeshes,false)[0];
     if(ph && (!ch || ch.distance > ph.distance)){ openPhoto(ph.object.userData.photo); down=null; return; }
@@ -1664,14 +1675,25 @@ function besideCabinet(cab){   // จุดยืนข้างตู้ (อ�
   const dir=new THREE.Vector3(-Math.sin(cab.yaw),0,-Math.cos(cab.yaw)), right=new THREE.Vector3(Math.cos(cab.yaw),0,-Math.sin(cab.yaw));
   return cab.group.position.clone().sub(dir.multiplyScalar(.85)).add(right.multiplyScalar(.95)).setY(1.15);
 }
+function dockPos(){
+  const ledgerOpen=ledger.classList.contains('show') && innerWidth>760;
+  const asp=camera.aspect, side=(asp>1.2?.62:asp>.8?.42:.3)*(ledgerOpen?-1:1);
+  const {f,r}=camBasis();
+  return camera.position.clone().add(f.multiplyScalar(1.5)).add(r.multiplyScalar(side*1.1)).setY(camera.position.y-.4);
+}
+function dock(){ if(!buddy) return; buddy.follow=null; buddy.pointAt=null; buddy.action='idle'; buddy.dock=true; buddy.scaleT=.5;
+  if(buddy.scale<.05){ buddy.pos.copy(dockPos()); buddy.pos.y-=.4; } showDockTip(); }
+let dockTipT=0;
+function showDockTip(){ const el=document.getElementById('dockTip'); if(!el) return; el.classList.add('show'); clearTimeout(dockTipT); dockTipT=setTimeout(()=>el.classList.remove('show'),6000); }
 function frontPos(dist,side,h){ const {f,r}=camBasis(); return camPos.clone().setY(0).add(f.multiplyScalar(dist)).add(r.multiplyScalar(side)).setY(h); }
 function updateBuddy(dt,t){
   if(!buddy) return; const b=buddy;
   b.scale += (b.scaleT-b.scale)*Math.min(1,dt*5); b.B.visible=b.scale>.02; b.shadow.visible=b.B.visible;
   if(!b.B.visible) return;
-  if(b.follow) b.target.copy(frontPos(b.follow.d, b.follow.s + Math.sin(t*.8)*(b.follow.orbit||0), b.follow.h));
+  if(b.dock) b.target.copy(dockPos());
+  else if(b.follow) b.target.copy(frontPos(b.follow.d, b.follow.s + Math.sin(t*.8)*(b.follow.orbit||0), b.follow.h));
   const moving=b.pos.distanceTo(b.target)>.03;
-  b.pos.lerp(b.target,Math.min(1,dt*2.2));
+  b.pos.lerp(b.target,Math.min(1,dt*(b.dock?7:2.2)));
   const hop = moving ? Math.abs(Math.sin(t*9))*.05 : 0;
   b.B.position.set(b.pos.x, b.pos.y + Math.sin(t*2.2)*.025 + hop, b.pos.z);
   b.B.scale.setScalar(b.scale);
@@ -1709,17 +1731,34 @@ function pickVoice(){
     thVoice = pref.map(p=>vs.find(v=>v.name.toLowerCase().includes(p.toLowerCase()))).find(Boolean) || vs[0] || null; }catch(e){}
 }
 try{ pickVoice(); speechSynthesis.onvoiceschanged=pickVoice; }catch(e){}
+/* แบ่งเป็นวลีสั้น ๆ: ใช้ | เป็นจุดเว้นวรรคหายใจ + ตัดหลัง ค่ะ/คะ/นะคะ อัตโนมัติ */
+const plain=t=>t.replace(/\s*\|\s*/g,' ');
+function phrases(t){
+  let parts=t.replace(/(ค่ะ|คะ|นะคะ|จ้ะ)\s+/g,'$1|').split(/\s*\|\s*/).filter(Boolean);
+  const out=[]; parts.forEach(p=>{ if(p.length<=48){ out.push(p); return; } let cur=''; p.split(' ').forEach(w=>{ if((cur+' '+w).trim().length>40 && cur){ out.push(cur.trim()); cur=w; } else cur+=' '+w; }); if(cur.trim()) out.push(cur.trim()); });
+  return out;
+}
+let sayId=0;
 function say(text){
+  const id=++sayId; try{ speechSynthesis.cancel(); }catch(e){}
   return new Promise(res=>{
-    const ms=Math.max(2600,text.length*95);
-    let done=false; const fin=()=>{ if(done) return; done=true; if(buddy) buddy.talk=0; res(); };
-    if(buddy) buddy.talk=1;
-    if(soundOn && 'speechSynthesis' in window){
-      try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang='th-TH'; if(thVoice) u.voice=thVoice;
-        u.pitch=1.75; u.rate=1.02; u.volume=1; u.onend=fin; u.onerror=()=>setTimeout(fin,ms);
-        speechSynthesis.speak(u); setTimeout(fin,ms+6000); return; }catch(e){}
-    }
-    setTimeout(fin,ms);
+    const list=phrases(text), total=Math.max(2800,plain(text).length*105+list.length*350);
+    const t0=performance.now(), minMs=Math.max(2400,plain(text).length*72+900);   // อย่างน้อยให้อ่านทัน
+    let done=false; const fin=()=>{ if(done) return; done=true; const wait=Math.max(0,minMs-(performance.now()-t0));
+      setTimeout(()=>{ if(buddy&&id===sayId) buddy.talk=0; res(); }, id===sayId?wait:0); };
+    if(!(soundOn && 'speechSynthesis' in window)){ if(buddy) buddy.talk=1; setTimeout(fin,total); return; }
+    let k=0;
+    const next=()=>{
+      if(id!==sayId || done) return fin();
+      if(k>=list.length) return fin();
+      const u=new SpeechSynthesisUtterance(list[k++]); u.lang='th-TH'; if(thVoice) u.voice=thVoice;
+      u.pitch=1.32; u.rate=.9; u.volume=.92;          // นุ่ม อ่อนโยน ไม่แหลมเกิน
+      u.onstart=()=>{ if(buddy) buddy.talk=1; };
+      u.onend=()=>{ if(buddy) buddy.talk=0; setTimeout(next, /[ค่ะคะ]$/.test(u.text)?420:260); };   // เว้นจังหวะระหว่างวลี
+      u.onerror=()=>setTimeout(next,200);
+      try{ speechSynthesis.speak(u); }catch(e){ fin(); }
+    };
+    next(); setTimeout(fin,total+12000);
   });
 }
 
@@ -1727,7 +1766,7 @@ function say(text){
 const bubble=document.getElementById('bubble'), bubbleTxt=document.getElementById('bubbleTxt');
 let guideRun=0, guideStep=0, guideNextResolve=null;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-function showBubble(text,i,n){ document.body.classList.add('guiding'); bubbleTxt.textContent=text; document.getElementById('bubbleDots').innerHTML=Array.from({length:n},(_,k)=>'<i'+(k===i?' class="on"':'')+'></i>').join(''); bubble.classList.add('show'); }
+function showBubble(text,i,n){ document.body.classList.add('guiding'); bubbleTxt.textContent=plain(text); document.getElementById('bubbleDots').innerHTML=Array.from({length:n},(_,k)=>'<i'+(k===i?' class="on"':'')+'></i>').join(''); bubble.classList.add('show'); }
 function placeBubble(){
   if(!buddy || !bubble.classList.contains('show')) return;
   const p=buddy.B.position.clone(); p.y+=.55*buddy.scale; p.project(camera);
@@ -1737,28 +1776,28 @@ function placeBubble(){
 async function startGuide(){
   if(!buddy) return;
   const run=++guideRun; const alive=()=>run===guideRun;
-  if(mode==='focus') closeDrawer(); setPitch(0); hideLedger();
+  if(mode==='focus') closeDrawer(); setPitch(0); hideLedger(); if(buddy) buddy.dock=false;
   ttmEvent('guide_start',{});
   const c0=cats[0], cab0=cabinets[0];
   const steps=[
     async()=>{ buddy.pos.copy(frontPos(1.9,-.9,.6)); buddy.target.copy(buddy.pos); buddy.scaleT=.82; sfx.tick(); await sleep(250);
       buddy.follow={d:1.85,s:-.45,h:1.2}; buddy.action='wave';
-      return 'สวัสดีค่ะ หนูชื่อน้องลูกประคบ ยินดีต้อนรับสู่หอข้อมูลงานแพทย์แผนไทยและแพทย์ทางเลือก สมุทรปราการค่ะ'; },
+      return 'สวัสดีค่ะ | หนูชื่อ น้องลูกประคบ นะคะ | ยินดีต้อนรับ สู่หอข้อมูล งานแพทย์แผนไทย | และแพทย์ทางเลือก | สมุทรปราการ ค่ะ'; },
     async()=>{ buddy.action='cheer'; buddy.follow={d:1.9,s:-.2,h:1.22,orbit:.6};
       setTimeout(()=>alive()&&step(1),1800); setTimeout(()=>alive()&&step(1),3600); setTimeout(()=>alive()&&goTo(0),5600);
-      return `ห้องนี้มีตู้ไม้ทั้งหมด ${thaiNum(cats.length)} ใบ ตู้ละหนึ่งหมวดงานค่ะ ลากหน้าจอ หรือกดลูกศรซ้ายขวา เพื่อหมุนตัวดูตู้ต่าง ๆ ได้เลยนะคะ`; },
+      return `ห้องนี้ มีตู้ไม้ทั้งหมด ${thaiNum(cats.length)} ใบ | ตู้ละหนึ่งหมวดงาน ค่ะ | ลากหน้าจอ | หรือกดลูกศรซ้ายขวา | เพื่อหมุนตัว ดูตู้ต่าง ๆ ได้เลยนะคะ`; },
     async()=>{ goTo(0); await sleep(700); buddy.follow=null; buddy.action='point';
       const cp=cab0.group.position.clone();
       buddy.target.copy(besideCabinet(cab0));
       buddy.pointAt=cp.clone().setY(1.6);
       setTimeout(()=>{ if(alive()){ cab0.main.target=1; sfx.drawerOpen(); } },2600);
-      return `อย่างตู้นี้คือหมวด${c0.name}ค่ะ แตะที่ตู้หรือกดปุ่มดึงลิ้นชัก ลิ้นชักจะเลื่อนออกมา แล้วเลือกระบบที่ต้องการได้เลยค่ะ`; },
+      return `อย่างตู้นี้ | คือหมวด ${c0.name} ค่ะ | แตะที่ตู้ | หรือกดปุ่ม ดึงลิ้นชัก | ลิ้นชักจะค่อย ๆ เลื่อนออกมา | แล้วเลือกระบบ ที่ต้องการได้เลยค่ะ`; },
     async()=>{ cab0.main.target=0; sfx.drawerClose(); buddy.pointAt=null; buddy.action='point';
       buddy.follow={d:1.85,s:.62,h:1.25}; await sleep(400);
       buddy.pointAt=camera.position.clone().add(camBasis().f.multiplyScalar(2)).setY(3.2);
-      return 'ถ้าหาระบบไม่เจอ พิมพ์ชื่อที่ช่องค้นทุกลิ้นชักด้านบนได้เลยค่ะ ระบบที่ใช้บ่อย กดรูปดาวเก็บไว้ในลิ้นชักโปรดได้นะคะ'; },
+      return 'ถ้าหาระบบไม่เจอ | พิมพ์ชื่อ ที่ช่องค้นหา ด้านบน ได้เลยค่ะ | ระบบที่ใช้บ่อย | กดรูปดาว | เก็บไว้ในลิ้นชักโปรด ได้นะคะ'; },
     async()=>{ buddy.pointAt=null; buddy.action='wai'; buddy.follow={d:1.8,s:-.5,h:1.18};
-      return 'ถ้าสงสัยอะไร กดปุ่มน้องลูกประคบด้านบน แล้วพิมพ์หรือพูดถามหนูได้เลยนะคะ ขอให้มีความสุขกับการทำงานค่ะ สวัสดีค่ะ'; },
+      return 'ถ้าสงสัยอะไร | กดปุ่ม น้องลูกประคบ ด้านบน | แล้วพิมพ์ หรือพูดถามหนู ได้เลยนะคะ | ขอให้มีความสุข กับการทำงานนะคะ | สวัสดีค่ะ'; },
   ];
   for(guideStep=0; guideStep<steps.length; guideStep++){
     if(!alive()) return;
@@ -1774,11 +1813,12 @@ async function startGuide(){
 function endGuide(completed){
   guideRun++; try{ speechSynthesis.cancel(); }catch(e){}
   bubble.classList.remove('show'); document.body.classList.remove('guiding');
-  if(buddy){ buddy.talk=0; buddy.action='wave'; buddy.follow=null; buddy.target.copy(frontPos(1.8,1.6,2.2)); setTimeout(()=>{ if(buddy) buddy.scaleT=0; },500); }
+  if(buddy){ buddy.talk=0; buddy.action='wave'; setTimeout(dock,700); }
   if(cabinets[0]) cabinets[0].main.target=0;
-  try{ localStorage.setItem('room-guide','1'); }catch(e){}
   ttmEvent(completed?'guide_complete':'guide_skip',{step:guideStep});
 }
+(function(){ const cb=document.getElementById('guideHide'); try{ cb.checked=localStorage.getItem('room-guide-hide')==='1'; }catch(e){}
+  cb.onchange=()=>{ try{ cb.checked?localStorage.setItem('room-guide-hide','1'):localStorage.removeItem('room-guide-hide'); }catch(e){} ttmEvent('guide_hide',{hide:cb.checked}); }; })();
 document.getElementById('guideSkip').onclick=()=>endGuide(false);
 document.getElementById('guideNext').onclick=()=>{ try{ speechSynthesis.cancel(); }catch(e){} guideNextResolve&&guideNextResolve(); };
 document.getElementById('buddyBtn').onclick=()=>{ if(ready) openChat(); };
@@ -1795,7 +1835,7 @@ function paintMode(){
   if(off) off.onclick=()=>{ try{ localStorage.removeItem('ttm-aikey'); }catch(e){} paintMode(); };
 }
 function buddyIn(){
-  if(!buddy) return;
+  if(!buddy) return; buddy.dock=false;
   if(buddy.scale<.05){ buddy.pos.copy(frontPos(1.9,-.9,.6)); buddy.target.copy(buddy.pos); }
   buddy.scaleT=.82; buddy.follow={d:1.9,s:innerWidth>760?-.62:0,h:1.2}; buddy.action='wave'; setTimeout(()=>{ if(buddy&&buddy.action==='wave') buddy.action='idle'; },1800);
 }
@@ -1810,7 +1850,7 @@ function openChat(){
   }
   setTimeout(()=>chatIn.focus({preventScroll:true}),300);
 }
-function closeChat(){ chat.classList.remove('show'); document.body.classList.remove('chatting'); try{ speechSynthesis.cancel(); }catch(e){} if(buddy){ buddy.talk=0; buddy.follow=null; buddy.action='wave'; buddy.target.copy(frontPos(1.9,1.6,2.2)); setTimeout(()=>{ if(buddy&&!chat.classList.contains('show')) buddy.scaleT=0; },500); } }
+function closeChat(){ chat.classList.remove('show'); document.body.classList.remove('chatting'); try{ speechSynthesis.cancel(); }catch(e){} if(buddy){ buddy.talk=0; buddy.action='wave'; setTimeout(dock,500); } }
 document.getElementById('chatClose').onclick=closeChat;
 document.getElementById('chatTour').onclick=()=>{ closeChat(); setTimeout(startGuide,300); };
 function addMsg(who,text,apps,goCat){
@@ -1990,7 +2030,7 @@ const gate=document.getElementById('gate'), enterBtn=document.getElementById('en
     buildDownlights();
     const dots=document.getElementById('dots');
     cats.forEach((c,i)=>{ const b=document.createElement('button'); b.title=c.short; b.setAttribute('role','tab'); b.setAttribute('aria-label',c.short); b.onclick=()=>{ if(mode==='focus') closeDrawer(); goTo(i); }; dots.appendChild(b); });
-    updateHud(); applyPeriod(SKY); paintFav(); frame(); window.__room={cabinets,get mode(){return mode},applyPeriod,get spot(){return [spotIdx,curIdx(),spot&&spot.intensity,yaw,yawTarget]}};
+    updateHud(); applyPeriod(SKY); paintFav(); frame(); window.__room={cabinets,get mode(){return mode},applyPeriod,get buddy(){ return buddy&&{dock:buddy.dock,scale:buddy.scale,scaleT:buddy.scaleT,vis:buddy.B.visible,pos:buddy.B.position.toArray(),cam:camera.position.toArray()}; }};
     buildSign();
     const nb=document.getElementById('newsBtn'); if(PORTAL.news&&PORTAL.news.href) nb.href=PORTAL.news.href;
     nb.addEventListener('click',()=>{ sfx.tick(); ttmEvent('news_click',{source:'room_button'}); });
@@ -2011,8 +2051,8 @@ function enterRoom(){
   // เดินเข้าห้องเล็กน้อย
   camPos.set(0,EYE,2.2); camPosT.set(0,EYE,0);
   try{ speechSynthesis.speak(new SpeechSynthesisUtterance(' ')); }catch(e){}   // ปลดล็อกเสียงพูดบนมือถือ
-  let seen=false; try{ seen=localStorage.getItem('room-guide')==='1'; }catch(e){}
-  if(!seen) setTimeout(()=>startGuide(),1900);
+  let hide=false; try{ hide=localStorage.getItem('room-guide-hide')==='1'; }catch(e){}
+  if(!hide) setTimeout(()=>startGuide(),1900); else setTimeout(dock,1600);   // ออกมาต้อนรับทุกครั้ง เว้นแต่ติ๊ก "ไม่ต้องแสดงอีก"
 }
 enterBtn.onclick=e=>{ e.stopPropagation(); enterRoom(); };
 gate.addEventListener('click',e=>{ if(!e.target.closest('a')) enterRoom(); });   // แตะตรงไหนของประตูก็เข้าได้
