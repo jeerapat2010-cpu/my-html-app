@@ -529,21 +529,58 @@ const floorTex = tex(1024,1024,(g,w,h)=>{
   const v=g.createRadialGradient(w/2,h/2,w*.1,w/2,h/2,w*.75); v.addColorStop(0,'rgba(255,240,210,.08)'); v.addColorStop(1,'rgba(60,30,10,.12)'); g.fillStyle=v; g.fillRect(0,0,w,h);
 },{rep:[3,3]});
 
+/* ---------- ลายไทย (วาดด้วยโค้ด) ---------- */
+// กลีบแหลมแบบลายไทย (ปลายสะบัด)
+function thaiPetal(g,len,wid){ g.beginPath(); g.moveTo(0,0); g.bezierCurveTo(wid,-len*.25,wid*.8,-len*.7,0,-len); g.bezierCurveTo(-wid*.8,-len*.7,-wid,-len*.25,0,0); g.closePath(); }
+// ลายประจำยามก้ามปู: ดอกสี่กลีบ + กลีบเล็กแนวทแยง + เกสรกลาง
+function prajamyam(g,x,y,r,col,core){
+  g.save(); g.translate(x,y); g.fillStyle=col;
+  for(let k=0;k<4;k++){ g.save(); g.rotate(k*Math.PI/2); thaiPetal(g,r,r*.42); g.fill(); g.restore(); }
+  for(let k=0;k<4;k++){ g.save(); g.rotate(Math.PI/4+k*Math.PI/2); thaiPetal(g,r*.62,r*.22); g.fill(); g.restore(); }
+  g.beginPath(); g.arc(0,0,r*.26,0,7); g.fillStyle=core||col; g.fill();
+  g.beginPath(); g.arc(0,0,r*.12,0,7); g.fillStyle=col; g.fill();
+  g.restore();
+}
+// ลายกรวยเชิง: แถวสามเหลี่ยมยอดแหลมมีเปลวด้านใน (dir 1 = ห้อยลง, -1 = ชี้ขึ้น)
+function kruayChoeng(g,x0,y0,w,h,n,col,dir=1,inner){
+  const step=w/n;
+  for(let k=0;k<n;k++){
+    const x=x0+k*step;
+    g.beginPath(); g.moveTo(x,y0); g.quadraticCurveTo(x+step*.18,y0+dir*h*.55,x+step/2,y0+dir*h);
+    g.quadraticCurveTo(x+step*.82,y0+dir*h*.55,x+step,y0); g.closePath(); g.fillStyle=col; g.fill();
+    if(inner){ g.beginPath(); g.moveTo(x+step*.28,y0); g.quadraticCurveTo(x+step*.38,y0+dir*h*.45,x+step/2,y0+dir*h*.72);
+      g.quadraticCurveTo(x+step*.62,y0+dir*h*.45,x+step*.72,y0); g.closePath(); g.fillStyle=inner; g.fill();
+      g.beginPath(); g.arc(x+step/2,y0+dir*h*.22,step*.07,0,7); g.fillStyle=col; g.fill(); }
+  }
+}
+// ลายดาวเพดาน: ดาวแปดแฉกซ้อนกลีบ
+function daoPedan(g,x,y,r,col,col2,core){
+  g.save(); g.translate(x,y);
+  g.fillStyle=col; for(let k=0;k<8;k++){ g.save(); g.rotate(k*Math.PI/4); thaiPetal(g,r,r*.28); g.fill(); g.restore(); }
+  g.fillStyle=col2; for(let k=0;k<8;k++){ g.save(); g.rotate(Math.PI/8+k*Math.PI/4); thaiPetal(g,r*.62,r*.2); g.fill(); g.restore(); }
+  g.beginPath(); g.arc(0,0,r*.3,0,7); g.fillStyle=col; g.fill();
+  g.beginPath(); g.arc(0,0,r*.18,0,7); g.fillStyle=core; g.fill();
+  for(let k=0;k<8;k++){ const a=k*Math.PI/4; g.beginPath(); g.arc(Math.cos(a)*r*.24,Math.sin(a)*r*.24,r*.04,0,7); g.fillStyle=col2; g.fill(); }
+  g.restore();
+}
+
 /* ---------- พรมลายไทย ---------- */
 const rugTex = tex(1024,1024,(g,w,h)=>{
   const c=w/2; g.translate(c,c);
   const ring=(r1,r2,col)=>{g.fillStyle=col;g.beginPath();g.arc(0,0,r2,0,7);g.arc(0,0,r1,0,7,true);g.fill();};
-  ring(0,510,'#a5524c'); ring(470,500,'#d9b86a'); ring(455,462,'#d9b86a');
-  for(let i=0;i<48;i++){ g.save(); g.rotate(i/48*Math.PI*2); g.fillStyle='#f3e7cf'; g.beginPath(); g.moveTo(0,-452); g.quadraticCurveTo(14,-420,0,-392); g.quadraticCurveTo(-14,-420,0,-452); g.fill(); g.restore(); }
-  ring(370,382,'#d9b86a'); ring(300,370,'#8fa98a');
-  for(let i=0;i<24;i++){ g.save(); g.rotate(i/24*Math.PI*2); g.fillStyle='#c99a3c';
-    g.beginPath(); g.moveTo(0,-362); g.lineTo(16,-335); g.lineTo(0,-308); g.lineTo(-16,-335); g.closePath(); g.fill();
-    g.fillStyle='#a5524c'; g.beginPath(); g.arc(0,-335,5,0,7); g.fill(); g.restore(); }
-  ring(288,300,'#d9b86a'); ring(0,288,'#f3e7cf');
-  for(let i=0;i<16;i++){ g.save(); g.rotate(i/16*Math.PI*2); g.fillStyle='#d8a7a0';
-    g.beginPath(); g.moveTo(0,-30); g.bezierCurveTo(70,-90,60,-200,0,-260); g.bezierCurveTo(-60,-200,-70,-90,0,-30); g.fill();
-    g.strokeStyle='#c9a24f'; g.lineWidth=4; g.stroke(); g.restore(); }
-  ring(0,60,'#d9b86a'); ring(0,40,'#8fa98a');
+  ring(0,510,'#a5524c'); ring(478,500,'#d9b86a');
+  // กลีบบัวรอบขอบ
+  for(let i=0;i<40;i++){ g.save(); g.rotate(i/40*Math.PI*2); g.translate(0,-470); g.rotate(Math.PI); g.fillStyle='#f3e7cf'; thaiPetal(g,52,20); g.fill(); g.fillStyle='#d9b86a'; thaiPetal(g,30,9); g.fill(); g.restore(); }
+  ring(400,410,'#d9b86a'); ring(310,400,'#8fa98a');
+  // ลายกรวยเชิงวงใน (ทองบนเซลาดอน)
+  for(let i=0;i<32;i++){ g.save(); g.rotate(i/32*Math.PI*2); g.translate(0,-398);
+    g.beginPath(); g.moveTo(-38,0); g.quadraticCurveTo(-12,30,0,62); g.quadraticCurveTo(12,30,38,0); g.closePath(); g.fillStyle='#d9b86a'; g.fill();
+    g.beginPath(); g.moveTo(-18,0); g.quadraticCurveTo(-5,20,0,40); g.quadraticCurveTo(5,20,18,0); g.closePath(); g.fillStyle='#8fa98a'; g.fill(); g.restore(); }
+  ring(300,310,'#d9b86a'); ring(0,300,'#f3e7cf');
+  // ประจำยามรอบวงกลาง
+  for(let i=0;i<12;i++){ const a=i/12*Math.PI*2; prajamyam(g,Math.cos(a)*240,Math.sin(a)*240,34,'#a5524c','#d9b86a'); }
+  // ดาวใหญ่กลางพรม
+  daoPedan(g,0,0,170,'#d9b86a','#a5524c','#8fa98a');
   g.globalAlpha=.05; for(let i=0;i<9000;i++){ g.fillStyle=Math.random()<.5?'#000':'#fff'; g.fillRect(Math.random()*w-c,Math.random()*h-c,2,2); }
 });
 
@@ -551,27 +588,27 @@ const rugTex = tex(1024,1024,(g,w,h)=>{
 const WALL_H = 3.5;
 const wallTex = tex(420,880,(g,w,h)=>{
   g.fillStyle='#f4ebd9'; g.fillRect(0,0,w,h);
-  // ลายดามัสก์/ประจำยามสีทองจาง
-  g.fillStyle='#c9a24f'; g.globalAlpha=.13;
-  for(let y=150;y<h*0.68;y+=58) for(let x=(y/58%2)*35+18;x<w;x+=70){
-    g.save(); g.translate(x,y); g.rotate(Math.PI/4); g.fillRect(-6,-6,12,12); g.restore();
-    for(const [ox,oy] of [[0,-12],[0,12],[-12,0],[12,0]]){ g.beginPath(); g.arc(x+ox,y+oy,2.2,0,7); g.fill(); }
-  }
+  // ลายประจำยามก้ามปู สีทองจาง เรียงแบบสลับฟันปลา
+  g.globalAlpha=.2;
+  for(let row=0,y=160;y<h*0.66;y+=64,row++) for(let x=(row%2)*35+18;x<w+35;x+=70) prajamyam(g,x,y,15,'#c9a24f','#f4ebd9');
   g.globalAlpha=1;
-  // ฝาปะกนทาสีเขียวเซลาดอน ขอบบัวงาช้าง + เส้นทอง
+  // ฝาปะกนเขียวเซลาดอน ขอบงาช้าง + เส้นทอง + ประจำยามกลางแผง
   const dadoTop=h*0.70;
   g.fillStyle='#c9d6c0'; g.fillRect(0,dadoTop,w,h-dadoTop);
   g.fillStyle='#b9c8b0'; g.fillRect(34,dadoTop+40,w-68,h-dadoTop-80);
   g.strokeStyle='#f6efe0'; g.lineWidth=8; g.strokeRect(34,dadoTop+40,w-68,h-dadoTop-80);
   g.strokeStyle='#c9a24f'; g.lineWidth=2; g.strokeRect(46,dadoTop+52,w-92,h-dadoTop-104);
+  prajamyam(g,w/2,dadoTop+(h-dadoTop)/2,34,'#c9a24f','#f6efe0');
+  for(const [x,y] of [[60,dadoTop+66],[w-60,dadoTop+66],[60,h-66],[w-60,h-66]]) prajamyam(g,x,y,12,'#c9a24f','#f6efe0');
+  // บัวคาดเอว + ลายกรวยเชิงชี้ขึ้น
   g.fillStyle='#f6efe0'; g.fillRect(0,dadoTop-12,w,16); g.fillStyle='#c9a24f'; g.fillRect(0,dadoTop-14,w,3); g.fillRect(0,dadoTop+3,w,2);
-  // คิ้วบัวบน: แถบเซลาดอน + ระบายฉลุงาช้าง
+  kruayChoeng(g,0,dadoTop-14,w,30,10,'#c9a24f',-1,'#f4ebd9');
+  // คิ้วบัวบน: แถบเซลาดอน + ระบายงาช้าง + กรวยเชิงห้อยลง
   g.fillStyle='#b9c9b0'; g.fillRect(0,0,w,92);
-  g.fillStyle='#fbf6ea';
-  for(let x=0;x<=w;x+=42){ g.beginPath(); g.arc(x+21,92,21,Math.PI,0,true); g.fill(); }
-  g.fillStyle='#b9c9b0'; for(let x=0;x<=w;x+=42){ g.beginPath(); g.arc(x+21,96,6,0,7); g.fill(); }
   g.fillStyle='#f6efe0'; g.fillRect(0,0,w,18); g.fillStyle='#c9a24f'; g.fillRect(0,18,w,3);
-  g.fillStyle='#fbf6ea'; for(let x=10;x<w;x+=28){ g.beginPath(); g.moveTo(x,34); g.lineTo(x+8,46); g.lineTo(x,58); g.lineTo(x-8,46); g.closePath(); g.fill(); }
+  for(let x=21;x<w;x+=42) prajamyam(g,x,52,13,'#f6efe0','#c9a24f');
+  g.fillStyle='#c9a24f'; g.fillRect(0,88,w,4);
+  kruayChoeng(g,0,92,w,46,10,'#c9a24f',1,'#f4ebd9');
 });
 
 /* ---------- หน้าต่างโค้ง + บานเกล็ด + ช่องลมรัศมี ---------- */
@@ -639,13 +676,12 @@ const ceilTex = tex(1024,1024,(g,w,h)=>{
   const n=8, c=w/n;
   for(let i=0;i<n;i++) for(let j=0;j<n;j++){
     const x=i*c, y=j*c;
-    g.fillStyle='#efe5cf'; g.fillRect(x+14,y+14,c-28,c-28);                       // ช่องตาราง
-    g.strokeStyle='#d9b86a'; g.lineWidth=3; g.strokeRect(x+20,y+20,c-40,c-40);       // เส้นทอง
-    g.strokeStyle='#e6dcc4'; g.lineWidth=1.5; g.strokeRect(x+28,y+28,c-56,c-56);
-    // ดอกประจำยามทองกลางช่อง
-    g.save(); g.translate(x+c/2,y+c/2); g.fillStyle='#d9b86a';
-    for(let k=0;k<4;k++){ g.rotate(Math.PI/2); g.beginPath(); g.moveTo(0,0); g.quadraticCurveTo(10,-14,0,-24); g.quadraticCurveTo(-10,-14,0,0); g.fill(); }
-    g.beginPath(); g.arc(0,0,4,0,7); g.fillStyle='#f6efe0'; g.fill(); g.restore();
+    g.fillStyle='#efe5cf'; g.fillRect(x+14,y+14,c-28,c-28);
+    g.strokeStyle='#d9b86a'; g.lineWidth=3; g.strokeRect(x+20,y+20,c-40,c-40);
+    // ลายดาวเพดาน (แบบเพดานโบสถ์)
+    daoPedan(g,x+c/2,y+c/2,c*.34,'#d9b86a','#c98a6e','#a5524c');
+    // ลายมุมช่อง (เสี้ยวประจำยาม)
+    for(const [cx,cy] of [[x+20,y+20],[x+c-20,y+20],[x+20,y+c-20],[x+c-20,y+c-20]]) prajamyam(g,cx,cy,9,'#d9b86a','#f6efe0');
   }
   g.strokeStyle='#e4d7b8'; g.lineWidth=10;
   for(let i=0;i<=n;i++){ const p=i*c; g.beginPath(); g.moveTo(p,0); g.lineTo(p,h); g.stroke(); g.beginPath(); g.moveTo(0,p); g.lineTo(w,p); g.stroke(); }
