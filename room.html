@@ -352,23 +352,96 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const isSmall = Math.min(innerWidth,innerHeight) < 700;
 
 /* ================= เสียงลิ้นชัก (สังเคราะห์ ไม่ต้องโหลดไฟล์) ================= */
-let actx=null, soundOn=true;
+let actx=null, master=null, ambBus=null, soundOn=true;
 try{ soundOn = localStorage.getItem('room-sound')!=='0'; }catch(e){}
-function slideSound(open=true){
-  if(!soundOn) return;
-  try{
-    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
-    const t=actx.currentTime, len=0.42, buf=actx.createBuffer(1,actx.sampleRate*len,actx.sampleRate), d=buf.getChannelData(0);
-    for(let i=0;i<d.length;i++){ const x=i/d.length; d[i]=(Math.random()*2-1)*(0.6+0.4*Math.sin(x*90))*(1-x); }
-    const src=actx.createBufferSource(); src.buffer=buf;
-    const bp=actx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=open?520:420; bp.Q.value=1.4;
-    const g=actx.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.22,t+.04); g.gain.exponentialRampToValueAtTime(.001,t+len);
-    src.connect(bp).connect(g).connect(actx.destination); src.start(t);
-    const o=actx.createOscillator(), og=actx.createGain(); o.frequency.value=open?140:110; o.type='triangle';
-    og.gain.setValueAtTime(0,t+len-.06); og.gain.linearRampToValueAtTime(.18,t+len-.05); og.gain.exponentialRampToValueAtTime(.001,t+len+.12);
-    o.connect(og).connect(actx.destination); o.start(t+len-.07); o.stop(t+len+.15);
-  }catch(e){}
+/* ========== ชุดเสียงสังเคราะห์ (ไม่ต้องโหลดไฟล์) ========== */
+function ac(){
+  if(!actx){
+    try{
+      actx=new (window.AudioContext||window.webkitAudioContext)();
+      master=actx.createGain(); master.gain.value=soundOn?1:0; master.connect(actx.destination);
+      ambBus=actx.createGain(); ambBus.gain.value=.55; ambBus.connect(master);
+    }catch(e){ return null; }
+  }
+  if(actx.state==='suspended') actx.resume();
+  return actx;
 }
+let _nb=null;
+function noiseBuf(){ if(_nb) return _nb; const a=ac(), len=a.sampleRate*2; _nb=a.createBuffer(1,len,a.sampleRate); const d=_nb.getChannelData(0); for(let i=0;i<len;i++) d[i]=Math.random()*2-1; return _nb; }
+function env(g,t,a,peak,dur,end=.0008){ g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(peak,t+a); g.gain.exponentialRampToValueAtTime(end,t+dur); }
+function noise(t,dur,{type='bandpass',f=600,q=1,peak=.2,a=.02,pan=0,out}={}){
+  const a_=ac(); if(!a_) return; const src=a_.createBufferSource(); src.buffer=noiseBuf(); src.loop=true;
+  const fl=a_.createBiquadFilter(); fl.type=type; fl.frequency.value=f; fl.Q.value=q;
+  const g=a_.createGain(); env(g,t,a,peak,dur); const p=a_.createStereoPanner?a_.createStereoPanner():null; if(p) p.pan.value=pan;
+  src.connect(fl).connect(g); (p?g.connect(p):g).connect(out||master); if(p) p.connect(out||master);
+  src.start(t,Math.random()); src.stop(t+dur+.05); return {src,fl,g};
+}
+function tone(t,f,dur,{type='sine',peak=.15,a=.005,f2=null,pan=0,out}={}){
+  const a_=ac(); if(!a_) return; const o=a_.createOscillator(); o.type=type; o.frequency.setValueAtTime(f,t); if(f2) o.frequency.exponentialRampToValueAtTime(f2,t+dur);
+  const g=a_.createGain(); env(g,t,a,peak,dur); const p=a_.createStereoPanner?a_.createStereoPanner():null; if(p) p.pan.value=pan;
+  o.connect(g); (p?(g.connect(p),p):g).connect(out||master); o.start(t); o.stop(t+dur+.05); return o;
+}
+const sfx={
+  // ประตูไม้บานใหญ่: บานพับลั่นเอี๊ยด + สลักประตู + ลมเย็นพัดเข้า
+  door(){ const a=ac(); if(!a||!soundOn) return; const t=a.currentTime+.02;
+    tone(t,1,.08,{type:'square',peak:.12,f2:1}); noise(t,.06,{f:2400,q:4,peak:.25});              // สลักกริ๊ก
+    const o=a.createOscillator(); o.type='sawtooth'; o.frequency.setValueAtTime(210,t+.12);
+    for(let k=0;k<14;k++) o.frequency.linearRampToValueAtTime(150+Math.random()*120,t+.12+k*.085);
+    const lfo=a.createOscillator(), lg=a.createGain(); lfo.frequency.value=23; lg.gain.value=40; lfo.connect(lg).connect(o.frequency);
+    const bp=a.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=900; bp.Q.value=6;
+    const g=a.createGain(); env(g,t+.12,.12,.09,1.25);
+    o.connect(bp).connect(g).connect(master); o.start(t+.12); lfo.start(t+.12); o.stop(t+1.45); lfo.stop(t+1.45);
+    noise(t+.2,1.6,{type:'lowpass',f:500,peak:.05,a:.5});                                         // ลมพัด
+    tone(t+1.4,70,.35,{peak:.18}); noise(t+1.4,.12,{type:'lowpass',f:300,peak:.25});              // บานชนกันสุด
+  },
+  // ลิ้นชักไม้: ครูดเป็นจังหวะ + ตึก + ห่วงทองเหลืองกระทบ
+  drawerOpen(){ const a=ac(); if(!a||!soundOn) return; const t=a.currentTime+.01;
+    const n=noise(t,.48,{f:420,q:1.6,peak:.22,a:.04}); if(n){ for(let k=0;k<10;k++) n.fl.frequency.setValueAtTime(320+Math.random()*260,t+k*.045); }
+    noise(t,.45,{type:'lowpass',f:160,peak:.12,a:.05});
+    tone(t+.46,95,.25,{peak:.22}); noise(t+.46,.08,{type:'lowpass',f:400,peak:.2});
+    tone(t+.5,2350,.18,{type:'triangle',peak:.05}); tone(t+.58,3120,.14,{type:'triangle',peak:.035});
+  },
+  drawerClose(){ const a=ac(); if(!a||!soundOn) return; const t=a.currentTime+.01;
+    const n=noise(t,.3,{f:360,q:1.4,peak:.18,a:.03}); if(n){ for(let k=0;k<7;k++) n.fl.frequency.setValueAtTime(280+Math.random()*220,t+k*.04); }
+    tone(t+.3,82,.3,{peak:.26}); noise(t+.3,.1,{type:'lowpass',f:350,peak:.25});
+    tone(t+.34,2600,.12,{type:'triangle',peak:.03});
+  },
+  // ตู้บานกระจก: กระจกสั่นกริ๊ง
+  glass(){ const a=ac(); if(!a||!soundOn) return; const t=a.currentTime+.05;
+    [[2790,.06],[4180,.04],[6230,.025],[3520,.03]].forEach(([f,p],k)=>tone(t+k*.012,f,1.1+k*.2,{peak:p}));
+    noise(t,.05,{type:'highpass',f:5000,peak:.05});
+  },
+  // ฝีเท้าบนพื้นไม้
+  steps(n=2){ const a=ac(); if(!a||!soundOn) return; const t=a.currentTime+.01;
+    for(let k=0;k<n;k++){ const tt=t+k*.28+Math.random()*.03, pan=k%2?.25:-.25;
+      tone(tt,68+Math.random()*12,.16,{peak:.13,pan}); noise(tt,.09,{type:'lowpass',f:380,peak:.09,pan});
+      if(Math.random()<.4) noise(tt+.05,.12,{f:1300,q:8,peak:.015,pan}); }                    // พื้นไม้ลั่นนิด ๆ
+  },
+  // เปิดสมุดรายการ
+  paper(){ const a=ac(); if(!a||!soundOn) return; const t=a.currentTime+.02;
+    noise(t,.22,{type:'highpass',f:2500,peak:.07,a:.03}); noise(t+.12,.16,{type:'bandpass',f:3800,q:.8,peak:.05}); },
+  // ป้ายวิ่ง / ปุ่ม: ติ๊กไม้เบา ๆ
+  tick(){ const a=ac(); if(!a||!soundOn) return; const t=a.currentTime; tone(t,880,.06,{type:'triangle',peak:.04}); },
+};
+/* ---------- เสียงบรรยากาศ ---------- */
+let ambOn=false, ambTimers=[];
+function chirp(t,base){ for(let k=0;k<2+Math.floor(Math.random()*4);k++){ const tt=t+k*.11; tone(tt,base*(1+Math.random()*.1),.09,{peak:.03,f2:base*1.6,pan:Math.random()*1.6-.8,out:ambBus}); } }
+function ambLoop(){
+  if(!ambOn) return;
+  const a=ac(); if(!a) return; const t=a.currentTime+.05;
+  if(SKY==='night'){ // จิ้งหรีด
+    const pan=Math.random()*1.4-.7; for(let k=0;k<3+Math.floor(Math.random()*3);k++) tone(t+k*.13,4300+Math.random()*300,.07,{peak:.02,pan,out:ambBus});
+  } else if(SKY==='evening'){ if(Math.random()<.5) chirp(t,1900); }
+  else chirp(t, SKY==='morning'?3000:2500);                                                     // นกร้องตอนเช้า/กลางวัน
+  if(Math.random()<.22){ for(let k=0;k<3;k++) tone(t+.4+k*.09+Math.random()*.05,5200+Math.random()*2400,.5,{peak:.012,pan:Math.random()-.5,out:ambBus}); } // คริสตัลกระทบ
+  ambTimers.push(setTimeout(ambLoop, SKY==='night'? 900+Math.random()*900 : 2200+Math.random()*4200));
+}
+function ambStart(){ if(ambOn||!soundOn) return; ambOn=true; ac(); ambLoop();
+  // เสียงห้องเงียบ ๆ (room tone) ต่อเนื่อง
+  try{ const a=ac(); const src=a.createBufferSource(); src.buffer=noiseBuf(); src.loop=true; const lp=a.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=260;
+    const g=a.createGain(); g.gain.value=.012; src.connect(lp).connect(g).connect(ambBus); src.start(); ambStart._src=src; }catch(e){} }
+function ambStop(){ ambOn=false; ambTimers.forEach(clearTimeout); ambTimers=[]; try{ ambStart._src&&ambStart._src.stop(); }catch(e){} ambStart._src=null; }
+function slideSound(open=true){ open?sfx.drawerOpen():sfx.drawerClose(); }
 
 /* ================= Renderer / Scene ================= */
 const canvas = document.getElementById('scene');
@@ -975,9 +1048,9 @@ const curIdx=()=>mod(kCur,N);
 
 function goTo(i){
   const d=((i-curIdx())%N+N+Math.floor(N/2))%N-Math.floor(N/2);
-  kCur+=d; yawTarget=-kCur*STEP; updateHud();
+  kCur+=d; yawTarget=-kCur*STEP; updateHud(); if(d) sfx.steps(Math.min(3,Math.abs(d)));
 }
-function step(d){ if(mode!=='walk') closeDrawer(); kCur+=d; yawTarget=-kCur*STEP; updateHud(); }
+function step(d){ if(mode!=='walk') closeDrawer(); kCur+=d; yawTarget=-kCur*STEP; updateHud(); sfx.steps(1); }
 
 function updateHud(){
   const c=cats[curIdx()]; if(!c) return;
@@ -998,8 +1071,8 @@ function openDrawer(i=curIdx()){
   const right=new THREE.Vector3(Math.cos(cab.yaw),0,-Math.sin(cab.yaw));   // ขวามือของผู้มอง
   lookT.copy(dir.clone().multiplyScalar(CAB_R)); lookT.y=1.18;
   if(wideScreen) lookT.add(right.multiplyScalar(.62));   // เว้นที่ด้านขวาให้สมุดรายการ
-  setTimeout(()=>{ cab.main.target=1; slideSound(true); },380);
-  setTimeout(()=>showLedger(cats[i]),760);
+  setTimeout(()=>{ cab.main.target=1; sfx.drawerOpen(); if(cab.doors&&cab.doors.length) setTimeout(()=>sfx.glass(),180); },380);
+  setTimeout(()=>{ showLedger(cats[i]); sfx.paper(); },760);
   ttmEvent('cabinet_open',{app_category:cats[i].id,cabinet_name:cats[i].short});
 }
 function closeDrawer(){
@@ -1082,7 +1155,7 @@ canvas.addEventListener('pointermove',e=>{
 });
 canvas.addEventListener('pointerup',e=>{
   if(!down) return; canvas.classList.remove('grabbing');
-  if(moved>6 && mode==='walk'){ kCur=Math.round(-yawTarget/STEP); yawTarget=-kCur*STEP; updateHud(); if(pitchTarget<.12) setPitch(0); }
+  if(moved>6 && mode==='walk'){ const k0=kCur; kCur=Math.round(-yawTarget/STEP); yawTarget=-kCur*STEP; updateHud(); if(kCur!==k0) sfx.steps(Math.min(3,Math.abs(kCur-k0))); if(pitchTarget<.12) setPitch(0); }
   else if(moved<=6){
     ndc.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1); ray.setFromCamera(ndc,camera);
     const ph=photoMeshes.length && ray.intersectObjects(photoMeshes,false)[0];
@@ -1116,7 +1189,9 @@ function paintOpen(){ document.getElementById('openBtn').innerHTML = mode==='foc
 document.getElementById('openBtn').onclick=()=>{ mode==='focus'?closeDrawer():openDrawer(); };
 const sb=document.getElementById('soundBtn');
 const paintSound=()=>{ sb.innerHTML=soundOn?'<i class="fas fa-volume-high"></i>':'<i class="fas fa-volume-xmark"></i>'; sb.title=soundOn?'ปิดเสียง':'เปิดเสียง'; };
-sb.onclick=()=>{ soundOn=!soundOn; try{localStorage.setItem('room-sound',soundOn?'1':'0');}catch(e){} paintSound(); }; paintSound();
+sb.onclick=()=>{ soundOn=!soundOn; try{localStorage.setItem('room-sound',soundOn?'1':'0');}catch(e){} paintSound();
+  if(master) master.gain.setTargetAtTime(soundOn?1:0,actx.currentTime,.05);
+  if(soundOn){ if(ready) ambStart(); sfx.tick(); } else ambStop(); }; paintSound();
 
 /* ================= ดาวน์ไลท์ส่องตู้ที่อยู่ตรงหน้า ================= */
 const downs=[]; let spot=null;
@@ -1318,6 +1393,7 @@ function resize(){
   camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight);
 }
 addEventListener('resize',resize); resize();
+document.addEventListener('visibilitychange',()=>{ if(!actx) return; if(document.hidden){ ambStop(); actx.suspend(); } else if(ready && soundOn){ actx.resume(); ambStart(); } });
 
 /* ================= เริ่ม ================= */
 const gate=document.getElementById('gate'), enterBtn=document.getElementById('enterBtn'), gateMsg=document.getElementById('gateMsg');
@@ -1345,7 +1421,7 @@ const gate=document.getElementById('gate'), enterBtn=document.getElementById('en
 })();
 function enterRoom(){
   if(enterBtn.disabled || gate.classList.contains('open')) return;
-  gate.classList.add('open'); slideSound(true);
+  gate.classList.add('open'); sfx.door(); setTimeout(()=>{ sfx.steps(3); ambStart(); },1300);
   ttmEvent('room_enter',{cabinets:N});
   setTimeout(()=>{ gate.classList.add('gone'); ready=true; }, reduceMotion?50:1500);
   // เดินเข้าห้องเล็กน้อย
