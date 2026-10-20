@@ -1352,15 +1352,29 @@ function ghToken(){ try{ return localStorage.getItem('ttm-gh-token')||''; }catch
 function ghSaveToken(){ const v=$('ghTok').value.trim(); try{ if(v) localStorage.setItem('ttm-gh-token',v); else localStorage.removeItem('ttm-gh-token'); }catch(e){} $('ghTok').value=''; ghStatus(); wfLog(v?'บันทึก GitHub token ในเครื่องนี้แล้ว':'ลบ GitHub token แล้ว','ok'); }
 function ghStatus(){ const el=$('ghState'); if(el) el.innerHTML = ghToken()? '<span class="pill ok">ตั้งค่าแล้ว</span>' : '<span class="pill warn">ยังไม่ได้ตั้งค่า token</span>'; }
 function b64utf8(str){ const bytes=new TextEncoder().encode(str); let bin=''; for(let i=0;i<bytes.length;i+=0x8000) bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000)); return btoa(bin); }
+async function ghSha(url,H){
+  for(const u of [url+'?ref='+GH.branch+'&_='+Date.now(), url+'?_='+Date.now()]){
+    const g=await fetch(u,{headers:H,cache:'no-store'});
+    if(g.ok){ const j=await g.json(); if(j&&j.sha) return j.sha; }
+    else if(g.status===401) throw new Error('GitHub 401 (token ไม่ถูกต้อง/หมดอายุ)');
+  }
+  return undefined;
+}
 async function ghPut(path,content,msg){
   const tok=ghToken(); if(!tok) throw new Error('ยังไม่ได้ตั้งค่า GitHub token');
   const url=`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${path.split('/').map(encodeURIComponent).join('/')}`;
   const H={Authorization:'Bearer '+tok,Accept:'application/vnd.github+json'};
-  let sha; const g=await fetch(url+'?ref='+GH.branch,{headers:H}); if(g.ok) sha=(await g.json()).sha; else if(g.status!==404) throw new Error('GitHub '+g.status+(g.status===401?' (token ไม่ถูกต้อง/หมดอายุ)':''));
-  const r=await fetch(url,{method:'PUT',headers:H,body:JSON.stringify({message:msg,content:b64utf8(content),branch:GH.branch,...(sha?{sha}:{})})});
-  if(!r.ok) throw new Error('GitHub '+r.status+' '+((await r.json().catch(()=>({}))).message||''));
+  const body=b64utf8(content);
+  for(let attempt=0;attempt<3;attempt++){
+    const sha=await ghSha(url,H);
+    const r=await fetch(url,{method:'PUT',headers:H,cache:'no-store',body:JSON.stringify({message:msg,content:body,branch:GH.branch,...(sha?{sha}:{})})});
+    if(r.ok) return;
+    const e=await r.json().catch(()=>({}));
+    if((r.status===422||r.status===409) && attempt<2){ await new Promise(z=>setTimeout(z,1500)); continue; }
+    throw new Error('GitHub '+r.status+' '+(e.message||''));
+  }
 }
-async function ghGetJson(path){ const tok=ghToken(); const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${path}?ref=${GH.branch}`,{headers:{Authorization:'Bearer '+tok,Accept:'application/vnd.github.raw+json'}}); if(!r.ok) return null; try{ return await r.json(); }catch(e){ return null; } }
+async function ghGetJson(path){ const tok=ghToken(); const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${path}?ref=${GH.branch}&_=${Date.now()}`,{headers:{Authorization:'Bearer '+tok,Accept:'application/vnd.github.raw+json'},cache:'no-store'}); if(!r.ok) return null; try{ return await r.json(); }catch(e){ return null; } }
 async function publishPortal(){
   const M=MONTHS[CUR]; if(!M){ wfLog('ยังไม่มีรายงาน — กด “ตรวจสอบ & สร้างแดชบอร์ด” ก่อน','warn'); return false; }
   if(!ghToken()){ wfLog('ยังไม่ได้ตั้งค่า GitHub token (ขั้นที่ 7)','warn'); setStep('export',(WF.st.export||{}).st||'todo','ยังไม่ได้ตั้งค่าการอัปขึ้น Portal'); return false; }
