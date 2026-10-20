@@ -1721,7 +1721,8 @@ function distUpdate(B,M,T,dk,V){
   if(Array.isArray(D.units)){
     const codes=new Set(D.units.map(u=>u.code)); const tpl=D.units[0]||{};
     C.PRIM.rows.forEach(r=>{ const c=String(r.code).padStart(5,'0'); if(!codes.has(c)&&(n0(r.opd)>0||C.uc[c])){ codes.add(c); const nu={}; Object.keys(tpl).forEach(k=>nu[k]=typeof tpl[k]==='number'?0:tpl[k]); Object.assign(nu,{code:c,name:sn(r.name),color:'#94a3b8'}); D.units.push(nu); } });
-    D.units.forEach(u=>{ const c=u.code, p=C.PRIM.map[c], cm=C.COM.map[c], im=C.IMC.map[c], h=hU[c], uc=C.uc[c], o=C.ot[c], pp=C.PP.map[c];
+    const ucByName=n=>{ const k=String(n||'').replace(/\s/g,''); return Object.values(C.uc).find(r=>{ const rn=String(r.name||'').replace(/\s/g,''); return rn&&(rn===k||(k.length>8&&rn.includes(k))||(rn.length>8&&k.includes(rn))); }); };
+    D.units.forEach(u=>{ const c=u.code, p=C.PRIM.map[c], cm=C.COM.map[c], im=C.IMC.map[c], h=hU[c], uc=C.uc[c]||(/^\d{5}$/.test(c)?null:ucByName(u.name)), o=C.ot[c], pp=C.PP.map[c];
       set(u,'opd',n0(p&&p.opd)); set(u,'ttm',n0(p&&p.ttm)); set(u,'kpi14',n0(p&&p.pct));
       [1,2,3,4].forEach(q=>set(u,`q${q}_14`,p&&p.q&&p.q[q-1]&&p.q[q-1].pct!=null?n0(p.q[q-1].pct):n0(p&&p.pct)));
       set(u,'commonB68',n0(cm&&cm.b1)); set(u,'commonA68',n0(cm&&cm.a1)); set(u,'common68',n0(cm&&cm.c1)); set(u,'commonB69',n0(cm&&cm.b2)); set(u,'commonA69',n0(cm&&cm.a2)); set(u,'common69',n0(cm&&cm.c2)); set(u,'commonChange',n0(cm&&cm.growth));
@@ -1745,7 +1746,7 @@ function distUpdate(B,M,T,dk,V){
   if(hd){ set(D,'herbTotal',hd.value69); set(D,'herbTarget10',hd.target10m); set(D,'herbPct10',hd.achievement); set(D,'herbTarget12',hd.target12m); set(D,'herbPct12',hd.percent12m);
     if(has(D,'herbTarget6')){ if(!same) D.herbTarget6=hd.target12m/2; D.herbPct6=D.herbTarget6?hd.value69/D.herbTarget6*100:0; }
     const us=(D.units||[]); set(D,'herbUnmatched',hd.value69-sum(us,'herbUC')); set(D,'herbUnitValueSum',sum(us,'herbUC')); set(D,'herbUnitTarget10Sum',sum(us,'herbTarget')); if(has(D,'herbUnitPct10Sum')) D.herbUnitPct10Sum=D.herbUnitTarget10Sum?D.herbUnitValueSum/D.herbUnitTarget10Sum*100:0; }
-  const ov=(o,k,extra)=>{ if(!o) return; const s=S[k]||{}; o.country=s.country??null; o.zone=s.region6??null; o.province=s.province??null; o.best=s.best??null; if(extra) Object.keys(extra).forEach(x=>set(o,x,extra[x])); };
+  const ov=(o,k,extra)=>{ if(!o) return; const s=S[k]||{}; o.country=s.country??null; o.zone=s.region6??null; o.province=s.province??null; if(typeof o.best!=='object'||o.best===null) o.best=s.best??null; if(extra) Object.keys(extra).forEach(x=>set(o,x,extra[x])); };
   ov(D.kpi14Overall,'PRIM',{...D.kpi14Total}); if(D.kpi14Overall&&has(D.kpi14Overall,'status')) D.kpi14Overall.status=n0(pt.pct)>=crit(M,'PRIM')?'ผ่าน':'ไม่ผ่าน';
   ov(D.commonOverall,'COM',{...D.commonTotal}); ov(D.imcOverall,'IMC',{...D.imcTotal});
   if(H&&D.herbOverall){ const L=H.levels, dt=H.districtTotals, o=D.herbOverall;
@@ -2015,6 +2016,41 @@ function tplDataBP(M,T){
   return V;
 }
 TPL_BUILDERS.DataBP=tplDataBP;
+function ppCamel(r){ const n0=v=>Number(v)||0; const o={}; const f=(a,b)=>{ o[a+'All']=n0(r&&r[b]); o[a+'Uc']=n0(r&&r[b+'UC']); };
+  f('served','svc'); f('birth','hist'); f('visits','visits'); f('historyVisits','hsvc'); f('late','late'); f('over90','over90');
+  ['All','Uc'].forEach(z=>{ const sv=o['served'+z], vi=o['visits'+z]; o['historyRate'+z]=sv?o['birth'+z]/sv*100:0; o['visitHistoryRate'+z]=vi?o['historyVisits'+z]/vi*100:0; o['lateRate'+z]=sv?o['late'+z]/sv*100:0; o['timelyRate'+z]=sv?(sv-o['late'+z])/sv*100:100; }); return o; }
+function tplDATABB(M,T){
+  const base=T&&T['DATABB.base']; if(!base||!M.db.PRIM) return null; const dk='บางบ่อ';
+  const V=distVars(M); const D=distUpdate(base.DATA,M,T,dk,V); const C=distCore(M,T,dk); const S=M.S; const n0=v=>Number(v)||0; const same=V.FY===2569;
+  // best เป็น object {name,value}
+  [['kpi14Overall','PRIM'],['commonOverall','COM'],['imcOverall','IMC']].forEach(([k,kk])=>{ const b=base.DATA[k]; if(b&&b.best&&typeof b.best==='object'){ const s=S[kk]||{}; D[k].best={name:s.bestName?'จ.'+s.bestName:b.best.name,value:s.best??null}; } });
+  ['pcOverall','growthOverall'].forEach(k=>{ const b=base.DATA[k]; if(b&&b.best&&typeof b.best==='object') D[k].best=same?b.best:{name:b.best.name,value:0}; });
+  // districtCommon pct68/pct69
+  (D.districtCommon||[]).forEach(x=>{ const p=M.db.COM&&M.db.COM.province; const r=p&&p.rows.find(z=>{ const n=normDist(z.name); return n===x.name||HB_SHORT(n)===x.name; }); if(r){ if('pct68' in x) x.pct68=n0(r.c1); if('pct69' in x) x.pct69=n0(r.c2); } });
+  const H=C.H; if(H&&D.districtHerb) D.districtHerb.forEach(x=>{ const h=H.districts.find(z=>z.name===x.name); if(h&&'y68' in x&&!same){ x.y67=x.y68; x.y68=h.value68; } });
+  const ppSt=pp=>pp.servedAll<=0?['ยังไม่พบผลงาน','เร่งค้นหา/เชื่อม LR-Ward-รพ.สต.']:pp.lateRateAll>=50?['มีบริการแต่ล่าช้าสูง','ปรับระบบนัดหมายหลังคลอดภายใน 7–14 วัน']:pp.historyRateAll<80?['ต้องปรับคุณภาพข้อมูล','ตรวจรหัส/ประวัติคลอดให้ครบ']:['มีผลงานดี','รักษาระดับและขยายผล'];
+  D.units.forEach(u=>{ const cm=C.COM.map[u.code]; if(cm&&'commonB68' in u&&!('commonDx68' in u)&&base.DATA.commonTotal&&base.DATA.commonTotal.b68<(C.COM.total||{}).b1*0.8){ u.commonB68=n0(cm.b1p); u.commonA68=n0(cm.a1p); u.commonB69=n0(cm.b2p); u.commonA69=n0(cm.a2p); } });
+  if(base.DATA.commonTotal&&C.COM.total&&base.DATA.commonTotal.b68<C.COM.total.b1*0.8){ const t=C.COM.total; Object.assign(D.commonTotal,{b68:n0(t.b1p),a68:n0(t.a1p),b69:n0(t.b2p),a69:n0(t.a2p)}); }
+  D.units.forEach(u=>{ const pp=ppCamel(C.PP.map[u.code]); Object.keys(pp).forEach(k=>{ if(('pp_'+k) in u) u['pp_'+k]=pp[k]; }); if('pp_active' in u){ const st=ppSt(pp); u.pp_active=pp.servedAll>0; u.pp_status=st[0]; if(!/^\d{5}$/.test(u.code)&&!pp.servedAll) st[1]='เร่งค้นหา/เชื่อมระบบ'; u.pp_priority=st[1]; }
+    const o=C.ot[u.code]; if('nshoItems' in u){ u.nshoItems=n0(o&&o.items); u.nshoCompensation=n0(o&&o.amount); } });
+  if(D.postpartum){ D.postpartum.totals=ppCamel(C.PP.total); if(Array.isArray(D.postpartum.units)) D.postpartum.units=D.postpartum.units.map(x=>{ const pp=ppCamel(C.PP.map[x.code]); const st=ppSt(pp); return {...x,...pp,active:pp.servedAll>0,status:st[0],...('priority' in x?{priority:st[1]}:{})}; });
+    const t=D.postpartum.totals; const act=(D.postpartum.units||[]).filter(x=>x.active); D.postpartum.updatedFrom=`PP บบ ${V.MON_S} (HDC)`;
+    if(D.postpartum.analysis) D.postpartum.analysis={...D.postpartum.analysis,mainFinding:`พบบริการมารดาหลังคลอดใน ${act.length}/${(D.postpartum.units||[]).length} หน่วยบริการ${act.length?` โดยภาระงานหลักอยู่ที่ ${[...act].sort((a,b)=>b.servedAll-a.servedAll).slice(0,2).map(x=>x.name).join(' และ ')}`:''}`,riskFinding:`อัตราบริการล่าช้ารวม ${fmt(t.lateRateAll)}% และสิทธิ UC ${fmt(t.lateRateUc)}% ต้องเชื่อมข้อมูลคลอดจาก รพ.แม่ข่ายสู่ รพ.สต.แบบรายสัปดาห์`}; }
+  if(D.compensation&&C.O){ const cp=D.compensation; cp.total=C.cup?C.cup.amount:cp.total; if(Array.isArray(cp.units)) cp.units=cp.units.map(u=>{ const o=C.ot[u.code]; return {...u,items:n0(o&&o.items),amount:n0(o&&o.amount)}; }); cp.updatedFrom=`PAYBackUC / เงินชดเชย ${V.MON_S}`; }
+  const G=gmpParse(M); const qd=(obj,blk)=>{ if(!obj||!blk) return; Object.keys(obj).forEach(k=>{ const full=k==='เมือง'?'เมืองสมุทรปราการ':k==='พระสมุทรฯ'?'พระสมุทรเจดีย์':k; const d=blk.dist[full]; if(d&&d.pct!=null) obj[k]=d.pct; }); const p=blk.prov[PROV]; if(p&&'รวม' in obj) obj['รวม']=obj['รวม']>200?(p.ok??obj['รวม']):(p.pct??obj['รวม']); };
+  if(G){ qd(D.qualityDrugCode,G.code); qd(D.qualityGmp,G.gmp); }
+  if('herbTarget10UnitSum' in D) D.herbTarget10UnitSum=D.units.reduce((s,u)=>s+n0(u.herbTarget),0); if('herbTarget10Gap' in D) D.herbTarget10Gap=Math.max(0,n0(D.herbTarget10)-n0(D.herbTarget10UnitSum));
+  D.updatedAt=V.DATE_LONG; D.sourceFiles=['ปฐม','COM','IMC','PP'].map(x=>`${x} บบ ${V.MON_S} (HDC)`).concat([`HerbUC ${V.MON_S}`,`OnTop สปสช. ${V.MON_S}`]);
+  V.J_DATA=D; V.__F=distFactsAll(M,T,dk);
+  V.BEST14=S.PRIM&&S.PRIM.bestName?`จ.${S.PRIM.bestName} ${fmt(S.PRIM.best)}%`:'–';
+  const Fx=distFacts(M,D,dk); const ok=(v,c)=>v>=c; const st=[];
+  const good=[], bad=[]; (Fx.hp>=100?good:bad).push(Fx.hp>=100?'มูลค่าสมุนไพร UC ทำได้เกินเป้า 10 เดือนแล้ว':'มูลค่าสมุนไพร UC ยังไม่ถึงเป้า 10 เดือน'); (ok(Fx.k.pct,Fx.c14)?good:bad).push(ok(Fx.k.pct,Fx.c14)?'KPI14 ปฐมภูมิ TTM ผ่านเกณฑ์':'KPI14 ปฐมภูมิ TTM');
+  (ok(Fx.cm.change,Fx.cC)?good:bad).push(ok(Fx.cm.change,Fx.cC)?'Common Diseases ผ่านเกณฑ์':'Common Diseases'); (ok(Fx.im.pct,Fx.cI)?good:bad).push(ok(Fx.im.pct,Fx.cI)?'IMC ผ่านเกณฑ์':'IMC');
+  V.OV_NOTE=`ข้อมูล ณ ${V.DATE_LONG} บางบ่อ${good.length?`มีจุดแข็งเด่นที่${good.join(' และ ')}`:'ยังไม่มีตัวชี้วัดหลักที่ผ่านเกณฑ์'}${bad.length?` แต่ ${bad.join(' และ ')} ยังเป็นตัวชี้วัดที่ต้องเร่งแก้เชิงระบบ`:''} ขณะเดียวกันใช้เมนูการดูแลมารดาหลังคลอดและเมนูเงินชดเชยจาก สปสช. เพื่อติดตามทั้งผลงานบริการ คุณภาพบริการ และผลตอบแทนทางการเงินของระบบบริการแพทย์แผนไทยในพื้นที่ค่ะ`;
+  V.QUAL_ROWS=qualRows(M,'บางบ่อ','#16a34a');
+  return V;
+}
+TPL_BUILDERS.DATABB=tplDATABB;
 /* ---------- ตัวเลขทั้งหมดของอำเภอแบบแบน (ใช้กับแม่แบบที่ตัวเลขฝังอยู่ใน HTML) ---------- */
 function distFactsAll(M,T,dk){
   const C=distCore(M,T,dk), H=C.H, S=M.S, F={}; const n0=v=>Number(v)||0; const put=(k,v)=>{ if(v!=null&&isFinite(v)) F[k]=Number(v); };
@@ -2025,7 +2061,7 @@ function distFactsAll(M,T,dk){
   ['b1p','b1','a1p','a1','c1','b2p','b2','a2p','a2','c2','growth'].forEach(x=>put('com_'+x,ct[x])); put('com_gap',cC-n0(ct.growth));
   put('imc_b',it.b); put('imc_a',it.a); put('imc_pct',it.pct); [20,30].forEach(c=>put('imc_req'+c,Math.ceil(n0(it.b)*c/100))); [20,30].forEach(c=>put('imc_need'+c,Math.max(0,Math.ceil(n0(it.b)*c/100-n0(it.a)))));
   ['svc','svcUC','hist','histUC','visits','visitsUC','hsvc','hsvcUC','late','lateUC','over90','over90UC'].forEach(x=>put('pp_'+x,qt[x]));
-  put('pp_late_pct',qt.svc?qt.late/qt.svc*100:null); put('pp_hist_pct',qt.svc?qt.hist/qt.svc*100:null); put('pp_avg',qt.svc?qt.visits/qt.svc:null);
+  put('pp_late_pct',qt.svc?qt.late/qt.svc*100:null); ['','UC'].forEach(z=>{ const sv=n0(qt['svc'+z]), vi=n0(qt['visits'+z]); put('pp_histrate'+z,sv?n0(qt['hist'+z])/sv*100:null); put('pp_laterate'+z,sv?n0(qt['late'+z])/sv*100:null); put('pp_timelyrate'+z,sv?(sv-n0(qt['late'+z]))/sv*100:null); put('pp_vhistrate'+z,vi?n0(qt['hsvc'+z])/vi*100:null); put('pp_timely'+z,sv-n0(qt['late'+z])); }); put('pp_hist_pct',qt.svc?qt.hist/qt.svc*100:null); put('pp_avg',qt.svc?qt.visits/qt.svc:null);
   ['PRIM','COM','IMC','PP'].forEach(k=>{ const s=S[k]; if(!s) return; put(k+'_country',s.country); put(k+'_zone',s.region6); put(k+'_prov',s.province); put(k+'_best',s.best); });
   if(H){ const L=H.levels; put('herbL_country_pct',L[0].percent); put('herbL_country_v',L[0].value); put('herbL_country_t',L[0].target); put('herbL_zone_pct',L[1].percent); put('herbL_zone_v',L[1].value); put('herbL_zone_t',L[1].target);
     const dt=H.districtTotals; put('herbP_v',dt.value69); put('herbP_t10',dt.target10m); put('herbP_t12',dt.target12m); put('herbP_pct10',dt.achievement); put('herbP_pct12',dt.percent12m);
@@ -2043,6 +2079,7 @@ function distFactsAll(M,T,dk){
     if(cm) ['b1p','b1','a1p','a1','c1','b2p','b2','a2p','a2','c2','growth'].forEach(x=>put(u+'com_'+x,cm[x]));
     if(im){ put(u+'imc_b',im.b); put(u+'imc_a',im.a); put(u+'imc_pct',im.pct); [20,30].forEach(cc=>put(u+'imc_need'+cc,Math.max(0,Math.ceil(n0(im.b)*cc/100-n0(im.a))))); }
     if(pp) ['svc','svcUC','hist','histUC','visits','visitsUC','hsvc','hsvcUC','late','lateUC','over90','over90UC'].forEach(x=>put(u+'pp_'+x,pp[x]));
+    if(pp) ['','UC'].forEach(z=>{ const sv=n0(pp['svc'+z]), vi=n0(pp['visits'+z]); put(u+'pp_histrate'+z,sv?n0(pp['hist'+z])/sv*100:0); put(u+'pp_laterate'+z,sv?n0(pp['late'+z])/sv*100:0); put(u+'pp_timelyrate'+z,sv?(sv-n0(pp['late'+z]))/sv*100:0); put(u+'pp_vhistrate'+z,vi?n0(pp['hsvc'+z])/vi*100:0); put(u+'pp_timely'+z,sv-n0(pp['late'+z])); });
     if(uc){ put(u+'uc',uc.value); put(u+'course',uc.course); unitUC+=n0(uc.value); }
     if(h){ put(u+'t10',h.target10m); put(u+'t12',h.target12m); put(u+'pct10',h.percentAchieved10m); put(u+'pct12',h.percentAchieved12m); put(u+'gap10',Math.max(0,h.target10m-h.value69)); put(u+'gap12',Math.max(0,h.target12m-h.value69)); put(u+'v68',h.value68); put(u+'w',h.weight); put(u+'t6',h.target10m*0.6); put(u+'pct6',h.target10m?h.value69/(h.target10m*0.6)*100:null); }
     if(o){ put(u+'comp',o.amount); put(u+'comp_items',o.items); put(u+'comp_ratio',uc&&uc.value?o.amount/uc.value*100:null); } });
