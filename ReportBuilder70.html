@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TTM Monthly Report Builder สมุทรปราการ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+<style>
+:root{
+  --teal:#0f766e;--teal-2:#14b8a6;--teal-soft:#e6f5f3;--ink:#13232b;--muted:#5d6b75;--line:#dfe7ea;
+  --bg:#f4f7f8;--card:#ffffff;--green:#15803d;--green-soft:#eaf7ee;--amber:#b45309;--amber-soft:#fef3e2;
+  --red:#b91c1c;--red-soft:#fdeded;--blue:#1d4ed8;--radius:14px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Thai","Leelawadee UI",Tahoma,sans-serif;font-size:15px;line-height:1.55}
+button,input,select{font:inherit}
+header.top{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line)}
+.top-in{max-width:1280px;margin:auto;padding:12px 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.logo{width:42px;height:42px;border-radius:12px;background:var(--teal);color:#fff;display:grid;place-items:center;font-weight:700;flex:none}
+.top h1{font-size:17px;margin:0;line-height:1.3}
+.top p{margin:0;color:var(--muted);font-size:13px}
+nav.tabs{max-width:1280px;margin:auto;padding:0 16px;display:flex;gap:4px;overflow-x:auto}
+nav.tabs a{padding:9px 12px;text-decoration:none;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap;font-size:14px}
+nav.tabs a.on{color:var(--teal);border-color:var(--teal);font-weight:600}
+main{max-width:1280px;margin:auto;padding:18px 16px 60px}
+section.pane{display:none}
+section.pane.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+.card h2{font-size:18px;margin:0 0 4px}
+.card h3{font-size:16px;margin:16px 0 8px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 12px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--teal);background:var(--teal);color:#fff;border-radius:10px;padding:9px 16px;cursor:pointer;font-weight:600}
+.btn.ghost{background:#fff;color:var(--teal)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.drop{border:2px dashed #b6c8cc;border-radius:var(--radius);padding:26px;text-align:center;background:#fbfdfd}
+.drop strong{display:block;font-size:16px;margin-bottom:4px}
+label.f{display:flex;flex-direction:column;font-size:13px;color:var(--muted);gap:4px}
+label.f input,label.f select{padding:7px 10px;border:1px solid var(--line);border-radius:8px;color:var(--ink);background:#fff}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.kpi{border:1px solid var(--line);border-radius:12px;padding:14px;background:#fff;position:relative}
+.kpi .nm{font-size:13px;color:var(--muted);min-height:40px;padding-right:96px}
+.kpi .v{font-size:28px;font-weight:700;margin:4px 0}
+.kpi .cmp{font-size:12.5px;color:var(--muted)}
+.kpi .tag{position:absolute;top:12px;right:12px}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600}
+.ok{background:var(--green-soft);color:var(--green)}
+.warn{background:var(--amber-soft);color:var(--amber)}
+.bad{background:var(--red-soft);color:var(--red)}
+.na{background:#eef1f3;color:var(--muted)}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{background:var(--teal);color:#fff;font-weight:600;position:sticky;top:0}
+td:first-child,th:first-child{text-align:left}
+td.l{text-align:left;white-space:normal}
+tr.tot td{font-weight:700;background:var(--teal-soft)}
+tr:hover td{background:#f7fbfb}
+.chart{position:relative;height:320px;margin:10px 0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:860px){.two{grid-template-columns:1fr}}
+.steps{counter-reset:s;list-style:none;padding:0;margin:0}
+.steps li{counter-increment:s;padding:10px 0 10px 44px;position:relative;border-bottom:1px solid var(--line)}
+.steps li:before{content:counter(s);position:absolute;left:0;top:10px;width:30px;height:30px;border-radius:50%;background:var(--teal-soft);color:var(--teal);display:grid;place-items:center;font-weight:700}
+.chk td.l a{color:var(--blue)}
+.log{font-size:13px}
+.log li{margin:3px 0}
+.bul li{margin:6px 0}
+.muted{color:var(--muted)}
+.hidden{display:none!important}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}
+.note{background:var(--amber-soft);border-radius:10px;padding:10px 14px;font-size:13.5px;margin:10px 0}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+.prog{height:8px;background:#e7eef0;border-radius:99px;overflow:hidden;margin:6px 0 14px}
+.prog-bar{height:100%;width:0;background:var(--teal);transition:width .4s}
+.wf-steps{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.wf-steps li{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px;background:#fff}
+.wf-steps li b{display:block;font-size:12px;color:var(--muted);font-weight:500}
+.wf-steps li.done{border-color:#86efac;background:var(--green-soft)}
+.wf-steps li.run{border-color:#5eead4;background:var(--teal-soft)}
+.wf-steps li.warn{border-color:#fcd34d;background:var(--amber-soft)}
+.wf-steps li .st{float:right;font-size:12px}
+.wf-grid td,.wf-grid th{text-align:center}
+.wf-grid td:first-child{text-align:left}
+.cellbtn{border:0;border-radius:8px;padding:3px 9px;font-weight:600;cursor:pointer;font-size:12.5px}
+.cellbtn.ok{background:var(--green-soft);color:var(--green)}
+.cellbtn.bad{background:var(--red-soft);color:var(--red);cursor:default}
+a.lk{display:inline-block;margin-top:2px;font-size:12px;color:var(--blue)}
+.modal{position:fixed;inset:0;background:rgba(15,30,35,.45);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal.hidden{display:none}
+.modal-in{background:#fff;border-radius:14px;padding:16px;width:min(1100px,100%)}
+
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <div class="logo">TTM</div>
+    <div style="flex:1;min-width:220px">
+      <h1>ระบบสร้างรายงานประจำเดือน กลุ่มงานการแพทย์แผนไทยฯ สสจ.สมุทรปราการ</h1>
+      <p id="hdrSub">เลือกโฟลเดอร์ข้อมูลประจำเดือน → ตรวจสอบ → ดูแดชบอร์ด → ส่งออก Excel / Word / HTML</p>
+    </div>
+    <div class="row" id="topActions">
+      <button class="btn ghost" onclick="pickFolder()" id="btnPick2">เลือกโฟลเดอร์</button>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <a href="#p-wf" data-p="p-wf" class="on" id="tabWf">0. แผงควบคุมงาน</a>
+    <a href="#p-start" data-p="p-start">1. คู่มือ / เลือกโฟลเดอร์</a>
+    <a href="#p-check" data-p="p-check">2. ตรวจสอบไฟล์</a>
+    <a href="#p-sum" data-p="p-sum">3. สรุปผู้บริหาร</a>
+    <a href="#p-kpi" data-p="p-kpi">4. รายตัวชี้วัด</a>
+    <a href="#p-money" data-p="p-money">5. มูลค่ายา UC และเงินชดเชย</a>
+    <a href="#p-export" data-p="p-export">6. ส่งออกรายงาน</a>
+  </nav>
+</header>
+
+<main>
+<!-- ========== START ========== -->
+<!-- ========== CONTROL PANEL ========== -->
+<section class="pane on" id="p-wf">
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div><h2>แผงควบคุมงานรายงานประจำเดือน</h2><p class="sub" id="wfSub">เชื่อมต่อโฟลเดอร์ปี (00 All Report 70) ครั้งแรกครั้งเดียว ระบบจะจำไว้</p></div>
+      <div class="row">
+        <button class="btn" id="wfAutoBtn" onclick="wfAuto()">▶ ทำอัตโนมัติ (Auto)</button>
+      </div>
+    </div>
+    <div class="prog"><div class="prog-bar" id="wfProg"></div></div>
+    <ol class="wf-steps" id="wfSteps"></ol>
+    <div id="wfFsWarn" class="note hidden">เบราว์เซอร์นี้ไม่รองรับการเข้าถึงโฟลเดอร์โดยตรง กรุณาเปิดไฟล์นี้ด้วย Google Chrome หรือ Microsoft Edge (หรือใช้ปุ่ม “เลือกโฟลเดอร์” แบบเดิม)</div>
+  </div>
+
+  <div class="card" id="wfS1">
+    <h3 style="margin-top:0">ขั้นที่ 1–2 · โฟลเดอร์ปี และโฟลเดอร์เดือน</h3>
+    <div class="row">
+      <button class="btn ghost" onclick="wfPickRoot()">เชื่อมต่อโฟลเดอร์ปี…</button>
+      <button class="btn ghost hidden" id="wfReconnect" onclick="wfReconnect()">เชื่อมต่ออีกครั้ง</button>
+      <span id="wfRootName" class="muted">ยังไม่ได้เชื่อมต่อ</span>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <label class="f">เดือนที่ทำงาน<select id="wfMonthSel" onchange="wfSelectMonth(this.value)"></select></label>
+      <label class="f">ชื่อเดือนใหม่<input id="wfNewName" style="width:140px"></label>
+      <button class="btn ghost" onclick="wfNewMonth()" style="align-self:flex-end">+ สร้างโฟลเดอร์เดือนใหม่</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div><h3 style="margin-top:0">ขั้นที่ 3 · ดึงข้อมูล DATA IN</h3><p class="sub">HDC 4 ตัวชี้วัด: กด ⚡ ระบบดึงจาก HDC และบันทึกลง DatIN ให้ครบ 36 ไฟล์ • มูลค่ายา UC / เงินชดเชย สปสช.: กด “เปิดรายงาน” ดาวน์โหลดเอง (ไฟล์อยู่ใน Downloads ได้เลย ขั้นที่ 4 ย้ายให้) • กดช่อง ✓ เพื่อเปิดดูข้อมูล</p></div>
+      <div class="row"><button class="btn" id="wfHdcBtn" onclick="wfHdcFetch()">⚡ ดึงข้อมูล HDC อัตโนมัติ (36 ไฟล์)</button><button class="btn ghost" onclick="wfScan()">↻ ตรวจสถานะไฟล์</button></div>
+    </div>
+    <div class="tbl-wrap"><table id="wfGrid" class="wf-grid"></table></div>
+    <p class="muted" style="font-size:13px;margin:8px 0 0">หมายเหตุตัวกรอง HDC: <span id="wfFilterNote"></span></p>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div><h3 style="margin-top:0">ขั้นที่ 4 · นำเข้าไฟล์จาก Downloads</h3><p class="sub">ระบบอ่านเนื้อหาไฟล์ Excel ที่ดาวน์โหลดใน 14 วันล่าสุด แยกว่าเป็นตัวชี้วัด/ระดับใด แล้วย้ายเข้าโฟลเดอร์ DatIN ที่ถูกต้อง พร้อมตั้งชื่อไฟล์ให้</p></div>
+      <div class="row">
+        <button class="btn ghost" onclick="wfPickDl()">เชื่อมต่อ Downloads…</button>
+        <button class="btn ghost" onclick="wfImportScan()">ค้นหาไฟล์ใหม่</button>
+        <button class="btn" onclick="wfImportRun()">ย้ายเข้า DatIN</button>
+      </div>
+    </div>
+    <label class="muted" style="font-size:13px"><input type="checkbox" id="wfMove" checked> ลบไฟล์ต้นฉบับใน Downloads หลังย้าย</label>
+    <div id="wfImport" style="margin-top:10px"><p class="muted" id="wfDlName">ยังไม่ได้เชื่อมต่อโฟลเดอร์ Downloads</p></div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">ขั้นที่ 5 · ข้อมูลกรอกเอง</h3>
+    <p id="wfManual" class="muted">–</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">ขั้นที่ 6–7 · ตรวจสอบ และส่งออกรายงานลง ReportOut</h3>
+    <div class="row">
+      <button class="btn ghost" onclick="wfBuild()">ตรวจสอบ & สร้างแดชบอร์ด</button>
+      <button class="btn" onclick="wfExportAll()">ส่งออก Excel + Word + HTML ลง ReportOut</button>
+      <label class="muted" style="font-size:13px"><input type="checkbox" id="wfForce"> ส่งออกแม้ข้อมูลยังไม่ครบ</label>
+    </div>
+    <div id="wfOut" style="margin-top:10px"></div>
+    <h3>อัปรายงานขึ้น TTM Digital Portal</h3>
+    <p class="sub">อัปแดชบอร์ด HTML ของเดือนนี้ขึ้น GitHub Pages เป็นลิงก์ถาวร <b>TTMReport70.html</b> (ล่าสุดเสมอ) และเก็บย้อนหลังใน <b>reports/</b> — การ์ด “รายงานเดือน กวป. ล่าสุด” ใน Portal จะเปิดฉบับใหม่ทันที</p>
+    <div class="row">
+      <button class="btn" id="ghPubBtn" onclick="publishPortal()">⬆ อัปขึ้น Portal</button>
+      <label class="muted" style="font-size:13px"><input type="checkbox" id="ghAuto" onchange="try{localStorage.setItem('ttm-gh-auto',this.checked?'1':'')}catch(e){}"> อัปขึ้น Portal อัตโนมัติเมื่อกด ▶ Auto</label>
+      <span id="ghState"></span>
+    </div>
+    <p class="muted" id="ghMsg" style="margin:8px 0 0"></p>
+    <details style="margin-top:10px"><summary class="muted" style="cursor:pointer">ตั้งค่า GitHub token (ครั้งแรกครั้งเดียวต่อเครื่อง)</summary>
+      <ol class="bul" style="font-size:13.5px">
+        <li>เข้า GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token</li>
+        <li>Repository access: เลือกเฉพาะ <b>jeerapat2010-cpu/my-html-app</b> • Permissions → Contents: <b>Read and write</b> • ตั้งวันหมดอายุตามสะดวก</li>
+        <li>คัดลอก token มาวางช่องด้านล่างแล้วกดบันทึก (เก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น ไม่ถูกใส่ในรายงาน)</li>
+      </ol>
+      <div class="row"><input type="password" id="ghTok" placeholder="github_pat_…" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;min-width:280px" autocomplete="off"><button class="btn ghost" onclick="ghSaveToken()">บันทึก / ลบ (เว้นว่าง)</button></div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">บันทึกการทำงาน</h3>
+    <ul class="log" id="wfLog"></ul>
+  </div>
+</section>
+
+<div id="modal" class="modal hidden" onclick="if(event.target===this)this.classList.add('hidden')"><div class="modal-in"><div class="row" style="justify-content:space-between"><b id="modalT"></b><button class="btn ghost" onclick="$('modal').classList.add('hidden')">ปิด</button></div><div id="modalB" class="tbl-wrap" style="margin-top:10px;max-height:70vh;overflow:auto"></div></div></div>
+
+<!-- ========== START ========== -->
+<section class="pane" id="p-start">
+  <div class="card">
+    <h2>เลือกโฟลเดอร์ข้อมูลของเดือน</h2>
+    <p class="sub">เลือกโฟลเดอร์เดือน (เช่น <b>Oct 31 70</b>) หรือเลือกทั้งโฟลเดอร์ปี (<b>00 All Report 70</b>) เพื่อให้ระบบสร้างกราฟแนวโน้มรายเดือนด้วย ไฟล์ทั้งหมดถูกอ่านในเครื่องของพี่ ไม่มีการส่งข้อมูลออกไปที่ใด</p>
+    <div class="drop">
+      <strong>เลือกโฟลเดอร์ (DatIN อยู่ข้างใน)</strong>
+      <span class="muted">ระบบจะจำแนกไฟล์จาก “เนื้อหา” ไม่ใช่ชื่อไฟล์ จึงไม่ต้องตั้งชื่อไฟล์ให้ตรงเป๊ะ</span><br><br>
+      <button class="btn" onclick="pickFolder()">เลือกโฟลเดอร์…</button>
+      <input type="file" id="dirInput" webkitdirectory directory multiple class="hidden">
+    </div>
+    <div class="row" style="margin-top:14px">
+      <label class="f">เดือนที่ใช้ทำรายงาน<select id="monthSel" onchange="onMonthChange()"></select></label>
+      <label class="f">ข้อมูล ณ วันที่<input type="date" id="asOf" onchange="onDateChange()"></label>
+      <span id="loadStatus" class="muted"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>ขั้นตอนประจำเดือน (ทำวันที่ 25 – สิ้นเดือน)</h2>
+    <ol class="steps">
+      <li><b>สร้างโฟลเดอร์เดือนใหม่</b> — ดับเบิลคลิก <code>NewMonth.bat</code> ในโฟลเดอร์ <i>00 เครื่องมือ</i> ระบบจะสร้างโฟลเดอร์เดือน + DatIN ย่อย + คัดลอกไฟล์ “ข้อมูลกรอกเอง.xlsx” จากเดือนก่อนให้อัตโนมัติ</li>
+      <li><b>ดึงข้อมูล HDC</b> (ต้อง login HDC) — เปิดลิงก์ในตารางด้านล่าง เลือกปีงบประมาณ แล้วกด Export Excel ให้ครบ 4 ระดับ: ประเทศ(รายเขต) / เขต 6 (รายจังหวัด) / จังหวัด (รายอำเภอ) / อำเภอ (รายหน่วยบริการ) × 6 อำเภอ (4 ตัวชี้วัด: ปฐมภูมิ, Common Diseases, IMC, หลังคลอด) บันทึกลงโฟลเดอร์ระดับนั้น</li>
+      <li><b>ดึงมูลค่ายาสมุนไพร UC</b> — ระดับเขต/เขต 6/จังหวัด/อำเภอ/หน่วยบริการ บันทึกลง <i>DatIN\10 มูลค่ายาสมุนไพร UC</i></li>
+      <li><b>ดึงเงินชดเชย OP On-top (สปสช. MIS HOS)</b> — ไฟล์รวมทั้งจังหวัด (ตั้งชื่อมีคำว่า “รวมทั้งจังหวัด”) + 7 จังหวัดในเขต 6 (ตั้งชื่อไฟล์เป็นชื่อจังหวัด เช่น ชลบุรี.xlsx) บันทึกลง <i>DatIN\11 OnTop สปสช</i> — ไฟล์รายอำเภอไม่บังคับ ระบบแยกอำเภอจากรหัสหน่วยบริการให้เอง</li>
+      <li><b>อัปเดตข้อมูลกรอกเอง</b> — เปิด <i>DatIN\12 กรอกเอง\ข้อมูลกรอกเอง.xlsx</i> แก้ Flagship / เกณฑ์ / เป้าหมาย</li>
+      <li><b>เปิดไฟล์นี้ → เลือกโฟลเดอร์เดือน</b> ตรวจแท็บ “ตรวจสอบไฟล์” ให้เป็นสีเขียวทั้งหมด แก้ไฟล์ที่ขาด/ผิด</li>
+      <li><b>ส่งออกรายงาน</b> — กดสร้าง Excel (DATA ALL) / Word (รายงาน กวป.) / HTML (แดชบอร์ด) แล้วบันทึกลง <i>ReportOut</i> ของเดือนนั้น</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>ลิงก์แหล่งข้อมูล (DATA IN)</h2>
+    <div class="tbl-wrap"><table class="chk" id="srcTable"></table></div>
+  </div>
+</section>
+
+<!-- ========== CHECK ========== -->
+<section class="pane" id="p-check">
+  <div class="card">
+    <h2>ความครบถ้วนของไฟล์</h2>
+    <p class="sub">เขียว = พบไฟล์และอ่านได้, แดง = ยังไม่มีไฟล์ ต้องดึงเพิ่ม</p>
+    <div class="tbl-wrap"><table id="matrix"></table></div>
+  </div>
+  <div class="card">
+    <h2>ข้อควรตรวจสอบ (Data Quality)</h2>
+    <ul class="log" id="warnList"><li class="muted">ยังไม่ได้เลือกโฟลเดอร์</li></ul>
+  </div>
+  <div class="card">
+    <h2>รายการไฟล์ที่อ่านได้</h2>
+    <div class="tbl-wrap"><table id="fileTable"></table></div>
+  </div>
+</section>
+
+<!-- ========== SUMMARY ========== -->
+<section class="pane" id="p-sum">
+  <div id="sumEmpty" class="card empty">เลือกโฟลเดอร์ข้อมูลก่อน</div>
+  <div id="sumBody" class="hidden">
+    <div class="card">
+      <h2>บทสรุปผู้บริหาร</h2>
+      <p class="sub" id="sumDate"></p>
+      <ul class="bul" id="execBul"></ul>
+    </div>
+    <div class="card">
+      <h2>ภาพรวมตัวชี้วัด</h2>
+      <div class="grid" id="kpiCards"></div>
+      <h3>เทียบระดับประเทศ เขตสุขภาพที่ 6 และจังหวัด</h3>
+      <div class="tbl-wrap"><table id="kpiTable"></table></div>
+    </div>
+    <div class="card">
+      <h2>คะแนนรวมรายอำเภอ</h2>
+      <p class="sub">แปลงผลแต่ละตัวชี้วัดเป็นคะแนน (% ของเกณฑ์ สูงสุด 100) แล้วเฉลี่ย</p>
+      <div class="two"><div class="chart"><canvas id="cScore"></canvas></div><div class="tbl-wrap"><table id="scoreTable"></table></div></div>
+    </div>
+    <div class="card" id="trendCard">
+      <h2>แนวโน้มรายเดือน (ระดับจังหวัด)</h2>
+      <p class="sub" id="trendSub"></p>
+      <div class="chart"><canvas id="cTrend"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== KPI DETAIL ========== -->
+<section class="pane" id="p-kpi">
+  <div class="card">
+    <div class="row"><label class="f">ตัวชี้วัด<select id="kpiSel" onchange="renderKpiDetail()"></select></label></div>
+  </div>
+  <div id="kpiDetail"></div>
+</section>
+
+<!-- ========== MONEY ========== -->
+<section class="pane" id="p-money">
+  <div id="moneyBody"><div class="card empty">เลือกโฟลเดอร์ข้อมูลก่อน</div></div>
+</section>
+
+<!-- ========== EXPORT ========== -->
+<section class="pane" id="p-export">
+  <div class="card">
+    <h2>ส่งออกรายงานประจำเดือน</h2>
+    <p class="sub">บันทึกไฟล์ทั้งหมดลงโฟลเดอร์ <b>ReportOut</b> ของเดือนนั้น (เบราว์เซอร์จะดาวน์โหลดไปที่ Downloads ให้ย้ายไปหรือตั้งค่า Chrome ให้ถามที่บันทึก)</p>
+    <div class="row">
+      <button class="btn" id="bXlsx" onclick="exportExcel()" disabled>Excel: DATA ALL</button>
+      <button class="btn" id="bDocx" onclick="exportWord()" disabled>Word: รายงาน กวป.</button>
+      <button class="btn" id="bHtml" onclick="exportHtml()" disabled>HTML: แดชบอร์ดผู้บริหาร</button>
+      <button class="btn ghost" id="bJson" onclick="exportJson()" disabled>JSON สรุป (เก็บประวัติ)</button>
+    </div>
+    <p class="muted" id="exportMsg" style="margin-top:10px"></p>
+  </div>
+  <div class="card">
+    <h2>หลังส่งออก</h2>
+    <ul class="bul">
+      <li>เปิดไฟล์ Word → คลิกขวาที่สารบัญ → <i>Update Field</i> เพื่ออัปเดตเลขหน้า แล้วเพิ่มข้อความวิเคราะห์เฉพาะเดือนได้</li>
+      <li>ไฟล์ HTML เปิดได้ทันทีโดยไม่ต้องเลือกโฟลเดอร์ เหมาะส่งต่อผู้บริหารทาง LINE / อัปขึ้น GitHub Pages</li>
+      <li>ไฟล์ JSON สรุปเก็บไว้ใน ReportOut เพื่อใช้เทียบย้อนหลัง</li>
+    </ul>
+  </div>
+</section>
+</main>
+
+<script>/*MAIN*/
+/* ====================================================================
+   CONSTANTS
+==================================================================== */
+const PRISTINE_HTML = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+const UNITS = [["00933","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลสำโรงเหนือ","P"],["00934","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางเมือง","P"],["00935","เมืองสมุทรปราการ","สถานีอนามัยเฉลิมพระเกียรติ 60 พรรษา นวมินทราชินี บ้านคลองบางปิ้ง","P"],["00936","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางปูใหม่","P"],["00937","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลแพรกษา","P"],["00938","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางโปรง","P"],["00939","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางปู","P"],["00940","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางด้วน","P"],["00941","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางเมืองใหม่","P"],["00942","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลเทพารักษ์","P"],["00943","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลท้ายบ้านใหม่","P"],["00944","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลแพรกษาใหม่","P"],["10685","เมืองสมุทรปราการ","โรงพยาบาลสมุทรปราการ","H"],["12251","เมืองสมุทรปราการ","โรงพยาบาลยุวประสาทไวทโยปถัมภ์","H"],["13812","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลท้ายบ้าน","P"],["15048","เมืองสมุทรปราการ","ศูนย์สุขภาพชุมชนเมือง โรงพยาบาลสมุทรปราการ","P"],["23945","เมืองสมุทรปราการ","สถานีอนามัยเฉลิมพระเกียรติ 60 พรรษา นวมินทราชินี สาขาวัดบางปิ้ง","P"],["24027","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลพุทธรักษา","P"],["24028","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลร่มโพธิ์","P"],["24029","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลบุญศิริ","P"],["24702","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลเทศบาลตำบลสำโรงเหนือ","P"],["28826","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลมังกรทอง","P"],["00945","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางบ่อ","P"],["00946","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านระกาศ หมู่ 3","P"],["00947","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านระกาศ หมู่ 8","P"],["00948","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางพลีน้อย หมู่ที่ 3","P"],["00949","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางพลีน้อย หมู่ที่ 5","P"],["00950","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางพลีน้อย หมู่ที่ 8","P"],["00951","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางเพรียง","P"],["00952","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลคลองด่าน หมู่ที่ 1","P"],["00953","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลคลองด่าน หมู่ที่ 13","P"],["00954","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลคลองสวน","P"],["00955","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลเปร็ง","P"],["00956","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลนิยมยาตรา","P"],["10752","บางบ่อ","โรงพยาบาลบางบ่อ","H"],["23032","บางบ่อ","ศูนย์สุขภาพชุมชนโรงพยาบาลบางบ่อ","P"],["23911","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลคลองด่าน หมู่ 7","P"],["00957","บางพลี","โรงพยาบาลส่งเสริมสุขภาพตำบลบางแก้ว","P"],["00958","บางพลี","โรงพยาบาลส่งเสริมสุขภาพตำบลวัดสลุด ตำบลบางแก้ว","P"],["00959","บางพลี","โรงพยาบาลส่งเสริมสุขภาพตำบลบางปลา","P"],["00960","บางพลี","โรงพยาบาลส่งเสริมสุขภาพตำบลคลองสี่","P"],["00961","บางพลี","โรงพยาบาลส่งเสริมสุขภาพตำบลบางโฉลง","P"],["00962","บางพลี","โรงพยาบาลส่งเสริมสุขภาพตำบลราชาเทวะ","P"],["00963","บางพลี","โรงพยาบาลส่งเสริมสุขภาพตำบลหนองปรือ","P"],["10753","บางพลี","โรงพยาบาลบางพลี","H"],["23034","บางพลี","ศูนย์แพทย์ชุมชนวัดบางพลีใหญ่กลาง","P"],["24675","บางพลี","โรงพยาบาลส่งเสริมสุขภาพบัวเกราะ ตำบลราชาเทวะ","P"],["99826","บางพลี","ศูนย์สุขภาพชุมชน 1 โรงพยาบาลบางพลี","P"],["00964","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางพึ่ง","P"],["00965","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางจาก","P"],["00966","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางครุ","P"],["00967","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางหญ้าแพรก","P"],["00968","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางหัวเสือ","P"],["00969","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางยอ","P"],["00970","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางกะเจ้า","P"],["00971","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางน้ำผึ้ง","P"],["00972","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางกระสอบ","P"],["00973","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางกอบัว","P"],["00974","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางกอ","P"],["00975","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลทรงคนอง","P"],["00976","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลสำโรง","P"],["00977","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลสำโรงกลาง","P"],["00978","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลสำโรงใต้","P"],["10754","พระประแดง","โรงพยาบาลบางจาก","H"],["23944","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลอยู่เจริญ","P"],["00979","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านขุนสมุทรไทย","P"],["00980","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลนาเกลือ","P"],["00981","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านคลองทะเล","P"],["00982","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านคลองสวน","P"],["00983","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลแหลมฟ้าผ่า","P"],["00984","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านขุนสมุทร","P"],["00985","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลในคลองบางปลากด","P"],["00986","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านคู่สร้าง","P"],["10755","พระสมุทรเจดีย์","โรงพยาบาลพระสมุทรเจดีย์สวาทยานนท์","H"],["24410","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านคลองนาเกลือน้อย","P"],["24559","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลคลองกระออม","P"],["00987","บางเสาธง","โรงพยาบาลส่งเสริมสุขภาพตำบลเมืองใหม่บางพลี","P"],["00988","บางเสาธง","โรงพยาบาลส่งเสริมสุขภาพตำบลเสาธงกลาง ตำบลบางเสาธง","P"],["00989","บางเสาธง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางเสาธง","P"],["00990","บางเสาธง","โรงพยาบาลส่งเสริมสุขภาพตำบลศรีษะจระเข้น้อย","P"],["00991","บางเสาธง","โรงพยาบาลส่งเสริมสุขภาพตำบลศีรษะจรเข้ใหญ่","P"],["00992","บางเสาธง","โรงพยาบาลส่งเสริมสุขภาพตำบลวัดศรีวารีน้อย ตำบลศีรษะจรเข้ใหญ่","P"],["24411","บางเสาธง","โรงพยาบาลส่งเสริมสุขภาพตำบลเจริญราษฎร์","P"],["24412","บางเสาธง","โรงพยาบาลส่งเสริมสุขภาพตำบลกัลปพฤกษ์ ตำบลบางเสาธง","P"],["28785","บางเสาธง","โรงพยาบาลบางเสาธง","H"]]; // [code5, district, name, H|P]
+const UNIT_MAP = Object.fromEntries(UNITS.map(u=>[u[0],{district:u[1],name:u[2],type:u[3]}]));
+const DISTRICTS = [
+  {key:'เมืองสมุทรปราการ',short:'เมือง',al:['เมือง','เมืองสมุทรปราการ','mueang']},
+  {key:'บางบ่อ',short:'บางบ่อ',al:['บบ','บางบ่อ']},
+  {key:'บางพลี',short:'บางพลี',al:['บพ','บางพลี']},
+  {key:'พระประแดง',short:'พระประแดง',al:['พปด','พระประแดง']},
+  {key:'พระสมุทรเจดีย์',short:'พระสมุทรฯ',al:['พส','พสจ','พระสมุทรเจดีย์','พระสมุทรฯ']},
+  {key:'บางเสาธง',short:'บางเสาธง',al:['บสธ','บางเสาธง']},
+];
+const R6 = ['สมุทรปราการ','ชลบุรี','ระยอง','จันทบุรี','ตราด','ฉะเชิงเทรา','ปราจีนบุรี','สระแก้ว'];
+const PROV = 'สมุทรปราการ';
+const TH_MONTH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const TH_MON_S = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const EN_MON = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+
+const HDC = 'https://hdc.moph.go.th/center/public/standard-report-detail/';
+const SUBCAT = '?subcatalogId=30bc6364fc06a33a7802e16bc596ac3b';
+const KPI = {
+  PRIM:{no:'ตัวชี้วัด 14',short:'ปฐมภูมิ',title:'ร้อยละของผู้ป่วยนอกที่มารับบริการในระดับปฐมภูมิได้รับการรักษาด้วยการแพทย์แผนไทยและการแพทย์ทางเลือก',crit:50,unit:'%',metric:'ร้อยละ',src:'HDC',url:HDC+'8f3d7d8e9dd50372641546bf12895c04'+SUBCAT},
+  COM:{no:'ตัวชี้วัด 15',short:'Common Diseases',title:'ร้อยละของผู้ป่วยที่ได้รับการวินิจฉัยโรค Common Diseases and Symptoms และได้รับยาสมุนไพรเพิ่มขึ้น',crit:25,unit:'%',metric:'ร้อยละที่เพิ่มขึ้น',src:'HDC',url:HDC+'mtlg7qpGzbMJRk15oggUy'+SUBCAT},
+  IMC:{no:'ตัวชี้วัด 26',short:'IMC',title:'ร้อยละของผู้ป่วยโรคหลอดเลือดสมอง อัมพฤกษ์ อัมพาตระยะกลาง (Intermediate Care) ที่ได้รับการดูแลด้วยการแพทย์แผนไทยฯ (Coverage)',crit:20,unit:'%',metric:'ร้อยละ',src:'HDC',url:HDC+'3b9588304ddab6facbeb16089f1b9e85'+SUBCAT},
+  PP:{no:'OPD',short:'บริบาลหลังคลอด',title:'OPD-การบริบาลหญิงหลังคลอดด้วยการแพทย์แผนไทย',crit:null,unit:'คน',metric:'ผู้รับบริการ (คน)',src:'HDC',url:HDC+'0e82dff847a700596572b4e921ffe068'+SUBCAT},
+  CAN1:{no:'SP กัญชา ข้อ 4',short:'กัญชา PC',title:'ร้อยละผู้ป่วยระยะประคับประคอง (Z515) ที่ได้รับกัญชาทางการแพทย์',crit:10,unit:'%',metric:'ร้อยละ',src:'HDC',url:'https://hdc.moph.go.th/center/public/main'},
+  CAN2:{no:'SP กัญชา ข้อ 3',short:'กัญชา ผู้ป่วยทั้งหมด',title:'ร้อยละที่เพิ่มขึ้นของผู้ป่วยที่ได้รับการรักษาด้วยยากัญชาทางการแพทย์ (เทียบปีฐาน 2564)',crit:70,unit:'%',metric:'ร้อยละที่เพิ่มขึ้น',src:'HDC',url:'https://hdc.moph.go.th/center/public/main'},
+  UC:{no:'มูลค่ายา',short:'มูลค่ายาสมุนไพร UC',title:'มูลค่าการใช้ยาสมุนไพรสิทธิ UC',crit:null,unit:'บาท',src:'thaipadi',url:'https://www.thaipadi.com/kpi'},
+  ONTOP:{no:'สปสช.',short:'เงินชดเชย สปสช.',title:'เงินชดเชยค่ายาสมุนไพรสิทธิ UC (OP On-top)',crit:null,unit:'บาท',src:'MIS HOS',url:'https://mishos.nhso.go.th/mis_hos/#/op/opontop'},
+};
+const ENABLE_CANNABIS = false; // ปีงบ 70 ไม่รายงานงานกัญชา — เปลี่ยนเป็น true หากกลับมารายงาน
+const CAN_KPIS = ['CAN1','CAN2'];
+const HDC_KPIS = ['PRIM','COM','IMC','PP','CAN1','CAN2'].filter(k=>ENABLE_CANNABIS||!CAN_KPIS.includes(k));
+const RATE_KPIS = ['PRIM','COM','IMC','CAN1','CAN2'].filter(k=>ENABLE_CANNABIS||!CAN_KPIS.includes(k));
+const SCORE_KPIS = ['PRIM','UC','COM','IMC','CAN1','CAN2'].filter(k=>ENABLE_CANNABIS||!CAN_KPIS.includes(k));
+const CAN_SHEETS = ['ใบอนุญาต','ต่ออายุ','ร้องเรียน'];
+const LEVEL_TH = {country:'ประเทศ (รายเขต)',region:'เขต 6 (รายจังหวัด)',province:'จังหวัด (รายอำเภอ)',unit:'อำเภอ (รายหน่วยบริการ)',allprov:'ประเทศ (รายจังหวัด)'};
+const DEFAULT_TARGET = { // ค่าตั้งต้นจากปี 69 — ปรับได้ใน ข้อมูลกรอกเอง.xlsx ชีต "เป้าหมายUC"
+  'เมืองสมุทรปราการ':12583107.88,'บางบ่อ':3829920.79,'บางพลี':3891114.51,'พระประแดง':4872210.06,'พระสมุทรเจดีย์':1695104.09,'บางเสาธง':1509888.66,
+  'สมุทรปราการ':28381346,'ชลบุรี':37437004,'ระยอง':20541037,'จันทบุรี':16859344,'ตราด':5509900,'ฉะเชิงเทรา':23712068,'ปราจีนบุรี':13240957,'สระแก้ว':19318344,
+  'เขตสุขภาพที่ 6':165000000,'ประเทศ':2000000000
+};
+
+/* ====================================================================
+   STATE
+==================================================================== */
+let MONTHS = {};      // monthKey -> {files:[], db:{}, warn:[], manual:null}
+let CUR = null;       // current month key
+let CHARTS = {};
+const $ = id=>document.getElementById(id);
+
+/* ====================================================================
+   HELPERS
+==================================================================== */
+function num(v){ if(typeof v==='number') return isFinite(v)?v:null; if(v==null) return null;
+  const s=String(v).replace(/[,\s]/g,''); if(s===''||s==='-'||s==='–') return null; const n=Number(s); return isFinite(n)?n:null; }
+const clean = s=>String(s==null?'':s).replace(/\s+/g,' ').trim();
+const esc = s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function fmt(v,d=2){ if(v==null||!isFinite(v)) return '–'; return v.toLocaleString('th-TH',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+const fmt0 = v=>fmt(v,0);
+const fmtM = v=>v==null?'–':fmt(v/1e6,2)+' ล้านบาท';
+const pct = (a,b)=> (a!=null && b) ? a/b*100 : null;
+function tokens(path){ return path.split(/[\/\\_\s.\-()]+/).filter(Boolean); }
+function distFromTokens(path){
+  const t = tokens(path);
+  for(const d of DISTRICTS) if(t.some(x=>d.al.includes(x))) return d.key;
+  for(const d of DISTRICTS) if(path.includes(d.key)) return d.key;
+  return null;
+}
+function normDist(name){
+  const n=clean(name).replace(/^อ\.\s*/,'');
+  for(const d of DISTRICTS) if(d.al.includes(n)||n===d.key) return d.key;
+  for(const d of DISTRICTS) if(n.includes(d.key)) return d.key;
+  return n;
+}
+function shortD(k){ const d=DISTRICTS.find(x=>x.key===k); return d?d.short:k; }
+function status(v,crit){ if(v==null||crit==null) return 'na'; if(v>=crit) return 'ok'; if(v>=crit*0.8) return 'warn'; return 'bad'; }
+const ST_TH = {ok:'ผ่านเกณฑ์',warn:'ใกล้เกณฑ์',bad:'ต่ำกว่าเกณฑ์',na:'–'};
+function thaiDate(iso){ if(!iso) return ''; const [y,m,d]=iso.split('-').map(Number); return `${d} ${TH_MONTH[m-1]} ${y+543}`; }
+function fyMonth(iso){ const m=Number(iso.split('-')[1]); return m>=10?m-9:m+3; }
+function fyOf(iso){ const [y,m]=iso.split('-').map(Number); return (m>=10?y+1:y)+543; }
+function hashAoa(aoa){ let s=JSON.stringify(aoa), h=0; for(let i=0;i<s.length;i++){h=((h<<5)-h+s.charCodeAt(i))|0;} return h; }
+
+/* month folder name -> ISO date. "Oct 31 70" (yy = ปีงบ), "Sep30" */
+function monthFromName(name, fyHint){
+  const m = name.toLowerCase().match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*(\d{1,2})?\s*(\d{2})?/);
+  if(!m) return null;
+  const mi = EN_MON.indexOf(m[1])+1;
+  let fy = m[3]? 2500+Number(m[3]) : fyHint;
+  let y;
+  if(fy){ const yBE = mi>=10 ? fy-1 : fy; y = yBE-543; }
+  else { const now=new Date(); y=[now.getFullYear()-1,now.getFullYear(),now.getFullYear()+1].sort((a,b)=>Math.abs(new Date(a,mi-1,15)-now)-Math.abs(new Date(b,mi-1,15)-now))[0]; }
+  const last = new Date(y, mi, 0).getDate();
+  const d = m[2]? Math.min(Number(m[2]), last) : last;
+  return `${y}-${String(mi).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+/* ====================================================================
+   FILE CLASSIFICATION & PARSING
+==================================================================== */
+function guessKpiFromName(name){
+  const n=name.toLowerCase().replace(/\s+/g,'');
+  if(/ontop|ชดเชย/.test(n)) return 'ONTOP';
+  if(/มูลค่า|uc_|_uc/.test(n)) return 'UC';
+  if(/can1/.test(n)) return 'CAN1';
+  if(/can2/.test(n)) return 'CAN2';
+  if(/ปฐม|prim/.test(n)) return 'PRIM';
+  if(/com/.test(n)) return 'COM';
+  if(/imc/.test(n)) return 'IMC';
+  if(/^pp|pp/.test(n)) return 'PP';
+  return null;
+}
+function classify(aoa, path){
+  const head = aoa.slice(0,5).map(r=>(r||[]).map(clean).join('|')).join('||');
+  if(/กรอกเอง/.test(path)) return 'MANUAL';
+  if(/มูลค่า UC/.test(head)) return 'UC';
+  if(/รหัสหน่วยบริการ/.test(head) && /ชดเชย/.test(head)) return 'ONTOP';
+  if(/รหัสยา|GMP|มูลค่ารายการยาสมุนไพร/.test(head)) return 'GMP';
+  if(/วินิจฉัยและมีการสั่งจ่ายยาสมุนไพร/.test(head)) return 'COM';
+  if(/บริการแพทย์แผนไทย\(ครั้ง\)/.test(head.replace(/\s/g,''))) return 'PRIM';
+  if(/หลอดเลือดสมอง/.test(head)) return 'IMC';
+  if(/พบประวัติคลอด/.test(head)) return 'PP';
+  if(/ใช้กัญชาทางการแพทย์/.test(head)) return 'CAN2';
+  if(/\|B\|A\|%/.test(head) && /คน/.test(head)) return 'CAN1';
+  return null;
+}
+function levelOf(aoa){
+  const f = clean((aoa[0]||[])[0]);
+  if(f==='เขตสุขภาพ') return 'country';
+  if(f==='จังหวัด') return 'region';
+  if(f==='อำเภอ') return 'province';
+  if(f==='หน่วยบริการ') return 'unit';
+  return null;
+}
+const isDataRow = r => r && clean(r[0])!=='' && num(r[1])!==null;
+const MAP = {
+  PRIM:v=>({opd:v[0],ttm:v[1],pct:v[2]}),
+  COM:v=>({b1p:v[0],b1:v[1],a1p:v[2],a1:v[3],c1:v[4],b2p:v[5],b2:v[6],a2p:v[7],a2:v[8],c2:v[9],growth:v[10]}),
+  IMC:v=>({b:v[0],a:v[1],pct:v[2]}),
+  PP:v=>({svc:v[0],svcUC:v[1],hist:v[2],histUC:v[3],visits:v[4],visitsUC:v[5],late:v[8],lateUC:v[9],over90:v[10],over90UC:v[11]}),
+  CAN1:v=>({b:v[0],a:v[1],pct:v[2],bv:v[3],av:v[4],pctv:v[5]}),
+  CAN2:v=>({b:v[0],a:v[1],growth:v[2]}),
+};
+const METRIC = {PRIM:r=>r&&r.pct, COM:r=>r&&r.growth, IMC:r=>r&&r.pct, CAN1:r=>r&&r.pct, CAN2:r=>r&&r.growth, PP:r=>r&&r.svc};
+function parseHDC(kpi, aoa){
+  const rows=[]; let total=null;
+  for(const r of aoa){ if(!isDataRow(r)) continue;
+    const name=clean(r[0]); const v=r.slice(1).map(num); const o={name,...MAP[kpi](v)};
+    const m=name.match(/^(\d{5})\s*:\s*(.*)$/); if(m){o.code=m[1]; o.name=m[2];}
+    if(name==='รวม') total=o; else rows.push(o);
+  }
+  return {rows,total};
+}
+function parseUC(aoa){
+  const hi = aoa.findIndex(r=>(r||[]).some(c=>/มูลค่า UC/.test(clean(c))));
+  const H = (aoa[hi]||[]).map(clean);
+  const ix = re=>H.findIndex(h=>re.test(h));
+  const iName=ix(/^ชื่อ/), iVal=ix(/มูลค่า UC/), iCourse=ix(/คอร์ส/), iUnits=ix(/^หน่วยบริการ$/), iCode=ix(/^รหัส/), iDist=ix(/^อำเภอ$/);
+  const fy = (H[iVal].match(/(\d{2})/)||[])[1];
+  const hn = H[iName];
+  const rows=[]; let total=null;
+  for(const r of aoa.slice(hi+1)){ if(!r) continue; const val=num(r[iVal]); const name=clean(r[iName]); if(val==null) continue;
+    const o={name, value:val, course:iCourse>=0?num(r[iCourse]):null, units:iUnits>=0?num(r[iUnits]):null, code:iCode>=0?clean(r[iCode]):'', district:iDist>=0?normDist(r[iDist]):null};
+    if(/รวม/.test(name)||name==='') total=o; else rows.push(o);
+  }
+  let level = hn==='ชื่อเขตสุขภาพ'?'country' : hn==='ชื่อจังหวัด'?(rows.length>12?'allprov':'region') : hn==='ชื่ออำเภอ'?'province' : hn==='ชื่อหน่วยบริการ'?'unit':null;
+  if(!total) total={name:'รวม',value:rows.reduce((s,r)=>s+(r.value||0),0),course:rows.reduce((s,r)=>s+(r.course||0),0)};
+  return {level,rows,total,fy};
+}
+function parseOnTop(aoa){
+  const hi = aoa.findIndex(r=>(r||[]).some(c=>/รหัสหน่วยบริการ/.test(clean(c))));
+  const H=(aoa[hi]||[]).map(clean); const iAmt=H.findIndex(h=>/ชดเชย/.test(h)); const iItem=H.findIndex(h=>/รายการ/.test(h));
+  const rows=[];
+  for(const r of aoa.slice(hi+1)){ if(!r) continue; const code=clean(r[0]); const amt=num(r[iAmt]);
+    if(!/^\d{4,5}$/.test(code)||amt==null) continue;
+    const c5=code.padStart(5,'0'); const u=UNIT_MAP[c5];
+    rows.push({code:c5,name:clean(r[1]),items:num(r[iItem]),amount:amt,district:u?u.district:null,type:u?u.type:(/^รพ\.(?!สต)/.test(clean(r[1]))?'H':'X')});
+  }
+  return {rows,total:rows.reduce((s,r)=>s+r.amount,0)};
+}
+function sheetToAoa(ws){ return XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null,blankrows:false}); }
+
+/* ====================================================================
+   LOADING
+==================================================================== */
+function pickFolder(){ $('dirInput').click(); }
+$('dirInput').addEventListener('change', e=>loadFiles([...e.target.files]));
+
+async function loadFiles(files){
+  files = files.filter(f=>/\.(xlsx|xls)$/i.test(f.name) && !/^~\$/.test(f.name));
+  const rel = f=>f.webkitRelativePath||f.name;
+  const inOut = files.filter(f=>/reportout/i.test(rel(f)));
+  files = files.filter(f=>!/reportout/i.test(rel(f)));
+  $('loadStatus').textContent = `กำลังอ่าน ${files.length} ไฟล์…`;
+  if(files.some(f=>/(^|\/)(datin|datain)/i.test(rel(f)))) files = files.filter(f=>/(^|\/)(datin|datain)/i.test(rel(f)));
+  const root = (rel(files[0]||{name:''}).split('/')[0])||'';
+  const fyHint = (()=>{ if(/^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(root)) return null; const m=root.match(/(\d{2})\s*$/); return m?2500+Number(m[1]):null; })();
+  MONTHS = {};
+  for(const f of files){
+    const parts = rel(f).split('/');
+    let mi = parts.findIndex(p=>/^(datin|datain)/i.test(p));
+    let mkey = mi>0 ? parts[mi-1] : (parts.length>2?parts[parts.length-3]:root);
+    if(mi<0){ const mm=parts.find(p=>monthFromName(p,fyHint)); if(mm) mkey=mm; }
+    if(!MONTHS[mkey]) MONTHS[mkey]={key:mkey,files:[],iso:monthFromName(mkey,fyHint)};
+    MONTHS[mkey].files.push(f);
+  }
+  for(const k in MONTHS){ await parseMonth(MONTHS[k]); }
+  const keys = Object.keys(MONTHS).sort((a,b)=>(MONTHS[a].iso||'').localeCompare(MONTHS[b].iso||''));
+  $('monthSel').innerHTML = keys.map(k=>`<option value="${esc(k)}">${esc(k)}${MONTHS[k].iso?' — '+thaiDate(MONTHS[k].iso):''}</option>`).join('');
+  CUR = keys[keys.length-1];
+  $('monthSel').value = CUR;
+  $('loadStatus').textContent = `อ่านแล้ว ${files.length} ไฟล์ จาก ${keys.length} เดือน`;
+  onMonthChange();
+}
+
+async function parseMonth(M){
+  M.db = {}; M.warn=[]; M.log=[]; M.manual=null; M.gmp=null;
+  const seen = {};
+  for(const f of M.files){
+    const path = f.webkitRelativePath||f.name;
+    let wb; try{ wb = XLSX.read(await f.arrayBuffer(),{type:'array'}); }catch(e){ M.warn.push({lv:'bad',t:`อ่านไฟล์ไม่ได้: ${path}`}); continue; }
+    const ws = wb.Sheets[wb.SheetNames[0]]; const aoa = sheetToAoa(ws);
+    const kind = classify(aoa, path);
+    const entry = {path, name:f.name, kind, level:null, district:null, rows:0};
+    if(kind==='MANUAL'){ M.manual = parseManual(wb); entry.level='—'; M.log.push(entry); continue; }
+    if(!kind){ entry.kind='?'; M.log.push(entry); M.warn.push({lv:'warn',t:`ไม่รู้จักรูปแบบไฟล์: ${path}`}); continue; }
+    if(CAN_KPIS.includes(kind) && !ENABLE_CANNABIS){ entry.level='—'; entry.kind=kind+' (ไม่ใช้ปี 70)'; M.log.push(entry); continue; }
+    if(kind==='GMP'){ M.gmp = {wb}; entry.level='จังหวัด'; M.log.push(entry); continue; }
+    const g = guessKpiFromName(f.name);
+    if(g && g!==kind && !(g==='UC'&&kind==='ONTOP')) M.warn.push({lv:'bad',t:`ชื่อไฟล์บอกว่าเป็น <b>${g}</b> แต่เนื้อหาเป็น <b>${kind}</b>: ${esc(path)} — ตรวจว่าดึงรายงานผิดตัวหรือไม่`});
+    const h = hashAoa(aoa);
+    if(seen[h]) M.warn.push({lv:'bad',t:`ไฟล์ซ้ำกันทุกตัวเลข: ${esc(path)} = ${esc(seen[h])}`}); else seen[h]=path;
+
+    if(HDC_KPIS.includes(kind)){
+      const lv = levelOf(aoa); entry.level=lv;
+      const p = parseHDC(kind, aoa); entry.rows=p.rows.length;
+      M.db[kind] = M.db[kind]||{unit:{}};
+      if(lv==='unit'){
+        const votes={}; p.rows.forEach(r=>{const u=UNIT_MAP[r.code]; if(u) votes[u.district]=(votes[u.district]||0)+1;});
+        let d = Object.entries(votes).sort((a,b)=>b[1]-a[1])[0]; d = d?d[0]:distFromTokens(path);
+        entry.district=d;
+        if(!d){ M.warn.push({lv:'bad',t:`ระบุอำเภอไม่ได้: ${esc(path)}`}); }
+        else { if(M.db[kind].unit[d]) M.warn.push({lv:'warn',t:`${kind} อำเภอ${d} มีมากกว่า 1 ไฟล์ ใช้ไฟล์ล่าสุด: ${esc(path)}`}); M.db[kind].unit[d]={...p,path}; }
+      } else if(lv){ M.db[kind][lv]={...p,path}; }
+      else M.warn.push({lv:'warn',t:`ระบุระดับข้อมูลไม่ได้: ${esc(path)}`});
+    } else if(kind==='UC'){
+      const p=parseUC(aoa); entry.level=p.level; entry.rows=p.rows.length;
+      M.db.UC = M.db.UC||{unit:{}};
+      if(p.level==='unit'){ const d = (p.rows[0]&&p.rows[0].district)||distFromTokens(path); entry.district=d; M.db.UC.unit[d]={...p,path}; }
+      else if(p.level) M.db.UC[p.level]={...p,path};
+    } else if(kind==='ONTOP'){
+      const p=parseOnTop(aoa); entry.rows=p.rows.length;
+      M.db.ONTOP = M.db.ONTOP||{unit:{},prov:{}};
+      const t = tokens(path); const prov = R6.find(x=>x!==PROV && (t.includes(x)||f.name.includes(x)));
+      const d = distFromTokens(f.name);
+      if(prov){ entry.level='region'; entry.district=prov; M.db.ONTOP.prov[prov]={...p,path}; }
+      else if(d && !/ภายในจังหวัด|ทั้งจังหวัด/.test(f.name)){ entry.level='unit'; entry.district=d; M.db.ONTOP.unit[d]={...p,path}; }
+      else { entry.level='province'; M.db.ONTOP.province={...p,path}; }
+    }
+    M.log.push(entry);
+  }
+  computeMonth(M);
+}
+
+function parseManual(wb){
+  const out={};
+  for(const n of wb.SheetNames){ out[n]=sheetToAoa(wb.Sheets[n]); }
+  const crit={}, target={};
+  if(out['เกณฑ์']) out['เกณฑ์'].forEach(r=>{ if(r&&KPI[clean(r[0])]&&num(r[2])!=null) crit[clean(r[0])]=num(r[2]); });
+  if(out['เป้าหมายUC']) out['เป้าหมายUC'].forEach(r=>{ if(r&&num(r[1])!=null) target[normDist(r[0])]=num(r[1]); });
+  return {sheets:out,crit,target};
+}
+
+/* ====================================================================
+   COMPUTE SUMMARY
+==================================================================== */
+function crit(M,k){ return (M.manual&&M.manual.crit[k]!=null)?M.manual.crit[k]:KPI[k].crit; }
+function target(M,name){ const t=M.manual&&M.manual.target; return (t&&t[name]!=null)?t[name]:DEFAULT_TARGET[name]; }
+
+function computeMonth(M){
+  const S = {}; M.S=S; const db=M.db;
+  for(const k of HDC_KPIS){
+    const d=db[k]; if(!d) continue; const f=METRIC[k];
+    const s={country:null,region6:null,province:null,best:null,bestName:'',districts:[],regionRows:[],countryRows:[]};
+    if(d.country){ s.country=f(d.country.total); s.countryRows=d.country.rows; const r6=d.country.rows.find(r=>/ที่ 6$/.test(r.name)); if(r6) s.region6=f(r6); }
+    if(d.region){ s.regionRows=d.region.rows; if(d.region.total) s.region6=f(d.region.total);
+      const sp=d.region.rows.find(r=>r.name===PROV); if(sp) s.province=f(sp);
+      const b=[...d.region.rows].sort((a,b)=>(f(b)||-1e9)-(f(a)||-1e9))[0]; if(b){s.best=f(b); s.bestName=b.name;} }
+    if(d.province){ if(s.province==null && d.province.total) s.province=f(d.province.total);
+      s.districts = d.province.rows.map(r=>({name:normDist(r.name),value:f(r),row:r}));
+      s.provRow = d.province.total; }
+    if(k==='PP' && d.province && d.province.total){ const t=d.province.total; s.latePct=pct(t.late,t.svc); s.histPct=pct(t.hist,t.svc); }
+    S[k]=s;
+  }
+  // UC value
+  const u=db.UC;
+  if(u){
+    const s={}; const mo = M.iso?fyMonth(M.iso):12;
+    s.monthsElapsed=mo;
+    s.country = u.country? u.country.total.value : (u.allprov? u.allprov.total.value : null);
+    s.region6 = u.region? u.region.total.value : null;
+    s.regionRows = u.region? u.region.rows.map(r=>({name:r.name,value:r.value,target:target(M,r.name)})) : [];
+    if(!s.regionRows.length && u.allprov) s.regionRows = u.allprov.rows.filter(r=>R6.includes(r.name)).map(r=>({name:r.name,value:r.value,target:target(M,r.name)}));
+    s.province = u.province? u.province.total.value : (s.regionRows.find(r=>r.name===PROV)||{}).value;
+    s.target12 = target(M,PROV); s.targetNow = s.target12*mo/12;
+    s.pct12 = pct(s.province,s.target12); s.pctNow = pct(s.province,s.targetNow);
+    s.districts = u.province? u.province.rows.map(r=>{const n=normDist(r.name); const t=target(M,n); return {name:n,value:r.value,course:r.course,units:r.units,target12:t,targetNow:t*mo/12,pct12:pct(r.value,t),pctNow:pct(r.value,t*mo/12)};}):[];
+    s.fy = (u.province||u.region||{}).fy;
+    M.S.UC=s;
+  }
+  // OnTop
+  const o=db.ONTOP;
+  if(o){
+    const s={};
+    const provAll = o.province;
+    s.province = provAll? provAll.total : Object.values(o.unit).reduce((a,x)=>a+x.total,0);
+    s.provinceMoph = provAll? provAll.rows.filter(r=>r.district).reduce((a,r)=>a+r.amount,0) : null;
+    s.others = provAll? provAll.rows.filter(r=>!r.district) : [];
+    const ucVal = M.S.UC? M.S.UC.province : null;
+    s.payback = pct(s.province, ucVal);
+    // districts
+    s.districts = DISTRICTS.map(D=>{
+      let rows = o.unit[D.key]? o.unit[D.key].rows : (provAll? provAll.rows.filter(r=>r.district===D.key):[]);
+      const comp = rows.reduce((a,r)=>a+r.amount,0);
+      const compH = rows.filter(r=>r.type==='H').reduce((a,r)=>a+r.amount,0);
+      const ucU = db.UC && db.UC.unit[D.key] ? db.UC.unit[D.key].rows : null;
+      const valH = ucU? ucU.filter(r=>(UNIT_MAP[String(r.code).padStart(5,'0')]||{}).type==='H').reduce((a,r)=>a+r.value,0) : null;
+      const dUC = M.S.UC? (M.S.UC.districts.find(x=>x.name===D.key)||{}).value : null;
+      return {name:D.key, comp, compH, compP:comp-compH, value:dUC, valH, valP:(dUC!=null&&valH!=null)?dUC-valH:null, payback:pct(comp,dUC), gap:(dUC!=null)?dUC-comp:null, src:o.unit[D.key]?'ไฟล์รายอำเภอ':'แยกจากไฟล์รวมจังหวัด'};
+    });
+    // region
+    s.regionRows = R6.map(p=>{
+      const comp = p===PROV? s.province : (o.prov[p]? o.prov[p].total : null);
+      const val = M.S.UC? (M.S.UC.regionRows.find(r=>r.name===p)||{}).value : null;
+      return {name:p, comp, value:val, payback:pct(comp,val), target:target(M,p)};
+    });
+    M.S.ONTOP=s;
+  }
+  checkConsistency(M);
+  computeScores(M);
+}
+
+function checkConsistency(M){
+  const db=M.db;
+  for(const k of HDC_KPIS){ const d=db[k]; if(!d) continue;
+    if(d.province && d.province.total && d.region){ const sp=d.region.rows.find(r=>r.name===PROV);
+      if(sp && Math.abs((METRIC[k](sp)||0)-(METRIC[k](d.province.total)||0))>0.05) M.warn.push({lv:'warn',t:`${KPI[k].short}: ค่าจังหวัดในไฟล์รายจังหวัด (${fmt(METRIC[k](sp))}) ≠ ไฟล์รายอำเภอ (${fmt(METRIC[k](d.province.total))}) — ดึงข้อมูลคนละเวลา?`}); }
+    if(d.province){ for(const r of d.province.rows){ const dn=normDist(r.name); const u=d.unit[dn];
+      if(u && u.total && Math.abs((METRIC[k](u.total)||0)-(METRIC[k](r)||0))>0.05) M.warn.push({lv:'warn',t:`${KPI[k].short} ${dn}: รวมในไฟล์รายหน่วย (${fmt(METRIC[k](u.total))}) ≠ ไฟล์รายอำเภอ (${fmt(METRIC[k](r))})`}); } }
+  }
+  if(db.UC && db.UC.province){ for(const r of db.UC.province.rows){ const dn=normDist(r.name); const u=db.UC.unit[dn];
+    if(u && Math.abs(u.total.value-r.value)>1) M.warn.push({lv:'warn',t:`มูลค่ายา UC ${dn}: รวมรายหน่วย ${fmt(u.total.value)} ≠ ไฟล์รายอำเภอ ${fmt(r.value)} บาท`}); } }
+  if(db.UC){ const fys=new Set(Object.values(db.UC).flatMap(x=>x&&x.fy?[x.fy]:[]).concat(Object.values(db.UC.unit||{}).map(x=>x.fy))); if(fys.size>1) M.warn.push({lv:'bad',t:`ไฟล์มูลค่ายา UC มีปีงบประมาณปนกัน: ${[...fys].join(', ')}`}); }
+}
+
+function computeScores(M){
+  const S=M.S; const rows=DISTRICTS.map(D=>({name:D.key,sc:{}}));
+  for(const k of RATE_KPIS){ const s=S[k]; if(!s) continue; const c=crit(M,k);
+    rows.forEach(r=>{ const d=s.districts.find(x=>x.name===r.name); if(d&&d.value!=null) r.sc[k]=Math.max(0,Math.min(100,d.value/c*100)); }); }
+  if(S.UC) rows.forEach(r=>{ const d=S.UC.districts.find(x=>x.name===r.name); if(d&&d.pctNow!=null) r.sc.UC=Math.min(100,d.pctNow); });
+  rows.forEach(r=>{ const v=Object.values(r.sc); r.avg=v.length? v.reduce((a,b)=>a+b,0)/v.length : null; });
+  rows.sort((a,b)=>(b.avg||0)-(a.avg||0));
+  S.scores=rows;
+}
+
+/* ====================================================================
+   EXEC SUMMARY TEXT
+==================================================================== */
+function execBullets(M){
+  const S=M.S, B=[];
+  const lo = arr=>arr.filter(x=>x.value!=null).sort((a,b)=>a.value-b.value)[0];
+  const hi = arr=>arr.filter(x=>x.value!=null).sort((a,b)=>b.value-a.value)[0];
+  if(S.UC && S.UC.province!=null){ const u=S.UC; const gap=u.target12-u.province;
+    const worst = [...u.districts].sort((a,b)=>(a.pctNow||0)-(b.pctNow||0))[0];
+    B.push(`มูลค่าการใช้ยาสมุนไพรสิทธิ UC จังหวัด ${fmt(u.province/1e6,3)} ล้านบาท คิดเป็น ${fmt(u.pct12,1)}% ของเป้า 12 เดือน (${fmt(u.pctNow,1)}% ของเป้าสะสม ${u.monthsElapsed} เดือน)${gap>0?` ยังขาดอีก ${fmt(gap/1e6,2)} ล้านบาทเพื่อให้ถึงเป้าทั้งปี`:''}${worst?` — อำเภอที่ต้องเร่งรัดคือ${worst.name} (${fmt(worst.pctNow,1)}% ของเป้าสะสม)`:''}`); }
+  if(S.ONTOP && S.ONTOP.province){ B.push(`เงินชดเชย สปสช. (OP On-top) รวม ${fmt(S.ONTOP.province/1e6,3)} ล้านบาท คิดเป็น ${fmt(S.ONTOP.payback,1)}% ของมูลค่าการใช้ยา UC${(()=>{const w=[...S.ONTOP.districts].filter(d=>d.payback!=null).sort((a,b)=>a.payback-b.payback)[0]; return w?` อำเภอที่อัตราชดเชยต่ำสุดคือ${w.name} (${fmt(w.payback,1)}%) ควรตรวจสอบการส่งข้อมูลเบิก`:'';})()}`); }
+  if(S.PRIM && S.PRIM.province!=null){ const s=S.PRIM, l=lo(s.districts);
+    B.push(`การเข้าถึงบริการแพทย์แผนไทยในระดับปฐมภูมิ ${fmt(s.province)}% ${s.province>=crit(M,'PRIM')?'ผ่าน':'ยังไม่ผ่าน'}เกณฑ์ ${crit(M,'PRIM')}% ${s.country!=null?`(ประเทศ ${fmt(s.country)}%, เขต 6 ${fmt(s.region6)}%)`:''}${l&&l.value<crit(M,'PRIM')?` โดย${l.name} ${fmt(l.value)}% เป็นพื้นที่ที่ต้องเร่งรัด`:''}`); }
+  if(S.COM && S.COM.province!=null){ const s=S.COM, h=hi(s.districts), neg=s.districts.filter(d=>d.value<0);
+    B.push(`Common Diseases ได้รับยาสมุนไพรเพิ่มขึ้น ${fmt(s.province)}% ${s.province>=crit(M,'COM')?'ผ่าน':'ต่ำกว่า'}เกณฑ์ ${crit(M,'COM')}%${h?` ${h.name}โดดเด่นที่ ${fmt(h.value)}%`:''}${neg.length?` ขณะที่${neg.map(d=>`${d.name} (${fmt(d.value)}%)`).join(' และ ')} ติดลบ`:''}`); }
+  if(S.IMC && S.IMC.province!=null){ const s=S.IMC, pass=s.districts.filter(d=>d.value>=crit(M,'IMC'));
+    B.push(`IMC จังหวัด ${fmt(s.province)}% ${s.province>=crit(M,'IMC')?'ผ่าน':'ต่ำกว่า'}เกณฑ์ ${crit(M,'IMC')}%${pass.length?` อำเภอที่ผ่านเกณฑ์: ${pass.map(d=>`${d.name} ${fmt(d.value)}%`).join(', ')}`:' ยังไม่มีอำเภอที่ผ่านเกณฑ์'}`); }
+  if(S.PP && S.PP.provRow){ const t=S.PP.provRow;
+    B.push(`มารดาหลังคลอดได้รับบริการแพทย์แผนไทย ${fmt0(t.svc)} คน ${fmt0(t.visits)} ครั้ง พบประวัติคลอด ${fmt(S.PP.histPct,1)}% และบริการล่าช้า ${fmt0(t.late)} คน (${fmt(S.PP.latePct,1)}%)`); }
+  if(S.CAN1 && S.CAN1.province!=null){ B.push(`ผู้ป่วยระยะประคับประคองได้รับกัญชาทางการแพทย์ ${fmt(S.CAN1.province)}% (เกณฑ์ ${crit(M,'CAN1')}%)${S.CAN1.bestName?` สูงสุดในเขต 6 คือ${S.CAN1.bestName} ${fmt(S.CAN1.best)}%`:''}`); }
+  if(S.CAN2 && S.CAN2.province!=null){ B.push(`ผู้ป่วยที่ได้รับยากัญชาทางการแพทย์เพิ่มขึ้น ${fmt(S.CAN2.province,1)}% เทียบปีฐาน 2564 (เกณฑ์ ${crit(M,'CAN2')}%)`); }
+  return B;
+}
+
+/* ====================================================================
+   RENDER
+==================================================================== */
+function onMonthChange(){
+  CUR = $('monthSel').value; const M=MONTHS[CUR]; if(!M) return;
+  $('asOf').value = M.iso || '';
+  renderAll();
+}
+function onDateChange(){ const M=MONTHS[CUR]; if(!M) return; M.iso=$('asOf').value; M.warn=M.warn.filter(w=>!/≠|ปนกัน/.test(w.t)); computeMonth(M); renderAll(); }
+
+function renderAll(){
+  const M=MONTHS[CUR]; if(!M) return;
+  $('hdrSub').textContent = `เดือน: ${CUR}  •  ข้อมูล ณ ${thaiDate(M.iso)||'(ระบุวันที่)'}  •  ${M.files.length} ไฟล์`;
+  ['bXlsx','bDocx','bHtml','bJson'].forEach(id=>$(id).disabled=false);
+  renderCheck(M); renderSummary(M); renderKpiSel(); renderKpiDetail(); renderMoney(M);
+}
+
+function renderSrcTable(){
+  const rows = [
+    ['PRIM','HDC','ประเทศ/เขต6/จังหวัด/6 อำเภอ (9 ไฟล์)'],['COM','HDC','9 ไฟล์'],['IMC','HDC','9 ไฟล์'],['PP','HDC','9 ไฟล์'],
+    ...(ENABLE_CANNABIS?[['CAN1','HDC (Service Plan กัญชา ข้อ 4)','9 ไฟล์'],['CAN2','HDC (Service Plan กัญชา ข้อ 3)','9 ไฟล์']]:[]),
+    ['UC','thaipadi KPI / ไฟล์มูลค่ายาใน OneDrive','เขตสุขภาพ, เขต 6, จังหวัด, 6 อำเภอ (รายหน่วย)'],
+    ['ONTOP','สปสช. MIS HOS (login)','รวมทั้งจังหวัด + 7 จังหวัดในเขต 6 (รายอำเภอไม่บังคับ)'],
+  ];
+  $('srcTable').innerHTML = `<tr><th>ตัวชี้วัด</th><th>แหล่ง</th><th>ระดับที่ต้องดึง</th><th>ลิงก์</th></tr>`+rows.map(([k,s,l])=>`<tr><td class="l"><b>${KPI[k].short}</b><br><span class="muted">${esc(KPI[k].title)}</span></td><td class="l">${s}</td><td class="l">${l}</td><td><a href="${KPI[k].url}" target="_blank" rel="noopener">เปิด</a></td></tr>`).join('');
+}
+
+function renderCheck(M){
+  const lvls=['country','region','province',...DISTRICTS.map(d=>d.key)];
+  const head=['ตัวชี้วัด','ประเทศ','เขต 6','จังหวัด',...DISTRICTS.map(d=>d.short)];
+  let html=`<tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr>`; let miss=0, have=0;
+  const cell = ok=>{ ok?have++:miss++; return `<td><span class="pill ${ok?'ok':'bad'}">${ok?'มี':'ขาด'}</span></td>`; };
+  for(const k of [...HDC_KPIS,'UC']){ const d=M.db[k]||{unit:{}};
+    html+=`<tr><td class="l">${KPI[k].short}</td>`+lvls.map(l=>{
+      if(k==='UC'&&l==='country') return cell(!!(d.country||d.allprov));
+      return cell(['country','region','province'].includes(l)? !!d[l] : !!(d.unit&&d.unit[l]));
+    }).join('')+'</tr>'; }
+  const o=M.db.ONTOP||{unit:{},prov:{}};
+  html+=`<tr><td class="l">เงินชดเชย สปสช.</td><td><span class="pill na">–</span></td><td>${R6.filter(p=>p!==PROV).every(p=>o.prov[p])?'<span class="pill ok">ครบ 7</span>':`<span class="pill bad">${Object.keys(o.prov).length}/7</span>`}</td>${cell(!!o.province)}${DISTRICTS.map(d=>cell(!!o.unit[d.key]||!!o.province)).join('')}</tr>`;
+  html+=`<tr><td class="l">ข้อมูลกรอกเอง</td><td colspan="9" class="l">${M.manual?'<span class="pill ok">พบ ข้อมูลกรอกเอง.xlsx</span>':'<span class="pill warn">ไม่พบ — จะใช้เกณฑ์/เป้าหมายค่าตั้งต้น และไม่มีส่วน Flagship</span>'}</td></tr>`;
+  $('matrix').innerHTML=html;
+  const W=[...M.warn]; if(miss) W.unshift({lv:'bad',t:`ยังขาดไฟล์ ${miss} รายการ (มีแล้ว ${have})`});
+  if(!M.iso) W.unshift({lv:'warn',t:'ระบุ “ข้อมูล ณ วันที่” ไม่ได้จากชื่อโฟลเดอร์ กรุณาเลือกวันที่ในแท็บ 1'});
+  $('warnList').innerHTML = W.length? W.map(w=>`<li><span class="pill ${w.lv}">${w.lv==='bad'?'ต้องแก้':'ตรวจ'}</span> ${w.t}</li>`).join('') : '<li><span class="pill ok">ผ่าน</span> ไม่พบปัญหา</li>';
+  $('fileTable').innerHTML = `<tr><th>ไฟล์</th><th>ชนิด</th><th>ระดับ</th><th>อำเภอ/จังหวัด</th><th>จำนวนแถว</th></tr>`+M.log.map(e=>`<tr><td class="l">${esc(e.path)}</td><td>${e.kind}</td><td>${LEVEL_TH[e.level]||e.level||'–'}</td><td>${e.district||''}</td><td>${e.rows||''}</td></tr>`).join('');
+}
+
+function kpiRows(M){
+  const S=M.S, R=[];
+  for(const k of RATE_KPIS){ const s=S[k]; if(!s) continue; const c=crit(M,k);
+    R.push({k,name:`${KPI[k].no} ${KPI[k].short}`,crit:`≥ ${c}%`,country:s.country,region6:s.region6,province:s.province,best:s.bestName?`${s.bestName} ${fmt(s.best)}`:'–',st:status(s.province,c),fmt:v=>fmt(v)}); }
+  if(S.UC) R.splice(1,0,{k:'UC',name:'มูลค่ายาสมุนไพร UC (% เป้าสะสม)',crit:`เป้า ${fmtM(S.UC.targetNow)}`,country:null,region6:S.UC.region6!=null&&target(M,'เขตสุขภาพที่ 6')?pct(S.UC.region6,target(M,'เขตสุขภาพที่ 6')*S.UC.monthsElapsed/12):null,province:S.UC.pctNow,best:(()=>{const b=[...S.UC.regionRows].map(r=>({...r,p:pct(r.value,r.target*S.UC.monthsElapsed/12)})).sort((a,b)=>(b.p||0)-(a.p||0))[0];return b?`${b.name} ${fmt(b.p,1)}`:'–'})(),st:status(S.UC.pctNow,100),fmt:v=>fmt(v,1)});
+  if(S.ONTOP) R.push({k:'ONTOP',name:'เงินชดเชย สปสช. (% ของมูลค่าใช้)',crit:'–',country:null,region6:(()=>{const rr=S.ONTOP.regionRows.filter(r=>r.comp!=null&&r.value!=null);return rr.length?pct(rr.reduce((a,r)=>a+r.comp,0),rr.reduce((a,r)=>a+r.value,0)):null})(),province:S.ONTOP.payback,best:(()=>{const b=[...S.ONTOP.regionRows].filter(r=>r.payback!=null).sort((a,b)=>b.payback-a.payback)[0];return b?`${b.name} ${fmt(b.payback,1)}`:'–'})(),st:'na',fmt:v=>fmt(v,1)});
+  if(S.PP && S.PP.provRow) R.push({k:'PP',name:'บริบาลหญิงหลังคลอด (คน)',crit:'–',country:S.PP.country,region6:S.PP.region6,province:S.PP.province,best:'–',st:'na',fmt:fmt0});
+  return R;
+}
+
+function renderSummary(M){
+  const S=M.S; $('sumEmpty').classList.add('hidden'); $('sumBody').classList.remove('hidden');
+  $('sumDate').textContent = `ข้อมูล ณ ${thaiDate(M.iso)} (ปีงบประมาณ ${M.iso?fyOf(M.iso):''} เดือนที่ ${M.iso?fyMonth(M.iso):''})`;
+  $('execBul').innerHTML = execBullets(M).map(b=>`<li>${esc(b)}</li>`).join('');
+  const R=kpiRows(M);
+  $('kpiCards').innerHTML = R.map(r=>`<div class="kpi"><span class="tag pill ${r.st}">${ST_TH[r.st]}</span><div class="nm">${esc(r.name)}</div><div class="v">${r.fmt(r.province)}${r.k==='PP'?'':'%'}</div><div class="cmp">เกณฑ์ ${esc(r.crit)} • เขต 6 ${r.fmt(r.region6)} • ประเทศ ${r.fmt(r.country)}</div></div>`).join('');
+  $('kpiTable').innerHTML = `<tr><th>ตัวชี้วัด</th><th>เกณฑ์</th><th>ประเทศ</th><th>เขต 6</th><th>สมุทรปราการ</th><th>Best เขต 6</th><th>สถานะ</th></tr>`+R.map(r=>`<tr><td class="l">${esc(r.name)}</td><td>${esc(r.crit)}</td><td>${r.fmt(r.country)}</td><td>${r.fmt(r.region6)}</td><td><b>${r.fmt(r.province)}</b></td><td>${esc(r.best)}</td><td><span class="pill ${r.st}">${ST_TH[r.st]}</span></td></tr>`).join('');
+  const sc=S.scores||[]; const ks=SCORE_KPIS;
+  $('scoreTable').innerHTML = `<tr><th>อำเภอ</th>${ks.map(k=>`<th>${KPI[k].short}</th>`).join('')}<th>เฉลี่ย</th></tr>`+sc.map(r=>`<tr><td class="l">${r.name}</td>${ks.map(k=>`<td>${fmt(r.sc[k],0)}</td>`).join('')}<td><b>${fmt(r.avg,1)}</b></td></tr>`).join('');
+  drawChart('cScore', chartScore(M));
+  const keys=Object.keys(MONTHS).filter(k=>MONTHS[k].S).sort((a,b)=>(MONTHS[a].iso||'').localeCompare(MONTHS[b].iso||''));
+  if(keys.length>1){ $('trendCard').classList.remove('hidden'); $('trendSub').textContent=`${keys.length} เดือน: ${keys.join(', ')}`; drawChart('cTrend', chartTrend(keys)); }
+  else $('trendCard').classList.add('hidden');
+}
+
+function renderKpiSel(){ const sel=$('kpiSel'); if(sel.options.length) return; sel.innerHTML=HDC_KPIS.map(k=>`<option value="${k}">${KPI[k].no} ${KPI[k].short}</option>`).join(''); }
+
+function tableHtml(head, rows, totalRow){ return `<div class="tbl-wrap"><table><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map((c,i)=>`<td${i===0||!/^[-–\d.,\s%]*$/.test(String(c))?' class="l"':''}>${c}</td>`).join('')}</tr>`).join('')}${totalRow?`<tr class="tot">${totalRow.map((c,i)=>`<td${i===0?' class="l"':''}>${c}</td>`).join('')}</tr>`:''}</table></div>`; }
+
+const COLS = {
+  PRIM:{h:['ผู้ป่วยนอก (ครั้ง)','แพทย์แผนไทย (ครั้ง)','ร้อยละ'],f:r=>[fmt0(r.opd),fmt0(r.ttm),fmt(r.pct)]},
+  COM:{h:['ปีก่อน: วินิจฉัย (ครั้ง)','ปีก่อน: ได้ยา (ครั้ง)','ร้อยละปีก่อน','ปีนี้: วินิจฉัย (ครั้ง)','ปีนี้: ได้ยา (ครั้ง)','ร้อยละปีนี้','ร้อยละเพิ่มขึ้น'],f:r=>[fmt0(r.b1),fmt0(r.a1),fmt(r.c1),fmt0(r.b2),fmt0(r.a2),fmt(r.c2),fmt(r.growth)]},
+  IMC:{h:['ผู้ป่วย Stroke IMC (B)','ได้รับบริการแผนไทย (A)','ร้อยละ'],f:r=>[fmt0(r.b),fmt0(r.a),fmt(r.pct)]},
+  PP:{h:['ผู้รับบริการ (คน)','สิทธิ UC (คน)','พบประวัติคลอด (คน)','บริการ (ครั้ง)','ล่าช้า (คน)','เกิน 90 วัน (คน)','% พบประวัติ','% ล่าช้า'],f:r=>[fmt0(r.svc),fmt0(r.svcUC),fmt0(r.hist),fmt0(r.visits),fmt0(r.late),fmt0(r.over90),fmt(pct(r.hist,r.svc),1),fmt(pct(r.late,r.svc),1)]},
+  CAN1:{h:['ผู้ป่วย PC (คน)','ได้รับกัญชา (คน)','ร้อยละ','ผู้ป่วย PC (ครั้ง)','ได้รับกัญชา (ครั้ง)','ร้อยละ (ครั้ง)'],f:r=>[fmt0(r.b),fmt0(r.a),fmt(r.pct),fmt0(r.bv),fmt0(r.av),fmt(r.pctv)]},
+  CAN2:{h:['ปีฐาน 2564 (B)','ปีปัจจุบัน (A)','ร้อยละเพิ่มขึ้น'],f:r=>[fmt0(r.b),fmt0(r.a),fmt(r.growth)]},
+};
+
+function renderKpiDetail(){
+  const M=MONTHS[CUR]; const k=$('kpiSel').value; const box=$('kpiDetail');
+  if(!M){ box.innerHTML='<div class="card empty">เลือกโฟลเดอร์ข้อมูลก่อน</div>'; return; }
+  const d=M.db[k], s=M.S[k]; if(!d||!s){ box.innerHTML='<div class="card empty">ไม่พบข้อมูลตัวชี้วัดนี้ในเดือนที่เลือก</div>'; return; }
+  const C=COLS[k], c=crit(M,k);
+  let h=`<div class="card"><h2>${KPI[k].no} ${esc(KPI[k].title)}</h2><p class="sub">เกณฑ์: ${c!=null?'≥ '+c+'%':'–'} • ข้อมูล ณ ${thaiDate(M.iso)}</p>
+   <div class="kv"><span>ระดับประเทศ</span><b>${fmt(s.country)}</b><span>เขตสุขภาพที่ 6</span><b>${fmt(s.region6)}</b><span>จังหวัดสมุทรปราการ</span><b>${fmt(s.province)}</b><span>Best practice เขต 6</span><b>${esc(s.bestName)} ${fmt(s.best)}</b></div></div>`;
+  h+=`<div class="card"><h3>รายอำเภอ</h3><div class="chart"><canvas id="cK1"></canvas></div>${d.province?tableHtml(['อำเภอ',...C.h],d.province.rows.map(r=>[normDist(r.name),...C.f(r)]),d.province.total?['รวมจังหวัด',...C.f(d.province.total)]:null):'<p class="muted">ไม่มีไฟล์รายอำเภอ</p>'}</div>`;
+  h+=`<div class="card"><h3>เขตสุขภาพที่ 6 รายจังหวัด</h3>${d.region?`<div class="chart"><canvas id="cK2"></canvas></div>`+tableHtml(['จังหวัด',...C.h],d.region.rows.map(r=>[r.name,...C.f(r)]),d.region.total?['รวมเขต 6',...C.f(d.region.total)]:null):'<p class="muted">ไม่มีไฟล์</p>'}</div>`;
+  h+=`<div class="card"><h3>ประเทศ รายเขตสุขภาพ</h3>${d.country?tableHtml(['เขต',...C.h],d.country.rows.map(r=>[r.name,...C.f(r)]),d.country.total?['ประเทศ',...C.f(d.country.total)]:null):'<p class="muted">ไม่มีไฟล์</p>'}</div>`;
+  const units = DISTRICTS.flatMap(D=>d.unit[D.key]?d.unit[D.key].rows.map(r=>[`${r.code||''} ${r.name}`,shortD(D.key),...C.f(r)]):[]);
+  h+=`<div class="card"><h3>รายหน่วยบริการ (${units.length} หน่วย)</h3>${tableHtml(['หน่วยบริการ','อำเภอ',...C.h],units)}</div>`;
+  box.innerHTML=h;
+  drawChart('cK1', chartDistrict(M,k)); if(d.region) drawChart('cK2', chartRegion(M,k));
+}
+
+function renderMoney(M){
+  const box=$('moneyBody'); const S=M.S; let h='';
+  if(S.UC){ const u=S.UC;
+    h+=`<div class="card"><h2>มูลค่าการใช้ยาสมุนไพรสิทธิ UC</h2><p class="sub">เดือนที่ ${u.monthsElapsed} ของปีงบประมาณ • เป้าสะสม = เป้า 12 เดือน × ${u.monthsElapsed}/12 (เป้าหมายแก้ได้ในชีต “เป้าหมายUC”)</p>
+    <div class="kv"><span>จังหวัด</span><b>${fmt(u.province)} บาท</b><span>เป้า 12 เดือน</span><b>${fmt(u.target12)} บาท (${fmt(u.pct12,1)}%)</b><span>เป้าสะสม</span><b>${fmt(u.targetNow)} บาท (${fmt(u.pctNow,1)}%)</b><span>เขต 6</span><b>${fmt(u.region6)} บาท</b><span>ประเทศ</span><b>${fmt(u.country)} บาท</b></div>
+    <div class="chart"><canvas id="cU1"></canvas></div>
+    ${tableHtml(['อำเภอ','หน่วยบริการ','คอร์ส','มูลค่า (บาท)','เป้า 12 เดือน','% เป้า 12 ด.','เป้าสะสม','% เป้าสะสม','GAP ทั้งปี (บาท)'],u.districts.map(r=>[r.name,fmt0(r.units),fmt0(r.course),fmt(r.value),fmt(r.target12),fmt(r.pct12,1),fmt(r.targetNow),fmt(r.pctNow,1),fmt(r.target12-r.value)]),['รวมจังหวัด','','',fmt(u.province),fmt(u.target12),fmt(u.pct12,1),fmt(u.targetNow),fmt(u.pctNow,1),fmt(u.target12-u.province)])}
+    <h3>เขตสุขภาพที่ 6</h3>${tableHtml(['จังหวัด','มูลค่า (บาท)','เป้า 12 เดือน','% เป้า 12 ด.','% เป้าสะสม'],u.regionRows.map(r=>[r.name,fmt(r.value),fmt(r.target),fmt(pct(r.value,r.target),1),fmt(pct(r.value,r.target*u.monthsElapsed/12),1)]))}</div>`; }
+  if(S.ONTOP){ const o=S.ONTOP;
+    h+=`<div class="card"><h2>เงินชดเชยค่ายาสมุนไพร สปสช. (OP On-top)</h2><p class="sub">อัตราชดเชย = เงินชดเชย ÷ มูลค่าการใช้ยา UC • GAP = มูลค่าใช้ − เงินชดเชย (ยังไม่ถูกแปลงเป็นรายรับ)</p>
+    <div class="kv"><span>เงินชดเชยรวมจังหวัด</span><b>${fmt(o.province)} บาท</b><span>เฉพาะหน่วยสังกัด สป.สธ.</span><b>${fmt(o.provinceMoph)} บาท</b><span>อัตราชดเชย</span><b>${fmt(o.payback,1)}%</b></div>
+    <div class="chart"><canvas id="cO1"></canvas></div>
+    ${tableHtml(['อำเภอ','มูลค่าใช้ UC','ชดเชย รพ.แม่ข่าย','ชดเชย หน่วยปฐมภูมิ','ชดเชยรวม','อัตราชดเชย %','GAP (บาท)','แหล่ง'],o.districts.map(r=>[r.name,fmt(r.value),fmt(r.compH),fmt(r.compP),fmt(r.comp),fmt(r.payback,1),fmt(r.gap),r.src]))}
+    <h3>เขตสุขภาพที่ 6</h3><div class="chart"><canvas id="cO2"></canvas></div>${tableHtml(['จังหวัด','มูลค่าใช้ UC','เงินชดเชย','อัตราชดเชย %','GAP'],o.regionRows.map(r=>[r.name,fmt(r.value),fmt(r.comp),fmt(r.payback,1),fmt(r.value!=null&&r.comp!=null?r.value-r.comp:null)]))}
+    ${o.others.length?`<h3>หน่วยนอกสังกัด สป.สธ. / เอกชน ในจังหวัด</h3>${tableHtml(['รหัส','หน่วยบริการ','รายการ','เงินชดเชย'],o.others.map(r=>[r.code,r.name,fmt0(r.items),fmt(r.amount)]))}`:''}</div>`; }
+  box.innerHTML = h||'<div class="card empty">ไม่พบไฟล์มูลค่ายา UC / เงินชดเชย</div>';
+  if(S.UC) drawChart('cU1', chartUC(M)); if(S.ONTOP){ drawChart('cO1', chartOnTop(M)); drawChart('cO2', chartOnTopRegion(M)); }
+}
+
+/* ====================================================================
+   CHARTS (config builders — reused for Word images)
+==================================================================== */
+const PAL = {teal:'#0f766e',teal2:'#5eead4',gray:'#94a3b8',amber:'#d97706',red:'#dc2626',blue:'#2563eb',green:'#16a34a'};
+Chart.defaults.font.family = '"IBM Plex Sans Thai","Leelawadee UI",Tahoma,sans-serif';
+function baseOpts(extra={}){ return Object.assign({responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{position:'bottom'}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:'#e5ecee'}}}},extra); }
+function critLine(n,c,label){ return {type:'line',label:label||`เกณฑ์ ${c}%`,data:Array(n).fill(c),borderColor:PAL.red,borderDash:[6,4],pointRadius:0,borderWidth:2}; }
+function chartDistrict(M,k){ const s=M.S[k]; const ds=s.districts; const c=crit(M,k);
+  const data={labels:ds.map(d=>shortD(d.name)),datasets:[{type:'bar',label:KPI[k].metric,data:ds.map(d=>d.value),backgroundColor:ds.map(d=>c==null?PAL.teal:(d.value>=c?PAL.teal:(d.value>=c*.8?PAL.amber:PAL.red))),borderRadius:6}]};
+  if(c!=null) data.datasets.push(critLine(ds.length,c));
+  return {type:'bar',data,options:baseOpts()}; }
+function chartRegion(M,k){ const s=M.S[k]; const rr=s.regionRows; const c=crit(M,k);
+  const data={labels:rr.map(r=>r.name),datasets:[{type:'bar',label:KPI[k].metric,data:rr.map(r=>METRIC[k](r)),backgroundColor:rr.map(r=>r.name===PROV?PAL.teal:PAL.gray),borderRadius:6}]};
+  if(c!=null) data.datasets.push(critLine(rr.length,c));
+  return {type:'bar',data,options:baseOpts()}; }
+function chartScore(M){ const sc=M.S.scores||[]; return {type:'bar',data:{labels:sc.map(r=>shortD(r.name)),datasets:[{label:'คะแนนเฉลี่ย',data:sc.map(r=>r.avg),backgroundColor:PAL.teal,borderRadius:6}]},options:baseOpts({indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{max:100,beginAtZero:true},y:{grid:{display:false}}}})}; }
+function chartUC(M){ const u=M.S.UC; return {type:'bar',data:{labels:u.districts.map(d=>shortD(d.name)),datasets:[{label:'มูลค่าใช้ (ล้านบาท)',data:u.districts.map(d=>d.value/1e6),backgroundColor:PAL.teal,borderRadius:6},{label:'เป้าสะสม (ล้านบาท)',data:u.districts.map(d=>d.targetNow/1e6),backgroundColor:PAL.teal2,borderRadius:6},{label:'เป้า 12 เดือน (ล้านบาท)',data:u.districts.map(d=>d.target12/1e6),backgroundColor:'#cbd5e1',borderRadius:6}]},options:baseOpts()}; }
+function chartOnTop(M){ const o=M.S.ONTOP; return {type:'bar',data:{labels:o.districts.map(d=>shortD(d.name)),datasets:[{label:'มูลค่าใช้ UC (ล้านบาท)',data:o.districts.map(d=>(d.value||0)/1e6),backgroundColor:'#cbd5e1',borderRadius:6,stack:'v'},{label:'ชดเชย รพ.แม่ข่าย',data:o.districts.map(d=>d.compH/1e6),backgroundColor:PAL.teal,stack:'c'},{label:'ชดเชย หน่วยปฐมภูมิ',data:o.districts.map(d=>d.compP/1e6),backgroundColor:PAL.teal2,stack:'c'}]},options:baseOpts()}; }
+function chartOnTopRegion(M){ const o=M.S.ONTOP; const rr=o.regionRows; return {type:'bar',data:{labels:rr.map(r=>r.name),datasets:[{label:'อัตราชดเชย (%)',data:rr.map(r=>r.payback),backgroundColor:rr.map(r=>r.name===PROV?PAL.teal:PAL.gray),borderRadius:6}]},options:baseOpts({plugins:{legend:{display:false}}})}; }
+function chartTrend(keys){ const series=[['PRIM','ปฐมภูมิ %'],['COM','Common Dis. เพิ่มขึ้น %'],['IMC','IMC %'],['CAN1','กัญชา PC %']].filter(([k])=>ENABLE_CANNABIS||!CAN_KPIS.includes(k));
+  const colors=[PAL.teal,PAL.blue,PAL.amber,PAL.green];
+  const ds=series.map(([k,l],i)=>({label:l,data:keys.map(m=>(MONTHS[m].S[k]||{}).province??null),borderColor:colors[i],backgroundColor:colors[i],tension:.25}));
+  ds.push({label:'มูลค่า UC % เป้าสะสม',data:keys.map(m=>(MONTHS[m].S.UC||{}).pctNow??null),borderColor:PAL.red,backgroundColor:PAL.red,borderDash:[5,4]});
+  return {type:'line',data:{labels:keys.map(k=>MONTHS[k].iso?TH_MON_S[Number(MONTHS[k].iso.split('-')[1])-1]+' '+String(Number(MONTHS[k].iso.slice(0,4))+543).slice(2):k),datasets:ds},options:baseOpts()}; }
+function drawChart(id,cfg){ const el=$(id); if(!el) return; if(CHARTS[id]) CHARTS[id].destroy(); CHARTS[id]=new Chart(el,cfg); }
+async function chartPng(cfg,w=900,h=420){
+  const cv=document.createElement('canvas'); cv.width=w; cv.height=h; cv.style.cssText=`position:fixed;left:-9999px;width:${w}px;height:${h}px`; document.body.appendChild(cv);
+  cfg=JSON.parse(JSON.stringify(cfg,(k,v)=>typeof v==='function'?undefined:v)); cfg.options.responsive=false; cfg.options.devicePixelRatio=2;
+  cfg.plugins=[{id:'bg',beforeDraw:c=>{const x=c.ctx;x.save();x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.restore();}}];
+  const ch=new Chart(cv,cfg); const url=ch.toBase64Image('image/png'); ch.destroy(); cv.remove();
+  const b=atob(url.split(',')[1]); const u=new Uint8Array(b.length); for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i); return u;
+}
+
+/* ====================================================================
+   EXPORT: EXCEL
+==================================================================== */
+function fileStamp(M){ if(!M.iso) return CUR; const [y,m,d]=M.iso.split('-').map(Number); return `${d} ${TH_MON_S[m-1]} ${String(y+543).slice(2)}`; }
+async function download(blob,name){ if(typeof WF!=='undefined' && WF.month){ try{ const out=await WF.month.getDirectoryHandle('ReportOut',{create:true}); const fh=await out.getFileHandle(name,{create:true}); const w=await fh.createWritable(); await w.write(blob); await w.close(); wfLog(`บันทึก ReportOut/${name}`,'ok'); wfOutList(); return; }catch(e){ wfLog('บันทึกลง ReportOut ไม่ได้ ('+e.message+') — ดาวน์โหลดแทน','warn'); } }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500); }
+const r2 = v=>v==null?null:Math.round(v*100)/100;
+
+function kpiSheet(M,k){
+  const d=M.db[k], s=M.S[k], C=COLS[k], c=crit(M,k), A=[];
+  A.push([`${KPI[k].no} ${KPI[k].title}`]); A.push(['เกณฑ์', c!=null?`≥ ${c}%`:'–','ข้อมูล ณ วันที่', thaiDate(M.iso)]);
+  A.push(['ระดับประเทศ', r2(s.country)]); A.push(['เขตสุขภาพที่ 6', r2(s.region6)]); A.push(['จังหวัดสมุทรปราการ', r2(s.province),'Best practice เขต 6', s.bestName, r2(s.best)]); A.push([]);
+  const raw = r=>{ const f=C.f(r); return f.map(x=>{const n=num(x); return n==null?x:n;}); };
+  const block=(title,first,src,totalName)=>{ if(!src) return; A.push([title]); A.push([first,...C.h]); src.rows.forEach(r=>A.push([r.name,...raw(r)])); if(src.total) A.push([totalName,...raw(src.total)]); A.push([]); };
+  block('ตารางที่ 1 รายอำเภอ จังหวัดสมุทรปราการ','อำเภอ',d.province,'รวมจังหวัด');
+  block('ตารางที่ 2 เขตสุขภาพที่ 6 รายจังหวัด','จังหวัด',d.region,'รวมเขต 6');
+  block('ตารางที่ 3 ประเทศ รายเขตสุขภาพ','เขตสุขภาพ',d.country,'ประเทศ');
+  A.push(['ตารางที่ 4 รายหน่วยบริการ']); A.push(['รหัส','หน่วยบริการ','อำเภอ',...C.h]);
+  DISTRICTS.forEach(D=>{ const u=d.unit[D.key]; if(u){ u.rows.forEach(r=>A.push([r.code||'',r.name,D.key,...raw(r)])); if(u.total) A.push(['','รวม '+D.key,D.key,...raw(u.total)]); } });
+  return A;
+}
+function addSheet(wb,name,aoa,widths){ const ws=XLSX.utils.aoa_to_sheet(aoa); ws['!cols']=(widths||[38,18,18,18,18,18,18,18,18,18,18]).map(w=>({wch:w})); XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31)); }
+
+async function exportExcel(){
+  const M=MONTHS[CUR]; const S=M.S; const wb=XLSX.utils.book_new();
+  const R=kpiRows(M);
+  const A0=[[`สรุปผลการดำเนินงาน กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สสจ.สมุทรปราการ`],[`ข้อมูล ณ ${thaiDate(M.iso)} • ปีงบประมาณ ${M.iso?fyOf(M.iso):''}`],[],['ตัวชี้วัด','เกณฑ์','ประเทศ','เขต 6','สมุทรปราการ','Best เขต 6','สถานะ'],...R.map(r=>[r.name,r.crit,r2(r.country),r2(r.region6),r2(r.province),r.best,ST_TH[r.st]]),[],['บทสรุปผู้บริหาร'],...execBullets(M).map(b=>['• '+b])];
+  addSheet(wb,'0.สรุปผู้บริหาร',A0,[60,22,14,14,14,26,14]);
+  const order=[['PRIM','1.ตัวชี้วัด14 ปฐมภูมิ'],['COM','3.Common Disease'],['IMC','4.IMC แผนไทย'],['CAN1','8.SP กัญชา PC'],['CAN2','9.กัญชา ผู้ป่วยทั้งหมด'],['PP','5.บริบาลหลังคลอด']];
+  for(const [k,n] of order){ if(M.db[k]&&M.S[k]) addSheet(wb,n,kpiSheet(M,k)); }
+  if(S.UC){ const u=S.UC; const A=[['มูลค่าการใช้ยาสมุนไพรสิทธิ UC'],['ข้อมูล ณ',thaiDate(M.iso),'เดือนที่',u.monthsElapsed],[],['ระดับ','มูลค่า (บาท)','เป้า 12 เดือน','% เป้า 12 ด.','เป้าสะสม','% เป้าสะสม'],
+    ['ประเทศ',u.country,target(M,'ประเทศ'),r2(pct(u.country,target(M,'ประเทศ')))],['เขตสุขภาพที่ 6',u.region6,target(M,'เขตสุขภาพที่ 6'),r2(pct(u.region6,target(M,'เขตสุขภาพที่ 6')))],['จังหวัดสมุทรปราการ',u.province,u.target12,r2(u.pct12),r2(u.targetNow),r2(u.pctNow)],[],
+    ['ตารางที่ 1 รายอำเภอ'],['อำเภอ','หน่วยบริการ','คอร์ส','มูลค่า (บาท)','เป้า 12 เดือน','% เป้า 12 ด.','เป้าสะสม','% เป้าสะสม','GAP ทั้งปี'],...u.districts.map(r=>[r.name,r.units,r.course,r.value,r2(r.target12),r2(r.pct12),r2(r.targetNow),r2(r.pctNow),r2(r.target12-r.value)]),[],
+    ['ตารางที่ 2 เขตสุขภาพที่ 6'],['จังหวัด','มูลค่า (บาท)','เป้า 12 เดือน','% เป้า 12 ด.'],...u.regionRows.map(r=>[r.name,r.value,r.target,r2(pct(r.value,r.target))]),[],
+    ['ตารางที่ 3 รายหน่วยบริการ'],['รหัส','หน่วยบริการ','อำเภอ','คอร์ส','มูลค่า (บาท)']];
+    DISTRICTS.forEach(D=>{const x=M.db.UC.unit[D.key]; if(x) x.rows.forEach(r=>A.push([r.code,r.name,D.key,r.course,r.value]));});
+    addSheet(wb,'2.มูลค่าสมุนไพร UC',A); }
+  if(S.ONTOP){ const o=S.ONTOP; const A=[['มูลค่าการจ่ายยาสมุนไพร UC เทียบเงินชดเชย สปสช. (OP On-top)'],['ข้อมูล ณ',thaiDate(M.iso)],[],['ตารางที่ 1 เขตสุขภาพที่ 6'],['จังหวัด','มูลค่าใช้ UC','เงินชดเชย','อัตราชดเชย %','GAP'],...o.regionRows.map(r=>[r.name,r.value,r2(r.comp),r2(r.payback),r2(r.value!=null&&r.comp!=null?r.value-r.comp:null)]),[],
+    ['ตารางที่ 2 รายอำเภอ'],['อำเภอ','มูลค่าใช้ UC','ชดเชย รพ.แม่ข่าย','ชดเชย หน่วยปฐมภูมิ','ชดเชยรวม','อัตราชดเชย %','GAP','แหล่ง'],...o.districts.map(r=>[r.name,r.value,r2(r.compH),r2(r.compP),r2(r.comp),r2(r.payback),r2(r.gap),r.src]),[],['ตารางที่ 3 รายหน่วยบริการ'],['รหัส','หน่วยบริการ','อำเภอ','รายการ','เงินชดเชย']];
+    const src = M.db.ONTOP.province? M.db.ONTOP.province.rows : Object.values(M.db.ONTOP.unit).flatMap(x=>x.rows);
+    src.forEach(r=>A.push([r.code,r.name,r.district||'นอกสังกัด/เอกชน',r.items,r.amount]));
+    addSheet(wb,'6.ชดเชย สปสช สมุนไพร UC',A); }
+  const sc=S.scores||[]; const ks=SCORE_KPIS;
+  addSheet(wb,'7.คะแนนรายอำเภอ',[['คะแนนรวมรายอำเภอ (% ของเกณฑ์ สูงสุด 100)'],['อำเภอ',...ks.map(k=>KPI[k].short),'เฉลี่ย'],...sc.map(r=>[r.name,...ks.map(k=>r2(r.sc[k])),r2(r.avg)])]);
+  if(M.manual) for(const [n,a] of Object.entries(M.manual.sheets)) if(ENABLE_CANNABIS||!CAN_SHEETS.includes(n)) addSheet(wb,'M.'+n,a);
+  addSheet(wb,'99.ตรวจสอบข้อมูล',[['บันทึกการสร้างรายงาน',new Date().toLocaleString('th-TH')],[],['ข้อควรตรวจสอบ'],...M.warn.map(w=>[(w.lv==='bad'?'ต้องแก้: ':'ตรวจ: ')+w.t.replace(/<[^>]+>/g,'')]),[],['ไฟล์ต้นทาง','ชนิด','ระดับ','อำเภอ/จังหวัด','แถว'],...M.log.map(e=>[e.path,e.kind,e.level,e.district,e.rows])],[90,10,14,18,8]);
+  const sk=n=>/^M\./.test(n)?50:parseFloat(n); wb.SheetNames.sort((a,b)=>sk(a)-sk(b));
+  const out=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  await download(new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),`DATA ALL เพื่อสรุปรายงานเดือน กวป ${fileStamp(M)}.xlsx`);
+  $('exportMsg').textContent='สร้าง Excel แล้ว';
+}
+
+/* ====================================================================
+   EXPORT: WORD
+==================================================================== */
+async function exportWord(){
+  const M=MONTHS[CUR]; const S=M.S; $('exportMsg').textContent='กำลังสร้าง Word…';
+  const D=docx; const FONT='TH SarabunIT๙';
+  const T=(text,o={})=>new D.TextRun({text:String(text),font:FONT,...o});
+  const P=(text,o={})=>new D.Paragraph({children:[T(text,o.run||{})],spacing:{after:80},...(o.p||{})});
+  const H1=t=>new D.Paragraph({heading:D.HeadingLevel.HEADING_1,children:[T(t)]});
+  const H2=t=>new D.Paragraph({heading:D.HeadingLevel.HEADING_2,children:[T(t)]});
+  const BUL=t=>new D.Paragraph({bullet:{level:0},children:[T(t)],spacing:{after:60}});
+  const cell=(t,o={})=>new D.TableCell({shading:o.fill?{fill:o.fill,type:D.ShadingType.CLEAR,color:'auto'}:undefined,margins:{top:40,bottom:40,left:80,right:80},verticalAlign:D.VerticalAlign.CENTER,
+    children:[new D.Paragraph({alignment:o.left?D.AlignmentType.LEFT:D.AlignmentType.RIGHT,children:[T(t==null?'–':t,{size:o.bold&&o.color?22:22,bold:!!o.bold,color:o.color})]})]});
+  const TABLE=(head,rows,tot)=>{ const W=9638, n=head.length, w0=Math.round(W*(n>6?0.22:0.30)), wr=Math.floor((W-w0)/Math.max(1,n-1)); const cw=[w0,...Array(n-1).fill(wr)];
+    return new D.Table({width:{size:W,type:D.WidthType.DXA},columnWidths:cw,layout:D.TableLayoutType.FIXED,rows:[
+    new D.TableRow({tableHeader:true,children:head.map((h,i)=>cell(h,{fill:'0F766E',color:'FFFFFF',bold:true,left:i===0}))}),
+    ...rows.map((r,ri)=>new D.TableRow({children:r.map((c,i)=>cell(c,{left:i===0||!/^[-–\d.,\s%]*$/.test(String(c)),fill:ri%2?'F8FAFC':undefined}))})),
+    ...(tot?[new D.TableRow({children:tot.map((c,i)=>cell(c,{left:i===0,bold:true,fill:'E6F5F3'}))})]:[])]}); };
+  const IMG=async cfg=>new D.Paragraph({alignment:D.AlignmentType.CENTER,children:[new D.ImageRun({data:await chartPng(cfg),transformation:{width:600,height:280}})]});
+  const SP=()=>new D.Paragraph({text:''});
+  const C=[];
+  // cover
+  C.push(new D.Paragraph({alignment:D.AlignmentType.CENTER,spacing:{before:2400,after:200},children:[T('รายงานผลการดำเนินงาน',{size:56,bold:true,color:'0F766E'})]}));
+  C.push(new D.Paragraph({alignment:D.AlignmentType.CENTER,children:[T('กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก',{size:40,bold:true})]}));
+  C.push(new D.Paragraph({alignment:D.AlignmentType.CENTER,children:[T('สำนักงานสาธารณสุขจังหวัดสมุทรปราการ',{size:36})]}));
+  C.push(new D.Paragraph({alignment:D.AlignmentType.CENTER,spacing:{before:400},children:[T('จัดทำเพื่อการประชุมคณะกรรมการวางแผนและประเมินผล (กวป.)',{size:32})]}));
+  C.push(new D.Paragraph({alignment:D.AlignmentType.CENTER,children:[T(`ข้อมูล ณ ${thaiDate(M.iso)} (ปีงบประมาณ ${M.iso?fyOf(M.iso):''})`,{size:32,color:'0F766E'})]}));
+  C.push(new D.Paragraph({children:[new D.PageBreak()]}));
+  C.push(new D.Paragraph({heading:D.HeadingLevel.HEADING_1,children:[T('สารบัญ')]}));
+  C.push(new D.TableOfContents('สารบัญ',{hyperlink:true,headingStyleRange:'1-2'}));
+  C.push(new D.Paragraph({children:[new D.PageBreak()]}));
+  C.push(H1('บทสรุปผู้บริหาร')); execBullets(M).forEach(b=>C.push(BUL(b)));
+  // 1
+  C.push(H1('1. ภาพรวมตัวชี้วัดจังหวัด'));
+  C.push(P('เทียบผลการดำเนินงานจังหวัดกับเกณฑ์ ระดับเขตสุขภาพที่ 6 และระดับประเทศ'));
+  const R=kpiRows(M); C.push(TABLE(['ตัวชี้วัด','เกณฑ์','ประเทศ','เขต 6','สมุทรปราการ','Best เขต 6','สถานะ'],R.map(r=>[r.name,r.crit,r.fmt(r.country),r.fmt(r.region6),r.fmt(r.province),r.best,ST_TH[r.st]])));
+  C.push(H2('1.1 คะแนนรวมรายอำเภอ'));
+  C.push(P('แปลงผลงานแต่ละตัวชี้วัดเป็นคะแนน (% ของเกณฑ์/เป้าหมาย สูงสุด 100 คะแนน) แล้วหาค่าเฉลี่ย'));
+  const ks=SCORE_KPIS;
+  C.push(TABLE(['อำเภอ',...ks.map(k=>KPI[k].short),'เฉลี่ย'],(S.scores||[]).map(r=>[r.name,...ks.map(k=>fmt(r.sc[k],0)),fmt(r.avg,1)])));
+  C.push(await IMG(chartScore(M)));
+  const keys=Object.keys(MONTHS).filter(k=>MONTHS[k].S).sort((a,b)=>(MONTHS[a].iso||'').localeCompare(MONTHS[b].iso||''));
+  if(keys.length>1){ C.push(H2('1.2 แนวโน้มรายเดือน')); C.push(await IMG(chartTrend(keys))); }
+  // KPI sections helper
+  const kpiSec = async (k,num)=>{ const d=M.db[k], s=S[k]; if(!d||!s) return; const c=crit(M,k), CC=COLS[k];
+    C.push(H1(`${num}. ${KPI[k].title}`));
+    C.push(P(`เกณฑ์ ${c!=null?'≥ '+c+'%':'–'} • ประเทศ ${fmt(s.country)} • เขตสุขภาพที่ 6 ${fmt(s.region6)} • จังหวัดสมุทรปราการ ${fmt(s.province)}${s.bestName?` • Best practice เขต 6: ${s.bestName} ${fmt(s.best)}`:''}`));
+    if(d.province){ C.push(H2(`${num}.1 รายอำเภอ`)); C.push(TABLE(['อำเภอ',...CC.h],d.province.rows.map(r=>[normDist(r.name),...CC.f(r)]),d.province.total?['รวมจังหวัด',...CC.f(d.province.total)]:null)); C.push(await IMG(chartDistrict(M,k))); }
+    if(d.region){ C.push(H2(`${num}.2 เขตสุขภาพที่ 6 รายจังหวัด`)); C.push(TABLE(['จังหวัด',...CC.h],d.region.rows.map(r=>[r.name,...CC.f(r)]),d.region.total?['รวมเขต 6',...CC.f(d.region.total)]:null)); }
+  };
+  await kpiSec('PRIM',2);
+  const fm=(v,d=0)=>fmt(v,d);
+  // 3 UC
+  if(S.UC){ const u=S.UC; C.push(H1('3. มูลค่าการใช้ยาสมุนไพรสิทธิ UC'));
+    C.push(P(`มูลค่าจังหวัด ${fm(u.province)} บาท คิดเป็น ${fm(u.pct12,1)}% ของเป้า 12 เดือน (${fm(u.target12)} บาท) และ ${fm(u.pctNow,1)}% ของเป้าสะสม ${u.monthsElapsed} เดือน`));
+    C.push(H2('3.1 รายอำเภอเทียบเป้าหมาย'));
+    C.push(TABLE(['อำเภอ','มูลค่า (บาท)','เป้า 12 ด.','% 12 ด.','% เป้าสะสม','GAP ทั้งปี'],u.districts.map(r=>[r.name,fm(r.value),fm(r.target12),fm(r.pct12,1),fm(r.pctNow,1),fm(r.target12-r.value)]),['รวมจังหวัด',fm(u.province),fm(u.target12),fm(u.pct12,1),fm(u.pctNow,1),fm(u.target12-u.province)]));
+    C.push(await IMG(chartUC(M)));
+    C.push(H2('3.2 เทียบจังหวัดในเขตสุขภาพที่ 6'));
+    C.push(TABLE(['จังหวัด','มูลค่า (บาท)','เป้า 12 ด.','% 12 ด.'],u.regionRows.map(r=>[r.name,fm(r.value),fm(r.target),fm(pct(r.value,r.target),1)]))); }
+  // 4 OnTop
+  if(S.ONTOP){ const o=S.ONTOP; C.push(H1('4. เงินชดเชยค่ายาสมุนไพรจาก สปสช.'));
+    C.push(P(`เงินชดเชยรวมจังหวัด ${fm(o.province)} บาท คิดเป็น ${fm(o.payback,1)}% ของมูลค่าการใช้ยา UC`));
+    C.push(H2('4.1 สัดส่วนเงินชดเชย รพ.แม่ข่าย / หน่วยปฐมภูมิ รายอำเภอ'));
+    C.push(TABLE(['อำเภอ','มูลค่าใช้ UC','ชดเชย รพ.','ชดเชย ปฐมภูมิ','ชดเชยรวม','อัตรา %','GAP'],o.districts.map(r=>[r.name,fm(r.value),fm(r.compH),fm(r.compP),fm(r.comp),fm(r.payback,1),fm(r.gap)])));
+    C.push(await IMG(chartOnTop(M)));
+    C.push(H2('4.2 อัตราชดเชยเทียบจังหวัดในเขตสุขภาพที่ 6'));
+    C.push(TABLE(['จังหวัด','มูลค่าใช้ UC','เงินชดเชย','อัตรา %'],o.regionRows.map(r=>[r.name,fm(r.value),fm(r.comp),fm(r.payback,1)])));
+    C.push(await IMG(chartOnTopRegion(M))); }
+  // 5 Flagship (manual)
+  const man=M.manual&&M.manual.sheets; const manTable=(name)=>{ const a=man&&man[name]; if(!a||a.length<2) return null; const hi=a.findIndex(r=>r&&r.filter(x=>x!=null).length>=2); const head=a[hi].map(x=>clean(x)); const body=a.slice(hi+1).filter(r=>r&&r.some(x=>x!=null&&x!=='')).map(r=>head.map((_,i)=>{const v=r[i]; return typeof v==='number'?fmt(v,Number.isInteger(v)?0:2):(v==null?'':String(v));})); return body.length?TABLE(head,body):null; };
+  C.push(H1('5. Flagship')); { const t=manTable('Flagship'); C.push(t||P('— กรอกข้อมูลในไฟล์ ข้อมูลกรอกเอง.xlsx ชีต Flagship —')); }
+  // 6 COM IMC
+  await kpiSec('COM',6); await kpiSec('IMC',7);
+  // 8 PP
+  await kpiSec('PP',8);
+  // 9 Cannabis
+  if(ENABLE_CANNABIS){ await kpiSec('CAN1',9); await kpiSec('CAN2',10);
+  C.push(H1('11. งานใบอนุญาตและการร้องเรียนกัญชา'));
+  for(const [n,t] of [['ใบอนุญาต','11.1 ใบอนุญาตที่ยังใช้งานอยู่'],['ต่ออายุ','11.2 การต่ออายุใบอนุญาต'],['ร้องเรียน','11.3 เรื่องร้องเรียนและการตรวจยึด']]){ C.push(H2(t)); const x=manTable(n); C.push(x||P('— กรอกข้อมูลในไฟล์ ข้อมูลกรอกเอง.xlsx —')); } }
+  // appendix
+  if(M.warn.length){ C.push(H1('ภาคผนวก: ข้อสังเกตคุณภาพข้อมูล')); M.warn.forEach(w=>C.push(BUL(w.t.replace(/<[^>]+>/g,'')))); }
+  C.push(SP()); C.push(P('จัดทำโดยกลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สำนักงานสาธารณสุขจังหวัดสมุทรปราการ',{run:{italics:true,color:'5D6B75'}}));
+
+  const doc=new D.Document({features:{updateFields:true},
+    styles:{default:{document:{run:{font:FONT,size:28}}},
+      paragraphStyles:[
+        {id:'Heading1',name:'Heading 1',basedOn:'Normal',next:'Normal',quickFormat:true,run:{font:FONT,size:36,bold:true,color:'0F766E'},paragraph:{spacing:{before:300,after:120},keepNext:true}},
+        {id:'Heading2',name:'Heading 2',basedOn:'Normal',next:'Normal',quickFormat:true,run:{font:FONT,size:30,bold:true,color:'13232B'},paragraph:{spacing:{before:200,after:80},keepNext:true}}]},
+    sections:[{properties:{page:{size:{width:11906,height:16838},margin:{top:1134,bottom:1134,left:1134,right:1134}}},
+      footers:{default:new D.Footer({children:[new D.Paragraph({alignment:D.AlignmentType.RIGHT,children:[T('หน้า ',{size:22}),new D.TextRun({children:[D.PageNumber.CURRENT],font:FONT,size:22})]})]})},
+      children:C}]});
+  const blob=await D.Packer.toBlob(doc);
+  await download(blob,`รายงานผลการดำเนินงาน TTM กวป ${fileStamp(M)}.docx`);
+  $('exportMsg').textContent='สร้าง Word แล้ว (เปิดไฟล์แล้วกด Update Field ที่สารบัญ)';
+}
+
+/* ====================================================================
+   EXPORT: HTML SNAPSHOT / JSON
+==================================================================== */
+function snapshot(){
+  const data={};
+  for(const [k,M] of Object.entries(MONTHS)){ data[k]={key:k,iso:M.iso,db:M.db,warn:M.warn,log:M.log,manual:M.manual?{crit:M.manual.crit,target:M.manual.target,sheets:M.manual.sheets}:null,fileCount:M.files.length}; }
+  return {cur:CUR,data,created:new Date().toISOString()};
+}
+function snapshotHtml(){
+  const snap=JSON.stringify(snapshot()).replace(/</g,'\\u003c');
+  const SO='<scr'+'ipt', SC='</scr'+'ipt>', MARK=SO+'>/*MAIN*/';
+  let base=PRISTINE_HTML; const a=base.indexOf(SO+' id="snap'+'data">'); if(a>=0){ const z=base.indexOf(SC,a); base=base.slice(0,a)+base.slice(z+SC.length); }
+  const i=base.indexOf(MARK); const html=base.slice(0,i)+SO+' id="snap'+'data">window.__SNAPSHOT__='+snap+';'+SC+'\n'+base.slice(i);
+  return html;
+}
+async function exportHtml(){
+  const M=MONTHS[CUR]; const html=snapshotHtml();
+  await download(new Blob([html],{type:'text/html'}),`สรุปรายงานเดือนแผนไทย ${fileStamp(M)}.html`);
+  $('exportMsg').textContent='สร้าง HTML แล้ว — เปิดได้ทันทีโดยไม่ต้องเลือกโฟลเดอร์';
+}
+function exportJson(){ const M=MONTHS[CUR];
+  const sum={month:CUR,asOf:M.iso,summary:Object.fromEntries(Object.entries(M.S).filter(([k])=>k!=='scores').map(([k,s])=>[k,{country:s.country,region6:s.region6,province:s.province,pct12:s.pct12,pctNow:s.pctNow,payback:s.payback,districts:(s.districts||[]).map(d=>({name:d.name,value:d.value,pctNow:d.pctNow,payback:d.payback}))}])),scores:M.S.scores};
+  download(new Blob([JSON.stringify(sum,null,1)],{type:'application/json'}),`summary ${fileStamp(M)}.json`); }
+
+function loadSnapshot(s){
+  MONTHS={};
+  for(const [k,m] of Object.entries(s.data)){ MONTHS[k]={...m,files:{length:m.fileCount}}; const M=MONTHS[k]; M.warn=M.warn.filter(w=>!/≠|ปนกัน/.test(w.t)); computeMonth(M); }
+  const keys=Object.keys(MONTHS).sort((a,b)=>(MONTHS[a].iso||'').localeCompare(MONTHS[b].iso||''));
+  $('monthSel').innerHTML=keys.map(k=>`<option value="${esc(k)}">${esc(k)}${MONTHS[k].iso?' — '+thaiDate(MONTHS[k].iso):''}</option>`).join('');
+  $('monthSel').value=s.cur; CUR=s.cur;
+  $('loadStatus').textContent='โหมดดูรายงาน (บันทึกจากระบบเมื่อ '+new Date(s.created).toLocaleString('th-TH')+')';
+  onMonthChange(); showPane('p-sum');
+}
+
+/* ====================================================================
+   TABS / INIT
+==================================================================== */
+function showPane(id){ document.querySelectorAll('section.pane').forEach(s=>s.classList.toggle('on',s.id===id)); document.querySelectorAll('#tabs a').forEach(a=>a.classList.toggle('on',a.dataset.p===id)); window.scrollTo(0,0); }
+document.querySelectorAll('#tabs a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault(); showPane(a.dataset.p);}));
+renderSrcTable();
+/* ====================================================================
+   WORKFLOW CONTROL PANEL (File System Access API)
+==================================================================== */
+const FS_OK = 'showDirectoryPicker' in window;
+const WF = {root:null, month:null, monthName:'', dl:null, cov:{}, imports:[], log:[], st:{}};
+const SLOTS = ['country','region','province',...DISTRICTS.map(d=>d.key)];
+const SLOT_TH = {country:'ประเทศ',region:'เขต 6',province:'จังหวัด'};
+const DIRMAP = {country:'1 ประเทศ รายเขต',region:'2 เขต 6 รายจังหวัด',province:'3 จังหวัด รายอำเภอ','เมืองสมุทรปราการ':'4 เมือง','บางบ่อ':'5 บบ','บางพลี':'6 บพ','พระประแดง':'7 พปด','พระสมุทรเจดีย์':'8 พส','บางเสาธง':'9 บสธ'};
+const KSHORT = {PRIM:'ปฐม',COM:'COM',IMC:'IMC',PP:'PP',CAN1:'CAN1',CAN2:'CAN2',UC:'มูลค่าUC',ONTOP:'OnTop'};
+const MONTH_SUBS = [...Object.values(DIRMAP).map(x=>'DatIN/'+x),'DatIN/10 มูลค่ายาสมุนไพร UC','DatIN/11 OnTop สปสช/เขต 6 รายจังหวัด','DatIN/11 OnTop สปสช/จังหวัด รายอำเภอ','DatIN/12 กรอกเอง','ReportOut'];
+const WF_STEPS = [['root','เชื่อมต่อโฟลเดอร์ปี'],['month','โฟลเดอร์เดือน'],['fetch','ดึงข้อมูล DATA IN'],['import','นำเข้าจาก Downloads'],['manual','ข้อมูลกรอกเอง'],['check','ตรวจสอบ & แดชบอร์ด'],['export','ส่งออก ReportOut']];
+const ST_LABEL = {todo:'รอ',run:'กำลังทำ…',done:'เสร็จ',warn:'ต้องดู'};
+const FILTER_NOTE_DEFAULT = 'ปุ่ม ⚡ ใช้ตัวกรอง “ใน/นอกสังกัดกระทรวง = ในสังกัด” ปีงบตามโฟลเดอร์เดือน สะสมทั้งปี (ตรงกับไฟล์ที่ดึงเองเมื่อ ก.ย. 69) • ถ้าดึงเองบนหน้าเว็บ ให้เลือก “ในสังกัด” เช่นกัน และมุมมอง “รายหน่วยบริการ” สำหรับระดับอำเภอ';
+
+/* ---- tiny IndexedDB for handles ---- */
+const idb = {
+  open(){ return new Promise((res,rej)=>{ const r=indexedDB.open('ttm-wf',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); },
+  async get(k){ try{ const db=await this.open(); return await new Promise(res=>{ const q=db.transaction('kv').objectStore('kv').get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>res(null); }); }catch(e){ return null; } },
+  async set(k,v){ try{ const db=await this.open(); await new Promise(res=>{ const t=db.transaction('kv','readwrite'); t.objectStore('kv').put(v,k); t.oncomplete=res; t.onerror=res; }); }catch(e){} }
+};
+async function perm(h,ask){ if(!h) return false; try{ if(await h.queryPermission({mode:'readwrite'})==='granted') return true; if(ask) return (await h.requestPermission({mode:'readwrite'}))==='granted'; }catch(e){ return !!h.__mock; } return false; }
+
+function wfLog(t,lv='info'){ const d=new Date(); WF.log.unshift({t,lv,time:d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}); const el=$('wfLog'); if(el) el.innerHTML=WF.log.slice(0,80).map(x=>`<li><span class="muted">${x.time}</span> <span class="pill ${x.lv==='ok'?'ok':x.lv==='warn'?'warn':x.lv==='bad'?'bad':'na'}">${x.lv==='ok'?'สำเร็จ':x.lv==='warn'?'ตรวจ':x.lv==='bad'?'ผิดพลาด':'ข้อมูล'}</span> ${esc(x.t)}</li>`).join(''); }
+function setStep(id,st,note){ WF.st[id]={st,note:note||''}; renderSteps(); }
+function renderSteps(){
+  $('wfSteps').innerHTML = WF_STEPS.map(([id,t],i)=>{ const s=WF.st[id]||{st:'todo'}; return `<li class="${s.st}"><span class="st">${ST_LABEL[s.st]}</span><b>ขั้นที่ ${i+1}</b>${t}${s.note?`<br><span class="muted" style="font-size:12px">${esc(s.note)}</span>`:''}</li>`; }).join('');
+  const done=WF_STEPS.filter(([id])=>(WF.st[id]||{}).st==='done').length; $('wfProg').style.width=(done/WF_STEPS.length*100)+'%';
+}
+
+/* ---- default month name (เหมือน NewMonth.bat) ---- */
+function defaultMonthName(){ const now=new Date(); const ref=now.getDate()<10? new Date(now.getFullYear(),now.getMonth()-1,1) : now; const m=ref.getMonth(); const last=new Date(ref.getFullYear(),m+1,0).getDate(); const fy=ref.getFullYear()+543+(m>=9?1:0); return `${EN_MON[m][0].toUpperCase()+EN_MON[m].slice(1)} ${last} ${fy%100}`; }
+function fyFromRootName(n){ const m=String(n||'').match(/(\d{2})\s*$/); return m?2500+Number(m[1]):null; }
+
+/* ---- connect ---- */
+async function wfInit(){
+  renderSteps(); $('wfNewName').value=defaultMonthName(); ghStatus(); try{ $('ghAuto').checked=localStorage.getItem('ttm-gh-auto')==='1'; }catch(e){}
+  $('wfFilterNote').textContent = (()=>{ try{ return localStorage.getItem('ttm-filter-note')||FILTER_NOTE_DEFAULT; }catch(e){ return FILTER_NOTE_DEFAULT; } })();
+  if(!FS_OK){ $('wfFsWarn').classList.remove('hidden'); renderGrid(); return; }
+  const r=await idb.get('root'); const d=await idb.get('dl');
+  if(d) WF.dl=d;
+  if(r){ WF.root=r; if(await perm(r,false)) await afterRoot(); else { $('wfRootName').textContent=`พบโฟลเดอร์เดิม “${r.name}” — กด “เชื่อมต่ออีกครั้ง” เพื่ออนุญาต`; $('wfReconnect').classList.remove('hidden'); } }
+  renderGrid();
+}
+async function wfReconnect(){ if(await perm(WF.root,true)){ $('wfReconnect').classList.add('hidden'); if(WF.dl) await perm(WF.dl,true); await afterRoot(); } }
+async function wfPickRoot(){ if(!FS_OK) return; try{ const h=await window.showDirectoryPicker({id:'ttm-root',mode:'readwrite'}); WF.root=h; await idb.set('root',h); await afterRoot(); }catch(e){ if(e.name!=='AbortError') wfLog('เชื่อมต่อโฟลเดอร์ไม่ได้: '+e.message,'bad'); } }
+async function afterRoot(){
+  $('wfRootName').innerHTML=`เชื่อมต่อแล้ว: <b>${esc(WF.root.name)}</b>`; setStep('root','done',WF.root.name);
+  if(!/report|พผท|\d{2}$/i.test(WF.root.name)) wfLog(`ชื่อโฟลเดอร์ “${WF.root.name}” ไม่เหมือนโฟลเดอร์ปี (เช่น 00 All Report 70) — ตรวจว่าเลือกถูกหรือไม่`,'warn');
+  await listMonths();
+}
+async function listMonths(){
+  const fy=fyFromRootName(WF.root.name); const ms=[];
+  for await (const [n,h] of WF.root.entries()){ if(h.kind==='directory'){ const iso=monthFromName(n,fy); if(iso) ms.push({n,iso,h}); } }
+  ms.sort((a,b)=>a.iso.localeCompare(b.iso));
+  WF.months=ms;
+  $('wfMonthSel').innerHTML = ms.length? ms.map(m=>`<option value="${esc(m.n)}">${esc(m.n)} — ${thaiDate(m.iso)}</option>`).join('') : '<option value="">(ยังไม่มีโฟลเดอร์เดือน)</option>';
+  if(ms.length){ const pick=ms.find(m=>m.n===WF.monthName)||ms[ms.length-1]; $('wfMonthSel').value=pick.n; await wfSelectMonth(pick.n); }
+  else setStep('month','todo','กด “สร้างโฟลเดอร์เดือนใหม่”');
+}
+async function wfSelectMonth(n){ if(!n) return; const m=(WF.months||[]).find(x=>x.n===n); if(!m) return; WF.month=m.h; WF.monthName=n; WF.files=null; $('wfMonthSel').value=n; setStep('month','done',n); $('wfSub').textContent=`โฟลเดอร์ปี: ${WF.root.name} • เดือน: ${n} (ข้อมูล ณ ${thaiDate(m.iso)})`; await wfScan(); await wfOutList(); }
+
+async function dirPath(base,path,create){ let h=base; for(const seg of path.split('/').filter(Boolean)) h=await h.getDirectoryHandle(seg,{create}); return h; }
+async function tryDir(base,path){ try{ return await dirPath(base,path,false); }catch(e){ return null; } }
+async function wfNewMonth(){
+  if(!WF.root){ wfLog('ต้องเชื่อมต่อโฟลเดอร์ปีก่อน','warn'); return; }
+  const name=clean($('wfNewName').value)||defaultMonthName();
+  if(!monthFromName(name,fyFromRootName(WF.root.name))){ wfLog(`ชื่อ “${name}” ต้องขึ้นต้นด้วยเดือนภาษาอังกฤษ เช่น Nov 30 70`,'bad'); return; }
+  setStep('month','run','กำลังสร้าง '+name);
+  const mh=await WF.root.getDirectoryHandle(name,{create:true});
+  for(const s of MONTH_SUBS) await dirPath(mh,s,true);
+  // copy manual file from latest previous month, else from 00 เครื่องมือ
+  const manDir=await dirPath(mh,'DatIN/12 กรอกเอง',true);
+  let exists=true; try{ await manDir.getFileHandle('ข้อมูลกรอกเอง.xlsx'); }catch(e){ exists=false; }
+  if(!exists){
+    let src=null, srcName='';
+    const prev=(WF.months||[]).filter(m=>m.n!==name).reverse();
+    for(const m of prev){ const d=await tryDir(m.h,'DatIN/12 กรอกเอง'); if(d){ try{ src=await (await d.getFileHandle('ข้อมูลกรอกเอง.xlsx')).getFile(); srcName=m.n; break; }catch(e){} } }
+    if(!src){ const t=await tryDir(WF.root,'00 เครื่องมือ'); if(t){ try{ src=await (await t.getFileHandle('ข้อมูลกรอกเอง.xlsx')).getFile(); srcName='00 เครื่องมือ'; }catch(e){} } }
+    if(src){ const w=await (await manDir.getFileHandle('ข้อมูลกรอกเอง.xlsx',{create:true})).createWritable(); await w.write(await src.arrayBuffer()); await w.close(); wfLog(`คัดลอกข้อมูลกรอกเองจาก ${srcName}`,'ok'); }
+    else wfLog('ไม่พบไฟล์ข้อมูลกรอกเอง.xlsx ต้นแบบ','warn');
+  }
+  wfLog(`สร้างโฟลเดอร์เดือน ${name} แล้ว`,'ok'); WF.monthName=name; await listMonths();
+}
+
+/* ---- identify a workbook: {kind, slot} ---- */
+function identify(aoa,name,path){
+  const kind=classify(aoa,path||name); if(!kind) return {kind:null};
+  if(kind==='MANUAL'||kind==='GMP') return {kind,slot:kind};
+  if(CAN_KPIS.includes(kind)&&!ENABLE_CANNABIS) return {kind,slot:null,skip:true};
+  if(HDC_KPIS.includes(kind)){
+    const lv=levelOf(aoa); if(lv!=='unit') return {kind,slot:lv};
+    const p=parseHDC(kind,aoa); const v={}; p.rows.forEach(r=>{const u=UNIT_MAP[r.code]; if(u) v[u.district]=(v[u.district]||0)+1;});
+    const d=Object.entries(v).sort((a,b)=>b[1]-a[1])[0]; return {kind,slot:d?d[0]:distFromTokens(path||name)};
+  }
+  if(kind==='UC'){ const p=parseUC(aoa); if(p.level==='unit'){ const d=(p.rows[0]&&p.rows[0].district)||distFromTokens(name); return {kind,slot:d}; } return {kind,slot:p.level==='allprov'?'country':p.level, sub:p.level}; }
+  if(kind==='ONTOP'){ const p=parseOnTop(aoa); const t=tokens(path||name); const prov=R6.find(x=>x!==PROV&&(t.includes(x)||name.includes(x)));
+    if(prov) return {kind,slot:'prov:'+prov};
+    const ds=new Set(p.rows.filter(r=>r.district).map(r=>r.district)); const inSP=p.rows.filter(r=>r.district).length;
+    if(inSP===0) return {kind,slot:'prov:?'};
+    if(ds.size===1 && inSP>=p.rows.length*0.8) return {kind,slot:'dist:'+[...ds][0]};
+    return {kind,slot:'province'}; }
+  return {kind};
+}
+async function readAoa(file){ const wb=XLSX.read(await file.arrayBuffer(),{type:'array'}); return sheetToAoa(wb.Sheets[wb.SheetNames[0]]); }
+async function walk(dir,prefix,acc=[]){ for await (const [n,h] of dir.entries()){ if(h.kind==='directory') await walk(h,prefix+n+'/',acc); else if(/\.xlsx?$/i.test(n)&&!/^~\$/.test(n)) acc.push({path:prefix+n,name:n,h}); } return acc; }
+
+/* ---- scan month DatIN ---- */
+async function wfScan(){
+  if(!WF.month){ renderGrid(); return; }
+  setStep('fetch','run','กำลังตรวจไฟล์…');
+  const dat=await tryDir(WF.month,'DatIN'); WF.cov={}; WF.files=[];
+  if(dat){ const fl=await walk(dat,WF.monthName+'/DatIN/');
+    for(const f of fl){ const file=await f.h.getFile(); let id={kind:null};
+      try{ id=identify(await readAoa(file),f.name,f.path); }catch(e){ wfLog('อ่านไฟล์ไม่ได้: '+f.path,'bad'); }
+      WF.files.push({...f,file,...id});
+      if(id.kind&&id.slot){ WF.cov[id.kind]=WF.cov[id.kind]||{}; WF.cov[id.kind][id.slot]={path:f.path,file,mtime:file.lastModified}; } } }
+  renderGrid();
+  const {need,have}=coverage(); const man=WF.cov.MANUAL&&WF.cov.MANUAL.MANUAL;
+  setStep('fetch', have>=need?'done':(have?'warn':'todo'), `${have}/${need} ไฟล์`);
+  $('wfManual').innerHTML = man? `<span class="pill ok">พบไฟล์</span> ข้อมูลกรอกเอง.xlsx แก้ไขล่าสุด ${new Date(man.mtime).toLocaleString('th-TH')} — เปิดแก้ใน Excel ที่ <code>${esc(WF.monthName)}\\DatIN\\12 กรอกเอง</code> แล้วกด ↻ ตรวจสถานะไฟล์` : '<span class="pill bad">ไม่พบ</span> ข้อมูลกรอกเอง.xlsx — กด “สร้างโฟลเดอร์เดือนใหม่” อีกครั้งเพื่อคัดลอกจากเดือนก่อน';
+  setStep('manual', man?'done':'warn', man?('แก้ไข '+new Date(man.mtime).toLocaleDateString('th-TH')):'ไม่พบไฟล์');
+  wfLog(`ตรวจไฟล์เดือน ${WF.monthName}: มี ${have} จาก ${need} ไฟล์`, have>=need?'ok':'info');
+}
+function rowsSpec(){
+  const R=HDC_KPIS.map(k=>({k,slots:SLOTS}));
+  R.push({k:'UC',slots:SLOTS});
+  return R;
+}
+function coverage(){ let need=0,have=0; for(const r of rowsSpec()) for(const s of r.slots){ need++; if(WF.cov[r.k]&&WF.cov[r.k][s]) have++; }
+  const o=WF.cov.ONTOP||{}; need+=8; if(o.province) have++; R6.filter(p=>p!==PROV).forEach(p=>{ if(o['prov:'+p]) have++; }); return {need,have}; }
+function cellBtn(k,s){ const c=WF.cov[k]&&WF.cov[k][s]; return c? `<button class="cellbtn ok" title="${esc(c.path)}" onclick="wfPreview('${k}','${esc(s)}')">✓</button>` : `<button class="cellbtn bad">✗</button>`; }
+function renderGrid(){
+  const head=['ตัวชี้วัด / แหล่งข้อมูล',...SLOTS.map(s=>SLOT_TH[s]||shortD(s))];
+  let h=`<tr>${head.map(x=>`<th>${x}</th>`).join('')}</tr>`;
+  for(const r of rowsSpec()){ h+=`<tr><td class="l"><b>${KPI[r.k].short}</b><br><a class="lk" href="${KPI[r.k].url}" target="_blank" rel="noopener">เปิดรายงาน ${KPI[r.k].src} ↗</a></td>${r.slots.map(s=>`<td>${cellBtn(r.k,s)}</td>`).join('')}</tr>`; }
+  const o=R6.filter(p=>p!==PROV);
+  h+=`<tr><td class="l"><b>${KPI.ONTOP.short}</b><br><a class="lk" href="${KPI.ONTOP.url}" target="_blank" rel="noopener">เปิด MIS HOS ↗</a></td><td colspan="2" class="l" style="font-size:12.5px">รวมทั้งจังหวัด ${cellBtn('ONTOP','province')}</td><td colspan="7" class="l" style="font-size:12.5px">${o.map(p=>`${p} ${cellBtn('ONTOP','prov:'+p)}`).join(' &nbsp; ')}</td></tr>`;
+  $('wfGrid').innerHTML=h;
+}
+async function wfPreview(k,s){ const c=WF.cov[k]&&WF.cov[k][s]; if(!c) return; const aoa=await readAoa(c.file);
+  $('modalT').textContent=`${KPI[k]?KPI[k].short:k} • ${SLOT_TH[s]||s} — ${c.path}`;
+  $('modalB').innerHTML=`<table>${aoa.slice(0,60).map((r,i)=>`<tr>${(r||[]).map(v=>i<3?`<th>${esc(v==null?'':v)}</th>`:`<td>${typeof v==='number'?fmt(v,Number.isInteger(v)?0:2):esc(v==null?'':v)}</td>`).join('')}</tr>`).join('')}</table>`;
+  $('modal').classList.remove('hidden'); }
+
+/* ---- import from Downloads ---- */
+async function wfPickDl(){ if(!FS_OK) return; try{ const h=await window.showDirectoryPicker({id:'ttm-dl',mode:'readwrite',startIn:'downloads'}); WF.dl=h; await idb.set('dl',h); $('wfDlName').textContent='เชื่อมต่อ: '+h.name; await wfImportScan(); }catch(e){ if(e.name!=='AbortError') wfLog('เชื่อมต่อ Downloads ไม่ได้: '+e.message,'bad'); } }
+function destFor(id){
+  const nm=(id.kind==='UC'?'มูลค่าUC':KSHORT[id.kind]);
+  if(HDC_KPIS.includes(id.kind)){ const d=DIRMAP[id.slot]; if(!d) return null; return {dir:'DatIN/'+d, file:`${nm} ${SLOT_TH[id.slot]||shortD(id.slot)}.xlsx`}; }
+  if(id.kind==='UC'){ if(!id.slot) return null; return {dir:'DatIN/10 มูลค่ายาสมุนไพร UC', file:`${nm} ${id.sub==='allprov'?'ประเทศรายจังหวัด':(SLOT_TH[id.slot]||shortD(id.slot))}.xlsx`}; }
+  if(id.kind==='ONTOP'){ if(id.slot==='province') return {dir:'DatIN/11 OnTop สปสช/จังหวัด รายอำเภอ',file:'OnTop รวมทั้งจังหวัด.xlsx'};
+    if(id.slot.startsWith('dist:')) return {dir:'DatIN/11 OnTop สปสช/จังหวัด รายอำเภอ',file:`OnTop ${id.slot.slice(5)}.xlsx`};
+    if(id.slot.startsWith('prov:')&&id.slot!=='prov:?') return {dir:'DatIN/11 OnTop สปสช/เขต 6 รายจังหวัด',file:`${id.slot.slice(5)}.xlsx`}; return null; }
+  return null;
+}
+async function wfImportScan(){
+  if(!WF.dl){ $('wfImport').innerHTML='<p class="muted">กด “เชื่อมต่อ Downloads…” แล้วเลือกโฟลเดอร์ Downloads</p>'; return 0; }
+  if(!(await perm(WF.dl,true))){ wfLog('ยังไม่ได้รับอนุญาตเข้าถึง Downloads','warn'); return 0; }
+  setStep('import','run','กำลังค้นหา…');
+  const since=Date.now()-14*864e5; WF.imports=[];
+  for await (const [n,h] of WF.dl.entries()){ if(h.kind!=='file'||!/\.xlsx?$/i.test(n)||/^~\$/.test(n)) continue; const f=await h.getFile(); if(f.lastModified<since) continue;
+    let id={kind:null}; try{ id=identify(await readAoa(f),n,n); }catch(e){}
+    if(!id.kind||id.kind==='MANUAL'||id.kind==='GMP'||id.skip) continue;
+    WF.imports.push({n,h,f,id,dest:destFor(id),on:true}); }
+  WF.imports.sort((a,b)=>a.f.lastModified-b.f.lastModified);
+  renderImports();
+  setStep('import', WF.imports.length?'warn':'done', WF.imports.length?`พบ ${WF.imports.length} ไฟล์รอย้าย`:'ไม่มีไฟล์ใหม่');
+  return WF.imports.length;
+}
+function renderImports(){
+  if(!WF.imports.length){ $('wfImport').innerHTML='<p class="muted">ไม่พบไฟล์ข้อมูลใหม่ใน Downloads (14 วันล่าสุด)</p>'; return; }
+  $('wfImport').innerHTML=`<div class="tbl-wrap"><table><tr><th>ย้าย</th><th>ไฟล์ใน Downloads</th><th>ตรวจพบ</th><th>ปลายทาง</th></tr>${WF.imports.map((x,i)=>`<tr><td style="text-align:center"><input type="checkbox" ${x.on&&x.dest?'checked':''} ${x.dest?'':'disabled'} onchange="WF.imports[${i}].on=this.checked"></td><td class="l">${esc(x.n)}<br><span class="muted" style="font-size:12px">${new Date(x.f.lastModified).toLocaleString('th-TH')}</span></td><td class="l">${KPI[x.id.kind].short} • ${esc(SLOT_TH[x.id.slot]||(x.id.slot||'').replace(/^(prov|dist):/,'')||'?')}</td><td class="l">${x.dest?esc(x.dest.dir.replace('DatIN/','')+' / '+x.dest.file):(x.id.kind==='ONTOP'?`<select onchange="wfSetProv(${i},this.value)"><option value="">ระบุจังหวัด…</option>${R6.filter(p=>p!==PROV).map(p=>`<option>${p}</option>`).join('')}</select>`:'<span class="pill bad">ระบุไม่ได้</span>')}</td></tr>`).join('')}</table></div>`;
+}
+function wfSetProv(i,p){ const x=WF.imports[i]; if(!p) return; x.id.slot='prov:'+p; x.dest=destFor(x.id); x.on=true; renderImports(); }
+async function wfImportRun(){
+  if(!WF.month){ wfLog('ต้องเลือกโฟลเดอร์เดือนก่อน','warn'); return; }
+  const todo=WF.imports.filter(x=>x.on&&x.dest); if(!todo.length){ wfLog('ไม่มีไฟล์ที่เลือกให้ย้าย','info'); return; }
+  setStep('import','run',`ย้าย ${todo.length} ไฟล์…`); let n=0;
+  for(const x of todo){ try{ const d=await dirPath(WF.month,x.dest.dir,true); const w=await (await d.getFileHandle(x.dest.file,{create:true})).createWritable(); await w.write(await x.f.arrayBuffer()); await w.close();
+      if($('wfMove').checked){ try{ await WF.dl.removeEntry(x.n); }catch(e){ wfLog('ลบต้นฉบับไม่ได้: '+x.n,'warn'); } }
+      n++; wfLog(`ย้าย ${x.n} → ${x.dest.dir.replace('DatIN/','')}/${x.dest.file}`,'ok'); }
+    catch(e){ wfLog(`ย้าย ${x.n} ไม่ได้: ${e.message}`,'bad'); } }
+  WF.imports=WF.imports.filter(x=>!todo.includes(x)); renderImports();
+  setStep('import','done',`ย้ายแล้ว ${n} ไฟล์`); await wfScan();
+}
+
+/* ---- build & export ---- */
+async function wfBuild(){
+  if(!WF.month){ wfLog('ต้องเลือกโฟลเดอร์เดือนก่อน','warn'); return false; }
+  setStep('check','run','กำลังอ่านข้อมูล…');
+  if(!WF.files) await wfScan();
+  const files=WF.files.map(f=>{ const x=new File([f.file],f.name,{lastModified:f.file.lastModified}); Object.defineProperty(x,'webkitRelativePath',{value:f.path}); return x; });
+  await loadFiles(files);
+  const M=MONTHS[CUR]; const bad=M? M.warn.filter(w=>w.lv==='bad').length:0;
+  const cv=coverage(); const miss=cv.need-cv.have;
+  setStep('check', (bad||miss)?'warn':'done', bad?`มีเรื่องต้องแก้ ${bad} รายการ`:(miss?`ข้อมูลยังขาด ${miss} ไฟล์`:'ข้อมูลผ่านการตรวจ'));
+  wfLog(`สร้างแดชบอร์ดแล้ว (ข้อควรตรวจ ${M?M.warn.length:0} รายการ) — ดูแท็บ 2–5`, bad?'warn':'ok');
+  return true;
+}
+async function wfExportAll(){
+  if(!MONTHS[CUR] || CUR!==WF.monthName){ if(!(await wfBuild())) return; }
+  const {need,have}=coverage();
+  if(have<need && !$('wfForce').checked){ setStep('export','warn',`ข้อมูลยังขาด ${need-have} ไฟล์`); wfLog(`ยังไม่ส่งออก: ข้อมูลขาด ${need-have} ไฟล์ (ติ๊ก “ส่งออกแม้ข้อมูลยังไม่ครบ” หากต้องการ)`,'warn'); return; }
+  setStep('export','run','กำลังสร้างไฟล์…');
+  try{ await exportExcel(); await exportWord(); await exportHtml(); setStep('export','done','บันทึกลง ReportOut แล้ว'); }
+  catch(e){ setStep('export','warn','ผิดพลาด'); wfLog('ส่งออกไม่สำเร็จ: '+e.message,'bad'); }
+}
+async function wfOutList(){
+  if(!WF.month) return; const d=await tryDir(WF.month,'ReportOut'); const L=[];
+  if(d) for await (const [n,h] of d.entries()) if(h.kind==='file'){ const f=await h.getFile(); L.push({n,t:f.lastModified,h}); }
+  L.sort((a,b)=>b.t-a.t); WF.outFiles=L;
+  $('wfOut').innerHTML = L.length? `<div class="tbl-wrap"><table><tr><th>ไฟล์ใน ReportOut</th><th>บันทึกเมื่อ</th><th></th></tr>${L.map((x,i)=>`<tr><td class="l">${esc(x.n)}</td><td>${new Date(x.t).toLocaleString('th-TH')}</td><td>${/\.html$/i.test(x.n)?`<button class="cellbtn ok" onclick="wfOpenOut(${i})">เปิดดู</button>`:''}</td></tr>`).join('')}</table></div>` : '<p class="muted">ยังไม่มีไฟล์ใน ReportOut</p>';
+  if(L.some(x=>/\.docx$/i.test(x.n))&&L.some(x=>/\.xlsx$/i.test(x.n))) setStep('export','done',`${L.length} ไฟล์ใน ReportOut`);
+}
+async function wfOpenOut(i){ const f=await WF.outFiles[i].h.getFile(); window.open(URL.createObjectURL(new Blob([await f.text()],{type:'text/html'})),'_blank'); }
+
+/* ====================================================================
+   HDC API AUTO-FETCH (api-hdc.moph.go.th — ไม่ต้อง login)
+   ตัวกรองมาตรฐาน: ใน/นอกสังกัดกระทรวง = ในสังกัด (organization_type=1)
+==================================================================== */
+const HDC_API='https://api-hdc.moph.go.th/v1/reports/province/data/';
+const HDC_ID={PRIM:'8f3d7d8e9dd50372641546bf12895c04',COM:'mtlg7qpGzbMJRk15oggUy',IMC:'3b9588304ddab6facbeb16089f1b9e85',PP:'0e82dff847a700596572b4e921ffe068'};
+const DIST_CODE={'เมืองสมุทรปราการ':'1101','บางบ่อ':'1102','บางพลี':'1103','พระประแดง':'1104','พระสมุทรเจดีย์':'1105','บางเสาธง':'1106'};
+const LV_HEAD={country:'เขตสุขภาพ',region:'จังหวัด',province:'อำเภอ',unit:'หน่วยบริการ'};
+function hdcParams(slot,year){
+  const P={table_display:'zone',year:String(year),month:'ALL',zone:'ALL',province_code:'ALL',district_code:'ALL',subdistrict_code:'ALL',department_code:'ALL',organization_type:'1',ministry:'ALL',hospital:'ALL',service_plan:'ALL',jurisdiction_code:'ALL',freeze_month:'ALL',mental_code:'ALL',mental_group_code:'ALL',custom:'[]'};
+  if(slot==='region') Object.assign(P,{table_display:'province',zone:'06'});
+  else if(slot==='province') Object.assign(P,{table_display:'ampur',zone:'06',province_code:'11'});
+  else if(DIST_CODE[slot]) Object.assign(P,{table_display:'provider',zone:'06',province_code:'11',district_code:DIST_CODE[slot]});
+  return P;
+}
+async function hdcFetch(k,slot,year){
+  const r=await fetch(HDC_API+HDC_ID[k]+'?'+new URLSearchParams(hdcParams(slot,year)).toString(),{headers:{Authorization:'Bearer null',domain:'',Accept:'application/json, text/plain, */*'}});
+  const j=await r.json(); if(!j.ok||!j.rows||!j.rows[0]) throw new Error(j.message||'ไม่มีข้อมูล'); return j.rows[0];
+}
+function evalFormula(f,vals){
+  let e=String(f).replace(/#\{(\w+)\}/g,(m,c)=>`(${Number(vals[c])||0})`).replace(/\b([A-Za-z_]\w*)\b/g,(m,c)=>c in vals?`(${Number(vals[c])||0})`:(c==='rate'?'100':m));
+  try{ const v=Function('"use strict";return ('+e+')')(); return isFinite(v)?v:0; }catch(_){ return null; }
+}
+const HDC_LABELS={
+  PRIM:[['รวมทั้งปีงบประมาณ','','','ไตรมาส 1','','','ไตรมาส 2','','','ไตรมาส 3','','','ไตรมาส 4','',''],Array(5).fill(['บริการผู้ป่วยนอก(ครั้ง)','บริการแพทย์แผนไทย(ครั้ง)','ร้อยละการรับบริการ']).flat()],
+  COM:[['ปีงบประมาณก่อน (รวมปีงบประมาณ)','','','','','ปีงบประมาณปัจจุบัน (รวมปีงบประมาณ)','','','','',''],['ได้รับการวินิจฉัย (B1) คน','ได้รับการวินิจฉัย (B1) ครั้ง','วินิจฉัยและมีการสั่งจ่ายยาสมุนไพร (A1) คน','วินิจฉัยและมีการสั่งจ่ายยาสมุนไพร (A1) ครั้ง','ร้อยละ (C1)','ได้รับการวินิจฉัย (B2) คน','ได้รับการวินิจฉัย (B2) ครั้ง','วินิจฉัยและมีการสั่งจ่ายยาสมุนไพร (A2) คน','วินิจฉัยและมีการสั่งจ่ายยาสมุนไพร (A2) ครั้ง','ร้อยละ (C2)','ร้อยละเพิ่มขึ้น']],
+  IMC:[['จำนวนผู้ป่วยโรคหลอดเลือดสมอง [B]','จำนวนผู้ป่วยโรคหลอดเลือดสมอง ได้รับการดูแลด้วยการแพทย์แผนไทยและการแพทย์ทางเลือก [A]','ร้อยละ'],[]],
+  PP:[['ได้รับบริการ(คน)','','พบประวัติคลอด(คน)','','จำนวนบริการ(ครั้ง)','','บริการพบประวัติ(ครั้ง)','','บริการล่าช้า (คน)','','บริการเกิน 90 วัน (คน)',''],Array(6).fill(['ทุกสิทธิ','สิทธิ UC']).flat()],
+};
+function hdcToAoa(k,slot,R){
+  const cols=R.jsonc.map((c,i)=>({...c,i})).sort((a,b)=>(Number(a.position)-Number(b.position))||(a.i-b.i)).filter(c=>c.column_name!=='a_name');
+  const L=HDC_LABELS[k];
+  const row0=[LV_HEAD[slot]||LV_HEAD.unit,...cols.map((c,i)=>L[0][i]!=null?L[0][i]:'')];
+  const row1=['',...cols.map((c,i)=>L[1][i]!=null?L[1][i]:c.column_name)];
+  const val=(d,c)=>{ const v=d[c.column_name]; return v===''||v==null?null:Number(v); };
+  const data=R.data.map(d=>[clean(d.a_name),...cols.map(c=>val(d,c))]);
+  const tot={}; cols.forEach(c=>{ if(c.type!=='F') tot[c.column_name]=R.data.reduce((s,d)=>s+(Number(d[c.column_name])||0),0); });
+  cols.forEach(c=>{ if(c.type==='F') tot[c.column_name]=evalFormula(c.formula,tot); });
+  const empty=R.data.every(d=>cols.every(c=>d[c.column_name]===''||d[c.column_name]==null));
+  return {aoa:[row0,row1,...data,['รวม',...cols.map(c=>tot[c.column_name]==null?null:Math.round(tot[c.column_name]*100)/100)]],empty,date:R.datecom};
+}
+async function wfHdcFetch(){
+  if(!WF.month){ wfLog('ต้องเลือกโฟลเดอร์เดือนก่อน','warn'); return 0; }
+  const M=(WF.months||[]).find(m=>m.n===WF.monthName); const year=M? fyOf(M.iso) : (new Date().getFullYear()+543+(new Date().getMonth()>=9?1:0));
+  const jobs=[]; for(const k of Object.keys(HDC_ID)) for(const s of SLOTS) jobs.push([k,s]);
+  const btn=$('wfHdcBtn'); if(btn){ btn.disabled=true; }
+  setStep('fetch','run',`ดึง HDC ปีงบ ${year}: 0/${jobs.length}`);
+  let ok=0, empty=0, fail=0, date='';
+  for(let i=0;i<jobs.length;i++){ const [k,s]=jobs[i];
+    try{ const R=await hdcFetch(k,s,year); const x=hdcToAoa(k,s,R); date=x.date||date;
+      if(x.empty){ empty++; continue; }
+      const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(x.aoa),'Sheet1');
+      const d=await dirPath(WF.month,'DatIN/'+DIRMAP[s],true); const w=await (await d.getFileHandle(`${KSHORT[k]} ${SLOT_TH[s]||shortD(s)}.xlsx`,{create:true})).createWritable();
+      await w.write(new Uint8Array(XLSX.write(wb,{bookType:'xlsx',type:'array'}))); await w.close(); ok++;
+    }catch(e){ fail++; wfLog(`HDC ${KPI[k].short} ${SLOT_TH[s]||s}: ${e.message}`,'bad'); if(i===0&&/fetch/i.test(e.message)){ wfLog('เรียก HDC ไม่ได้ (อาจถูกบล็อกโดยเบราว์เซอร์/เครือข่าย) — ใช้วิธีดาวน์โหลดเองในขั้นที่ 3–4 แทน','bad'); break; } }
+    setStep('fetch','run',`ดึง HDC ปีงบ ${year}: ${i+1}/${jobs.length}`);
+  }
+  if(btn) btn.disabled=false;
+  if(empty) wfLog(`HDC ยังไม่มีข้อมูลปีงบ ${year} ใน ${empty} รายการ (HDC ประมวลผลข้อมูลใหม่ช้ากว่าปลายเดือนเล็กน้อย) — ลองใหม่ภายหลัง`,'warn');
+  wfLog(`ดึง HDC สำเร็จ ${ok} ไฟล์${fail?`, ล้มเหลว ${fail}`:''}${date?` (HDC ประมวลผล ณ ${date})`:''}`, fail?'warn':'ok');
+  await wfScan(); return ok;
+}
+
+/* ====================================================================
+   PUBLISH TO TTM PORTAL (GitHub Pages: jeerapat2010-cpu/my-html-app)
+==================================================================== */
+const GH={owner:'jeerapat2010-cpu',repo:'my-html-app',branch:'main',latest:'TTMReport70.html',dir:'reports'};
+const PORTAL_URL='https://jeerapat2010-cpu.github.io/my-html-app/';
+function ghToken(){ try{ return localStorage.getItem('ttm-gh-token')||''; }catch(e){ return ''; } }
+function ghSaveToken(){ const v=$('ghTok').value.trim(); try{ if(v) localStorage.setItem('ttm-gh-token',v); else localStorage.removeItem('ttm-gh-token'); }catch(e){} $('ghTok').value=''; ghStatus(); wfLog(v?'บันทึก GitHub token ในเครื่องนี้แล้ว':'ลบ GitHub token แล้ว','ok'); }
+function ghStatus(){ const el=$('ghState'); if(el) el.innerHTML = ghToken()? '<span class="pill ok">ตั้งค่าแล้ว</span>' : '<span class="pill warn">ยังไม่ได้ตั้งค่า token</span>'; }
+function b64utf8(str){ const bytes=new TextEncoder().encode(str); let bin=''; for(let i=0;i<bytes.length;i+=0x8000) bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000)); return btoa(bin); }
+async function ghPut(path,content,msg){
+  const tok=ghToken(); if(!tok) throw new Error('ยังไม่ได้ตั้งค่า GitHub token');
+  const url=`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${path.split('/').map(encodeURIComponent).join('/')}`;
+  const H={Authorization:'Bearer '+tok,Accept:'application/vnd.github+json'};
+  let sha; const g=await fetch(url+'?ref='+GH.branch,{headers:H}); if(g.ok) sha=(await g.json()).sha; else if(g.status!==404) throw new Error('GitHub '+g.status+(g.status===401?' (token ไม่ถูกต้อง/หมดอายุ)':''));
+  const r=await fetch(url,{method:'PUT',headers:H,body:JSON.stringify({message:msg,content:b64utf8(content),branch:GH.branch,...(sha?{sha}:{})})});
+  if(!r.ok) throw new Error('GitHub '+r.status+' '+((await r.json().catch(()=>({}))).message||''));
+}
+async function ghGetJson(path){ const tok=ghToken(); const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${path}?ref=${GH.branch}`,{headers:{Authorization:'Bearer '+tok,Accept:'application/vnd.github.raw+json'}}); if(!r.ok) return null; try{ return await r.json(); }catch(e){ return null; } }
+async function publishPortal(){
+  const M=MONTHS[CUR]; if(!M){ wfLog('ยังไม่มีรายงาน — กด “ตรวจสอบ & สร้างแดชบอร์ด” ก่อน','warn'); return false; }
+  if(!ghToken()){ wfLog('ยังไม่ได้ตั้งค่า GitHub token (ขั้นที่ 7)','warn'); setStep('export',(WF.st.export||{}).st||'todo','ยังไม่ได้ตั้งค่าการอัปขึ้น Portal'); return false; }
+  const b=$('ghPubBtn'); if(b) b.disabled=true; $('ghMsg').textContent='กำลังอัปขึ้น Portal…';
+  try{
+    const html=snapshotHtml(); const key=M.iso||CUR; const stamp=fileStamp(M);
+    await ghPut(GH.latest, html, `รายงานเดือน กวป. ${stamp} (ล่าสุด)`);
+    await ghPut(`${GH.dir}/TTMReport-${key}.html`, html, `รายงานเดือน กวป. ${stamp}`);
+    let man=(await ghGetJson(`${GH.dir}/manifest.json`))||[]; if(!Array.isArray(man)) man=[];
+    man=man.filter(x=>x.key!==key); man.push({key,label:`ข้อมูล ณ ${thaiDate(M.iso)}`,file:`TTMReport-${key}.html`,updated:new Date().toISOString()}); man.sort((a,b)=>String(b.key).localeCompare(String(a.key)));
+    await ghPut(`${GH.dir}/manifest.json`, JSON.stringify(man,null,1), `อัปเดตรายการรายงาน ${stamp}`);
+    const link=PORTAL_URL+GH.latest;
+    $('ghMsg').innerHTML=`อัปขึ้น Portal แล้ว (GitHub Pages ใช้เวลาประมาณ 1–2 นาที) • <a href="${link}" target="_blank" rel="noopener">${link}</a>`;
+    wfLog(`อัปรายงาน ${stamp} ขึ้น Portal แล้ว`,'ok'); return true;
+  }catch(e){ $('ghMsg').textContent='อัปไม่สำเร็จ: '+e.message; wfLog('อัปขึ้น Portal ไม่สำเร็จ: '+e.message,'bad'); return false; }
+  finally{ if(b) b.disabled=false; }
+}
+
+/* ---- AUTO ---- */
+async function wfAuto(){
+  const b=$('wfAutoBtn'); b.disabled=true; b.textContent='กำลังทำงาน…';
+  try{
+    if(!WF.root){ await wfPickRoot(); if(!WF.root) return; }
+    else if(!(await perm(WF.root,true))){ wfLog('ไม่ได้รับอนุญาตเข้าถึงโฟลเดอร์ปี','bad'); return; }
+    if(!WF.month){ wfLog('ยังไม่มีโฟลเดอร์เดือน — สร้างให้อัตโนมัติ','info'); await wfNewMonth(); }
+    await wfScan();
+    { const cv=coverage(); if(cv.have<cv.need) await wfHdcFetch(); }
+    if(WF.dl && await wfImportScan()){ WF.imports.forEach(x=>x.on=!!x.dest); await wfImportRun(); }
+    const {need,have}=coverage();
+    if(have<need){ wfLog(`ข้อมูลยังขาด ${need-have} ไฟล์ — ดูช่อง ✗ ในขั้นที่ 3 แล้วดึงเพิ่ม จากนั้นกด Auto อีกครั้ง`,'warn'); if(!$('wfForce').checked){ await wfBuild(); return; } }
+    await wfBuild(); await wfExportAll();
+    if($('ghAuto').checked && (WF.st.export||{}).st==='done') await publishPortal();
+    wfLog('ทำงานอัตโนมัติเสร็จ','ok');
+  } finally { b.disabled=false; b.textContent='▶ ทำอัตโนมัติ (Auto)'; }
+}
+
+if(window.__SNAPSHOT__){ document.querySelectorAll('#tabs a').forEach(a=>{ if(['p-wf','p-start','p-export'].includes(a.dataset.p)) a.classList.add('hidden'); }); $('topActions').classList.add('hidden'); document.querySelector('.top h1').textContent='รายงานผลการดำเนินงานประจำเดือน กลุ่มงานการแพทย์แผนไทยฯ สสจ.สมุทรปราการ'; document.title='รายงานเดือน กวป. แพทย์แผนไทย สมุทรปราการ'; loadSnapshot(window.__SNAPSHOT__); } else wfInit();
+</script>
+</body>
+</html>
