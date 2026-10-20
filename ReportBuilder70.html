@@ -1508,6 +1508,64 @@ function tplHerbUC(M,T){
 }
 const HB_HOSP=['10685','10754','10752','10753','10755','28785'];
 TPL_BUILDERS.HerbUC=tplHerbUC;
+/* ---------- PAYBackUC (เงินชดเชย สปสช. เทียบมูลค่าใช้ UC) ---------- */
+function tplPAYBackUC(M,T){
+  const base=T&&T['PAYBackUC.base']; const u=M.db.UC, O=M.db.ONTOP; if(!base||!u||!u.province||!O) return null;
+  const V=tplVars(M); const [y,m,dd]=M.iso.split('-').map(Number); const be=y+543;
+  V.MON_L=`${TH_MON_S[m-1]} ${be}`; V.UC_DATE=`${dd} ${TH_MON_S[m-1]} ${be}`;
+  const sum=(a,f)=>a.reduce((s,x)=>s+(Number(typeof f==='function'?f(x):x[f])||0),0);
+  const f2=v=>Number(v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const sn=n=>String(n||'').replace(/^โรงพยาบาลส่งเสริมสุขภาพตำบล/,'รพสต.').replace(/^โรงพยาบาล/,'รพ.');
+  // มูลค่าใช้รายหน่วย (UC)
+  const ucU={}; DISTRICTS.forEach(Dk=>{ const x=u.unit[Dk.key]; if(x) x.rows.forEach(r=>ucU[String(r.code).padStart(5,'0')]=r); });
+  // เงินชดเชยรายหน่วย (ไฟล์ on-top รายอำเภอ) + รายการเสริมจากไฟล์ทั้งจังหวัด
+  const pay={}; DISTRICTS.forEach(Dk=>{ const x=O.unit[Dk.key]; if(x) x.rows.forEach(r=>{ pay[r.code]={...r,src:`รายละเอียด ontop ${V.MON_L} (${Dk.key})`,fileDist:Dk.key}; }); });
+  const provRows=O.province?O.province.rows:[]; let suppPay=0;
+  provRows.forEach(r=>{ if(!pay[r.code]&&UNIT_MAP[r.code]&&UNIT_MAP[r.code].type!=='H'){ pay[r.code]={...r,src:`ตารางชดเชยรวมทั้งจังหวัด ${V.MON_L} (${r.code})`,supp:true}; suppPay+=r.amount; } });
+  const units=UNITS.map(([code,dist,name])=>{ const use=ucU[code]?ucU[code].value:0; const p=pay[code]; const pv=p?p.amount:0;
+    return {district:dist,code,name:sn(name),use,pay:pv,items:p?(p.items||0):0,ratio:use?pv/use:0,gap:use-pv,match:p?(use?'matched':'no_use'):'no_pay',source:p?p.src:`ไม่พบเงินชดเชยในไฟล์ ontop ${V.MON_L}`}; });
+  Object.values(pay).forEach(p=>{ if(!UNIT_MAP[p.code]) units.push({district:p.fileDist||'',code:p.code,name:p.name,use:0,pay:p.amount,items:p.items||0,ratio:0,gap:-p.amount,match:'no_use',source:p.src}); });
+  units.forEach(x=>{ if(x.match==='matched'&&!x.use) x.match='no_use'; });
+  // อำเภอ
+  const districts=DISTRICTS.map(Dk=>{ const us=units.filter(x=>x.district===Dk.key&&UNIT_MAP[x.code]); const h=us.find(x=>UNIT_MAP[x.code].type==='H');
+    return {district:Dk.key,hospital:h?h.name:'',hUse:h?h.use:0,hPay:h?h.pay:0,nUse:sum(us.filter(x=>x!==h),'use'),nPay:sum(us.filter(x=>x!==h),'pay')}; });
+  // จังหวัด/เขต
+  const tot=provRows.length?sum(provRows,'amount'):sum(units,'pay'); const items=provRows.length?sum(provRows,'items'):sum(units,'items');
+  const pub=provRows.length?sum(provRows.filter(r=>UNIT_MAP[r.code]),'amount'):tot;
+  const use=u.province.total.value;
+  const official={use,pay:tot,ratio:use?tot/use:0};
+  const rRows=u.region?u.region.rows:(u.allprov?u.allprov.rows.filter(r=>R6.includes(r.name)):[]);
+  const tg=n=>{ const t=M.manual&&M.manual.target; return t&&t[n]!=null?t[n]:DEFAULT_TARGET[n]; };
+  const region=rRows.map(r=>{ const sp=r.name===PROV; const pr=sp?{total:tot,items}:(O.prov&&O.prov[r.name]?{total:O.prov[r.name].total,items:sum(O.prov[r.name].rows,'items')}:null);
+    const uu=sp?use:r.value, t=tg(r.name), pv=pr?pr.total:null;
+    return {province:r.name,target:t,use:uu,percent:t?uu/t:0,pay:pv,claimItems:pr?pr.items:null,claimRatio:pv!=null&&uu?pv/uu:null,claimGap:pv!=null?uu-pv:null,claimGapPct:pv!=null&&uu?(uu-pv)/uu:null}; })
+    .filter(r=>r.pay!=null).sort((a,b)=>b.percent-a.percent);
+  const R=region.length>1?region:base.region;
+  // สรุปรายหน่วย
+  const herb=units.filter(x=>UNIT_MAP[x.code]); const matched=units.filter(x=>x.match==='matched'); const detail=sum(Object.values(pay).filter(p=>!p.supp),'amount');
+  const unitUse=sum(herb,'use');
+  const meta={...base.unitMeta,provinceUse:use,unitUse,outsideNetwork:use-unitUse,detailPay:detail,supplementPay:suppPay,unitComparisonPay:detail+suppPay,comparisonPay:tot,
+    matchedPay:sum(matched,'pay'),unmatchedPay:sum(units.filter(x=>!UNIT_MAP[x.code]),'pay'),herbUnitCount:herb.length,matchedUnitCount:matched.length,noPayCount:units.filter(x=>x.match==='no_pay').length,
+    payoutOnlyCount:units.filter(x=>x.match==='no_use').length,over100Count:matched.filter(x=>x.ratio>1).length,over120Count:matched.filter(x=>x.ratio>1.2).length,lowUnder30Count:matched.filter(x=>x.ratio<.3).length,
+    xlsxProvinceSummary:tot,xlsxProvinceItems:items,publicUcPay:pub,privateUcPay:tot-pub,privateUcReported:tot-pub,totalUcPay:tot,publicDetailPay:detail+suppPay,publicDetailDifference:pub-(detail+suppPay),
+    districtDetailPay:detail,version:'RB',updated:V.DATE_LONG,payoutSourceFile:`ไฟล์ on-top ${V.MON_L} (DatIN/11 OnTop สปสช)`};
+  V.J_region=R; V.J_districts=districts; V.J_official=official; V.J_unitData=units; V.J_unitMeta=meta;
+  V.J_monthlyPayData=base.monthlyPayData; V.J_monthlyMeta=base.monthlyMeta; V.NPROV=Math.max(0,R.length-1);
+  const mu=districts.find(d=>d.district==='เมืองสมุทรปราการ'); const muSum=provRows.filter(r=>UNIT_MAP[r.code]&&UNIT_MAP[r.code].district==='เมืองสมุทรปราการ'&&UNIT_MAP[r.code].type==='H')[0];
+  V.GOV=`<h2>ข้อเสนอด้าน Data Governance • Update ${V.DATE_LONG}</h2>
+        <p><strong>1) ยอดเงินชดเชยรวมจังหวัดล่าสุด:</strong> ${f2(tot)} บาท / ${fmtN(items)} รายการ จากตาราง “ชดเชยรวมทั้งจังหวัด” ในไฟล์ ${V.MON_L}</p>
+        <p><strong>2) กลุ่มหน่วยบริการในสังกัด สป.สธ.</strong> รวม ${f2(pub)} บาท ส่วนหน่วยอื่นในตารางเดียวกันรวม ${f2(tot-pub)} บาท จึงแสดงเป็น <strong>นอกสังกัด สป.สธ./หน่วยอื่น</strong> โดยไม่เหมารวมว่าเป็นภาคเอกชนทั้งหมด</p>
+        <p><strong>3) รายละเอียด ontop รายอำเภอ${suppPay?' + รายการเสริม':''}</strong> รวม ${f2(detail+suppPay)} บาท ${pub-(detail+suppPay)>0?'ต่ำกว่า':'สูงกว่า'}ยอดกลุ่มสังกัด สป.สธ. ในตารางจังหวัด ${f2(Math.abs(pub-(detail+suppPay)))} บาท จึงแสดงเป็น <strong>ส่วนต่างรอกระทบยอด</strong></p>
+        <p><strong>4) กราฟรายเดือน</strong> ยังใช้ฐานเดิมถึง 26 ส.ค. 2569 เพราะไฟล์ on-top ที่ได้รับเป็นยอดสะสมรายหน่วย ไม่มีการแจกแจงรายเดือน จึงไม่อนุมานยอดรายเดือนจากส่วนต่างสะสม</p>
+        <p><strong>5) การจับคู่รายหน่วย:</strong> จับคู่ได้ ${matched.length}/${herb.length} หน่วย • ไม่พบเงินชดเชย ${meta.noPayCount} หน่วย • ชดเชยต่ำกว่า 30% ${meta.lowUnder30Count} หน่วย • สูงกว่า 100% ${meta.over100Count} หน่วย</p>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:16px">หลักการใช้ข้อมูล: มูลค่าการใช้ (HerbUC) และเงินชดเชยเป็นชุดข้อมูลรอบ ${V.MON_L} ทั้งคู่ แต่ไฟล์ on-top ไม่ได้ระบุ cutoff การจ่ายเงินภายในไฟล์ จึงควรอ่านร้อยละชดเชยเป็นตัวชี้วัดเชิงบริหาร</div>`;
+  const mil=v=>(v/1e6).toFixed(2); V.PILL=`Update ${mil(use)} / ${mil(tot)} ล้านบาท`; V.BASELINE=`ใช้ ${mil(use)} ล้านบาท ชดเชยรวม ${mil(tot)} ล้านบาท คิดเป็น ${(official.ratio*100).toFixed(1)}%`;
+  V.FOOTER=`แหล่งข้อมูล: HerbUC (มูลค่าการใช้ยาสมุนไพร UC) รอบ ${V.MON_L} • สมุทรปราการ: ontop ${Object.keys(O.unit).length} อำเภอ${O.province?' + ตารางชดเชยรวมทั้งจังหวัด':''} • รายจังหวัดอื่นในเขต 6: ไฟล์ on-top ${V.NPROV} จังหวัด • จับคู่รายหน่วยด้วยรหัสหน่วยบริการ • จัดทำโดย ภก.จีรภัทร พลายงาม • สร้างอัตโนมัติจาก ReportBuilder ${V.DATE_LONG}`;
+  return V;
+}
+TPL_BUILDERS.PAYBackUC=tplPAYBackUC;
 
 async function loadTemplates(){ const out={}; if(!WF.root) return out; const dir=await tryDir(WF.root,'00 เครื่องมือ/templates'); if(!dir) return out;
   for await (const [n,h] of dir.entries()){ const mm=n.match(/^(.+)\.tpl\.html$/); if(mm&&h.kind==='file') out[mm[1]]=await (await h.getFile()).text(); const mj=n.match(/^(.+\.base)\.json$/); if(mj&&h.kind==='file'){ try{ out[mj[1]]=JSON.parse(await (await h.getFile()).text()); }catch(e){} } }
