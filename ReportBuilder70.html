@@ -1110,6 +1110,10 @@ async function wfInit(){
 async function wfReconnect(){ if(await perm(WF.root,true)){ $('wfReconnect').classList.add('hidden'); if(WF.dl) await perm(WF.dl,true); await afterRoot(); } }
 async function wfPickRoot(){ if(!FS_OK) return; try{ const h=await window.showDirectoryPicker({id:'ttm-root',mode:'readwrite'}); WF.root=h; await idb.set('root',h); await afterRoot(); }catch(e){ if(e.name!=='AbortError') wfLog('เชื่อมต่อโฟลเดอร์ไม่ได้: '+e.message,'bad'); } }
 async function afterRoot(){
+  if(/^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(WF.root.name) || await tryDir(WF.root,'DatIN')){
+    $('wfRootName').innerHTML=`<span class="pill bad">เลือกผิดโฟลเดอร์</span> “${esc(WF.root.name)}” เป็นโฟลเดอร์เดือน — กด “เชื่อมต่อโฟลเดอร์ปี…” แล้วเลือกโฟลเดอร์ <b>00 All Report 70</b> ที่อยู่ชั้นบน`;
+    setStep('root','warn','เลือกโฟลเดอร์ปีใหม่'); wfLog(`“${WF.root.name}” เป็นโฟลเดอร์เดือน ไม่ใช่โฟลเดอร์ปี — กรุณาเลือก 00 All Report 70`,'bad'); WF.month=null; WF.root=null; await idb.set('root',null); renderGrid(); return;
+  }
   $('wfRootName').innerHTML=`เชื่อมต่อแล้ว: <b>${esc(WF.root.name)}</b>`; setStep('root','done',WF.root.name);
   if(!/report|พผท|\d{2}$/i.test(WF.root.name)) wfLog(`ชื่อโฟลเดอร์ “${WF.root.name}” ไม่เหมือนโฟลเดอร์ปี (เช่น 00 All Report 70) — ตรวจว่าเลือกถูกหรือไม่`,'warn');
   await listMonths();
