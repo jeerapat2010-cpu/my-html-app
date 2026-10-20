@@ -1572,7 +1572,7 @@ function distCore(M,T,dk){ // ข้อมูลรายหน่วยขอ�
   if(M.__dc&&M.__dc[dk]) return M.__dc[dk]; M.__dc=M.__dc||{};
   const by=k=>{ const u=M.db[k]&&M.db[k].unit[dk]; const o={}; if(u) u.rows.forEach(r=>o[String(r.code||'').padStart(5,'0')]=r); return {map:o,total:u&&u.total,rows:u?u.rows:[]}; };
   let H=null; try{ const hv=TPL_BUILDERS.HerbUC&&TPL_BUILDERS.HerbUC(M,T); H=hv?hv.J_DATA:null; }catch(e){ console.error(e); }
-  const ot={}; const O=M.db.ONTOP; if(O&&O.unit[dk]) O.unit[dk].rows.forEach(r=>ot[r.code]=r); if(O&&O.province) O.province.rows.forEach(r=>{ const um=UNIT_MAP[r.code]; if(!ot[r.code]&&um&&um.district===dk&&um.type!=='H') ot[r.code]={...r,supp:true}; });
+  const ot={}; const O=M.db.ONTOP; if(O&&O.unit[dk]) O.unit[dk].rows.forEach(r=>ot[r.code]=r); if(O) Object.entries(O.unit).forEach(([d2,x])=>{ if(d2!==dk) x.rows.forEach(r=>{ const um=UNIT_MAP[r.code]; if(!ot[r.code]&&um&&um.district===dk) ot[r.code]={...r,crossFile:d2}; }); }); if(O&&O.province) O.province.rows.forEach(r=>{ const um=UNIT_MAP[r.code]; if(!ot[r.code]&&um&&um.district===dk&&um.type!=='H') ot[r.code]={...r,supp:true}; });
   const uc={}; if(M.db.UC&&M.db.UC.unit[dk]) M.db.UC.unit[dk].rows.forEach(r=>uc[String(r.code).padStart(5,'0')]=r);
   const cup=O&&O.province? O.province.rows.find(r=>UNIT_MAP[r.code]&&UNIT_MAP[r.code].district===dk&&UNIT_MAP[r.code].type==='H') : null;
   return M.__dc[dk]={PRIM:by('PRIM'),COM:by('COM'),IMC:by('IMC'),PP:by('PP'),H,ot,uc,cup,O};
@@ -1633,7 +1633,7 @@ function tplDATAMUNG(M,T){
   // ---- เงินชดเชย สปสช.
   const O=C.O; const NM=JSON.parse(JSON.stringify(base.NHSO_MENU_DATA));
   if(O){ const provRows=O.province?O.province.rows:[]; const provTot=provRows.length?sum(provRows,'amount'):null;
-    const net=Object.values(C.ot).filter(r=>!r.supp); const netTot=sum(net,'amount'); const cupTot=C.cup?C.cup.amount:netTot;
+    const net=Object.values(C.ot).filter(r=>!r.supp&&!r.crossFile); const netTot=sum(net,'amount'); const cupTot=C.cup?C.cup.amount:netTot;
     D.nhsoCompensation={...D.nhsoCompensation,total:cupTot,networkTotal:netTot,difference:cupTot-netTot,
       sourceNote:`PAYBackUC ${V.MON_S}: ยอดสรุปเมือง ${f2n(cupTot)} บาท; ผลรวมรายละเอียดหน่วย ${f2n(netTot)} บาท; ส่วนต่าง ${f2n(cupTot-netTot)} บาทคงเป็นรายการกระทบยอด • กราฟรายเดือนใช้ฐานเดิมถึง 26 ส.ค. 2569`};
     Object.entries(DM_KEY).forEach(([full,key])=>{ const rows=O.unit[full]?O.unit[full].rows:[]; const cp=provRows.find(r=>UNIT_MAP[r.code]&&UNIT_MAP[r.code].district===full&&UNIT_MAP[r.code].type==='H');
@@ -1717,7 +1717,7 @@ function distUpdate(B,M,T,dk,V){
   const set=(o,k,v)=>{ if(has(o,k)) o[k]=v; };
   const sn=n=>String(n||'').replace(/^โรงพยาบาลส่งเสริมสุขภาพตำบล/,'รพสต.').replace(/^โรงพยาบาล/,'รพ.');
   const ds=HB_SHORT(dk); const hU={}; if(H) H.units.forEach(x=>hU[x.code]=x); const hd=H&&H.districts.find(x=>x.name===ds);
-  const CAN=['pc_b','pc_a','pc_pct','pc_b_visits','pc_a_visits','pc_pct_visits','can_b','can_a','can_growth','can_q1_b','can_q1_a','can_q1_growth','can_q2_b','can_q2_a','can_q2_growth','can_q3_b','can_q3_a','can_q3_growth','can_q4_b','can_q4_a','can_q4_growth'];
+  const CAN=['q1_b','q1_a','q1_growth','q2_b','q2_a','q2_growth','q3_b','q3_a','q3_growth','q4_b','q4_a','q4_growth','pc_b','pc_a','pc_pct','pc_b_visits','pc_a_visits','pc_pct_visits','can_b','can_a','can_growth','can_q1_b','can_q1_a','can_q1_growth','can_q2_b','can_q2_a','can_q2_growth','can_q3_b','can_q3_a','can_q3_growth','can_q4_b','can_q4_a','can_q4_growth'];
   if(Array.isArray(D.units)){
     const codes=new Set(D.units.map(u=>u.code)); const tpl=D.units[0]||{};
     C.PRIM.rows.forEach(r=>{ const c=String(r.code).padStart(5,'0'); if(!codes.has(c)){ codes.add(c); const nu={}; Object.keys(tpl).forEach(k=>nu[k]=typeof tpl[k]==='number'?0:tpl[k]); Object.assign(nu,{code:c,name:sn(r.name),color:'#94a3b8'}); D.units.push(nu); } });
@@ -1731,6 +1731,10 @@ function distUpdate(B,M,T,dk,V){
         if(has(u,'herbTarget6')){ if(!same) u.herbTarget6=n0(h.target12m)/2; u.herbPct6=u.herbTarget6?u.herbUC/u.herbTarget6*100:0; } }
       set(u,'nhso_items',n0(o&&o.items)); set(u,'nhso_comp',n0(o&&o.amount));
       [['received','svc'],['history','hist'],['service','visits'],['history_service','hsvc'],['late','late'],['over90','over90']].forEach(([a,b])=>{ set(u,`pp_${a}_all`,n0(pp&&pp[b])); set(u,`pp_${a}_uc`,n0(pp&&pp[b+'UC'])); });
+      const alt=(a,b)=>{ set(u,`pp_${a}_all`,n0(pp&&pp[b])); set(u,`pp_${a}_uc`,n0(pp&&pp[b+'UC'])); };
+      if(has(u,'pp_birth_all')){ alt('service','svc'); alt('birth','hist'); alt('visit','visits'); alt('visit_birth','hsvc');
+        set(u,'pp_birth_match_pct',u.pp_service_all?u.pp_birth_all/u.pp_service_all*100:0); set(u,'pp_late_pct',u.pp_service_all?u.pp_late_all/u.pp_service_all*100:0); set(u,'pp_uc_share_pct',u.pp_service_all?u.pp_service_uc/u.pp_service_all*100:0); }
+      set(u,'payback_items',n0(o&&o.items)); set(u,'payback_amount',n0(o&&o.amount)); set(u,'payback_pct_herb',u.herbUC?n0(o&&o.amount)/u.herbUC*100:0);
       if(!same) CAN.forEach(k=>set(u,k,0)); });
   }
   const pt=C.PRIM.total||{}, ct=C.COM.total||{}, it=C.IMC.total||{};
@@ -1748,7 +1752,7 @@ function distUpdate(B,M,T,dk,V){
     const put={country_target:L[0].target,country_actual:L[0].value,country_pct:L[0].percent,zone_actual:L[1].value,zone_target12:L[1].target,zone_pct12:L[1].percent,zone_target10:L[1].target,zone_pct10:L[1].percent,zone_pct6:L[1].percent,
       province_actual:dt.value69,province_target10:dt.target10m,province_pct10:dt.achievement,province_target12:dt.target12m,province_pct12:dt.percent12m,province_pct6:dt.percent12m,
       value:hd?hd.value69:0,target:hd?hd.target10m:0,pct:hd?hd.achievement:0,target12:hd?hd.target12m:0,pct12:hd?hd.percent12m:0};
-    Object.keys(put).forEach(k=>set(o,k,put[k])); }
+    Object.keys(put).forEach(k=>{ if(/_pct6$/.test(k)&&!o[k]) return; set(o,k,put[k]); }); }
   const short=n=>n==='เมืองสมุทรปราการ'?'เมือง':n; const prow=(k,n)=>{ const p=M.db[k]&&M.db[k].province; if(!p) return null; const nn=n.replace(/ฯ$/,''); return p.rows.find(r=>{ const x=normDist(r.name); return x===nn||short(x)===nn; }); };
   (D.districtKpi14||[]).forEach(x=>{ const r=prow('PRIM',x.name); if(r){ x.value=n0(r.pct); set(x,'opd',n0(r.opd)); set(x,'ttm',n0(r.ttm)); } });
   (D.districtCommon||[]).forEach(x=>{ const r=prow('COM',x.name); if(r){ x.value=n0(r.growth); set(x,'b68',n0(r.b1)); set(x,'a68',n0(r.a1)); set(x,'b69',n0(r.b2)); set(x,'a69',n0(r.a2)); } });
@@ -1763,7 +1767,14 @@ function distUpdate(B,M,T,dk,V){
   const ppRow=(r,extra)=>{ const o={...extra}; const f=(a,b)=>{ o[a+'_all']=n0(r&&r[b]); o[a+'_uc']=n0(r&&r[b+'UC']); };
     f('received','svc'); f('history','hist'); f('services','visits'); f('history_services','hsvc'); f('late','late'); f('over90','over90');
     ['all','uc'].forEach(s=>{ const rc=o['received_'+s]; o['history_rate_'+s]=rc?o['history_'+s]/rc*100:0; o['avg_services_'+s]=rc?o['services_'+s]/rc:0; o['timely_'+s]=rc-o['late_'+s]; o['timely_rate_'+s]=rc?o['timely_'+s]/rc*100:0; }); return o; };
-  if(D.postpartum&&D.postpartum.units&&C.PP.total){ D.postpartum.total=ppRow(C.PP.total,{}); D.postpartum.units=D.postpartum.units.map(u=>ppRow(C.PP.map[u.code],{code:u.code,name:u.name})); set(D.postpartum,'source',`PP ${ds} ${V.MON_S} (HDC)`); set(D.postpartum,'updated',V.DATE_LONG); }
+  if(D.postpartum&&D.postpartum.units&&D.postpartum.total&&has(D.postpartum.total,'services_all')&&C.PP.total){ D.postpartum.total=ppRow(C.PP.total,{}); D.postpartum.units=D.postpartum.units.map(u=>ppRow(C.PP.map[u.code],{code:u.code,name:u.name})); set(D.postpartum,'source',`PP ${ds} ${V.MON_S} (HDC)`); set(D.postpartum,'updated',V.DATE_LONG); }
+  const ppAlt=(r,extra)=>{ const o={...extra}; const f=(a,b)=>{ o[a+'_all']=n0(r&&r[b]); o[a+'_uc']=n0(r&&r[b+'UC']); };
+    f('service','svc'); f('birth','hist'); f('visit','visits'); f('visit_birth','hsvc'); f('late','late'); f('over90','over90');
+    o.birth_match_pct=o.service_all?o.birth_all/o.service_all*100:0; o.late_pct=o.service_all?o.late_all/o.service_all*100:0; o.uc_share_pct=o.service_all?o.service_uc/o.service_all*100:0; return o; };
+  if(D.postpartum&&D.postpartum.total&&has(D.postpartum.total,'birth_all')&&C.PP.total){ const pu=D.postpartum.units; D.postpartum.total={...D.postpartum.total,...ppAlt(C.PP.total,{})};
+    if(Array.isArray(pu)) D.postpartum.units=pu.map(u=>({...u,...ppAlt(C.PP.map[u.code],{})})); const tt=D.postpartum.total; if(Array.isArray(pu)){ set(tt,'unit_count',pu.length); set(tt,'active_units',D.postpartum.units.filter(u=>u.service_all>0).length); set(tt,'zero_units',D.postpartum.units.filter(u=>!u.service_all).length); } set(D.postpartum,'sourceDate',V.DATE_LONG); }
+  if(D.payback&&C.O){ const pb=D.payback; if(pb.units) pb.units=pb.units.map(u=>{ const o=C.ot[u.code]; return {...u,items:n0(o&&o.items),amount:n0(o&&o.amount)}; });
+    const tot=sum(pb.units||[],'amount'); set(pb,'total',tot); set(pb,'claimCount',sum(pb.units||[],'items')); set(pb,'pctOfHerbUC',hd&&hd.value69?tot/hd.value69*100:0); set(pb,'sourceDate',V.DATE_LONG); }
   // เงินชดเชย
   if(D.compensation&&C.O){ const cp=D.compensation; const rows=Object.values(C.ot);
     if(cp.units) cp.units=cp.units.map(u=>{ const o=C.ot[u.code]; return {...u,items:n0(o&&o.items),amount:n0(o&&o.amount)}; });
@@ -1822,6 +1833,91 @@ function tplDATAPS1(M,T){
 }
 const sum0=(a,k)=>a.reduce((s,x)=>s+(Number(x[k])||0),0);
 TPL_BUILDERS.DATAPS1=tplDATAPS1;
+/* ---------- ส่วนช่วยสร้างข้อความรายอำเภอ ---------- */
+function distFacts(M,D,dk){ const S=M.S; const c14=crit(M,'PRIM'), cC=crit(M,'COM'), cI=20;
+  const k=D.kpi14Total, cm=D.commonTotal, im=D.imcTotal; const rank=(arr,f,n)=>[...(arr||[])].sort((a,b)=>f(b)-f(a)).findIndex(x=>x.name===n||x.name===n+'ฯ')+1;
+  const H=distCore(M,null,dk).H; const ds=HB_SHORT(dk); const hd=H&&H.districts.find(x=>x.name===ds);
+  const ucRank=H?[...H.districts].sort((a,b)=>b.achievement-a.achievement).findIndex(x=>x.name===ds)+1:0;
+  const prow=k2=>M.db[k2]&&M.db[k2].province?M.db[k2].province.rows.map(r=>({name:normDist(r.name),v:METRIC[k2](r)})):[];
+  const rk=k2=>{ const a=prow(k2).sort((x,y)=>(y.v??-1e9)-(x.v??-1e9)); return a.findIndex(x=>x.name===dk)+1; };
+  const needImc=Math.max(0,Math.ceil(im.b*cI/100-im.a));
+  const lowUnits=(D.units||[]).filter(u=>u.opd>0&&u.kpi14<c14).map(u=>u.name);
+  const gapUnits=(D.units||[]).filter(u=>(u.herbTarget||0)>(u.herbUC||0)).sort((a,b)=>(b.herbTarget-b.herbUC)-(a.herbTarget-a.herbUC));
+  return {c14,cC,cI,k,cm,im,hd,ucRank,r14:rk('PRIM'),rC:rk('COM'),rI:rk('IMC'),needImc,lowUnits,gapUnits,
+    hv:D.herbTotal,ht:D.herbTarget10,hp:D.herbPct10,gap:Math.max(0,D.herbTarget10-D.herbTotal),P:v=>fmt(v)+'%',N:v=>fmtN(v)}; }
+function qualRows(M,hl,color){ const G=gmpParse(M); const DN=['บางบ่อ','บางพลี','บางเสาธง','พระประแดง','พระสมุทรเจดีย์','เมืองสมุทรปราการ'];
+  const rows=DN.map(n=>{ const a=G&&G.code&&G.code.dist[n]||{}, g=G&&G.gmp&&G.gmp.dist[n]||{}; return {n,f:a.found,e:a.err,o:a.ok,p:a.pct,gf:g.found,go:g.ok,gp:g.pct}; });
+  const cls=v=>v==null?'':v>=90?'cell-pass':'cell-warn'; const ff=v=>v==null?'–':fmt(v);
+  const t={f:sum0(rows,'f'),e:sum0(rows,'e'),o:sum0(rows,'o'),gf:sum0(rows,'gf'),go:sum0(rows,'go')};
+  return rows.map(r=>`<tr><td${r.n===hl?` style="font-weight:800;color:${color};"`:''}>${r.n}</td><td>${r.f??'–'}</td><td>${r.e??'–'}</td><td>${r.o??'–'}</td><td class="${cls(r.p)}">${ff(r.p)}</td><td>${r.go??'–'}/${r.gf??'–'}</td><td class="${cls(r.gp)}">${ff(r.gp)}</td></tr>`).join('\n          ')
+    +`\n          <tr><td><strong>รวม</strong></td><td>${t.f}</td><td>${t.e}</td><td>${t.o}</td><td class="${cls(t.f?t.o/t.f*100:null)}">${t.f?fmt(t.o/t.f*100):'–'}</td><td>${t.go}/${t.gf}</td><td class="${cls(t.gf?t.go/t.gf*100:null)}">${t.gf?fmt(t.go/t.gf*100):'–'}</td></tr>`; }
+function tplDATAPPD(M,T){
+  const base=T&&T['DATAPPD.base']; if(!base||!M.db.PRIM) return null; const dk='พระประแดง';
+  const V=distVars(M); const D=distUpdate(base.DATA,M,T,dk,V); V.J_DATA=D; const F=distFacts(M,D,dk); const {P,N,k,cm,im,c14,cC,cI}=F; const S=M.S;
+  const same=V.FY===2569; const pc=D.pcTotal||{};
+  V.OV_NOTE=`พระประแดงมี <strong>UC สมุนไพร ${P(F.hp)}</strong> ของเป้า 10 เดือน (${N(F.hv)} บาท) ${F.hp>=100?'เป็นจุดแข็งหลักและผ่านเป้า 10 เดือนแล้ว':`ยังขาดอีก ${f2n(F.gap)} บาท`}; KPI14 ปฐมภูมิ TTM <strong>${P(k.pct)}</strong> ${k.pct>=c14?`ผ่านเกณฑ์ ${c14}%`:`ยังต่ำกว่าเกณฑ์ ${c14}%`}; Common Disease เพิ่มขึ้น <strong>${P(cm.change)}</strong> ${cm.change>=cC?'ผ่านเกณฑ์':`ยังต่ำกว่าเกณฑ์ ${cC}%`}; IMC <strong>${P(im.pct)}</strong> ${im.pct>=cI?'ผ่านเกณฑ์':`ยังต่ำกว่าเกณฑ์ ${cI}%`}${same?`; กัญชา PC <strong>${P(pc.pct)}</strong> ${pc.pct>=10?'ผ่านเกณฑ์':'ยังต่ำกว่าเกณฑ์ 10%'}`:''}; ข้อมูลหลังคลอดและเงินชดเชยจาก สปสช. อัปเดตเป็นชุด ${V.MON_S} แล้ว โดยคงการแยก CUP รพ.สป. / CUP พระประแดง ค่ะ`;
+  V.QUAL_ROWS=qualRows(M,'พระประแดง','#ec4899');
+  const sc=(bc,c,icon,label,val,sub)=>`<div class="stat-card" style="border-color:${bc};color:${c};"><div class="icon">${icon}</div><div class="label">${label}</div><div class="value small">${val}</div><div class="sublabel">${sub}</div></div>`;
+  const ok=(v,c)=>v>=c; const st=(v,c)=>ok(v,c)?'✅ ผ่าน':'❌ ต่ำกว่าเกณฑ์'; const cl=(v,c)=>ok(v,c)?'cell-pass':'cell-fail';
+  const gu=F.gapUnits.slice(0,1)[0]; const top5=(D.topHerbs||[]).slice(0,5).map(x=>x.name).join(' ');
+  const row=(name,crit,cell,cls,rank,stat,txt)=>`<tr><td style="text-align:left;font-weight:800;color:#be185d;">${name}</td><td>${crit}</td><td class="${cls}">${cell}</td><td>อันดับ ${rank}/6</td><td>${stat}</td><td style="text-align:left;">${txt}</td></tr>`;
+  const S1=[],W=[];
+  (F.hp>=100?S1:W).push(F.hp>=100?`UC สมุนไพรผ่านเป้า 10 เดือนแล้วที่ ${P(F.hp)} สะท้อนศักยภาพ รพ.บางจากและหลาย รพ.สต.`:`UC ยังขาด ${f2n(F.gap)} บาท${Math.abs(D.herbUnmatched)>1?` และผลรวมรายหน่วยต่างจากยอดสรุประดับอำเภอ ${f2n(D.herbUnmatched)} บาท ต้องกระทบยอด`:''}`);
+  (ok(k.pct,c14)?S1:W).push(ok(k.pct,c14)?`KPI14 ผ่านเกณฑ์ที่ ${P(k.pct)} สะท้อนว่าบริการแผนไทยในปฐมภูมิมีฐาน demand และมีการให้บริการจริง`:`KPI14 ${P(k.pct)} ยังต่ำกว่าเกณฑ์ ${c14}%`);
+  (ok(cm.change,cC)?S1:W).push(ok(cm.change,cC)?`Common Disease เพิ่มขึ้น ${P(cm.change)} ผ่านเกณฑ์`:`Common Disease ยังต่ำกว่าเกณฑ์ โดย growth ${P(cm.change)} ต้องเร่งให้ถึง ${cC}%`);
+  (ok(im.pct,cI)?S1:W).push(ok(im.pct,cI)?`IMC ผ่านเกณฑ์ ${P(im.pct)}`:`IMC ยังต่ำกว่าเกณฑ์ ${cI}% ต้องเพิ่มผู้ป่วยรับบริการประมาณ ${N(F.needImc)} ราย`);
+  if(!ok(im.pct,cI)&&F.rI<=2) S1.push(`IMC แม้ยังไม่ผ่าน แต่พระประแดงอยู่อันดับ ${F.rI}/6 ของจังหวัด มีฐานการดูแลมากพอให้ต่อยอดหากทำ registry ให้ครบ`);
+  S1.push('มีบุคลากรและนวัตกรรม 69 เป็นทุนสนับสนุนการขยายบริการแผนไทยเชิงคุณภาพ');
+  if(ok(k.pct,c14)&&F.lowUnits.length) W.push('KPI14 ผ่านระดับอำเภอ แต่หน่วยต่ำกว่าเกณฑ์ยังมีอยู่ ทำให้ภาพรวมเปราะบางถ้า OPD/TTM ผันผวน');
+  const ul=a=>'<ul>\n'+a.map(x=>`      <li>${x}</li>`).join('\n')+'\n    </ul>';
+  const acts=[];
+  if(F.hp<100) acts.push(row2(`UC: ปิด gap ${f2n(F.gap)} บาท`,`ผลงาน ${N(F.hv)} บาท จากเป้า ${f2n(F.ht)} บาท`,'<strong>1)</strong> เรียงหน่วยตาม gap รายสัปดาห์ <strong>2)</strong> ตรวจ stock ยาหลักและรหัสยา 24 หลัก <strong>3)</strong> ตั้งเป้ายอดเพิ่มรายหน่วยตาม gap จริง <strong>4)</strong> ใช้ รพ.บางจากเป็นแม่ข่ายสนับสนุนยา','ทีมยา + แผนไทย / รายสัปดาห์'));
+  else acts.push(row2('UC: รักษาระดับและยกระดับคุณภาพการใช้ยา',`ผลงาน ${N(F.hv)} บาท = ${P(F.hp)} ของเป้า 10 เดือน (${P(D.herbPct12)} ของเป้า 12 เดือน)`,`<strong>1)</strong> audit รายการยามูลค่าสูงกับข้อบ่งใช้ <strong>2)</strong> ตรวจรหัสยา 24 หลักรายหน่วยทุกเดือน <strong>3)</strong> คุม stock ${top5}`,'ทีมยา + แผนไทย / รายเดือน'));
+  if(!ok(cm.change,cC)) acts.push(row2('Common Disease',`growth ${P(cm.change)} ต่ำกว่าเกณฑ์ ${cC}%`,'<strong>1)</strong> ทำ standing order URI/ไอ/ปวดกล้ามเนื้อ/ท้องอืด/ท้องผูก <strong>2)</strong> ทำ prescription audit รายผู้สั่งใช้ <strong>3)</strong> coaching ข้อบ่งใช้–ข้อห้าม <strong>4)</strong> ใช้หน่วย growth สูงเป็น model','ทีมบริการ + แพทย์/พยาบาล / ทุก 2 สัปดาห์'));
+  if(!ok(im.pct,cI)) acts.push(row2('Stroke IMC',`${N(im.a)}/${N(im.b)} ราย = ${P(im.pct)} ต้องเพิ่มประมาณ ${N(F.needImc)} ราย`,'<strong>1)</strong> จัดทำ IMC registry จาก discharge/rehab <strong>2)</strong> แบ่งผู้ป่วยตามตำบลและหน่วยรับผิดชอบ <strong>3)</strong> นัดบริการแพทย์แผนไทยร่วมกายภาพ/เยี่ยมบ้าน <strong>4)</strong> ตรวจรหัสบริการให้ขึ้น HDC','ทีม IMC + รพ.สต. / รายสัปดาห์'));
+  acts.push(row2('ตชว.14 ปฐมภูมิ',`${P(k.pct)} ${ok(k.pct,c14)?'ผ่านเกณฑ์':'ต่ำกว่าเกณฑ์'}${F.lowUnits.length?` มีหน่วยต่ำกว่า ${c14}% ${F.lowUnits.length} แห่ง`:''}`,'<strong>1)</strong> ทำบัญชีหน่วยต่ำกว่าเกณฑ์ <strong>2)</strong> คัดกรอง OPD ที่เหมาะส่งต่อแผนไทยก่อนจบ visit <strong>3)</strong> เพิ่ม session บริการในหน่วย demand สูง <strong>4)</strong> ติดตามรายเดือน','หัวหน้าหน่วย + ผู้รับผิดชอบงานแผนไทย / รายเดือน'));
+  V.CUPSUM=`<div class="sec-title">📌 สรุปผลภาพรวม คปสอ.พระประแดง — ข้อมูล ${V.MON_L}</div>
+  <div class="note-box">
+    <strong>Executive Summary:</strong> ภาพรวม คปสอ.พระประแดง ณ ${V.DATE_LONG} <strong>มูลค่าสมุนไพร UC ทำได้ ${N(F.hv)} บาท คิดเป็น ${P(F.hp)} ของเป้า 10 เดือน</strong>${F.hp>=100?' ผ่านเป้าแล้ว':` เหลือช่องว่าง ${f2n(F.gap)} บาท`} ขณะที่ KPI14 ${ok(k.pct,c14)?'ผ่านเกณฑ์':'ยังไม่ผ่านเกณฑ์'}ที่ ${P(k.pct)}; Common Disease เพิ่มขึ้น ${P(cm.change)} ${ok(cm.change,cC)?'ผ่านเกณฑ์':'ยังไม่ผ่าน'} และ IMC ${P(im.pct)} ${ok(im.pct,cI)?'ผ่านเกณฑ์':'ยังไม่ผ่าน'}${(!ok(cm.change,cC)||!ok(im.pct,cI))?' ต้องแก้ด้วย clinical pathway, standing order, registry และ audit ข้อมูล':''}ค่ะ
+  </div>
+
+  <div class="grid-4">
+    ${sc('#be185d','#be185d','💊','UC สมุนไพร',P(F.hp),`${N(F.hv)} / ${f2n(F.ht)} บาท<br>อันดับ ${F.ucRank}/6 ของจังหวัด`)}
+    ${sc('#ec4899','#be185d','🏥','KPI14 ปฐมภูมิ',P(k.pct),`${N(k.ttm)} / ${N(k.opd)} ครั้ง · อันดับ ${F.r14}/6`)}
+    ${sc('#4caf50','#2e7d32','🩺','Common Diseases',P(cm.change),`ปี ${V.FYm1s} = ${P(cm.pct68)} → ปี ${V.FYs} = ${P(cm.pct69)}<br>อันดับ ${F.rC}/6`)}
+    ${sc('#9c27b0','#7b1fa2','💉','Stroke IMC',P(im.pct),`${N(im.a)} / ${N(im.b)} ราย · อันดับ ${F.rI}/6`)}
+  </div>
+
+  <div class="chart-card">
+    <h3>📊 สรุปสถานะ 4 ตัวชี้วัดหลัก</h3>
+    <div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>ตัวชี้วัด</th><th>เกณฑ์/เป้าหมาย</th><th>ผลงานพระประแดง</th><th>อันดับจังหวัด</th><th>สถานะ</th><th>บทวิเคราะห์เชิงบริหาร</th></tr></thead><tbody>
+${row('มูลค่าสมุนไพร UC',`เป้า 10 เดือน ${f2n(F.ht)} บาท`,`${N(F.hv)} บาท<br>${P(F.hp)}`,F.hp>=100?'cell-pass':'cell-warn',F.ucRank,F.hp>=100?'✅ ผ่านเป้า 10 เดือน':(F.hp>=90?'⚠️ ยังไม่ครบเป้า แต่เข้าใกล้มาก':'⚠️ ยังไม่ครบเป้า'),F.hp>=100?`ทำได้ ${P(F.hp)} เกินเป้า ${f2n(F.hv-F.ht)} บาท ควรรักษาระดับและติดตามเป้า 12 เดือน (${P(D.herbPct12)})`:`ทำได้ ${P(F.hp)} เหลือ gap ${f2n(F.gap)} บาท${gu?` จุดตัดสินคือการปิด gap ในหน่วยเป้าสูง โดยเฉพาะ ${gu.name} ที่ยังห่างเป้า ${N(gu.herbTarget-gu.herbUC)} บาท`:''}`)}
+${row('ตชว.14 ปฐมภูมิ TTM',`&gt;${c14}%`,P(k.pct),cl(k.pct,c14),F.r14,st(k.pct,c14),F.lowUnits.length?`${ok(k.pct,c14)?'ผ่านเกณฑ์ระดับอำเภอ แต่':''}ยังมีหน่วยต่ำกว่า ${c14}% ได้แก่ ${F.lowUnits.join(', ')} ต้องกำกับแบบรายหน่วย`:'ทุกหน่วยที่มีข้อมูลผ่านเกณฑ์')}
+${row('ตชว.15 Common Diseases',`เพิ่มขึ้น &gt;${cC}%`,P(cm.change),cl(cm.change,cC),F.rC,st(cm.change,cC),`สัดส่วนการสั่งใช้จาก ${P(cm.pct68)} เป็น ${P(cm.pct69)}${ok(cm.change,cC)?' ผ่านเกณฑ์ ควรรักษาระดับ':` แต่ growth ยังไม่ถึง ${cC}% ต้องเร่ง standing order และ audit ผู้สั่งใช้ในโรค common ที่มี volume สูง`}`)}
+${row('ตชว.26 Stroke IMC',`&gt;${cI}%`,P(im.pct),cl(im.pct,cI),F.rI,st(im.pct,cI),`ฐานผู้ป่วย ${N(im.b)} ราย ได้รับบริการ ${N(im.a)} ราย${F.needImc?` ต้องเพิ่มประมาณ ${N(F.needImc)} รายเพื่อแตะ ${cI}% จึงต้องทำ IMC registry และระบบนัดหมายเชิงรุก`:''}`)}
+</tbody></table></div>
+  </div>
+
+  <div class="sec-title">🔍 SWOT เชิงยุทธศาสตร์ คปสอ.พระประแดง — เน้น UC + 3 KPI หลัก</div>
+  <div class="swot-grid">
+    <div class="swot-card s-card"><h4>💪 S — จุดแข็ง</h4>${ul(S1)}</div>
+    <div class="swot-card w-card"><h4>⚠️ W — จุดอ่อน</h4>${ul(W.length?W:['ไม่มีตัวชี้วัดหลักต่ำกว่าเกณฑ์'])}</div>
+    <div class="swot-card o-card"><h4>🌟 O — โอกาส</h4>${ul([`เชื่อม UC กับ Common Disease โดยใช้กลุ่มยา ${top5} ในโรคที่มีข้อบ่งใช้ชัด`,'ใช้ One Page และ dashboard เป็นเครื่องมือ performance review รายหน่วยทุก 2 สัปดาห์','ใช้หน่วยที่ทำ Common ดีเป็นพี่เลี้ยงให้หน่วยต่ำกว่าเกณฑ์ พร้อม audit prescription รายโรค','ใช้ IMC registry ร่วมกับ rehab/เยี่ยมบ้าน เพื่อดึงผู้ป่วยที่มีรายชื่อจริงเข้าสู่บริการแพทย์แผนไทย'])}</div>
+    <div class="swot-card t-card"><h4>⚡ T — ภัยคุกคาม</h4>${ul(['ถ้า stock ยาสมุนไพรหลักหรือรหัสยา 24 หลักไม่พร้อม จะกระทบทั้ง UC และ Common Disease ทันที','IMC พึ่งพาการส่งต่อหลังจำหน่าย ถ้าไม่มีเจ้าภาพ registry ผู้ป่วยจะหลุด pathway และข้อมูลไม่ขึ้นระบบ','ความต่างระหว่างยอดรายหน่วยกับยอดสรุปอำเภออาจทำให้ผู้บริหารตีความคลาดเคลื่อน หากไม่ทำ data reconciliation','ภาระงานบุคลากรต่อหน่วยอาจจำกัดการเปิดบริการเพิ่ม หากไม่มีการกระจายภารกิจและ coaching'])}</div>
+  </div>
+
+  <div class="chart-card">
+    <h3>🛠️ แนวทางแก้ไขตัวชี้วัดที่ไม่ผ่าน/ยังไม่ครบเป้าแบบละเอียด</h3>
+    <div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>ประเด็นเร่งรัด</th><th>สถานการณ์เชิงตัวเลข</th><th>แนวทางแก้ไขเชิงปฏิบัติ</th><th>เจ้าภาพ/รอบติดตาม</th></tr></thead><tbody>
+${acts.join('\n')}
+</tbody></table></div>
+  </div>`;
+  function row2(a,b,c,d){ return `<tr><td style="text-align:left;font-weight:800;color:#be185d;">${a}</td><td>${b}</td><td style="text-align:left;">${c}</td><td>${d}</td></tr>`; }
+  V.BEST14=S.PRIM&&S.PRIM.bestName?`จ.${S.PRIM.bestName} ${P(S.PRIM.best)}`:'–';
+  V.SRC_CHIPS=['ปฐมภูมิ','สมุนไพร UC','Common Disease','IMC','PP หลังคลอด','เงินชดเชย สปสช.'].map(x=>`<span class="source-chip">${x} ${V.MON_S}</span>`).join('\n    ');
+  return V;
+}
+TPL_BUILDERS.DATAPPD=tplDATAPPD;
 
 async function loadTemplates(){ const out={}; if(!WF.root) return out; const dir=await tryDir(WF.root,'00 เครื่องมือ/templates'); if(!dir) return out;
   for await (const [n,h] of dir.entries()){ const mm=n.match(/^(.+)\.tpl\.html$/); if(mm&&h.kind==='file') out[mm[1]]=await (await h.getFile()).text(); const mj=n.match(/^(.+\.base)\.json$/); if(mj&&h.kind==='file'){ try{ out[mj[1]]=JSON.parse(await (await h.getFile()).text()); }catch(e){} } }
