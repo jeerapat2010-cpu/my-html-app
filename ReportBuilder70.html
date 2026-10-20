@@ -1500,12 +1500,15 @@ async function publishPortal(){
   const b=$('ghPubBtn'); if(b) b.disabled=true; $('ghMsg').textContent='กำลังอัปขึ้น Portal…';
   try{
     const html=snapshotHtml(); const key=M.iso||CUR; const stamp=fileStamp(M);
-    await ghPut(GH.latest, html, `รายงานเดือน กวป. ${stamp} (ล่าสุด)`);
-    await ghPut(`${GH.dir}/TTMReport-${key}.html`, html, `รายงานเดือน กวป. ${stamp}`);
     let man=(await ghGetJson(`${GH.dir}/manifest.json`))||[]; if(!Array.isArray(man)) man=[];
+    const newest=man.reduce((m,x)=>String(x.key)>m?String(x.key):m,'');
+    const isLatest=!newest || String(key)>=newest;
+    if(isLatest) await ghPut(GH.latest, html, `รายงานเดือน กวป. ${stamp} (ล่าสุด)`);
+    else wfLog(`เดือนนี้เก่ากว่ารายงานล่าสุดบน Portal — เก็บเข้าคลังย้อนหลังอย่างเดียว ไม่ทับหน้า “ล่าสุด”`,'info');
+    await ghPut(`${GH.dir}/TTMReport-${key}.html`, html, `รายงานเดือน กวป. ${stamp}`);
     man=man.filter(x=>x.key!==key); man.push({key,label:`ข้อมูล ณ ${thaiDate(M.iso)}`,file:`TTMReport-${key}.html`,updated:new Date().toISOString()}); man.sort((a,b)=>String(b.key).localeCompare(String(a.key)));
     await ghPut(`${GH.dir}/manifest.json`, JSON.stringify(man,null,1), `อัปเดตรายการรายงาน ${stamp}`);
-    const link=PORTAL_URL+GH.latest;
+    const link=isLatest? PORTAL_URL+GH.latest : PORTAL_URL+`${GH.dir}/TTMReport-${key}.html`;
     $('ghMsg').innerHTML=`อัปขึ้น Portal แล้ว (GitHub Pages ใช้เวลาประมาณ 1–2 นาที) • <a href="${link}" target="_blank" rel="noopener">${link}</a>`;
     wfLog(`อัปรายงาน ${stamp} ขึ้น Portal แล้ว`,'ok'); return true;
   }catch(e){ $('ghMsg').textContent='อัปไม่สำเร็จ: '+e.message; wfLog('อัปขึ้น Portal ไม่สำเร็จ: '+e.message,'bad'); return false; }
