@@ -1647,7 +1647,7 @@ function tplDATAMUNG(M,T){
   V.J_DATA=D; V.J_NHSO_MENU_DATA=NM;
   // ---- ข้อความวิเคราะห์ (สร้างจากตัวเลขล่าสุด)
   const P=v=>fmt(v)+'%', N=v=>fmtN(v), Mi=v=>(v/1e6).toFixed(2);
-  const c14=crit(M,'PRIM'), cC=crit(M,'COM'), cI=20; const k=D.kpi14Total, cm=D.commonTotal, im=D.imcTotal, pp=D.postpartum.city||{};
+  const c14=crit(M,'PRIM'), cC=crit(M,'COM'), cI=crit(M,'IMC'); const k=D.kpi14Total, cm=D.commonTotal, im=D.imcTotal, pp=D.postpartum.city||{};
   const herbGap=Math.max(0,D.herbTarget10-D.herbTotal), needImc=Math.max(0,Math.ceil(im.b*cI/100-im.a));
   const lateP=pp.received_all?pp.late_all/pp.received_all*100:0;
   const rankH=H?[...H.districts].sort((a,b)=>b.achievement-a.achievement).findIndex(x=>x.name===ds)+1:0;
@@ -1748,7 +1748,7 @@ function distUpdate(B,M,T,dk,V){
     const us=(D.units||[]); set(D,'herbUnmatched',hd.value69-sum(us,'herbUC')); set(D,'herbUnitValueSum',sum(us,'herbUC')); set(D,'herbUnitTarget10Sum',sum(us,'herbTarget')); if(has(D,'herbUnitPct10Sum')) D.herbUnitPct10Sum=D.herbUnitTarget10Sum?D.herbUnitValueSum/D.herbUnitTarget10Sum*100:0; }
   const ov=(o,k,extra)=>{ if(!o) return; const s=S[k]||{}; o.country=s.country??null; o.zone=s.region6??null; o.province=s.province??null; if(typeof o.best!=='object'||o.best===null) o.best=s.best??null; if(extra) Object.keys(extra).forEach(x=>set(o,x,extra[x])); };
   ov(D.kpi14Overall,'PRIM',{...D.kpi14Total}); if(D.kpi14Overall&&has(D.kpi14Overall,'status')) D.kpi14Overall.status=n0(pt.pct)>=crit(M,'PRIM')?'ผ่าน':'ไม่ผ่าน';
-  ov(D.commonOverall,'COM',{...D.commonTotal}); ov(D.imcOverall,'IMC',{...D.imcTotal});
+  ov(D.commonOverall,'COM',{...D.commonTotal}); ov(D.imcOverall,'IMC',{...D.imcTotal}); if(D.imcOverall&&has(D.imcOverall,'target')) D.imcOverall.target=crit(M,'IMC');
   if(H&&D.herbOverall){ const L=H.levels, dt=H.districtTotals, o=D.herbOverall;
     const put={country_target:L[0].target,country_actual:L[0].value,country_pct:L[0].percent,zone_actual:L[1].value,zone_target12:L[1].target,zone_pct12:L[1].percent,zone_target10:L[1].target,zone_pct10:L[1].percent,zone_pct6:L[1].percent,
       province_actual:dt.value69,province_target10:dt.target10m,province_pct10:dt.achievement,province_target12:dt.target12m,province_pct12:dt.percent12m,province_pct6:dt.percent12m,
@@ -1789,7 +1789,7 @@ function distVars(M){ const V=tplVars(M); const [y,m,dd]=M.iso.split('-').map(Nu
 function tplDATAPS1(M,T){
   const base=T&&T['DATAPS1.base']; if(!base||!M.db.PRIM) return null; const dk='พระสมุทรเจดีย์';
   const V=distVars(M); const D=distUpdate(base.DATA,M,T,dk,V); V.J_DATA=D; const S=M.S, G=gmpParse(M);
-  const P=v=>fmt(v)+'%', N=v=>fmtN(v), c14=crit(M,'PRIM'), cC=crit(M,'COM'), cI=20;
+  const P=v=>fmt(v)+'%', N=v=>fmtN(v), c14=crit(M,'PRIM'), cC=crit(M,'COM'), cI=crit(M,'IMC');
   const k=D.kpi14Total, cm=D.commonTotal, im=D.imcTotal, pp=(D.postpartum&&D.postpartum.total)||{};
   const hp=D.herbPct10, hv=D.herbTotal, ht=D.herbTarget10, over=hv-ht;
   const rank=(arr,f)=>[...arr].sort((a,b)=>f(b)-f(a));
@@ -1835,7 +1835,7 @@ function tplDATAPS1(M,T){
 const sum0=(a,k)=>a.reduce((s,x)=>s+(Number(x[k])||0),0);
 TPL_BUILDERS.DATAPS1=tplDATAPS1;
 /* ---------- ส่วนช่วยสร้างข้อความรายอำเภอ ---------- */
-function distFacts(M,D,dk){ const S=M.S; const c14=crit(M,'PRIM'), cC=crit(M,'COM'), cI=20;
+function distFacts(M,D,dk){ const S=M.S; const c14=crit(M,'PRIM'), cC=crit(M,'COM'), cI=crit(M,'IMC');
   const k=D.kpi14Total, cm=D.commonTotal, im=D.imcTotal; const rank=(arr,f,n)=>[...(arr||[])].sort((a,b)=>f(b)-f(a)).findIndex(x=>x.name===n||x.name===n+'ฯ')+1;
   const H=distCore(M,null,dk).H; const ds=HB_SHORT(dk); const hd=H&&H.districts.find(x=>x.name===ds);
   const ucRank=H?[...H.districts].sort((a,b)=>b.achievement-a.achievement).findIndex(x=>x.name===ds)+1:0;
@@ -1921,7 +1921,7 @@ ${acts.join('\n')}
 TPL_BUILDERS.DATAPPD=tplDATAPPD;
 /* ---------- บทวิเคราะห์รายหน่วยแบบอัตโนมัติ (ใช้ในหน้าที่มีวิเคราะห์รายหน่วย) ---------- */
 function unitAnalysis(u,M,style){
-  const c14=crit(M,'PRIM'), cC=crit(M,'COM'), cI=20, P=v=>fmt(v)+'%', N=v=>fmtN(v);
+  const c14=crit(M,'PRIM'), cC=crit(M,'COM'), cI=crit(M,'IMC'), P=v=>fmt(v)+'%', N=v=>fmtN(v);
   const ex=!!u.primaryExempt; const k={uc:(u.herbPct||0)>=100, k14:ex?null:(u.kpi14||0)>=c14, com:(u.commonChange||0)>=cC, imc:(u.imc_b||0)>0?(u.imc_pct||0)>=cI:null};
   const evald=Object.values(k).filter(v=>v!==null), pass=evald.filter(Boolean).length;
   const nm={uc:style==='aug'?'UC':'สมุนไพร UC',k14:style==='aug'?'KPI14':'KPI14 ปฐมภูมิ',com:style==='aug'?'Common':'Common Diseases',imc:style==='aug'?'IMC':'Stroke IMC'};
