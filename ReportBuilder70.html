@@ -1589,7 +1589,7 @@ function tplDATAMUNG(M,T){
   const hU={}; if(H) H.units.forEach(x=>hU[x.code]=x);
   // ---- รายหน่วย
   const codes=new Set(D.units.map(u=>u.code));
-  C.PRIM.rows.forEach(r=>{ const c=String(r.code).padStart(5,'0'); if(!codes.has(c)){ codes.add(c); D.units.push({code:c,name:sn(r.name),color:'#94a3b8'}); } });
+  C.PRIM.rows.forEach(r=>{ const c=String(r.code).padStart(5,'0'); if(!codes.has(c)&&(n0(r.opd)>0||C.uc[c])){ codes.add(c); D.units.push({code:c,name:sn(r.name),color:'#94a3b8'}); } });
   D.units=D.units.map(u0=>{ const u={...u0}; const c=u.code; const p=C.PRIM.map[c], cm=C.COM.map[c], im=C.IMC.map[c], pp=C.PP.map[c], h=hU[c], uc=C.uc[c], o=C.ot[c];
     Object.assign(u,{opd:n0(p&&p.opd),ttm:n0(p&&p.ttm),kpi14:n0(p&&p.pct),commonB68:n0(cm&&cm.b1),commonA68:n0(cm&&cm.a1),common68:n0(cm&&cm.c1),commonB69:n0(cm&&cm.b2),commonA69:n0(cm&&cm.a2),common69:n0(cm&&cm.c2),commonChange:n0(cm&&cm.growth),
       imc_b:n0(im&&im.b),imc_a:n0(im&&im.a),imc_pct:n0(im&&im.pct),herbTimes:n0(uc&&uc.course),herbUC:n0(uc&&uc.value),
@@ -1720,7 +1720,7 @@ function distUpdate(B,M,T,dk,V){
   const CAN=['q1_b','q1_a','q1_growth','q2_b','q2_a','q2_growth','q3_b','q3_a','q3_growth','q4_b','q4_a','q4_growth','pc_b','pc_a','pc_pct','pc_b_visits','pc_a_visits','pc_pct_visits','can_b','can_a','can_growth','can_q1_b','can_q1_a','can_q1_growth','can_q2_b','can_q2_a','can_q2_growth','can_q3_b','can_q3_a','can_q3_growth','can_q4_b','can_q4_a','can_q4_growth'];
   if(Array.isArray(D.units)){
     const codes=new Set(D.units.map(u=>u.code)); const tpl=D.units[0]||{};
-    C.PRIM.rows.forEach(r=>{ const c=String(r.code).padStart(5,'0'); if(!codes.has(c)){ codes.add(c); const nu={}; Object.keys(tpl).forEach(k=>nu[k]=typeof tpl[k]==='number'?0:tpl[k]); Object.assign(nu,{code:c,name:sn(r.name),color:'#94a3b8'}); D.units.push(nu); } });
+    C.PRIM.rows.forEach(r=>{ const c=String(r.code).padStart(5,'0'); if(!codes.has(c)&&(n0(r.opd)>0||C.uc[c])){ codes.add(c); const nu={}; Object.keys(tpl).forEach(k=>nu[k]=typeof tpl[k]==='number'?0:tpl[k]); Object.assign(nu,{code:c,name:sn(r.name),color:'#94a3b8'}); D.units.push(nu); } });
     D.units.forEach(u=>{ const c=u.code, p=C.PRIM.map[c], cm=C.COM.map[c], im=C.IMC.map[c], h=hU[c], uc=C.uc[c], o=C.ot[c], pp=C.PP.map[c];
       set(u,'opd',n0(p&&p.opd)); set(u,'ttm',n0(p&&p.ttm)); set(u,'kpi14',n0(p&&p.pct));
       [1,2,3,4].forEach(q=>set(u,`q${q}_14`,p&&p.q&&p.q[q-1]&&p.q[q-1].pct!=null?n0(p.q[q-1].pct):n0(p&&p.pct)));
@@ -1918,6 +1918,69 @@ ${acts.join('\n')}
   return V;
 }
 TPL_BUILDERS.DATAPPD=tplDATAPPD;
+/* ---------- บทวิเคราะห์รายหน่วยแบบอัตโนมัติ (ใช้ในหน้าที่มีวิเคราะห์รายหน่วย) ---------- */
+function unitAnalysis(u,M,style){
+  const c14=crit(M,'PRIM'), cC=crit(M,'COM'), cI=20, P=v=>fmt(v)+'%', N=v=>fmtN(v);
+  const ex=!!u.primaryExempt; const k={uc:(u.herbPct||0)>=100, k14:ex?null:(u.kpi14||0)>=c14, com:(u.commonChange||0)>=cC, imc:(u.imc_b||0)>0?(u.imc_pct||0)>=cI:null};
+  const evald=Object.values(k).filter(v=>v!==null), pass=evald.filter(Boolean).length;
+  const nm={uc:style==='aug'?'UC':'สมุนไพร UC',k14:style==='aug'?'KPI14':'KPI14 ปฐมภูมิ',com:style==='aug'?'Common':'Common Diseases',imc:style==='aug'?'IMC':'Stroke IMC'};
+  const passN=Object.keys(k).filter(x=>k[x]===true).map(x=>nm[x]), failN=Object.keys(k).filter(x=>k[x]===false).map(x=>nm[x]);
+  const focus=style==='aug'?`ประเมินได้ ${pass}/${evald.length} KPI${passN.length?` ผ่าน ${passN.join(', ')}`:''}${failN.length?` ต้องเร่ง ${failN.join(', ')}`:''}`
+    :`ประเมินได้ ${pass}/${evald.length} KPI โดย${passN.length?` ผ่าน ${passN.join(', ')}`:'ยังไม่ผ่านตัวใด'}${failN.length?` แต่ต้องเร่ง ${failN.join(', ')}`:''}`;
+  const needTTM=Math.max(0,Math.ceil((u.opd||0)*c14/100-(u.ttm||0))), needImc=Math.max(0,Math.ceil((u.imc_b||0)*cI/100-(u.imc_a||0)));
+  const S=[],W=[];
+  if(!ex&&u.opd) (k.k14?S:S).push(style==='aug'?`KPI14 ${P(u.kpi14)} จาก TTM ${N(u.ttm)}/OPD ${N(u.opd)} ครั้ง`:`มีฐาน OPD ${N(u.opd)} ครั้ง สำหรับคัดกรองเข้าบริการ TTM`);
+  S.push(`สมุนไพร UC ${N(u.herbUC)} บาท ${style==='aug'?`(${P(u.herbPct)} ของเป้า 10 เดือน)`:`คิดเป็น ${P(u.herbPct)} ของเป้า 10 เดือน`}`);
+  if(u.commonB69) S.push(style==='aug'?`Common Diseases ปี ${String(fyOf(M.iso)).slice(2)} สั่งใช้ ${N(u.commonA69)}/${N(u.commonB69)} ครั้ง (${P(u.common69)}) และเพิ่มขึ้น ${P(u.commonChange)}`:`Common Diseases เพิ่ม ${P(u.commonChange)} และปี ${String(fyOf(M.iso)).slice(2)} มีสัดส่วนใช้สมุนไพร ${P(u.common69)}`);
+  if(u.imc_b) S.push(style==='aug'?`มีข้อมูล IMC ${N(u.imc_a)}/${N(u.imc_b)} ราย (${P(u.imc_pct)}) สำหรับวางแผนติดตามรายคน`:`IMC มีผู้รับบริการ ${N(u.imc_a)}/${N(u.imc_b)} ราย (${P(u.imc_pct)})`);
+  if(k.uc===false) W.push(`สมุนไพร UC ${P(u.herbPct)} ของเป้า 10 เดือน ยังขาด ${N(Math.max(0,(u.herbTarget||0)-(u.herbUC||0)))} บาท`);
+  if(k.k14===false) W.push(`KPI14 ต่ำกว่าเกณฑ์ ต้องเพิ่มบริการ TTM ${style==='aug'?'ประมาณ':'อย่างน้อยประมาณ'} ${N(needTTM)} ครั้ง${style==='aug'?`เพื่อแตะ ${c14}%`:''}`);
+  if(k.com===false) W.push(`Common Diseases เพิ่ม ${P(u.commonChange)} ต่ำกว่าเกณฑ์ ${cC}% ต้อง${style==='aug'?'จับคู่ diagnosis กับรายการสมุนไพรให้ชัด':'เชื่อมโรคเป้าหมายกับรายการสมุนไพรให้ชัด'}`);
+  if(k.imc===false) W.push(`IMC ${style==='aug'?'ต่ำกว่าเกณฑ์':'ยังต่ำกว่าเกณฑ์'} ต้องเพิ่มผู้ป่วยรับบริการประมาณ ${N(needImc)} ราย${style==='aug'?`เพื่อแตะ ${cI}%`:''}`);
+  if(style==='aug'&&(u.pp_late_all||0)>0) W.push(`งานมารดาหลังคลอดมีบริการล่าช้า ${N(u.pp_late_all)} ราย ควรตรวจ workflow หลังคลอด`);
+  if(!W.length) W.push('ผ่านทุกตัวชี้วัดที่ประเมินได้ ควรรักษาระดับและป้องกันความผันผวนของข้อมูล');
+  const O=style==='aug'?['ใช้รายชื่อผู้ป่วยจากโรงพยาบาลแม่ข่ายและ HDC เพื่อทำ case list รายสัปดาห์','ตั้งคลินิก/วันบริการเฉพาะกลุ่มโรคพบบ่อยและผู้ป่วย Stroke IMC','เชื่อมงานหลังคลอดกับ ANC/ห้องคลอด/ทะเบียนเยี่ยมบ้าน เพื่อลดบริการล่าช้า']
+    :['ใช้ฐานข้อมูลรายชื่อผู้ป่วยจากโรงพยาบาลแม่ข่ายเพื่อทำ follow-up รายสัปดาห์','ทำ standing order/clinical pathway สำหรับโรค Common Disease ที่เหมาะกับสมุนไพร','ตรวจรหัสโรค รหัสบริการ และรหัสยาสมุนไพรให้ครบก่อนตัดรอบรายเดือน'];
+  const T=style==='aug'?['ความพร้อมบุคลากรและวันให้บริการอาจทำให้ volume ผันผวน','การบันทึกรหัสบริการ รหัสโรค และรหัสยาสมุนไพรไม่ครบจะทำให้ผลงานไม่ขึ้นระบบ','IMC และหลังคลอดต้องพึ่งการส่งต่อข้อมูลจากโรงพยาบาล หากไม่มี owner รายชื่อจะหลุดติดตาม']
+    :['หากข้อมูล HDC/รหัสยาไม่ครบ ผลงานจริงอาจไม่สะท้อนในระบบ','ภาระงานและความพร้อมบุคลากรอาจทำให้การติดตาม IMC ไม่ต่อเนื่อง','หาก stock สมุนไพรไม่สัมพันธ์กับโรคเป้าหมาย UC และ Common จะขยับช้า'];
+  const R=[]; if(k.imc!==true) R.push(style==='aug'?'ตั้งทะเบียน Stroke IMC รายบุคคล ระบุผู้รับผิดชอบ ติดตามรับบริการและบันทึกผลทุกสัปดาห์':'ทำทะเบียน Stroke IMC รายบุคคล และติดตามอย่างน้อยสัปดาห์ละ 1 รอบร่วมกับทีมแม่ข่าย');
+  if(!ex) R.push(style==='aug'?`เพิ่มจุดคัดกรอง OPD เข้า TTM และตั้งเป้า KPI14 ให้มี buffer อย่างน้อย ${c14+5}%`:`เพิ่ม buffer KPI14 ให้เกิน ${c14+5}% ไม่ใช่เพียงแตะ ${c14}% เพื่อกันความผันผวนของ OPD`);
+  R.push(style==='aug'?'เลือกโรคพบบ่อย 2 กลุ่มแรก ทำ standing order/CPG และติดตามจำนวนสั่งยาสมุนไพรทุกเดือน':'เลือก 1–2 กลุ่มโรค Common ที่พบมาก แล้วจับคู่ diagnosis กับรายการสมุนไพรที่เหมาะสม');
+  if(style==='aug'&&(u.pp_served_all||u.pp_received_all||0)>0) R.push('ทำระบบแจ้งเตือนมารดาหลังคลอดจากโรงพยาบาลแม่ข่ายไปยัง รพ.สต. ภายใน 7 วัน');
+  if(k.uc===false) R.push('จัดลำดับรายการยาสมุนไพรที่ใช้บ่อยและตรวจ stock ให้พร้อมเพื่อปิด gap UC');
+  return {focus,swot:{s:S,w:W,o:O,t:T},rec:R};
+}
+function tplDATABST(M,T){
+  const base=T&&T['DATABST.base']; if(!base||!M.db.PRIM) return null; const dk='บางเสาธง';
+  const V=distVars(M); const D=distUpdate(base.DATA,M,T,dk,V); const C=distCore(M,T,dk); const n0=v=>Number(v)||0;
+  // ฟิลด์เฉพาะหน้าบางเสาธง
+  const G=gmpParse(M); D.units.forEach(u=>{ const cm=C.COM.map[u.code], pp=C.PP.map[u.code], o=C.ot[u.code];
+    if('commonB68_people' in u){ u.commonB68_people=n0(cm&&cm.b1p); u.commonA68_people=n0(cm&&cm.a1p); u.commonB69_people=n0(cm&&cm.b2p); u.commonA69_people=n0(cm&&cm.a2p); }
+    [['served','svc'],['delivery','hist'],['visits','visits'],['match_visits','hsvc'],['late','late'],['over90','over90']].forEach(([a,b])=>{ if(('pp_'+a+'_all') in u){ u['pp_'+a+'_all']=n0(pp&&pp[b]); u['pp_'+a+'_uc']=n0(pp&&pp[b+'UC']); } });
+    if('items' in u){ u.items=n0(o&&o.items); u.amount=n0(o&&o.amount); } if('reimburse_items' in u){ u.reimburse_items=n0(o&&o.items); u.reimburse_amount=n0(o&&o.amount); u.reimburse_ratio_vs_new_herb=u.herbUC?u.reimburse_amount/u.herbUC*100:0; } });
+  if(D.ppTotal&&C.PP.total){ const t=C.PP.total; const o={}; [['served','svc'],['delivery','hist'],['visits','visits'],['match_visits','hsvc'],['late','late'],['over90','over90']].forEach(([a,b])=>{ o['pp_'+a+'_all']=n0(t[b]); o['pp_'+a+'_uc']=n0(t[b+'UC']); }); D.ppTotal=o; }
+  if(Array.isArray(D.ppUnits)) D.ppUnits=D.ppUnits.map(x=>{ const u=D.units.find(z=>z.code===x.code)||{}; const o={code:x.code,name:x.name}; Object.keys(x).filter(k=>k.startsWith('pp_')).forEach(k=>o[k]=n0(u[k])); return o; });
+  if(C.O){ D.reimburseTotal=C.cup?C.cup.amount:D.units.reduce((s,u)=>s+n0(u.reimburse_amount),0);
+    if(D.reimburseUnits) Object.keys(D.reimburseUnits).forEach(c=>{ const u=D.units.find(z=>z.code===c)||{}; const it=D.reimburseUnits[c]; it.items=n0(u.reimburse_items); it.amount=n0(u.reimburse_amount); it.use_base_payback=n0(u.herbUC); it.ratio_payback_use=it.use_base_payback?it.amount/it.use_base_payback:0; it.gap_payback_use=it.use_base_payback-it.amount; });
+    const pr=C.O.province?C.O.province.rows:[]; if(Array.isArray(D.reimburseProvince)&&pr.length) D.reimburseProvince=D.reimburseProvince.map(x=>{ const r=pr.find(z=>z.code===x.code); return r?{...x,items:n0(r.items),amount:r.amount}:x; }); }
+  const a=G&&G.code&&G.code.dist[dk], g=G&&G.gmp&&G.gmp.dist[dk];
+  if(a&&D.drugCodeQuality) D.drugCodeQuality={total_codes:a.found,errors:a.err,correct:a.ok,pct:a.pct};
+  if(g&&D.gmpQuality) D.gmpQuality={ed_codes:g.found,gmp_codes:g.ok,pct:g.pct};
+  if(D.outcomeQuality){ if(a) D.outcomeQuality.drug_code_pct=a.pct; if(g) D.outcomeQuality.gmp_pct=g.pct; }
+  if(D.target10mUpdate) Object.assign(D.target10mUpdate,{updated_on:V.DATE_LONG,district_target10m:D.herbTarget10,district_target12m:D.herbTarget12,unit_target10m_sum:D.herbUnitTarget10Sum,district_value69:D.herbTotal,district_percent10m:D.herbPct10,district_percent12m:D.herbPct12,note:`อัปเดตจากไฟล์ ${V.MON_S}`});
+  D.dataDate=V.DATE_LONG; D.herbTarget10Source=`HerbUC + PAYBackUC + HDC รอบ ${V.MON_S}`;
+  V.J_DATA=D;
+  V.J_DETAILED=Object.fromEntries(D.units.map(u=>[u.code,unitAnalysis(u,M,'detail')])); V.J_AUG=Object.fromEntries(D.units.map(u=>[u.code,unitAnalysis(u,M,'aug')]));
+  const F=distFacts(M,D,dk); const {P,N,k,cm,im,c14,cC,cI}=F;
+  const ov=`<strong>สถานะภาพรวม:</strong> บางเสาธงรอบ ${V.DATE_LONG} มีจุดนำคือสมุนไพร UC ทำได้ <strong>${P(F.hp)}</strong> ของเป้า 10 เดือน เป็นอันดับ ${F.ucRank}/6 ของจังหวัด มูลค่า <strong>${N(F.hv)}</strong> บาท; KPI14 <strong>${P(k.pct)}</strong> ${k.pct>=c14?'ผ่านเกณฑ์':'ยังไม่ผ่านเกณฑ์'} และ Common <strong>${P(cm.change)}</strong> ${cm.change>=cC?'ผ่านเกณฑ์':'ยังไม่ผ่านเกณฑ์'}${im.pct>=cI?` ส่วน IMC <strong>${P(im.pct)}</strong> ผ่านเกณฑ์`:` ส่วน IMC <strong>${P(im.pct)}</strong> ยังเป็นคอขวดที่ต้องเร่งระบบส่งต่อจากโรงพยาบาลแม่ข่ายและติดตามรายชื่อผู้ป่วยรายสัปดาห์`}`;
+  V.OV_NOTE=ov; V.J_OV_NOTE=ov;
+  V.HERB_NOTE=`อัปเดตเป้าหมายระดับอำเภอและรายหน่วยตามไฟล์ ${V.MON_S} รวม <strong>${f2n(F.ht)}</strong> บาท ผลงาน <strong>${N(F.hv)}</strong> บาท หรือ <strong>${P(F.hp)}</strong> ของเป้า 10 เดือน และ <strong>${P(D.herbPct12)}</strong> ของเป้า 12 เดือนค่ะ`;
+  V.QUAL_ROWS=qualRows(M,'บางเสาธง','#0097a7');
+  V.BEST14=M.S.PRIM&&M.S.PRIM.bestName?`จ.${M.S.PRIM.bestName} ${P(M.S.PRIM.best)}`:'–';
+  V.SRC_CHIPS=['ปฐมภูมิ','สมุนไพร UC','Common','IMC','หลังคลอด','เงินชดเชย สปสช.'].map(x=>`<span class="source-chip">${x} บสธ ${V.MON_S}</span>`).join('\n    ');
+  return V;
+}
+TPL_BUILDERS.DATABST=tplDATABST;
 
 async function loadTemplates(){ const out={}; if(!WF.root) return out; const dir=await tryDir(WF.root,'00 เครื่องมือ/templates'); if(!dir) return out;
   for await (const [n,h] of dir.entries()){ const mm=n.match(/^(.+)\.tpl\.html$/); if(mm&&h.kind==='file') out[mm[1]]=await (await h.getFile()).text(); const mj=n.match(/^(.+\.base)\.json$/); if(mj&&h.kind==='file'){ try{ out[mj[1]]=JSON.parse(await (await h.getFile()).text()); }catch(e){} } }
