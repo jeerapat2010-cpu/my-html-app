@@ -512,7 +512,7 @@ function levelOf(aoa){
 }
 const isDataRow = r => r && clean(r[0])!=='' && num(r[1])!==null;
 const MAP = {
-  PRIM:v=>({opd:v[0],ttm:v[1],pct:v[2]}),
+  PRIM:v=>({opd:v[0],ttm:v[1],pct:v[2],q:[3,6,9,12].map(i=>v[i]!=null||v[i+1]!=null?{opd:v[i],ttm:v[i+1],pct:v[i+2]}:null)}),
   COM:v=>({b1p:v[0],b1:v[1],a1p:v[2],a1:v[3],c1:v[4],b2p:v[5],b2:v[6],a2p:v[7],a2:v[8],c2:v[9],growth:v[10]}),
   IMC:v=>({b:v[0],a:v[1],pct:v[2]}),
   PP:v=>({svc:v[0],svcUC:v[1],hist:v[2],histUC:v[3],visits:v[4],visitsUC:v[5],late:v[8],lateUC:v[9],over90:v[10],over90UC:v[11]}),
@@ -1184,12 +1184,123 @@ function buildDistrictSub(M,dk){
     tabs.push('มูลค่ายา UC & เงินชดเชย'); secs.push(`<section class="sec" id="s${secs.length}"><div class="card"><h2>มูลค่ายาสมุนไพร UC และเงินชดเชย สปสช. รายหน่วยบริการ</h2>${tableHtml(['รหัส','หน่วยบริการ','คอร์ส','มูลค่าใช้ UC','เงินชดเชย','อัตรา %'],list)}</div></section>`); }
   return subPage(`Dashboard การแพทย์แผนไทย คปสอ.${dk}`,`จังหวัดสมุทรปราการ • ข้อมูล ณ ${thaiDate(M.iso)}`,tabs,secs.join(''),charts);
 }
-function buildAllSubs(M){
-  const out=[]; for(const k of Object.keys(SUB_FILES)){ const h=k==='UC'?buildUcSub(M):k==='ONTOP'?buildOnTopSub(M):buildKpiSub(M,k); if(h) out.push([SUB_FILES[k],h,KPI[k].short]); }
-  for(const D of DISTRICTS){ if(Object.values(M.db).some(x=>x&&x.unit&&x.unit[D.key])) out.push([DIST_FILES[D.key],buildDistrictSub(M,D.key),'คปสอ.'+D.short]); }
+/* ====================================================================
+   ORIGINAL-LOOK TEMPLATES (00 เครื่องมือ/templates/*.tpl.html)
+   แม่แบบคือไฟล์ HTML ต้นฉบับ ก.ย. 69 ที่แทนตัวเลขด้วย %%KEY%% — ระบบเติมข้อมูลล่าสุดทุกเดือน
+==================================================================== */
+const HIST = { // ค่าปิดปีงบ (ใช้ทำกราฟย้อนหลัง 3 ปี) — ปีปัจจุบันใช้ข้อมูลล่าสุดเสมอ
+  PRIM:{'เมืองสมุทรปราการ':{2567:51.52,2568:50.23,2569:53},'บางบ่อ':{2567:45.33,2568:56.45,2569:61.16},'บางพลี':{2567:36.7,2568:31.59,2569:32.19},'พระประแดง':{2567:36.89,2568:42.21,2569:58.05},'พระสมุทรเจดีย์':{2567:54.64,2568:56.55,2569:61.91},'บางเสาธง':{2567:50.69,2568:37.72,2569:55.04},'สมุทรปราการ':{2568:48.11,2569:54.18}},
+};
+function histVal(k,name,fy){ const h=(HIST_FILE&&HIST_FILE[k]&&HIST_FILE[k][name])||{}; const b=(HIST[k]&&HIST[k][name])||{}; return h[fy]!=null?h[fy]:(b[fy]!=null?b[fy]:null); }
+let HIST_FILE=null;
+function tplVars(M){
+  const [y,m,d]=(M.iso||'').split('-').map(Number); const be=y+543; const fy=fyOf(M.iso);
+  return {MON:`${TH_MON_S[m-1]} ${String(be).slice(2)}`, MON_FULL:`${TH_MONTH[m-1]} ${be}`, DATE_LONG:thaiDate(M.iso), MON_EN:`${EN_MON[m-1][0].toUpperCase()+EN_MON[m-1].slice(1)} ${be}`, FY:fy, FYm1:fy-1, FYm2:fy-2, FYs:String(fy).slice(2), FYm1s:String(fy-1).slice(2)};
+}
+function fillTpl(t,V){ return t.replace(/%%(\w+)%%/g,(m,k)=>{ if(!(k in V)) return m; const v=V[k]; return k.startsWith('J_')? JSON.stringify(v).replace(/</g,'\\u003c') : String(v); }); }
+const fmtN=v=>v==null?'–':Number(v).toLocaleString('en-US',{maximumFractionDigits:0});
+const r2n=v=>v==null||!isFinite(v)?0:Math.round(v*100)/100;
+function lastQ(rows){ let L=1; for(let q=1;q<=4;q++){ if(rows.some(r=>r.q&&r.q[q-1]&&r.q[q-1].opd>0)) L=q; } return L; }
+
+function tplPrimarySer(M){
+  const d=M.db.PRIM, s=M.S.PRIM; if(!d||!s||!d.province) return null; const V=tplVars(M); const c=crit(M,'PRIM');
+  const qp=r=>[0,1,2,3].map(i=>r.q&&r.q[i]?r2n(r.q[i].pct):0);
+  const allTop=[...(d.country?d.country.rows:[]),...(d.region?d.region.rows:[]),...d.province.rows]; const QL=lastQ(d.province.rows.concat(allTop));
+  const row=(r,note)=>{ const q=qp(r); return {name:r.name,total:r.opd||0,tmt:r.ttm||0,percent:r2n(r.pct),q1:q[0],q2:q[1],q3:q[2],q4:q[3],note,metricType:'service_access'}; };
+  V.J_dataNational=d.country? d.country.rows.map(r=>row(r,`ชุดข้อมูล ${V.MON_FULL}`)) : [];
+  V.J_dataRegion=d.region? d.region.rows.map(r=>row(r,`เขตสุขภาพที่ 6 / ชุดข้อมูล ${V.MON_FULL}`)) : [];
+  V.J_dataDistrict=d.province.rows.map(r=>{ const n=normDist(r.name), q=qp(r), o=row(r); o.name=n; [1,2,3,4].forEach(i=>{ o['q'+i+'_total']=r.q&&r.q[i-1]?r.q[i-1].opd||0:0; o['q'+i+'_tmt']=r.q&&r.q[i-1]?r.q[i-1].ttm||0:0; });
+    o.y67=histVal('PRIM',n,V.FYm2); o.y68=histVal('PRIM',n,V.FYm1); o.y69=r2n(r.pct); o.qL=q[QL-1]; o.metricLabel='การรับบริการแพทย์แผนไทยเทียบ OPD'; o.unit='ครั้ง'; return o; });
+  const H=[]; DISTRICTS.forEach(D=>{ const u=d.unit[D.key]; if(u) u.rows.forEach(r=>H.push({code:r.code||'',name:r.name,district:D.key,total:r.opd||0,tmt:r.ttm||0,percent:r2n(r.pct),metricType:'service_access',metricLabel:'การรับบริการแพทย์แผนไทยเทียบ OPD',denominatorLabel:'บริการผู้ป่วยนอก',numeratorLabel:'บริการแพทย์แผนไทย',unit:'ครั้ง'})); });
+  V.J_dataHospital=H;
+  const ct=d.country&&d.country.total, rt=d.region&&d.region.total, pt=d.province.total||{};
+  const r6=d.region? (d.region.total||null):null; const qv=(r,i)=>r&&r.q&&r.q[i]?r2n(r.q[i].pct):0;
+  V.J_BENCH={target:c,national:r2n(s.country),nationalTotal:ct?ct.opd:0,nationalTmt:ct?ct.ttm:0,region6:r2n(s.region6),region6Total:rt?rt.opd:0,region6Tmt:rt?rt.ttm:0,provinceComparable:r2n(s.province),provinceTotal:pt.opd||0,provinceTmt:pt.ttm||0,
+    bestPracticeName:'จ.'+s.bestName,bestPracticePercent:r2n(s.best),source:`HDC ปฐมภูมิ ${V.MON}: รายเขต / รายจังหวัด / รายอำเภอ / รายหน่วยบริการ`,benchmarkDate:V.MON_FULL,serviceDate:V.MON_FULL,
+    previousProvince:histVal('PRIM','สมุทรปราการ',V.FYm1)||0,nationalQ1:qv(ct,0),nationalQ4:qv(ct,3),nationalQL:qv(ct,QL-1),region6Q1:qv(r6,0),region6Q4:qv(r6,3),region6QL:qv(r6,QL-1),
+    provinceQ1:qv(pt,0),provinceQ2:qv(pt,1),provinceQ3:qv(pt,2),provinceQ4:qv(pt,3),provinceQL:qv(pt,QL-1),qlIndex:QL,qlLabel:'Q'+QL};
+  V.NUNITS=H.length; V.P_TOTAL=fmtN(pt.opd); V.P_TMT=fmtN(pt.ttm); V.P_PCT=fmt(s.province); V.P_WIDTH=Math.min(100,r2n(s.province));
+  V.P_STATUS=s.province>=c?'▲ ผ่านเกณฑ์':'▼ ต่ำกว่าเกณฑ์';
+  V.DATA_NOTE=`ข้อมูลสะสมปีงบประมาณ ${V.FY} ณ ${V.DATE_LONG} จาก HDC (ใน/นอกสังกัดกระทรวง = ในสังกัด) ครบประเทศ–เขต 6–6 อำเภอ–${H.length} หน่วยบริการ`;
+  const over=H.filter(h=>h.percent>100); V.DQ_ALERT= over.length? `Data Quality Alert: พบหน่วยบริการ ${over.length} แห่งมีร้อยละเกิน 100% ควรตรวจสอบ denominator และการบันทึกซ้ำก่อนใช้ประเมินรายหน่วย` : 'Data Quality: ไม่พบหน่วยบริการที่มีร้อยละเกิน 100%';
+  return V;
+}
+const TPL_BUILDERS={PrimarySer:tplPrimarySer};
+function tplCMD(M){
+  const d=M.db.COM, s=M.S.COM; if(!d||!s||!d.province) return null; const V=tplVars(M); const T=crit(M,'COM');
+  const [y,m,dd]=M.iso.split('-').map(Number); V.DATE_S=`${dd} ${TH_MON_S[m-1]} ${y+543}`; V.MON_L=`${TH_MON_S[m-1]} ${y+543}`; V.CRIT=T;
+  const row=(r,name)=>({name:name||r.name,total:r.b2,received:r.a2,personTotal:r.b2p,personReceived:r.a2p,percent2568:r2n(r.c1),percent2569:r2n(r.c2),percent:r2n(r.growth)});
+  const box=(color,icon,title,body)=>`\n      <div class="bg-white p-4 rounded-xl shadow-sm border border-${color}-50">\n        <h4 class="font-bold text-${color==='violet'?'violet-800':color+'-700'} mb-2 flex items-center gap-2"><span class="text-xl">${icon}</span> ${title}</h4>\n        <p class="text-sm">${body}</p>\n      </div>`;
+  const wrap=b=>`\n    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">${b.join('')}\n    </div>`;
+  const pf=v=>(v>=0?'+':'')+fmt(v)+'%'; const gap=v=>Math.max(0,T-v).toFixed(2);
+  const rank=(rows,f=r=>r.growth)=>[...rows].sort((a,b)=>(f(b)??-1e9)-(f(a)??-1e9));
+  const db={};
+  // ประเทศ
+  const cr=d.country?d.country.rows:[]; const ct=d.country&&d.country.total; const r6=cr.find(r=>/ที่ 6$/.test(r.name));
+  const crk=rank(cr);
+  db.region={title:`Benchmark ประเทศ (รายเขต) — รอบข้อมูล ${V.MON_L}`,thName:'เขตสุขภาพ',data:cr.map(r=>row(r)),insights:cr.length?wrap([
+    box('violet','📊',`ภาพรวมประเทศรอบ ${V.MON_L}`,`ประเทศเพิ่มขึ้น <b>${fmt(s.country)}%</b> (C1 ${fmt(ct&&ct.c1)}% → C2 ${fmt(ct&&ct.c2)}%) ${s.country>=T?'ผ่าน':'ยังไม่ผ่าน'}เกณฑ์ ${T}%; เขตสุขภาพที่ 6 เพิ่มขึ้น <b>${fmt(s.region6)}%</b>`),
+    box('amber','🏆','เขตผลงานนำ',crk.slice(0,3).map(r=>`<b>${r.name} ${pf(r.growth)}</b>`).join(', ')+` • เขต 6 อยู่อันดับ <b>${crk.indexOf(r6)+1}</b> จาก ${cr.length} เขต`),
+    box('violet','💡','ข้อเสนอเชิงบริหาร',`ผ่านเกณฑ์ ${cr.filter(r=>r.growth>=T).length} จาก ${cr.length} เขต; เขต 6 ยังมี Gap <b>${gap(s.region6)}</b> จุดร้อยละ และสมุทรปราการมี Gap <b>${gap(s.province)}</b> จุดร้อยละ`)]):'<p class="text-sm">ยังไม่มีข้อมูลระดับประเทศ</p>'};
+  // เขต 6
+  const rr=d.region?d.region.rows:[]; const rt=d.region&&d.region.total; const rrk=rank(rr); const spr=rrk.findIndex(r=>r.name===PROV)+1; const neg=rr.filter(r=>r.growth<0);
+  db.province={title:`เขตสุขภาพที่ 6 (เปรียบเทียบรายจังหวัด) — รอบข้อมูล ${V.MON_L}`,thName:'จังหวัด',data:rr.map(r=>row(r)),insights:wrap([
+    box('violet','📊','เขตสุขภาพที่ 6 รายจังหวัด',`ภาพรวมเขต 6 ${s.region6>=0?'เพิ่มขึ้น':'ลดลง'} <b>${fmt(s.region6)}%</b> จาก C1 <b>${fmt(rt&&rt.c1)}%</b> เป็น C2 <b>${fmt(rt&&rt.c2)}%</b> มีจังหวัดผ่านเกณฑ์ ${T}% <b>${rr.filter(r=>r.growth>=T).length}</b> แห่ง และติดลบ <b>${neg.length}</b> แห่ง`),
+    box('amber','🏆','จังหวัดผลงานนำ',`${rrk.slice(0,2).map(r=>`<b>${r.name} ${pf(r.growth)}</b>`).join(' ตามด้วย ')} • สมุทรปราการ <b>${pf(s.province)}</b> อยู่อันดับ <b>${spr}</b> ของเขต${neg.length?` • ลดลงมากที่สุดคือ <b>${rrk.at(-1).name} ${pf(rrk.at(-1).growth)}</b>`:''}`),
+    box('violet','🎯','จุดตีความสำคัญ',`สมุทรปราการมี C2 <b>${fmt(d.province.total&&d.province.total.c2)}%</b> แต่ตัวชี้วัดประเมิน <b>ร้อยละการเพิ่มขึ้นจากฐานปี ${V.FYm1}</b> จึงได้ <b>${fmt(s.province)}%</b>${s.province<T?` และต้องเพิ่มอีก <b>${gap(s.province)}</b> จุดร้อยละจึงผ่านเกณฑ์`:' ผ่านเกณฑ์แล้ว'}`)])};
+  // อำเภอ
+  const pr=d.province.rows; const pt=d.province.total||{}; const prk=rank(pr); const pass=pr.filter(r=>r.growth>=T); const pneg=pr.filter(r=>r.growth<0); const near=pr.filter(r=>r.growth<T&&r.growth>=T*0.8);
+  db.district={title:`จังหวัดสมุทรปราการ (เปรียบเทียบรายอำเภอ) — รอบข้อมูล ${V.MON_L}`,thName:'อำเภอ',data:pr.map(r=>row(r,normDist(r.name))),insights:wrap([
+    box('violet','📊','ภาพจังหวัดสมุทรปราการ',`ภาพรวมจังหวัด${s.province>=0?'เพิ่มขึ้น':'ลดลง'} <b>${fmt(s.province)}%</b> จาก C1 <b>${fmt(pt.c1)}%</b> เป็น C2 <b>${fmt(pt.c2)}%</b> มีอำเภอผ่านเกณฑ์ <b>${pass.length}/${pr.length}</b> และมีอำเภอติดลบ <b>${pneg.length}</b> แห่ง`),
+    box('amber','🏆','จุดแข็งและพื้นที่ใกล้ผ่าน',`<b>${normDist(prk[0].name)} ${pf(prk[0].growth)}</b> สูงสุดของจังหวัด${prk[0].growth>=T?' และผ่านเกณฑ์':''}${near.length?` • ใกล้ผ่าน: ${near.map(r=>`<b>${normDist(r.name)} ${pf(r.growth)}</b> (ขาด ${gap(r.growth)} จุด)`).join(', ')}`:''}`),
+    box('rose','⚠️','พื้นที่ถดถอย',pneg.length?`${pneg.map(r=>`<b>${normDist(r.name)} ${pf(r.growth)}</b>`).join(' และ ')} ติดลบ ควร audit รายหน่วยบริการและรายคลินิก ตรวจ stock ยา, ICD-10 ↔ รายการยา, template HIS และความต่อเนื่องของผู้สั่งใช้`:`ไม่มีอำเภอติดลบ อำเภอต่ำสุดคือ <b>${normDist(prk.at(-1).name)} ${pf(prk.at(-1).growth)}</b>`)])};
+  // หน่วยบริการ
+  const H=[]; DISTRICTS.forEach(D=>{ const u=d.unit[D.key]; if(u) u.rows.forEach(r=>H.push({...row(r,`${r.code}:${r.name}`),amphoe:D.key==='เมืองสมุทรปราการ'?'เมือง':D.key})); });
+  const hk=[...H].sort((a,b)=>b.percent-a.percent); const nov=H.filter(h=>!h.total);
+  db.hospital={title:`ระดับหน่วยบริการ (ข้อมูล COM ${V.MON_L})`,thName:'หน่วยบริการ',data:H,insights:wrap([
+    box('violet','📊','หน่วยบริการทั้งหมด',`ข้อมูลรอบ ${V.MON_L} ครอบคลุม <b>6 อำเภอ ${H.length} หน่วยบริการ</b> ผ่านเกณฑ์ ≥${T}% จำนวน <b>${H.filter(h=>h.percent>=T).length}</b> แห่ง ติดลบ <b>${H.filter(h=>h.percent<0).length}</b> แห่ง และไม่มี visit ปี ${V.FY} จำนวน <b>${nov.length}</b> แห่ง`),
+    box('amber','🏆','หน่วยเติบโตเด่น',hk.slice(0,3).map(h=>`<b>${h.name}</b> (${fmt(h.percent)}%)`).join(', ')+' อย่างไรก็ดีค่าที่พุ่งมากควรดูฐาน C1 ควบคู่ เพราะฐานต่ำทำให้อัตราเพิ่มขึ้นสูงมาก'),
+    box('rose','⚠️','หน่วยที่ต้องเร่งแก้ไข',`กลุ่มต่ำสุดคือ ${hk.slice(-3).reverse().map(h=>`<b>${h.name}</b> (${fmt(h.percent)}%)`).join(', ')} ควรตรวจ stock, CPG, mapping รหัสใน HIS และรูปแบบการสั่งใช้ พร้อมกำหนด corrective action รายหน่วย`)])};
+  V.J_db=db; V.NUNITS=H.length;
+  const SH={'เมืองสมุทรปราการ':'เมืองฯ'};
+  V.J_trend={labels:[`ปี ${V.FYm1}`,`ปี ${V.FY}`],datasets:[...pr.map(r=>({label:SH[normDist(r.name)]||normDist(r.name),data:[r2n(r.c1),r2n(r.c2)]})),{label:'รวม (จังหวัด)',data:[r2n(pt.c1),r2n(pt.c2)],borderDash:[5,5],borderWidth:4}]};
+  V.TREND_UL=`<ul class="list-disc pl-4 text-slate-600 space-y-1">
+                  <li>ภาพรวมจังหวัด${s.province>=0?'เพิ่มขึ้น':'ลดลง'}จาก <b>${fmt(pt.c1)}% → ${fmt(pt.c2)}%</b> คิดเป็น <b>${fmt(s.province)}%</b> ${s.province>=T?'ผ่าน':'ยังไม่ผ่าน'}เกณฑ์ ${T}%</li>
+                  <li>${pass.length?`${pass.map(r=>`<b>${normDist(r.name)} ${pf(r.growth)}</b>`).join(', ')} ผ่านเกณฑ์`:'ยังไม่มีอำเภอผ่านเกณฑ์'}${near.length?` ขณะที่ ${near.map(r=>`<b>${normDist(r.name)} ${pf(r.growth)}</b>`).join(', ')} ใกล้ผ่าน`:''}</li>
+                  <li>${pneg.length?`${pneg.map(r=>`<b>${normDist(r.name)} ${pf(r.growth)}</b>`).join(' และ ')} เป็นพื้นที่ติดลบที่ควรเร่งแก้ไข`:'ไม่มีอำเภอติดลบ'}</li>
+                </ul>`;
+  const card=(border,label,val,l1cls,l1,l2)=>`\n      <div class="kpi-card bg-white rounded-2xl p-6 shadow-sm border-l-4 ${border} hover:shadow-md transition">\n        <p class="text-sm font-semibold text-slate-500 mb-1">${label}</p>\n        <h3 class="text-4xl font-extrabold text-slate-800">${val}</h3>\n        <p class="text-xs ${l1cls} mt-2 font-bold">${l1}</p>\n        <p class="text-xs text-slate-500 mt-1">${l2}</p>\n      </div>`;
+  const gl=v=>v>=T?`ผ่านเป้าหมาย (+${(v-T).toFixed(2)} จุด)`:`ต่ำกว่าเป้าหมาย ${gap(v)} จุด`;
+  const best=rrk[0];
+  V.KPI_CARDS=`<section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">`
+    +card('border-slate-400','ระดับประเทศ (เพิ่มขึ้น)',s.country!=null?fmt(s.country)+'%':'—','text-slate-600',s.country!=null?gl(s.country):'ยังไม่มีข้อมูลระดับประเทศ',ct?`C1 ${fmt(ct.c1)}% → C2 ${fmt(ct.c2)}%`:'')
+    +card('border-rose-500','ระดับเขต 6 (เพิ่มขึ้น)',fmt(s.region6)+'%','text-rose-700',gl(s.region6),rt?`C1 ${fmt(rt.c1)}% → C2 ${fmt(rt.c2)}%`:'')
+    +card('border-amber-500','จ.สมุทรปราการ (เพิ่มขึ้น)',fmt(s.province)+'%','text-amber-700',gl(s.province),`C1 ${fmt(pt.c1)}% → C2 ${fmt(pt.c2)}% • อันดับ ${spr} เขต 6`)
+    +card('border-violet-500',`Best of เขต 6: ${best?best.name:'–'}`,best?fmt(best.growth)+'%':'–','text-violet-700',best?`สูงสุดของเขต 6 • ${best.growth>=T?'ผ่านเป้า':'ยังต่ำกว่าเป้า '+gap(best.growth)+' จุด'}`:'',best?`C2 ปี ${V.FY} = ${fmt(best.c2)}%`:'')+`\n    </section>`;
+  const nf=1+(d.region?1:0)+(d.country?1:0)+Object.keys(d.unit).length;
+  V.DQ=`<section class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-emerald-900 text-sm shadow-sm">
+      <div class="font-extrabold mb-1">✅ Data Quality Check — ตรวจอ่านไฟล์รอบ ${V.MON_L} จำนวน ${nf} ไฟล์</div>
+      <div>ข้อมูล <b>COM รายเขต + รายจังหวัด + รายอำเภอ + รายหน่วยบริการ ${Object.keys(d.unit).length} อำเภอ</b> จาก HDC (ใน/นอกสังกัดกระทรวง = ในสังกัด) ข้อมูลสะสม ณ ${V.DATE_LONG} • หน่วยบริการ ${H.length} แห่ง</div>
+    </section>`;
+  return V;
+}
+TPL_BUILDERS.CMD=tplCMD;
+
+async function loadTemplates(){ const out={}; if(!WF.root) return out; const dir=await tryDir(WF.root,'00 เครื่องมือ/templates'); if(!dir) return out;
+  for await (const [n,h] of dir.entries()){ const mm=n.match(/^(.+)\.tpl\.html$/); if(mm&&h.kind==='file') out[mm[1]]=await (await h.getFile()).text(); }
+  try{ const f=await (await (await tryDir(WF.root,'00 เครื่องมือ')).getFileHandle('ประวัติผลงาน.json')).getFile(); HIST_FILE=JSON.parse(await f.text()); }catch(e){}
+  return out; }
+
+function buildAllSubs(M,T){
+  T=T||{}; const out=[]; for(const k of Object.keys(SUB_FILES)){ const base=SUB_FILES[k].replace('.html',''); let h=null;
+    if(T[base]&&TPL_BUILDERS[base]){ try{ const V=TPL_BUILDERS[base](M); if(V) h=fillTpl(T[base],V); }catch(e){ console.error(e); wfLog&&wfLog(`แม่แบบ ${base} ผิดพลาด: ${e.message} — ใช้แบบมาตรฐานแทน`,'warn'); } }
+    if(!h) h=k==='UC'?buildUcSub(M):k==='ONTOP'?buildOnTopSub(M):buildKpiSub(M,k); if(h) out.push([SUB_FILES[k],h,KPI[k].short]); }
+  for(const D of DISTRICTS){ if(!Object.values(M.db).some(x=>x&&x.unit&&x.unit[D.key])) continue; let h=null;
+    if(T.District&&TPL_BUILDERS.District){ try{ const V=TPL_BUILDERS.District(M,D.key); if(V) h=fillTpl(T.District,V); }catch(e){ console.error(e); wfLog&&wfLog(`แม่แบบรายอำเภอผิดพลาด: ${e.message}`,'warn'); } }
+    out.push([DIST_FILES[D.key],h||buildDistrictSub(M,D.key),'คปสอ.'+D.short]); }
   return out;
 }
-async function exportSubs(){ const M=MONTHS[CUR]; if(!M) return; const L=buildAllSubs(M); for(const [n,h] of L) await download(new Blob([h],{type:'text/html'}),n); $('exportMsg').textContent=`สร้างรายงานย่อย ${L.length} ไฟล์แล้ว`; return L.length; }
+async function exportSubs(){ const M=MONTHS[CUR]; if(!M) return; const T=(typeof WF!=='undefined'&&WF.root)? await loadTemplates() : {}; const L=buildAllSubs(M,T); for(const [n,h] of L) await download(new Blob([h],{type:'text/html'}),n); $('exportMsg').textContent=`สร้างรายงานย่อย ${L.length} ไฟล์แล้ว`; return L.length; }
 
 function exportJson(){ const M=MONTHS[CUR];
   const sum={month:CUR,asOf:M.iso,summary:Object.fromEntries(Object.entries(M.S).filter(([k])=>k!=='scores').map(([k,s])=>[k,{country:s.country,region6:s.region6,province:s.province,pct12:s.pct12,pctNow:s.pctNow,payback:s.payback,districts:(s.districts||[]).map(d=>({name:d.name,value:d.value,pctNow:d.pctNow,payback:d.payback}))}])),scores:M.S.scores};
