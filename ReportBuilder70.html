@@ -1206,7 +1206,7 @@ function tplVars(M){
   const [y,m,d]=(M.iso||'').split('-').map(Number); const be=y+543; const fy=fyOf(M.iso);
   return {MON:`${TH_MON_S[m-1]} ${String(be).slice(2)}`, MON_FULL:`${TH_MONTH[m-1]} ${be}`, DATE_LONG:thaiDate(M.iso), MON_EN:`${EN_MON[m-1][0].toUpperCase()+EN_MON[m-1].slice(1)} ${be}`, FY:fy, FYm1:fy-1, FYm2:fy-2, FYs:String(fy).slice(2), FYm1s:String(fy-1).slice(2)};
 }
-function fillTpl(t,V){ return t.replace(/%%(\w+)%%/g,(m,k)=>{ if(!(k in V)) return m; const v=V[k]; return k.startsWith('J_')? JSON.stringify(v).replace(/</g,'\\u003c') : String(v); }); }
+function fillTpl(t,V){ if(V.__F) t=t.replace(/%%F:(\w+):(\w+)%%/g,(m,k,sp)=>k in V.__F?fmtFact(V.__F[k],sp):(sp==='raw'?'null':'–')); return t.replace(/%%(\w+)%%/g,(m,k)=>{ if(!(k in V)) return m; const v=V[k]; return k.startsWith('J_')? JSON.stringify(v).replace(/</g,'\\u003c') : String(v); }); }
 const fmtN=v=>v==null?'–':Number(v).toLocaleString('en-US',{maximumFractionDigits:0});
 const r2n=v=>v==null||!isFinite(v)?0:Math.round(v*100)/100;
 function lastQ(rows){ let L=1; for(let q=1;q<=4;q++){ if(rows.some(r=>r.q&&r.q[q-1]&&r.q[q-1].opd>0)) L=q; } return L; }
@@ -1784,7 +1784,7 @@ function distUpdate(B,M,T,dk,V){
   return D;
 }
 function distVars(M){ const V=tplVars(M); const [y,m,dd]=M.iso.split('-').map(Number); const be=y+543;
-  V.MON_L=`${TH_MON_S[m-1]} ${be}`; V.MON_S=`${TH_MON_S[m-1]} ${String(be).slice(2)}`; V.DATE_SS=`${dd} ${TH_MON_S[m-1]} ${String(be).slice(2)}`; V.ISO=M.iso; V.FYm2=V.FY-2; V.CLOSING=m===9; return V; }
+  V.MON_L=`${TH_MON_S[m-1]} ${be}`; V.MON_S=`${TH_MON_S[m-1]} ${String(be).slice(2)}`; V.DATE_SS=`${dd} ${TH_MON_S[m-1]} ${String(be).slice(2)}`; V.DATE_MS=`${dd} ${TH_MON_S[m-1]} ${be}`; V.ISO=M.iso; V.FYm2=V.FY-2; V.CLOSING=m===9; return V; }
 function tplDATAPS1(M,T){
   const base=T&&T['DATAPS1.base']; if(!base||!M.db.PRIM) return null; const dk='พระสมุทรเจดีย์';
   const V=distVars(M); const D=distUpdate(base.DATA,M,T,dk,V); V.J_DATA=D; const S=M.S, G=gmpParse(M);
@@ -1981,6 +1981,90 @@ function tplDATABST(M,T){
   return V;
 }
 TPL_BUILDERS.DATABST=tplDATABST;
+const BP_UNIT_MAP={kpi14:'k14',opd:'opd',ttm:'ttm',q1_14:'q1',q2_14:'q2',q3_14:'q3',herbUC:'uc',herbTarget6:'t6',herbPct6:'pct6',herbTarget:'t10',herbPct:'pct10',herbTimes:'course',common68:'com_c1',common69:'com_c2',commonChange:'com_growth',commonB68:'com_b1',commonB69:'com_b2',commonDx68:'com_b1p',commonDx69:'com_b2p',commonA68:'com_a1p',commonA69:'com_a2p',commonTimes68:'com_a1',commonTimes69:'com_a2',imc_b:'imc_b',imc_a:'imc_a',imc_pct:'imc_pct',
+  pp_people_all:'pp_svc',pp_people_uc:'pp_svcUC',pp_birth_all:'pp_hist',pp_birth_uc:'pp_histUC',pp_services_all:'pp_visits',pp_services_uc:'pp_visitsUC',pp_history_services_all:'pp_hsvc',pp_history_services_uc:'pp_hsvcUC',pp_late_all:'pp_late',pp_late_uc:'pp_lateUC',pp_over90_all:'pp_over90',pp_over90_uc:'pp_over90UC',nhso_transfer:'comp',herbTarget12:'t12',herbPct12:'pct12',herbGap12:'gap12'};
+const CAN_FIELDS=['pc_b','pc_a','pc_pct','can64','can69','canGrowth','pc_visit_b','pc_visit_a','pc_visit_pct'];
+function tplDataBP(M,T){
+  const base=T&&T['DataBP.base']; if(!base||!M.db.PRIM) return null; const dk='บางพลี';
+  const V=distVars(M); const F=distFactsAll(M,T,dk); V.__F=F; const same=V.FY===2569; const n0=v=>Number(v)||0;
+  const units=base.units.map(u0=>{ const u={...u0}; Object.entries(BP_UNIT_MAP).forEach(([k,f])=>{ if(!(k in u)) return; const key=`u${u.code}_${f}`; if(key in F) u[k]=F[key]; else if(!/^q\d_14$/.test(k)) u[k]=u0[k]===null?null:0; }); if(!same) CAN_FIELDS.forEach(k=>{ if(k in u) u[k]=0; }); return u; });
+  V.J_UNITS=units;
+  const P=v=>fmt(v)+'%', N=v=>fmtN(v), c14=crit(M,'PRIM'), cC=crit(M,'COM'), cI=30;
+  const O=['ใช้ dashboard รายสัปดาห์กำกับ Gap ตามฐานผู้ป่วยจริง','เชื่อม OPD–TTM–IMC–หลังคลอดด้วย referral และนัดหมายเดียวกัน','ใช้หน่วยผลงานดีเป็นพี่เลี้ยงด้าน protocol, stock, coding และ claim'];
+  const Th=['ข้อมูลส่งไม่ครบ/ล่าช้าทำให้ผลงานไม่ถูกนับ','stock-out / coding / claim error กระทบทั้ง KPI และรายได้','ภาระงานและประชากรเคลื่อนย้ายสูงอาจทำให้ติดตามต่อเนื่องยาก'];
+  V.J_SWOT=Object.fromEntries(units.map(u=>{ const S=[],W=[];
+    if(u.herbPct>=100) S.push(`UC เกินเป้า 10 เดือน ${P(u.herbPct)} (${N(u.herbUC)} บาท)`); else if(u.herbTarget) W.push(`UC ${P(u.herbPct)} ของเป้า 10 เดือน ยังมีช่องว่าง`);
+    if(u.opd){ if(u.kpi14>=c14) S.push(`KPI14 ผ่าน ${P(u.kpi14)}`); else W.push(`KPI14 ${P(u.kpi14)} ต้องเพิ่ม ${Math.max(0,Math.ceil(u.opd*c14/100-u.ttm))} ครั้ง`); }
+    if(u.commonB69){ if(u.commonChange>=cC) S.push(`Common Diseases ผ่าน +${P(u.commonChange)}`); else W.push(`Common Diseases ${u.commonChange>0?'+':''}${P(u.commonChange)} ยังต่ำกว่า +${cC}%`); }
+    if(u.imc_b){ if(u.imc_pct>=cI) S.push(`IMC ${P(u.imc_pct)} ผ่านเกณฑ์`); else { if(u.imc_a) S.push(`มีบริการ IMC แล้ว ${N(u.imc_a)} ราย`); W.push(`IMC ${P(u.imc_pct)} ต้องเพิ่ม ${N(Math.max(0,Math.ceil(u.imc_b*cI/100-u.imc_a)))} รายถึง ${cI}%`); } }
+    if(u.nhso_transfer) S.push(`เงินชดเชย สปสช. ${f2n(u.nhso_transfer)} บาท`);
+    if(u.pp_people_all) S.push(`หลังคลอด ${N(u.pp_people_all)} คน / ${N(u.pp_services_all)} ครั้ง`);
+    if(same&&u.can69) S.push(`ผู้ใช้กัญชาปี 69 ${N(u.can69)} ราย`);
+    if(!S.length) S.push('มีฐานข้อมูลบริการสำหรับวางแผนรายหน่วย'); if(!W.length) W.push('ผ่านทุกตัวชี้วัดที่ประเมินได้ ควรรักษาระดับ');
+    const id=u.id; return [id,{s:S,w:W,o:O,t:Th}]; }));
+  const f=k=>F[k]??null, sh=['mueang','bb','bp','ppd','ps','bst'];
+  const pick=(pfx,self)=>sh.map(x=>x==='bp'?f(self):f(`${pfx}_${x}`));
+  V.J_RADAR_P=[f('PRIM_prov'),f('COM_prov'),f('IMC_prov'),f('herbP_v')/1e6]; V.J_RADAR_D=[f('k14_pct'),f('com_growth'),f('imc_pct'),f('herb_v')/1e6];
+  const tr=n=>[histVal('PRIM',n,V.FYm2),histVal('PRIM',n,V.FYm1),n==='บางพลี'?f('k14_pct'):f(`PRIMD_${{'บางบ่อ':'bb','บางเสาธง':'bst'}[n]}`)];
+  V.J_TR_BP=tr('บางพลี'); V.J_TR_BB=tr('บางบ่อ'); V.J_TR_BST=tr('บางเสาธง');
+  V.J_D14=pick('PRIMD','k14_pct'); V.J_D15=pick('COMD','com_growth'); V.J_D26=pick('IMCD','imc_pct');
+  const H=distCore(M,T,dk).H; if(H){ V.J_TOPH_L=H.drugs.slice(0,10).map(x=>x.name.replace(/ \(สูตรยาเดียวกับประสะมะแว้ง\)/,'')); V.J_TOPH_D=H.drugs.slice(0,10).map(x=>x.total);
+    const hs=[...H.districts].sort((a,b)=>b.value69-a.value69); V.J_HPROV_L=hs.map(x=>HB_FULL(x.name)); V.J_HPROV_D=hs.map(x=>x.value69); }
+  const Oo=M.db.ONTOP; if(Oo&&Oo.province){ const cups=Oo.province.rows.filter(r=>UNIT_MAP[r.code]&&UNIT_MAP[r.code].type==='H').sort((a,b)=>b.amount-a.amount); V.J_COMP_L=cups.map(r=>HB_SHORT(UNIT_MAP[r.code].district)); V.J_COMP_D=cups.map(r=>r.amount); }
+  else { V.J_COMP_L=[]; V.J_COMP_D=[]; }
+  return V;
+}
+TPL_BUILDERS.DataBP=tplDataBP;
+/* ---------- ตัวเลขทั้งหมดของอำเภอแบบแบน (ใช้กับแม่แบบที่ตัวเลขฝังอยู่ใน HTML) ---------- */
+function distFactsAll(M,T,dk){
+  const C=distCore(M,T,dk), H=C.H, S=M.S, F={}; const n0=v=>Number(v)||0; const put=(k,v)=>{ if(v!=null&&isFinite(v)) F[k]=Number(v); };
+  const ds=HB_SHORT(dk); const SH={'เมืองสมุทรปราการ':'mueang','บางบ่อ':'bb','บางพลี':'bp','พระประแดง':'ppd','พระสมุทรเจดีย์':'ps','บางเสาธง':'bst'};
+  const c14=crit(M,'PRIM'), cC=crit(M,'COM');
+  const pt=C.PRIM.total||{}, ct=C.COM.total||{}, it=C.IMC.total||{}, qt=C.PP.total||{};
+  put('k14_opd',pt.opd); put('k14_ttm',pt.ttm); put('k14_pct',pt.pct); put('k14_need',Math.max(0,Math.ceil(n0(pt.opd)*c14/100-n0(pt.ttm))));
+  ['b1p','b1','a1p','a1','c1','b2p','b2','a2p','a2','c2','growth'].forEach(x=>put('com_'+x,ct[x])); put('com_gap',cC-n0(ct.growth));
+  put('imc_b',it.b); put('imc_a',it.a); put('imc_pct',it.pct); [20,30].forEach(c=>put('imc_req'+c,Math.ceil(n0(it.b)*c/100))); [20,30].forEach(c=>put('imc_need'+c,Math.max(0,Math.ceil(n0(it.b)*c/100-n0(it.a)))));
+  ['svc','svcUC','hist','histUC','visits','visitsUC','hsvc','hsvcUC','late','lateUC','over90','over90UC'].forEach(x=>put('pp_'+x,qt[x]));
+  put('pp_late_pct',qt.svc?qt.late/qt.svc*100:null); put('pp_hist_pct',qt.svc?qt.hist/qt.svc*100:null); put('pp_avg',qt.svc?qt.visits/qt.svc:null);
+  ['PRIM','COM','IMC','PP'].forEach(k=>{ const s=S[k]; if(!s) return; put(k+'_country',s.country); put(k+'_zone',s.region6); put(k+'_prov',s.province); put(k+'_best',s.best); });
+  if(H){ const L=H.levels; put('herbL_country_pct',L[0].percent); put('herbL_country_v',L[0].value); put('herbL_country_t',L[0].target); put('herbL_zone_pct',L[1].percent); put('herbL_zone_v',L[1].value); put('herbL_zone_t',L[1].target);
+    const dt=H.districtTotals; put('herbP_v',dt.value69); put('herbP_t10',dt.target10m); put('herbP_t12',dt.target12m); put('herbP_pct10',dt.achievement); put('herbP_pct12',dt.percent12m);
+    H.districts.forEach(d=>{ const p=d.name===ds?'herb_':`herbD_${SH[HB_FULL(d.name)]}_`; put(p+'v',d.value69); put(p+'t10',d.target10m); put(p+'t12',d.target12m); put(p+'pct10',d.achievement); put(p+'pct12',d.percent12m); put(p+'gap10',Math.max(0,d.target10m-d.value69)); put(p+'gap12',Math.max(0,d.target12m-d.value69)); put(p+'v68',d.value68); put(p+'share',dt.value69?d.value69/dt.value69*100:null); });
+    put('herb_rank10',[...H.districts].sort((a,b)=>b.achievement-a.achievement).findIndex(x=>x.name===ds)+1); put('herb_rank12',[...H.districts].sort((a,b)=>b.percent12m-a.percent12m).findIndex(x=>x.name===ds)+1); put('herb_rankv',[...H.districts].sort((a,b)=>b.value69-a.value69).findIndex(x=>x.name===ds)+1);
+    H.drugs.slice(0,10).forEach((x,i)=>put(`top${i+1}_v`,x.total)); }
+  ['PRIM','COM','IMC'].forEach(k=>{ const p=M.db[k]&&M.db[k].province; if(!p) return; const f=METRIC[k]; p.rows.forEach(r=>{ const n=normDist(r.name); if(n===dk) return; put(`${k}D_${SH[n]}`,f(r)); if(k==='IMC'){ put(`IMCD_${SH[n]}_b`,r.b); put(`IMCD_${SH[n]}_a`,r.a); } });
+    const rk=[...p.rows].sort((a,b)=>(f(b)??-1e9)-(f(a)??-1e9)).findIndex(r=>normDist(r.name)===dk)+1; put(k+'_rank',rk); });
+  // รายหน่วย
+  const hU={}; if(H) H.units.forEach(x=>hU[x.code]=x);
+  const codes=new Set([...Object.keys(C.PRIM.map),...Object.keys(C.uc),...Object.keys(C.ot),...UNITS.filter(u=>u[1]===dk).map(u=>u[0])]);
+  let netUC=0, unitUC=0;
+  codes.forEach(c=>{ const p=C.PRIM.map[c], cm=C.COM.map[c], im=C.IMC.map[c], pp=C.PP.map[c], uc=C.uc[c], o=C.ot[c], h=hU[c]; const u=`u${c}_`;
+    if(p){ put(u+'opd',p.opd); put(u+'ttm',p.ttm); put(u+'k14',p.pct); put(u+'k14need',Math.max(0,Math.ceil(n0(p.opd)*c14/100-n0(p.ttm)))); if(p.q) p.q.forEach((q,i)=>q&&put(u+'q'+(i+1),q.pct)); }
+    if(cm) ['b1p','b1','a1p','a1','c1','b2p','b2','a2p','a2','c2','growth'].forEach(x=>put(u+'com_'+x,cm[x]));
+    if(im){ put(u+'imc_b',im.b); put(u+'imc_a',im.a); put(u+'imc_pct',im.pct); [20,30].forEach(cc=>put(u+'imc_need'+cc,Math.max(0,Math.ceil(n0(im.b)*cc/100-n0(im.a))))); }
+    if(pp) ['svc','svcUC','hist','histUC','visits','visitsUC','hsvc','hsvcUC','late','lateUC','over90','over90UC'].forEach(x=>put(u+'pp_'+x,pp[x]));
+    if(uc){ put(u+'uc',uc.value); put(u+'course',uc.course); unitUC+=n0(uc.value); }
+    if(h){ put(u+'t10',h.target10m); put(u+'t12',h.target12m); put(u+'pct10',h.percentAchieved10m); put(u+'pct12',h.percentAchieved12m); put(u+'gap10',Math.max(0,h.target10m-h.value69)); put(u+'gap12',Math.max(0,h.target12m-h.value69)); put(u+'v68',h.value68); put(u+'w',h.weight); put(u+'t6',h.target10m*0.6); put(u+'pct6',h.target10m?h.value69/(h.target10m*0.6)*100:null); }
+    if(o){ put(u+'comp',o.amount); put(u+'comp_items',o.items); put(u+'comp_ratio',uc&&uc.value?o.amount/uc.value*100:null); } });
+  const hd=H&&H.districts.find(x=>x.name===ds); if(hd){ put('herb_unmatched',hd.value69-unitUC); put('herb_score',hd.totalScore); put('herb_quality',hd.qualityOutcome); put('herb_qscore',hd.quantScore); } put('herb_unitsum',unitUC);
+  codes.forEach(c=>{ const uc=C.uc[c]; if(uc&&unitUC) put(`u${c}_share`,uc.value/unitUC*100); });
+  codes.forEach(c=>{ const pp=C.PP.map[c]; if(pp&&qt.svc) put(`u${c}_pp_share`,n0(pp.svc)/qt.svc*100); });
+  put('k14_gap',c14-n0(pt.pct)); put('com_bchg',ct.b1?(ct.b2-ct.b1)/ct.b1*100:null); put('com_achg',ct.a1?(ct.a2-ct.a1)/ct.a1*100:null); put('com_bpchg',ct.b1p?(ct.b2p-ct.b1p)/ct.b1p*100:null); put('com_apchg',ct.a1p?(ct.a2p-ct.a1p)/ct.a1p*100:null);
+  const G=gmpParse(M); if(G){ const a=G.code&&G.code.dist[dk], g=G.gmp&&G.gmp.dist[dk]; if(a){ put('q_code_pct',a.pct); put('q_code_found',a.found); put('q_code_err',a.err); put('q_code_ok',a.ok); } if(g){ put('q_gmp_pct',g.pct); put('q_gmp_found',g.found); put('q_gmp_ok',g.ok); } }
+  // เงินชดเชย
+  const O=C.O; if(O){ const pr=O.province?O.province.rows:[]; const net=Object.values(C.ot).filter(r=>!r.supp&&!r.crossFile); put('comp_net',net.reduce((s,r)=>s+n0(r.amount),0)); put('comp_net_items',net.reduce((s,r)=>s+n0(r.items),0));
+    put('comp_total',C.cup?C.cup.amount:F.comp_net); put('comp_total_items',C.cup?C.cup.items:F.comp_net_items); const pt2=pr.reduce((s,r)=>s+n0(r.amount),0); put('comp_prov',pt2); put('comp_prov_moph',pr.filter(r=>UNIT_MAP[r.code]).reduce((s,r)=>s+n0(r.amount),0));
+    put('comp_share',pt2?F.comp_total/pt2*100:null); put('comp_ratio_uc',hd&&hd.value69?F.comp_total/hd.value69*100:null);
+    const cups=pr.filter(r=>UNIT_MAP[r.code]&&UNIT_MAP[r.code].type==='H').sort((a,b)=>b.amount-a.amount); put('comp_rank',cups.findIndex(r=>r===C.cup)+1);
+    cups.forEach(r=>{ const k=SH[UNIT_MAP[r.code].district]; if(UNIT_MAP[r.code].district!==dk){ put(`compD_${k}`,r.amount); put(`compD_${k}_items`,r.items); } });
+    if(C.cup){ put('comp_hosp',n0((C.ot[C.cup.code]||{}).amount)); put('comp_hosp_items',n0((C.ot[C.cup.code]||{}).items)); put('comp_pcu',F.comp_net-F.comp_hosp); put('comp_pcu_items',F.comp_net_items-F.comp_hosp_items); put('comp_hosp_pct',F.comp_net?F.comp_hosp/F.comp_net*100:null); put('comp_pcu_pct',F.comp_net?F.comp_pcu/F.comp_net*100:null); }
+    put('comp_diff',F.comp_total-F.comp_net); }
+  return F;
+}
+function fmtFact(v,spec){ // spec: d<dec>[c][m|k][s]  c=มีจุลภาค m=หน่วยล้าน s=มีเครื่องหมาย +
+  if(spec==='raw') return String(v); const m=spec.match(/^d(\d)(c?)(m?)(s?)$/); if(!m) return String(v); let x=Number(v); if(m[3]) x=x/1e6; const dec=+m[1];
+  let t=m[2]? x.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec}) : x.toFixed(dec);
+  if(m[4]&&x>0) t='+'+t; return t; }
 
 async function loadTemplates(){ const out={}; if(!WF.root) return out; const dir=await tryDir(WF.root,'00 เครื่องมือ/templates'); if(!dir) return out;
   for await (const [n,h] of dir.entries()){ const mm=n.match(/^(.+)\.tpl\.html$/); if(mm&&h.kind==='file') out[mm[1]]=await (await h.getFile()).text(); const mj=n.match(/^(.+\.base)\.json$/); if(mj&&h.kind==='file'){ try{ out[mj[1]]=JSON.parse(await (await h.getFile()).text()); }catch(e){} } }
