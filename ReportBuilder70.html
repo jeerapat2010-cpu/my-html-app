@@ -654,8 +654,8 @@ function parseManual(wb){
   for(const n of wb.SheetNames){ out[n]=sheetToAoa(wb.Sheets[n]); }
   const crit={}, target={};
   if(out['เกณฑ์']) out['เกณฑ์'].forEach(r=>{ if(r&&KPI[clean(r[0])]&&num(r[2])!=null) crit[clean(r[0])]=num(r[2]); });
-  if(out['เป้าหมายUC']) out['เป้าหมายUC'].forEach(r=>{ if(r&&num(r[1])!=null) target[normDist(r[0])]=num(r[1]); });
-  return {sheets:out,crit,target};
+  const target10={}; if(out['เป้าหมายUC']) out['เป้าหมายUC'].forEach(r=>{ if(r&&num(r[1])!=null) target[normDist(r[0])]=num(r[1]); if(r&&num(r[3])!=null) target10[normDist(r[0])]=num(r[3]); });
+  return {sheets:out,crit,target,target10};
 }
 
 /* ====================================================================
@@ -1396,15 +1396,127 @@ function tplPPCare(M){
   return V;
 }
 TPL_BUILDERS.PPCare=tplPPCare;
+/* ---------- HerbUC (มูลค่ายาสมุนไพร UC) — ใช้ข้อมูลฐาน ก.ย. 69 (HerbUC.base.json) + ข้อมูลเดือนล่าสุด ---------- */
+const HB_SHORT=n=>{ const x=normDist(n); return x==='เมืองสมุทรปราการ'?'เมือง':x; };
+const HB_FULL=n=>n==='เมือง'?'เมืองสมุทรปราการ':n;
+const HB_REPL=[ // กลุ่มยาทดแทน: รูปแบบชื่อยาสมุนไพรในไฟล์รายตัว
+  [/^(ยาไพล|น้ำมันไพล|ขี้ผึ้งไพล)/],[/มะขามป้อม/],[/มะแว้ง/],[/^(ขมิ้นชัน|ธาตุอบเชย)$/],[/^มะขามแขก/],[/เพชรสังฆาต/],[/กระดูกไก่ดำ/],[/พญายอ/]];
+function hbTarget10(M,name){ const t=M.manual&&M.manual.target10; return t&&t[name]!=null?t[name]:null; }
+function tplHerbUC(M,T){
+  const base=T&&T['HerbUC.base']; const u=M.db.UC; if(!base||!u||!u.province) return null;
+  const V=tplVars(M); const [y,m,dd]=M.iso.split('-').map(Number); const be=y+543;
+  V.DATE_SS=`${dd} ${TH_MON_S[m-1]} ${String(be).slice(2)}`; V.MON_S=`${TH_MON_S[m-1]} ${String(be).slice(2)}`; V.ISO=M.iso;
+  V.END10=`${V.FY-543}-07-31`; V.END12=`${V.FY-543}-09-30`;
+  const BD=base.DATA, BASE_FY=2569, same=V.FY===BASE_FY; const D=JSON.parse(JSON.stringify(BD));
+  const sum=(a,k)=>a.reduce((s,x)=>s+(Number(k?x[k]:x)||0),0); const pc=(a,b)=>b?a/b*100:0;
+  // ---- ระดับประเทศ / เขต / จังหวัด
+  const cTot=u.country?u.country.total.value:(u.allprov?u.allprov.total.value:null);
+  const rRows=u.region?u.region.rows:(u.allprov?u.allprov.rows.filter(r=>R6.includes(r.name)):[]); const rTot=u.region?u.region.total.value:sum(rRows,'value');
+  const tg=(name,bv)=>{ const t=M.manual&&M.manual.target; return t&&t[name]!=null?t[name]:(bv!=null?bv:DEFAULT_TARGET[name]); };
+  // ---- อำเภอ
+  const pRows=u.province.rows; const valD=n=>{ const r=pRows.find(x=>HB_SHORT(x.name)===n); return r?r.value:0; };
+  D.districts=BD.districts.map(b=>{ const d={...b}; d.value69=valD(b.name);
+    if(!same){ d.value68=b.value69; d.target12m=tg(HB_FULL(b.name),b.target12m); d.target10m=hbTarget10(M,HB_FULL(b.name))??d.target12m*10/12; }
+    return d; });
+  if(!same){ const t68=sum(D.districts,'value68'); D.districts.forEach(d=>d.weight=pc(d.value68,t68)); }
+  D.targets={month10:sum(D.districts,'target10m'),month12:same?BD.targets.month12:sum(D.districts,'target12m')};
+  // ---- หน่วยบริการ
+  const ucU={}; DISTRICTS.forEach(Dk=>{ const x=u.unit[Dk.key]; if(x) x.rows.forEach(r=>{ ucU[String(r.code).padStart(5,'0')]={...r,dist:HB_SHORT(Dk.key)}; }); });
+  const baseCodes=new Set(BD.units.map(x=>x.code));
+  D.units=BD.units.map(b=>({...b,value69:ucU[b.code]?ucU[b.code].value:0}));
+  if(!same){
+    Object.values(ucU).forEach(r=>{ if(!baseCodes.has(String(r.code).padStart(5,'0'))&&!/เรือนจำ|เอกชน|คลินิก/.test(r.name)) D.units.push({district:r.dist,code:String(r.code).padStart(5,'0'),name:r.name,value68:0,weight:0,value69:r.value}); });
+    D.units.forEach(x=>{ const b=BD.units.find(z=>z.code===x.code); x.value68=b?b.value69:0; });
+    D.districts.forEach(d=>{ const us=D.units.filter(x=>x.district===d.name); const p=sum(us,'value68'); us.forEach(x=>{ const w=p?x.value68/p:(us.length?1/us.length:0); x.target12m=d.target12m*w; x.target10m=d.target10m*w; }); });
+    const t68=sum(D.units,'value68'); D.units.forEach(x=>x.weight=pc(x.value68,t68));
+  }
+  // ---- รายการยา + คุณภาพ (ไฟล์ "มูลค่าสมุนไพรรายตัว / รหัสยา / GMP")
+  const gw=M.gmp&&M.gmp.wb; const sh=n=>{ if(!gw) return null; const k=gw.SheetNames.find(x=>x.trim()===n); return k?sheetToAoa(gw.Sheets[k]):null; };
+  const dr=sh('มูลค่าสมุนไพร');
+  if(dr){ const L=[]; dr.forEach(r=>{ if(!r) return; const nm=clean(r[0]); const tot=num(r[4]), cnt=num(r[2]), pr=num(r[3]); if(!nm||/ผลรวม|รายการยา|^\(/.test(nm)||tot==null||!(tot>0)) return; L.push({name:nm,price:pr,total:tot,count:cnt}); }); if(L.length){ D.drugs=L; D.replacementSummary=BD.replacementSummary.map((x,i)=>({...x,value:HB_REPL[i]?sum(L.filter(d=>HB_REPL[i].some(re=>re.test(d.name))),'total'):x.value})); } }
+  const Q=D.quality; const qsheet=(n,colP,colS)=>{ const a=sh(n); if(!a) return null; const out={prov:null,score:null,dist:{}};
+    a.forEach(r=>{ if(!r) return; const p=clean(r[0]); if(p===PROV&&num(r[colP])!=null){ out.prov=num(r[colP]); out.score=num(r[colS]); } const dn=clean(r[7]); if(dn&&num(r[10])!=null){ if(dn===PROV) { out.prov=num(r[10]); if(num(r[12])!=null) out.score=num(r[13])??out.score; } else out.dist[HB_SHORT(dn)]=num(r[10]); } }); return out; };
+  const qc=qsheet('รหัสยา',4,6), qg=qsheet('GMP',3,6);
+  const setQ=(arr,dmap)=>arr.forEach(x=>{ if(dmap&&dmap[x.name]!=null) x.score=dmap[x.name]; });
+  if(qc){ if(qc.prov!=null) Q.overall[2].score=qc.prov; if(qc.score!=null) Q.drugCodeConvertedScore=qc.score; setQ(Q.districtDrugCode,qc.dist); }
+  if(qg){ if(qg.prov!=null) Q.overall[3].score=qg.prov; if(qg.score!=null) Q.gmpConvertedScore=qg.score; setQ(Q.districtProduction,qg.dist); }
+  Q.districtOutcome.forEach(o=>{ const a=Q.districtDrugCode.find(x=>x.name===o.name), b=Q.districtProduction.find(x=>x.name===o.name); if(a) o.drugCodePercent=a.score; if(b) o.gmpPercent=b.score; o.outcomeScore=(o.cpgScore+o.trainingScore+o.drugCodeScore+o.gmpScore)/4; });
+  Q.rawAverage=Math.round(sum(Q.overall,'score')/Q.overall.length*100)/100;
+  Q.outcomeScore=Q.average=(Q.overall[0].score+Q.overall[1].score+Q.drugCodeConvertedScore+Q.gmpConvertedScore)/4;
+  // ---- คำนวณสรุป (สูตรเดียวกับ recalculateData ในหน้า HerbUC)
+  const qs=p=>p>=100?10:p>=88?9:p>=80?8:p>=72?7:p>=64?6:p>=56?5:p>=48?4:p>=40?3:p>=32?2:p>=24?1:0;
+  D.districts.forEach(d=>{ d.achievement=pc(d.value69,d.target10m); d.percent12m=pc(d.value69,d.target12m); d.quantScore=qs(d.achievement); const qo=Q.districtOutcome.find(x=>x.name===d.name); d.qualityOutcome=qo?qo.outcomeScore:Q.outcomeScore; d.quantWeightedScore=d.quantScore*.7; d.qualityWeightedScore=d.qualityOutcome/10*.3; d.totalScore=d.quantWeightedScore+d.qualityWeightedScore; });
+  const DT={value68:sum(D.districts,'value68'),weight:sum(D.districts,'weight'),target10m:sum(D.districts,'target10m'),value69:sum(D.districts,'value69'),target12m:D.targets.month12};
+  DT.achievement=pc(DT.value69,DT.target10m); DT.percent12m=pc(DT.value69,DT.target12m); DT.quantScore=qs(DT.achievement); D.districtTotals=DT;
+  D.province={target10m:DT.target10m,target12m:DT.target12m,value69:DT.value69,achievement10m:DT.achievement,achievement12m:DT.percent12m};
+  Q.quantitativeScore=DT.quantScore; Q.quantWeightedScore=Q.quantitativeScore*.7; Q.qualWeightedScore=Q.outcomeScore/10*.3; Q.totalScore=Q.quantWeightedScore+Q.qualWeightedScore;
+  Q.grade=Q.totalScore>=8.6?'ดีมาก (Very Good)':Q.totalScore>=7.1?'ดี (Good)':Q.totalScore>=5.1?'พอใช้ (Fair)':'ต้องปรับปรุง (Needs Improvement)';
+  Q.methodNote=`คะแนนดิบ 4 มิติใช้แสดงสถานการณ์; คะแนน Outcome จังหวัดใช้คะแนนแปลงจากไฟล์คุณภาพรอบ ${V.MON_S}; ระดับอำเภอใช้ร้อยละดิบล่าสุดและคงคะแนนแปลงรายอำเภอรอบล่าสุดที่มีหลักฐาน`;
+  D.units.forEach(x=>{ x.percentAchieved10m=pc(x.value69,x.target10m); x.target12m=x.target12m||0; x.percentAchieved12m=pc(x.value69,x.target12m); });
+  D.unitTotals={value68:sum(D.units,'value68'),weight:sum(D.units,'weight'),target10m:sum(D.units,'target10m'),value69:sum(D.units,'value69'),target12m:D.targets.month12};
+  D.unitTotals.achievement=pc(D.unitTotals.value69,D.unitTotals.target10m); D.unitTotals.percent12m=pc(D.unitTotals.value69,D.unitTotals.target12m);
+  D.drugs.sort((a,b)=>b.total-a.total); D.drugsTotal=sum(D.drugs,'total');
+  const f2=v=>Number(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  D.reconciliation={officialTotal:DT.value69,inScopeUnits:D.unitTotals.value69,outOfScope:DT.value69-D.unitTotals.value69,drugTotal:D.drugsTotal,drugDifference:DT.value69-D.drugsTotal,
+    note:`ยอดรายหน่วยที่แจกแจงได้ ${f2(D.unitTotals.value69)} บาท + ยอดที่ยังไม่แจกแจงรายหน่วย ${f2(DT.value69-D.unitTotals.value69)} บาท = Official KPI ${f2(DT.value69)} บาท; ยอดรายการยาจากไฟล์ ERROR/GMP ${f2(D.drugsTotal)} บาท ต่างจาก Official ${f2(DT.value69-D.drugsTotal)} บาท จึงแสดงเป็นประเด็นตรวจสอบ`};
+  D.levels=[{name:'ระดับประเทศ',target:tg('ประเทศ',BD.levels[0].target),value:cTot??BD.levels[0].value},{name:'เขตสุขภาพที่ 6',target:tg('เขตสุขภาพที่ 6',BD.levels[1].target),value:rTot||BD.levels[1].value},{name:'จ.สมุทรปราการ',target:DT.target12m,value:DT.value69}];
+  D.levels.forEach(l=>l.percent=pc(l.value,l.target));
+  D.region6=rRows.length? rRows.map(r=>{ const b=BD.region6.find(x=>x.name===r.name); const t=r.name===PROV?DT.target12m:tg(r.name,b&&b.target); return {name:r.name,target:t,value:r.name===PROV?DT.value69:r.value,percent:pc(r.name===PROV?DT.value69:r.value,t)}; }).sort((a,b)=>a.name.localeCompare(b.name,'th')) : BD.region6;
+  // ---- ประวัติรายงวด
+  const dShort=Object.fromEntries(D.districts.map(d=>[d.name,d.value69]));
+  const hist=(same?BD.history:[]).filter(h=>h.iso<M.iso);
+  hist.push({date:V.DATE_SS,iso:M.iso,source:`ReportBuilder ${V.MON_S}`,value:DT.value69,achievement10:DT.achievement,achievement12:DT.percent12m,districts:dShort}); D.history=hist;
+  D.updateDate=V.DATE_SS; D.generatedAt=V.DATE_LONG; D.sourceFile=`ชุดข้อมูลสมุนไพร UC / on-top / คุณภาพ ${V.MON_S} (สร้างจาก ReportBuilder)`;
+  V.J_DATA=D;
+  // ---- เงินชดเชย สปสช.
+  const O=M.db.ONTOP; const N=JSON.parse(JSON.stringify(base.NHSO_CLAIM_DETAIL)); let NU=base.NHSO_UNIT_REIMBURSEMENT;
+  if(O){ const HOSP={}; DISTRICTS.forEach(Dk=>{ const h=D.units.find(x=>x.district===HB_SHORT(Dk.key)&&HB_HOSP.includes(x.code)); if(h) HOSP[HB_SHORT(Dk.key)]=h; });
+    const shortName=n=>String(n).replace(/^โรงพยาบาลส่งเสริมสุขภาพตำบล/,'รพ.สต.');
+    NU=[]; ['เมืองสมุทรปราการ','บางเสาธง','บางบ่อ','บางพลี','พระประแดง','พระสมุทรเจดีย์'].forEach(k=>{ const x=O.unit[k]; if(x) x.rows.forEach(r=>NU.push({district:HB_SHORT(k),code:r.code,name:r.name,items:r.items||0,pay:r.amount})); });
+    const have=new Set(NU.map(r=>r.code)); const unitCodes=new Map(D.units.map(x=>[x.code,x]));
+    const provRows=O.province?O.province.rows:[]; const supp=provRows.filter(r=>!have.has(r.code)&&unitCodes.has(r.code)&&!HB_HOSP.includes(r.code));
+    supp.forEach(r=>NU.push({district:unitCodes.get(r.code).district,code:r.code,name:r.name,items:r.items||0,pay:r.amount}));
+    const detail=sum(NU.filter(r=>!supp.includes(r)),'pay'), suppPay=sum(supp,'amount');
+    const moph=provRows.filter(r=>r.type!=='X'&&r.district), all=sum(provRows,'amount'), mophPay=moph.length?sum(moph,'amount'):detail+suppPay;
+    const use=DT.value69;
+    N.official={use,pay:mophPay,ratio:use?mophPay/use:0}; N.unitUseTotal=D.unitTotals.value69; N.unitDetailTotal=detail; N.monthlyTotal=detail; N.monthlyDiff=0;
+    N.provinceSheetTotal=mophPay; N.supplementPay=suppPay; N.comparisonPay=detail+suppPay; N.provinceSheetDiff=N.cupSummaryDiff=mophPay-N.comparisonPay;
+    N.provinceAllProviderPay=all||mophPay; N.outsideProviderPay=(all||mophPay)-mophPay; N.outsideNetwork=D.reconciliation.outOfScope; N.itemsTotal=sum(NU,'items'); N.sourceRows=NU.length;
+    const mDist={}; NU.forEach(r=>{ const uu=unitCodes.get(r.code); r._ud=uu?uu.district:null; });
+    N.matchedUnits=NU.filter(r=>r._ud&&(unitCodes.get(r.code).value69||0)>0).length; N.reimbOnlyUnits=NU.filter(r=>!r._ud).length; N.reimbOnlyPay=sum(NU.filter(r=>!r._ud),'pay'); N.mappedPay=N.comparisonPay-N.reimbOnlyPay;
+    N.districtMismatch=NU.filter(r=>r._ud&&r._ud!==r.district).length; N.baseDetailRows=NU.length-supp.length;
+    const payBy=new Map(NU.map(r=>[r.code,r.pay]));
+    N.ucOnlyUnits=D.units.filter(x=>!payBy.has(x.code)).length;
+    const ratios=D.units.filter(x=>(x.value69||0)>0&&payBy.has(x.code)).map(x=>payBy.get(x.code)/x.value69);
+    N.over100Count=ratios.filter(r=>r>1).length; N.lowUnder30Count=ratios.filter(r=>r<.3).length;
+    N.districts=D.districts.map(d=>{ const h=HOSP[d.name]; const us=D.units.filter(x=>x.district===d.name); const paid=us.filter(x=>payBy.has(x.code));
+      const hp=h?(payBy.get(h.code)||0):0; const orphan=NU.filter(r=>!r._ud&&r.district===d.name);
+      return {district:d.name,hospital:h?h.name:'',hUse:h?h.value69:0,nUse:sum(us.filter(x=>x!==h),'value69'),hPay:hp,nPay:sum(paid.filter(x=>x!==h).map(x=>payBy.get(x.code))),
+        matched:paid.length,ucOnly:us.filter(x=>!payBy.has(x.code)).length,reimbOnly:orphan.length,mismatch:NU.filter(r=>r._ud===d.name&&r.district!==d.name).length}; });
+    NU.forEach(r=>delete r._ud);
+    N.monthlyByDistrict=Object.fromEntries(D.districts.map(d=>[d.name,sum(NU.filter(r=>r.district===d.name&&!supp.some(s=>s.code===r.code)),'pay')]));
+    const reg=[]; Object.entries(O.prov||{}).forEach(([p,x])=>{ const r=rRows.find(z=>z.name===p); if(r) reg.push({province:p,use:r.value,pay:x.total,ratio:r.value?x.total/r.value:0}); });
+    reg.push({province:PROV,use,pay:mophPay,ratio:N.official.ratio}); N.region=reg.length>1?reg.sort((a,b)=>b.ratio-a.ratio):N.region;
+    const ms=V.MON_S; N.displaySource=`เงินชดเชย สปสช. รอบ ${ms} • รายละเอียด on-top ${Object.keys(O.unit).length} อำเภอ${O.province?' + สรุปทั้งจังหวัด':''}`; N.sourceFile=`ไฟล์ OnTop ${ms} (DatIN/11 OnTop สปสช)`;
+    N.hdcDate=`${V.DATE_LONG} (ชุดข้อมูล UC ${ms})`; N.nhsoPeriod=`ไฟล์ on-top ${V.MON_FULL}`; N.regionDate=reg.length>1?`เขต 6 รายจังหวัดจากไฟล์ on-top ${ms}`:N.regionDate; N.systemUpdateDate=V.DATE_LONG;
+    N.sourceNote=`ไฟล์ ${ms}: รายละเอียด on-top รายอำเภอ ${f2(detail)} บาท${suppPay?` + รายการเสริมจากไฟล์สรุปทั้งจังหวัด ${f2(suppPay)} บาท`:''} = ยอดวิเคราะห์รายหน่วย ${f2(N.comparisonPay)} บาท; ยอดสรุปหน่วยในสังกัด สป.สธ. ${f2(mophPay)} บาท ต่าง ${f2(N.cupSummaryDiff)} บาท จึงแสดงเป็น Reconciliation; ยอดรวมทุกผู้ให้บริการ ${f2(N.provinceAllProviderPay)} บาท (นอกสังกัด ${f2(N.outsideProviderPay)} บาท)`;
+  }
+  V.J_NHSO=N; V.J_NHSOU=NU;
+  V.J_META={version:'RB-'+M.iso,phase:`FY${String(V.FY).slice(2)} ${EN_MON[m-1]} Data Refresh (ReportBuilder)`,buildDate:V.DATE_LONG,owner:'กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สสจ.สมุทรปราการ'};
+  V.CHANGE=`สร้างอัตโนมัติจาก ReportBuilder รอบ ${V.MON_S}: UC จังหวัด ${f2(DT.value69)} บาท (${fmt(DT.achievement)}% เป้า 10 เดือน; ${fmt(DT.percent12m)}% เป้า 12 เดือน)${cTot?`, ประเทศ ${fmt(cTot/1e6)} ล้านบาท`:''}${rTot?`, เขตสุขภาพที่ 6 ${fmt(rTot/1e6)} ล้านบาท`:''}; ${D.units.length} หน่วยบริการ ${D.drugs.length} รายการยา${same?'':` • เป้าหมายปี ${V.FY} คำนวณจากชีต เป้าหมายUC และน้ำหนักตามผลงานปี ${V.FYm1}`}`;
+  return V;
+}
+const HB_HOSP=['10685','10754','10752','10753','10755','28785'];
+TPL_BUILDERS.HerbUC=tplHerbUC;
 
 async function loadTemplates(){ const out={}; if(!WF.root) return out; const dir=await tryDir(WF.root,'00 เครื่องมือ/templates'); if(!dir) return out;
-  for await (const [n,h] of dir.entries()){ const mm=n.match(/^(.+)\.tpl\.html$/); if(mm&&h.kind==='file') out[mm[1]]=await (await h.getFile()).text(); }
+  for await (const [n,h] of dir.entries()){ const mm=n.match(/^(.+)\.tpl\.html$/); if(mm&&h.kind==='file') out[mm[1]]=await (await h.getFile()).text(); const mj=n.match(/^(.+\.base)\.json$/); if(mj&&h.kind==='file'){ try{ out[mj[1]]=JSON.parse(await (await h.getFile()).text()); }catch(e){} } }
   try{ const f=await (await (await tryDir(WF.root,'00 เครื่องมือ')).getFileHandle('ประวัติผลงาน.json')).getFile(); HIST_FILE=JSON.parse(await f.text()); }catch(e){}
   return out; }
 
 function buildAllSubs(M,T){
   T=T||{}; const out=[]; for(const k of Object.keys(SUB_FILES)){ const base=SUB_FILES[k].replace('.html',''); let h=null;
-    if(T[base]&&TPL_BUILDERS[base]){ try{ const V=TPL_BUILDERS[base](M); if(V) h=fillTpl(T[base],V); }catch(e){ console.error(e); wfLog&&wfLog(`แม่แบบ ${base} ผิดพลาด: ${e.message} — ใช้แบบมาตรฐานแทน`,'warn'); } }
+    if(T[base]&&TPL_BUILDERS[base]){ try{ const V=TPL_BUILDERS[base](M,T); if(V) h=fillTpl(T[base],V); }catch(e){ console.error(e); wfLog&&wfLog(`แม่แบบ ${base} ผิดพลาด: ${e.message} — ใช้แบบมาตรฐานแทน`,'warn'); } }
     if(!h) h=k==='UC'?buildUcSub(M):k==='ONTOP'?buildOnTopSub(M):buildKpiSub(M,k); if(h) out.push([SUB_FILES[k],h,KPI[k].short]); }
   for(const D of DISTRICTS){ if(!Object.values(M.db).some(x=>x&&x.unit&&x.unit[D.key])) continue; let h=null;
     if(T.District&&TPL_BUILDERS.District){ try{ const V=TPL_BUILDERS.District(M,D.key); if(V) h=fillTpl(T.District,V); }catch(e){ console.error(e); wfLog&&wfLog(`แม่แบบรายอำเภอผิดพลาด: ${e.message}`,'warn'); } }
