@@ -55,7 +55,8 @@ html,body{height:100%;overflow:hidden;background:#1a0d06;color:var(--paper);font
   background:linear-gradient(180deg,var(--hud-bg1),var(--hud-bg2));border:1px solid var(--hud-line);
   box-shadow:0 0 0 3px var(--hud-ring),0 0 0 4px #c9a24f66,0 8px 24px var(--hud-shadow);border-radius:6px;
 }
-#top{top:max(14px,env(safe-area-inset-top));left:16px;right:16px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+#top{top:max(14px,env(safe-area-inset-top));left:16px;right:16px;display:flex;flex-wrap:nowrap;justify-content:space-between;align-items:flex-start;gap:10px}
+#brand,#tools{flex-shrink:0}
 #brand{padding:8px 14px;font-family:'Chonburi';font-size:.95rem;color:var(--hud-ink);letter-spacing:.3px;line-height:1.25}
 #brand .by{display:block;font-family:'Sarabun';font-size:.66rem;color:var(--hud-ink2);margin-top:2px;letter-spacing:0;opacity:.9}
 #brand small{display:block;font-family:'Chonburi';font-size:.74rem;color:var(--hud-ink2);letter-spacing:0}
@@ -93,7 +94,8 @@ html,body{height:100%;overflow:hidden;background:#1a0d06;color:var(--paper);font
 body.night{--hud-bg1:#24120a;--hud-bg2:#120804;--hud-line:#9a7224;--hud-ring:#120804;--hud-ink:#f3d68a;--hud-ink2:#d9c08a;--hud-strong:#fff;--hud-field:#120804;--hud-shadow:#000a}
 body.guiding #hint,body.guiding #navrow,body.guiding #dots,body.focus #hint,body.focus #navrow,body.focus #dots{display:none}
 @media(max-width:1440px){#lookBtn .tx,#timeBtn .tx{display:none}}
-#sign{min-width:240px}
+@media(max-width:1200px){.ib .tx{display:none}.ib{padding:0 10px}#gsearch{width:150px}#brand small{display:none}}
+#sign{min-width:0}
 #newsBtn{background:linear-gradient(180deg,#8a2a22,#5a1410);border-color:#c9a045;color:#fff3d6}
 #newsBtn:hover{color:#fff;filter:brightness(1.1);border-color:var(--gold-lt)}
 #lookBtn.on{border-color:var(--gold);color:var(--hud-strong);box-shadow:0 0 0 3px var(--hud-ring),0 0 12px #d9b86a}
@@ -115,6 +117,7 @@ body.guiding #hint,body.guiding #navrow,body.guiding #dots,body.focus #hint,body
 #sign .k.news{background:#7a1f1a;color:#ffe9c2}
 #sign .k.pr{background:#2f4a2a;color:#e8f3d6}
 #sign .k.new{background:var(--gold);color:#2b1409}
+#sign .k.newapp{background:linear-gradient(180deg,#e8453a,#a3190f);color:#fff;box-shadow:0 0 8px #e8453a99}
 @keyframes signRun{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media(prefers-reduced-motion:reduce){#sign .track{animation:none;position:static;overflow-x:auto}}
 
@@ -286,13 +289,18 @@ body.chatting #navrow,body.chatting #dots,body.chatting #hint{display:none}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
 @media(max-width:900px){
-  #top{flex-wrap:wrap}
-  #sign{order:3;flex-basis:100%;max-width:none;height:38px}
+  #top{gap:6px;left:8px;right:8px}
+  #brand{display:none}
+  #sign{max-width:none;height:38px}
+  #sign .tag{padding:0 8px;font-size:.74rem}
+  #tools{gap:5px}
+  .ib{height:38px;min-width:34px;padding:0 8px}
+  #gsearch{width:34px;padding:0;color:transparent;cursor:pointer;background-position:50% 50%}
+  #gsearch:focus{position:fixed;left:8px;right:8px;top:58px;width:auto;padding:0 12px 0 34px;color:var(--hud-strong);z-index:9;background-position:12px 50%}
 }
 @media(max-width:700px){
   #brand small,#brand .by{display:none}
   #timeBtn .tx,#favBtn .tx,#lookBtn .tx,#newsBtn .tx{display:none}
-  #gsearch{width:130px}
   .ib .tx{display:none}
   #ledger{top:auto;left:8px;right:8px;bottom:8px;width:auto;height:66vh;transform:translateY(110%)}
   #ledger.show{transform:none}
@@ -621,7 +629,7 @@ function slideSound(open=true){ open?sfx.drawerOpen():sfx.drawerClose(); }
 /* ================= Renderer / Scene ================= */
 const canvas = document.getElementById('scene');
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
-renderer.setPixelRatio(Math.min(devicePixelRatio, isSmall?1.6:1.75));
+renderer.setPixelRatio(Math.min(Math.max(devicePixelRatio,1.5), isSmall?2:2.5));   // คมชัดขึ้น: ไม่ต่ำกว่า 1.5x เพดาน 2x มือถือ / 2.5x จอใหญ่
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -1756,9 +1764,9 @@ const thDate=d=>new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'short',tim
 async function recentUpdates(){
   const apps=cats.flatMap(c=>c.apps).filter(a=>!/^https?:/i.test(a.href)&&!a.private);
   const byFile=new Map(apps.map(a=>[decodeURIComponent(a.href.split('#')[0].split('?')[0]),a]));
-  const dated=new Map();
+  const dated=new Map(), msgs=new Map();
   // 1) dates.json (สร้างโดย GitHub Action)
-  try{ const r=await fetchT('dates.json?_='+Math.floor(Date.now()/3e5),{cache:'no-store'},5000); if(r.ok){ const j=await r.json(); for(const [f,x] of Object.entries(j.files||{})) if(byFile.has(f)&&x.d) dated.set(f,x.d); } }catch(e){}
+  try{ const r=await fetchT('dates.json?_='+Math.floor(Date.now()/3e5),{cache:'no-store'},5000); if(r.ok){ const j=await r.json(); for(const [f,x] of Object.entries(j.files||{})) if(byFile.has(f)&&x.d){ dated.set(f,x.d); msgs.set(f,x.m||''); } } }catch(e){}
   // 2) วันที่ที่หน้าพอร์ทัลเคยดึงไว้ในเครื่องนี้
   if(dated.size<3){ try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); const m=k&&k.match(/^ghd:jeerapat2010-cpu\/my-html-app:(.+)$/); if(m&&byFile.has(m[1])){ const v=JSON.parse(localStorage.getItem(k)); if(v&&v.d) dated.set(m[1],v.d); } } }catch(e){} }
   // 3) ถาม GitHub ครั้งเดียว (เก็บไว้ 1 ชม.)
@@ -1775,8 +1783,8 @@ async function recentUpdates(){
     }catch(e){}
   }
   const skip=new Set(['index.html','room.html']);
-  return [...dated].filter(([f])=>!skip.has(f)).map(([f,d])=>({app:byFile.get(f),d:new Date(d)}))
-    .filter(x=>Date.now()-x.d<45*864e5).sort((a,b)=>b.d-a.d).slice(0,8);
+  return [...dated].filter(([f])=>!skip.has(f)).map(([f,d])=>({app:byFile.get(f),d:new Date(d),m:msgs.get(f)||''}))
+    .filter(x=>Date.now()-x.d<45*864e5).sort((a,b)=>b.d-a.d).slice(0,12);
 }
 async function buildSign(){
   const items=[];
@@ -1784,7 +1792,10 @@ async function buildSign(){
     if(a && !a.off && (a.title||a.text) && !(a.until && Date.now()>new Date(a.until).getTime()+864e5))
       items.push({k:'pr',kt:'ประกาศ',t:[a.title,a.text].filter(Boolean).join(' — '),href:a.url||null}); } }catch(e){}
   if(PORTAL.news) items.push({k:'news',kt:'ข่าว',t:PORTAL.news.text,href:PORTAL.news.href,ext:true});
-  try{ (await recentUpdates()).forEach(x=>items.push({k:'new',kt:'อัปเดต',t:x.app.title,sub:'อัปเดต '+thDate(x.d),href:x.app.href,app:x.app})); }catch(e){}
+  try{ const ups=await recentUpdates();
+    const isNew=x=>/^\s*add\s+(app|files?|new)?|เพิ่ม\s*(app|แอป)|new app|แอปใหม่/i.test(x.m||'') && Date.now()-x.d<21*864e5;
+    ups.filter(isNew).forEach(x=>items.push({k:'newapp',kt:'🆕 App ใหม่',t:x.app.title,sub:'เพิ่ม '+thDate(x.d),href:x.app.href,app:x.app}));
+    ups.filter(x=>!isNew(x)).forEach(x=>items.push({k:'new',kt:'อัปเดต',t:x.app.title,sub:'อัปเดต '+thDate(x.d),href:x.app.href,app:x.app})); }catch(e){}
   PORTAL.ticker.filter(t=>!/Ctrl|ไอคอน ⭐/.test(t)).forEach(t=>items.push({k:'pr',kt:'ปชส.',t}));
   if(!items.length) items.push({k:'pr',kt:'ปชส.',t:'ยินดีต้อนรับสู่หอข้อมูลงานแพทย์แผนไทยและแพทย์ทางเลือก สมุทรปราการ'});
   const track=document.getElementById('signTrack'); track.innerHTML='';
