@@ -540,6 +540,24 @@ const PLAN = [
     { src:'cat-8', name:'ประชุม & สารบรรณ', emoji:'🗂️', re:/ประชุม|วาระ|สารบรรณ/ },
     { src:'cat-8', name:'เครื่องมือ IT & ข้อมูลสถานประกอบการ', emoji:'🛠️', re:/ONEPAGE|spec|สถานประกอบการ/ },
     { src:'cat-8', name:'คลังยา & พัสดุ', emoji:'🧊', re:null } ] },
+  { name:'อีเวนต์ & ไลฟ์สไตล์', dept:'งานมหกรรม · ดูดวง · ภาษาญี่ปุ่น · ชีวิตประจำวัน', subs:[
+    { src:'cat-9', name:'อีเวนต์ & งานมหกรรม', emoji:'🎪', re:/Stamp|เกมสำหรับ|Event|WRB|Cutepill/i },
+    { src:'cat-9', name:'ดูดวง & เสี่ยงทาย', emoji:'🔮', re:/พยากรณ์|ไพ่|เซียมซี|Lottery|ดูดวง|โหงวเฮ้ง|ENNEAGRAM/i },
+    { src:'cat-9', name:'ภาษาญี่ปุ่น', emoji:'🇯🇵', re:/ญี่ปุ่น/ },
+    { src:'cat-9', name:'ชีวิตประจำวัน & สุขภาพใจ', emoji:'🏠', re:null } ] },
+  { name:'Digital Portal Varity · ความรู้ & ภาษา', dept:'คู่มือ · เรียนภาษา · เครื่องมือ Utility', subs:[
+    { src:'f2-0', name:'คลังความรู้', emoji:'📚', re:null },
+    { src:'f2-1', name:'ภาษาญี่ปุ่น บทที่ ๑๐๑–๑๑๐', emoji:'🗾', re:/LearnJP|Lesson 1[01]\d\b/ },
+    { src:'f2-1', name:'ภาษาญี่ปุ่น บทที่ ๑๖–๒๑', emoji:'🈁', re:/Lesson|บทนำ|อักษร/ },
+    { src:'f2-1', name:'ภาษาจีน & แบบประเมินตนเอง', emoji:'📝', re:null },
+    { src:'f2-6', name:'Utility เครื่องมือ', emoji:'🧰', re:null } ] },
+  { name:'Digital Portal Varity · สร้างสรรค์ & ไลฟ์สไตล์', dept:'ยานยนต์ · เพลง · หนัง · เกมส์ · สุขภาพ · ดวง', subs:[
+    { src:'f2-2', name:'ยานยนต์', emoji:'🚗', re:null },
+    { src:'f2-3', name:'แต่งเพลง', emoji:'🎵', re:null },
+    { src:'f2-4', name:'ภาพยนตร์', emoji:'🎬', re:null },
+    { src:'f2-5', name:'เกมส์', emoji:'🎮', re:null },
+    { src:'f2-7', name:'Healthy', emoji:'💪', re:null },
+    { src:'f2-8,f2-9', name:'Beauty & ดวงพยากรณ์', emoji:'💄', re:null } ] },
 ];
 const ROOMS_PER_FLOOR = 6;
 function chunkFloors(base, cats){
@@ -549,18 +567,16 @@ function chunkFloors(base, cats){
 }
 async function loadAll(){
   const [ttm,f2]=await Promise.all([loadCatsTTM().catch(()=>[]), loadCats2().catch(e=>{ console.warn(e); return []; })]);
-  const byId=Object.fromEntries(ttm.map(c=>[c.id,{...c,apps:c.apps.slice()}])), floors=[];
+  const byId=Object.fromEntries([...ttm,...f2].map(c=>[c.id,{...c,apps:c.apps.slice()}])), floors=[];
   PLAN.forEach(p=>{
     const cs=[];
-    p.subs.forEach((s,si)=>{ const src=byId[s.src]; if(!src) return;
-      const hit=src.apps.filter(a=>s.re?s.re.test(a.title+' '+a.gaName):true);
-      hit.forEach(a=>src.apps.splice(src.apps.indexOf(a),1));
-      if(hit.length) cs.push({...src,id:s.src+'-'+si,name:s.name,short:s.name,emoji:s.emoji,apps:hit}); });
+    p.subs.forEach((s,si)=>{ const srcs=s.src.split(',').map(i=>byId[i]).filter(Boolean); if(!srcs.length) return;
+      const hit=[]; srcs.forEach(src=>{ const h=src.apps.filter(a=>s.re?s.re.test(a.title+' '+a.gaName):true); h.forEach(a=>src.apps.splice(src.apps.indexOf(a),1)); hit.push(...h); });
+      if(hit.length) cs.push({...srcs[0],id:s.src+'-'+si,name:s.name,short:s.name,emoji:s.emoji,apps:hit}); });
     if(cs.length) floors.push(...chunkFloors({name:p.name,dept:p.dept,glass:false},cs));
   });
   const left=Object.values(byId).filter(c=>c.apps.length);   // หมวด/ระบบใหม่ที่ผังยังไม่รู้จัก
   if(left.length) floors.push(...chunkFloors({name:'บริการอื่น ๆ',dept:'ระบบอื่น ๆ ของกลุ่มงาน',glass:false},left));
-  if(f2.length) floors.push(...chunkFloors({name:'ห้องกระจกชมวิว · Digital Portal Varity',dept:'แอปทั่วไป · อีเวนต์ · ไลฟ์สไตล์',glass:true},f2));
   floors.forEach((f,i)=>f.no=i+1);
   BUILDING=floors;
   if(FLOOR<1||FLOOR>floors.length) FLOOR=1;
@@ -684,18 +700,19 @@ const sfx={
 };
 /* ---------- เสียงบรรยากาศ ---------- */
 let ambOn=false, ambTimers=[];
-function chirp(t,base){ for(let k=0;k<2+Math.floor(Math.random()*4);k++){ const tt=t+k*.11; tone(tt,base*(1+Math.random()*.1),.09,{peak:.03,f2:base*1.6,pan:Math.random()*1.6-.8,out:ambBus}); } }
-function ambLoop(){
-  if(!ambOn) return;
-  const a=ac(); if(!a) return; const t=a.currentTime+.05;
-  if(SKY==='night'){ // จิ้งหรีด
-    const pan=Math.random()*1.4-.7; for(let k=0;k<3+Math.floor(Math.random()*3);k++) tone(t+k*.13,4300+Math.random()*300,.07,{peak:.02,pan,out:ambBus});
-  } else if(SKY==='evening'){ if(Math.random()<.5) chirp(t,1900); }
-  else chirp(t, SKY==='morning'?3000:2500);                                                     // นกร้องตอนเช้า/กลางวัน
-  if(Math.random()<.22){ for(let k=0;k<3;k++) tone(t+.4+k*.09+Math.random()*.05,5200+Math.random()*2400,.5,{peak:.012,pan:Math.random()-.5,out:ambBus}); } // คริสตัลกระทบ
-  ambTimers.push(setTimeout(ambLoop, SKY==='night'? 900+Math.random()*900 : 2200+Math.random()*4200));
+function gullCry(t){   // เสียงนกนางนวลร้อง "เคี๊ยว~ เคี๊ยว~" ไกล ๆ
+  const pan=Math.random()*1.4-.7, n=2+Math.floor(Math.random()*3);
+  for(let k=0;k<n;k++){ const tt=t+k*(.42+Math.random()*.12), f=1450+Math.random()*350;
+    tone(tt,f,.13,{type:'triangle',peak:.05,f2:f*1.4,pan,out:ambBus}); tone(tt+.12,f*1.4,.3,{type:'triangle',peak:.045,f2:f*.62,pan,out:ambBus});
+    tone(tt+.02,f*2.02,.4,{type:'sine',peak:.012,f2:f*1.1,pan,out:ambBus}); noise(tt,.4,{type:'bandpass',f:2300,q:1.6,peak:.012,pan,out:ambBus}); }
 }
-function ambStart(){ if(ambOn||!soundOn) return; ambOn=true; ac(); ambLoop();
+function ambLoop(first){
+  if(!ambOn) return;
+  const a=ac(); if(!a) return;
+  if(!first && (SKY!=='night' || Math.random()<.4)) gullCry(a.currentTime+.05);     // นาน ๆ ทีเท่านั้น
+  ambTimers.push(setTimeout(ambLoop, 16000+Math.random()*16000));
+}
+function ambStart(){ if(ambOn||!soundOn) return; ambOn=true; ac(); ambTimers.push(setTimeout(()=>{ if(ambOn&&SKY!=='night') gullCry(ac().currentTime+.05); },5000)); ambLoop(true);
   // เสียงห้องเงียบ ๆ (room tone) ต่อเนื่อง
   try{ const a=ac(); const src=a.createBufferSource(); src.buffer=noiseBuf(); src.loop=true; const lp=a.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=260;
     const g=a.createGain(); g.gain.value=.012; src.connect(lp).connect(g).connect(ambBus); src.start(); ambStart._src=src; }catch(e){} }
@@ -1978,24 +1995,28 @@ function buildBuddy(){
 
   /* ---------- ตัวน้องลูกประคบ: มาสคอตตัวอ้วนกลม สูงเท่าคน (หัวเป็นลูกประคบ ตัวสวมเสื้อหม้อฮ่อม) ---------- */
   const B=new THREE.Group(); scene.add(B);
-  const home=base.clone().add(dirC.clone().multiplyScalar(.1)); home.y=0;
+  const rightV=new THREE.Vector3(Math.cos(yawC),0,-Math.sin(yawC));
+  const loc=(x,z)=>base.clone().add(rightV.clone().multiplyScalar(x)).add(dirC.clone().multiplyScalar(-z)).setY(0);
+  const home=loc(0,-.1), viaP=loc(CW/2+.45,.12), standP=loc(CW/2+.52,1.0);
+  const pathPts=[home,viaP,standP], segL=[home.distanceTo(viaP),viaP.distanceTo(standP)], pathLen=segL[0]+segL[1];
+  { // เก้าอี้ไม้สักหลังเคาน์เตอร์ (น้อง ๆ นั่งตอบคำถามชั้นอื่น)
+    mk(C,new THREE.BoxGeometry(.78,.07,.06),M.teakDark,0,1.28,-.34); mk(C,new THREE.BoxGeometry(.7,.28,.03),M.teak,0,1.12,-.35);
+    for(const sx of [-1,1]) mk(C,new THREE.BoxGeometry(.06,1.3,.06),M.teakDark,sx*.38,.65,-.34); }
   const SH=.9, HY=1.3, UY=.55, uy=y=>y-UY, hy=y=>y-HY;      // ไหล่สูง / กลางหัว / จุดหมุนตัวท่อนบน
   const clothT=tex(512,512,(g,w,h)=>{
-    g.fillStyle='#f3e6c4'; g.fillRect(0,0,w,h);
-    for(let y=0;y<h;y+=3){ g.fillStyle=y%6?'rgba(120,90,40,.045)':'rgba(255,255,255,.07)'; g.fillRect(0,y,w,1.5); }
-    for(let x=0;x<w;x+=3){ g.fillStyle=x%6?'rgba(120,90,40,.035)':'rgba(255,255,255,.05)'; g.fillRect(x,0,1.5,h); }
-    const r=rng(77); const cols=['#5f9a3e','#7db04a','#8a6a2e','#d8962b','#4c7d34','#c97a1f'];
-    for(let k=0;k<420;k++){ g.fillStyle=cols[Math.floor(r()*cols.length)]; g.globalAlpha=.35+r()*.4; g.beginPath(); g.ellipse(r()*w,r()*h,2+r()*5,1.5+r()*3,r()*3,0,6.28); g.fill(); }
-    g.globalAlpha=1; g.strokeStyle='rgba(150,105,50,.55)'; g.lineWidth=3; g.setLineDash([10,7]);
+    g.fillStyle='#fbfaf6'; g.fillRect(0,0,w,h);
+    for(let y=0;y<h;y+=3){ g.fillStyle=y%6?'rgba(120,110,90,.05)':'rgba(255,255,255,.35)'; g.fillRect(0,y,w,1.5); }
+    for(let x=0;x<w;x+=3){ g.fillStyle=x%6?'rgba(120,110,90,.04)':'rgba(255,255,255,.3)'; g.fillRect(x,0,1.5,h); }
+    g.strokeStyle='rgba(170,160,140,.5)'; g.lineWidth=3; g.setLineDash([10,7]);
     for(let k=0;k<8;k++){ const x=k*64+32; g.beginPath(); g.moveTo(x,0); g.lineTo(x,h); g.stroke(); }    // ตะเข็บผ้าดิบ
   });
   const cloth=new THREE.MeshStandardMaterial({map:clothT,roughness:.9});
-  const indigoT=tex(256,256,(g,w,h)=>{ g.fillStyle='#24406e'; g.fillRect(0,0,w,h); for(let y=0;y<h;y+=4){ g.fillStyle='rgba(255,255,255,.05)'; g.fillRect(0,y,w,1.5); } for(let x=0;x<w;x+=4){ g.fillStyle='rgba(0,0,0,.08)'; g.fillRect(x,0,1.5,h); } });
-  const indigo=new THREE.MeshStandardMaterial({map:indigoT,roughness:.85});
+  const indigo=new THREE.MeshStandardMaterial({map:clothT,roughness:.9});   // ตัว/แขนเสื้อ = ผ้าขาวล้วน
   const white=new THREE.MeshStandardMaterial({color:'#fffdf6',roughness:.55});
-  const rope=new THREE.MeshStandardMaterial({color:'#c2412f',roughness:.6});
+  const rope=new THREE.MeshStandardMaterial({color:'#7b5230',roughness:.85});   // เชือกสีน้ำตาล
   const leafM=new THREE.MeshStandardMaterial({color:'#5a9a3a',roughness:.6});
-  const shoe=new THREE.MeshStandardMaterial({color:'#5a3a22',roughness:.6});
+  const shoe=new THREE.MeshStandardMaterial({color:'#ece7da',roughness:.7});
+  const btnM=new THREE.MeshStandardMaterial({color:'#8a6a44',roughness:.5});
   // ขา (ซ่อนหลังเคาน์เตอร์ส่วนใหญ่) + รองเท้าใหญ่ ๆ
   for(const sx of [-1,1]){ mk(B,new THREE.CapsuleGeometry(.09,.2,6,12),indigo,sx*.15,.32,0); mk(B,new THREE.SphereGeometry(.13,16,12),shoe,sx*.15,.07,.07,[1,.55,1.5]); }
   const U=new THREE.Group(); U.position.y=UY; B.add(U);
@@ -2003,9 +2024,9 @@ function buildBuddy(){
   const bodyM=new THREE.Mesh(new THREE.LatheGeometry([[0,.0],[.2,.01],[.31,.14],[.37,.36],[.35,.56],[.27,.74],[.15,.82],[0,.84]].map(([r,y])=>new THREE.Vector2(r,y+.0)),36),indigo);
   bodyM.position.y=uy(.2); bodyM.scale.z=.86; bodyM.castShadow=true; U.add(bodyM);
   mk(U,new THREE.TorusGeometry(.355,.012,6,36),white,0,uy(.37),0,[1,.86,1],[Math.PI/2,0,0]);   // ขอบเสื้อ
-  const bt=tex(256,112,(g,w,h)=>{ g.fillStyle='#fffdf6'; g.fillRect(0,0,w,h); g.strokeStyle='#c2412f'; g.lineWidth=6; g.strokeRect(5,5,w-10,h-10); g.fillStyle='#4a2c12'; g.textAlign='center'; g.textBaseline='middle'; g.font='bold 40px Sarabun, sans-serif'; g.fillText('น้องลูกประคบ',w/2,h/2+2); });
+  const bt=tex(256,112,(g,w,h)=>{ g.fillStyle='#fffdf6'; g.fillRect(0,0,w,h); g.strokeStyle='#7b5230'; g.lineWidth=6; g.strokeRect(5,5,w-10,h-10); g.fillStyle='#4a2c12'; g.textAlign='center'; g.textBaseline='middle'; g.font='bold 40px Sarabun, sans-serif'; g.fillText('น้องลูกประคบ',w/2,h/2+2); });
   mk(U,new THREE.BoxGeometry(.2,.088,.012),new THREE.MeshStandardMaterial({map:bt,roughness:.5}),.12,uy(.7),.305,null,[-.12,0,.05]);
-  for(const [y,z] of [[.62,.312],[.52,.292],[.42,.262]]) mk(U,new THREE.SphereGeometry(.02,10,8),white,0,uy(y),z);
+  for(const [y,z] of [[.62,.312],[.52,.292],[.42,.262]]) mk(U,new THREE.SphereGeometry(.02,10,8),btnM,0,uy(y),z);
   // หัว = ลูกประคบกลม ๆ มีเชือกมัดและจุกผ้าด้านบน
   const H=new THREE.Group(); H.position.set(0,uy(HY),0); U.add(H);
   mk(H,new THREE.SphereGeometry(.36,40,30),cloth,0,0,0,[1,.95,.9]);
@@ -2014,7 +2035,15 @@ function buildBuddy(){
   for(const [x,z,rz] of [[-.05,.0,.5],[.05,.0,-.5],[0,.045,0]]) mk(H,new THREE.ConeGeometry(.03,.12,10),cloth,x,.66,z,null,[0,0,rz]);
   mk(H,new THREE.TorusGeometry(.085,.02,8,24),rope,0,.33,0,null,[Math.PI/2,0,0]);                      // เชือกมัดคอจุก
   for(const sx of [-1,1]){ mk(H,new THREE.CapsuleGeometry(.014,.1,4,8),rope,sx*.045,.3,.07,null,[.3,0,sx*.6]); mk(H,new THREE.SphereGeometry(.03,10,8),rope,sx*.035,.335,.085,[1.4,.8,.8]); }
-  for(const sx of [-1,1]) mk(H,new THREE.SphereGeometry(.05,12,8),leafM,sx*.07,.7,.0,[1.4,.35,.8],[0,0,sx*-.7]);   // ใบสมุนไพรโผล่
+  { // มาลัยดอกไม้คล้องรอบจุกผ้า + ห้อยสองข้าง (มะลิขาว สลับดาวเรืองส้ม)
+    const jas=new THREE.MeshStandardMaterial({color:'#fffdf2',roughness:.45}), mar=new THREE.MeshStandardMaterial({color:'#f6a21c',roughness:.5});
+    for(let k=0;k<20;k++){ const a=k/20*Math.PI*2; mk(H,new THREE.SphereGeometry(.026,10,8),k%3===1?mar:jas,Math.cos(a)*.112,.345,Math.sin(a)*.112,[1,.8,1],null).castShadow=false; }
+    for(const sx of [-1,1]){
+      const pts=[[sx*.11,.33,.06],[sx*.17,.27,.12],[sx*.22,.19,.17],[sx*.27,.09,.19],[sx*.3,-.02,.19]];
+      pts.forEach((q,k)=>{ mk(H,new THREE.SphereGeometry(.03,10,8),k%2?mar:jas,q[0],q[1],q[2],[1,.85,1]).castShadow=false; if(k%2===0) mk(H,new THREE.SphereGeometry(.014,8,6),leafM,q[0]+sx*.02,q[1]-.02,q[2]+.012); });
+      mk(H,new THREE.ConeGeometry(.018,.07,8),mar,sx*.31,-.08,.19,null,[Math.PI,0,0]);       // พู่มาลัย
+    }
+  }
   const hdRope=new THREE.Mesh(new THREE.TorusGeometry(.358,.014,6,48),rope); hdRope.rotation.x=Math.PI/2; hdRope.position.y=-.2; hdRope.scale.set(.82,.78,1); hdRope.visible=false; H.add(hdRope);
   // หน้า
   const face=new THREE.Group(); H.add(face);
@@ -2044,7 +2073,9 @@ function buildBuddy(){
     arms.push({p:piv,s:sx}); elbows.push(el);
   }
   B.position.copy(home); B.rotation.y=yawC; B.scale.setScalar(.95);
-  buddy={B,C,body:U,head:H,flaps:[],arms,elbows,eyes,mouthOpen,steam:[],home,yawC,dirC,sh:[.28,SH],pos:home.clone(),target:home.clone(),scale:1,scaleT:1,action:'idle',pointAt:null,talk:0,blink:0,follow:null,hopT:0,dock:true,nod:0};
+  buddy={B,C,body:U,head:H,flaps:[],arms,elbows,eyes,mouthOpen,steam:[],home,yawC,dirC,at:(HOP&&FLOOR===1)?'stand':'seat',s:(HOP&&FLOOR===1)?pathLen:0,len:pathLen,standP,
+    pathAt(sv){ if(sv<=segL[0]) return pathPts[0].clone().lerp(pathPts[1],sv/segL[0]); return pathPts[1].clone().lerp(pathPts[2],Math.min(1,(sv-segL[0])/segL[1])); },
+    spot(){ return this.at==='stand'?this.standP:this.home; },sh:[.28,SH],pos:home.clone(),target:home.clone(),scale:1,scaleT:1,action:'idle',pointAt:null,talk:0,blink:0,follow:null,hopT:0,dock:true,nod:0};
   buddy.hitObjs=[B,C];
 }
 const _bq=new THREE.Quaternion(), _bq2=new THREE.Quaternion(), _bv=new THREE.Vector3(), _bv2=new THREE.Vector3();
@@ -2053,7 +2084,7 @@ function besideCabinet(cab){   // จุดที่น้องลูกปร�
   const dir=new THREE.Vector3(-Math.sin(cab.yaw),0,-Math.cos(cab.yaw));
   return cab.group.position.clone().add(dir.multiplyScalar(.1)).setY(1.4);
 }
-function dock(){ if(!buddy) return; buddy.pointAt=null; buddy.action='idle'; buddy.dock=true; }
+function dock(){ if(!buddy) return; buddy.pointAt=null; buddy.action='idle'; buddy.dock=true; if(FLOOR===1) buddy.at='stand'; }   // ชั้นล่างสุด: ออกมายืนต้อนรับหน้าเคาน์เตอร์
 function showDockTip(){ }
 /* กล้องเดินเข้าไปหาเคาน์เตอร์ (ใช้ตอนคุย/ฟังแนะนำ) */
 let focusKind='';
@@ -2064,25 +2095,31 @@ function focusPR(){
   mode='focus'; focusKind='pr'; document.body.classList.add('focus'); paintOpen();
   const d=camera.aspect<.8?2.7:2.15, side=(innerWidth>760 && chat.classList.contains('show'))?.55:(camera.aspect<.8?0:.1);
   const right=new THREE.Vector3(Math.cos(buddy.yawC),0,-Math.sin(buddy.yawC));
-  camPosT.copy(buddy.home).add(buddy.dirC.clone().multiplyScalar(-d)); camPosT.y=1.5;
-  lookT.copy(buddy.home); lookT.y=camera.aspect<.8?1.1:1.28; lookT.add(right.multiplyScalar(side));
+  const spot=buddy.spot(); camPosT.copy(spot).add(buddy.dirC.clone().multiplyScalar(-d)); camPosT.y=1.5;
+  lookT.copy(spot); lookT.y=camera.aspect<.8?1.1:1.28; lookT.add(right.multiplyScalar(side));
 }
 function updateBuddy(dt,t){
   if(!buddy) return; const b=buddy;
   b.B.visible=true;
   const k=(v)=>Math.min(1,dt*v);
-  // หันหน้าหากล้อง (จำกัดมุมจากแนวเคาน์เตอร์) + หันศีรษะตามเล็กน้อย
-  const dx=camera.position.x-b.B.position.x, dz=camera.position.z-b.B.position.z;
-  const want=Math.atan2(dx,dz); let rel=((want-b.yawC+Math.PI*3)%(Math.PI*2))-Math.PI; rel=Math.max(-.9,Math.min(.9,rel));
-  let cur=b.B.rotation.y-b.yawC; cur+=((rel-cur+Math.PI*3)%(Math.PI*2)-Math.PI)*k(3.5); b.B.rotation.y=b.yawC+cur;
-  b.B.position.set(b.home.x,b.home.y+Math.sin(t*1.6)*.004,b.home.z);
+  // เดินออกจากหลังเคาน์เตอร์ / กลับไปนั่ง
+  const dsT=(b.at==='stand'?b.len:0)-b.s, moving=Math.abs(dsT)>.004;
+  if(moving) b.s+=Math.sign(dsT)*Math.min(Math.abs(dsT),dt*.95);
+  const PP=b.pathAt(b.s), sit=1-Math.max(0,Math.min(1,b.s/.4));
+  b.B.position.set(PP.x, -.1*sit + (moving?Math.abs(Math.sin(t*10))*.05:Math.sin(t*1.6)*.004), PP.z);
+  if(moving){ const tg=b.pathAt(Math.max(0,Math.min(b.len,b.s+Math.sign(dsT)*.05))), dv=tg.sub(PP); if(dv.lengthSq()>1e-8){ const wy=Math.atan2(dv.x,dv.z); let df=((wy-b.B.rotation.y+Math.PI*3)%(Math.PI*2))-Math.PI; b.B.rotation.y+=df*k(8); } }
+  else { // หันหน้าหากล้อง (ยืนข้างนอกหันได้กว้างกว่าตอนนั่ง)
+    const dx=camera.position.x-b.B.position.x, dz=camera.position.z-b.B.position.z, lim=b.s>.5?1.5:.9;
+    const want=Math.atan2(dx,dz); let rel=((want-b.yawC+Math.PI*3)%(Math.PI*2))-Math.PI; rel=Math.max(-lim,Math.min(lim,rel));
+    let cur=b.B.rotation.y-b.yawC; cur+=((rel-cur+Math.PI*3)%(Math.PI*2)-Math.PI)*k(3.5); b.B.rotation.y=b.yawC+cur; }
   // ท่าทาง (แขน = หมุนหัวไหล่ + ข้อศอก)
   const [A0,A1]=b.arms, [E0,E1]=b.elbows;   // A0 = ข้างซ้ายของตัวน้องในโมเดล (x ลบ), A1 = x บวก (ขวามือผู้ชม)
   const setArm=(A,E,rx,ry,rz,ex,ez=0,sp=7)=>{ _bq.setFromEuler(new THREE.Euler(rx,ry,rz,'XYZ')); A.p.quaternion.slerp(_bq,k(sp));
     E.rotation.x+=(ex-E.rotation.x)*k(sp); E.rotation.z+=(ez-E.rotation.z)*k(sp); };
   let tilt=0, headY=0, headX=0;
   const talk=b.talk?Math.sin(t*3.1)*.04:0;
-  if(b.action==='wave'){ setArm(A0,E0,-.2,0,-.45,-.45); setArm(A1,E1,-.15,0,2.55,-.1,Math.sin(t*9)*.5+.2,10); }
+  if(moving){ const sw=Math.sin(t*10)*.6; setArm(A0,E0,-sw,0,-.35,-.3,0,12); setArm(A1,E1,sw,0,.35,-.3,0,12); }
+  else if(b.action==='wave'){ setArm(A0,E0,-.2,0,-.45,-.45); setArm(A1,E1,-.15,0,2.55,-.1,Math.sin(t*9)*.5+.2,10); }
   else if(b.action==='cheer'){ const o=Math.sin(t*9)*.18; setArm(A0,E0,-.1,0,-2.5-o,-.2,0,10); setArm(A1,E1,-.1,0,2.5+o,-.2,0,10); }
   else if(b.action==='wai'){ setArm(A0,E0,-.95,0,.85,-1.5); setArm(A1,E1,-.95,0,-.85,-1.5); tilt=.22+Math.sin(t*2)*.02; headX=.1; }
   else if(b.action==='point' && b.pointAt){
@@ -2172,8 +2209,10 @@ async function startGuide(){
   const f=BUILDING[FLOOR-1], F=BUILDING.length, c0=rooms[0], cab0=cabinets[0];
   const others=rooms.slice(1,4).map(c=>c.short).join(' · ');
   const steps=[
-    async()=>{ focusPR(); buddy.action='wai'; sfx.tick(); await sleep(1100); if(!alive()) return ''; buddy.action='wave';
-      return 'สวัสดีค่ะ | น้องลูกประคบ ประจำเคาน์เตอร์ประชาสัมพันธ์ ค่ะ | ยินดีต้อนรับสู่ อาคารการแพทย์แผนไทย | และแพทย์ทางเลือก | สำนักงานสาธารณสุขจังหวัดสมุทรปราการ ค่ะ'; },
+    async()=>{ if(FLOOR===1 && buddy.at!=='stand'){ buddy.at='stand'; buddy.action='idle'; focusPR(); sfx.steps(3); const t0=performance.now(); while(alive() && Math.abs(buddy.len-buddy.s)>.02 && performance.now()-t0<9000) await sleep(120); if(!alive()) return ''; }
+      focusPR(); buddy.action='wai'; sfx.tick(); await sleep(1100); if(!alive()) return ''; buddy.action='wave';
+      return FLOOR===1 ? 'สวัสดีค่ะ | น้องลูกประคบ ประจำเคาน์เตอร์ประชาสัมพันธ์ ค่ะ | ยินดีต้อนรับสู่ อาคารการแพทย์แผนไทย | และแพทย์ทางเลือก | สำนักงานสาธารณสุขจังหวัดสมุทรปราการ ค่ะ | อาคารนี้มี '+thaiNum(BUILDING.length)+' ชั้น ค่ะ'
+        : 'สวัสดีค่ะ | น้องลูกประคบ นั่งประจำเคาน์เตอร์ ชั้น '+thaiNum(FLOOR)+' ค่ะ | ถ้าอยากรู้ว่าระบบไหนอยู่ห้องไหน | ถามน้องได้เลยนะคะ'; },
     async()=>{ if(mode==='focus') closeDrawer(); await sleep(250); faceAt(N-1.25); await sleep(700); buddy.action='point'; buddy.pointAt=dirGroup?dirGroup.position.clone().setY(1.9):null;
       return `อาคารนี้มี ${thaiNum(F)} ชั้นค่ะ | ป้ายผังอาคาร ตรงนี้ | บอกว่าแต่ละชั้น เป็นแผนก หรือห้องอะไร | ตอนนี้เราอยู่ ชั้น ${thaiNum(FLOOR)} | ${f.name} ค่ะ`; },
     async()=>{ buddy.pointAt=null; faceAt(N-1+.25); await sleep(700); buddy.action='point'; if(lift) buddy.pointAt=lift.pos.clone().setY(1.3);
