@@ -89,6 +89,13 @@ main{min-width:0;padding:calc(18px + var(--sat)) 18px 40px}
 .banner .lf{position:absolute;right:12px;top:8px;width:70px;height:70px;color:#fff;opacity:.28;z-index:2}
 .topimg{width:calc(100% + 36px);margin:-18px -18px 14px;height:130px;object-fit:cover;display:block;border-radius:var(--r) var(--r) 0 0}
 .badge.gold{background:#fef3c7;color:#92400e}
+.tool[hidden]{display:none}
+.lock{position:fixed;inset:0;z-index:200;background:linear-gradient(135deg,#052e16,#14532d 55%,#4c1d95);display:grid;place-items:center;padding:16px}
+.lock[hidden]{display:none}
+.lock-box{background:var(--card);border-radius:22px;padding:26px 22px;max-width:340px;width:100%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.45)}
+.lock-box .lf{width:56px;height:56px;margin:0 auto 6px;color:var(--pri)}
+.lock-box input{text-align:center;font-size:1.6rem;letter-spacing:.5em;margin:10px 0}
+body.locked .app,body.locked .bottom,body.locked .modal,body.locked .toast,body.locked #print-area{visibility:hidden}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 20px;border-radius:99px;background:var(--pri);color:#fff;font-weight:600;min-height:46px;box-shadow:0 4px 10px rgba(21,128,61,.3);transition:filter .2s,transform .1s;text-decoration:none}
 .btn:hover{filter:brightness(1.07)}.btn:active{transform:scale(.97)}
 .btn.sec{background:var(--card);color:var(--tx);border:1px solid var(--bd);box-shadow:none}
@@ -200,6 +207,8 @@ pre.code{background:#0f172a;color:#e2e8f0;border-radius:12px;padding:14px;font-s
   #print-area .kpi{display:inline-block;border:1px solid #000;padding:6px 14px;margin:0 6px 6px 0;text-align:center}
   #print-area .sig{margin-top:36px;display:flex;justify-content:space-around;text-align:center}
   @page{size:A4 landscape;margin:12mm}
+  @page portrait{size:A4 portrait;margin:15mm}
+  #print-area .portrait{page:portrait}
 }
 </style>
 </head>
@@ -213,6 +222,7 @@ pre.code{background:#0f172a;color:#e2e8f0;border-radius:12px;padding:14px;font-s
     <div class="sp"></div>
     <button class="btn sm sec" id="btn-install-side" hidden>📲 <span data-i="install">ติดตั้งเป็นแอป</span></button>
     <div class="tools">
+      <button class="tool lock-btn" data-act="lock" aria-label="ล็อกแอป / Lock" hidden>🔒</button>
       <button class="tool" data-act="lang" aria-label="เปลี่ยนภาษา / Language">EN</button>
       <button class="tool" data-act="theme" aria-label="สลับโหมดมืด/สว่าง">🌙</button>
       <button class="tool" data-act="fsm" aria-label="ลดขนาดตัวอักษร">A−</button>
@@ -225,7 +235,8 @@ pre.code{background:#0f172a;color:#e2e8f0;border-radius:12px;padding:14px;font-s
     <div class="topbar">
       <div class="brand"><div class="logo" style="width:38px;height:38px"><svg class="lf" style="width:26px;height:26px" viewBox="-60 -90 120 110" aria-hidden="true"><use href="#leaf"/></svg></div><div><b style="font-size:1rem">CARE APP 70</b><small data-i="brand.sub2">สสจ.สมุทรปราการ</small></div></div>
       <div class="tools">
-        <button class="tool" data-act="lang" aria-label="เปลี่ยนภาษา / Language">EN</button>
+        <button class="tool lock-btn" data-act="lock" aria-label="ล็อกแอป / Lock" hidden>🔒</button>
+      <button class="tool" data-act="lang" aria-label="เปลี่ยนภาษา / Language">EN</button>
         <button class="tool" data-act="theme" aria-label="สลับโหมดมืด/สว่าง">🌙</button>
         <button class="tool" data-act="fsp" aria-label="ปรับขนาดตัวอักษร">Aa</button>
       </div>
@@ -233,6 +244,7 @@ pre.code{background:#0f172a;color:#e2e8f0;border-radius:12px;padding:14px;font-s
 
     <div class="wrap">
     <div class="note warn" id="due-banner" hidden role="alert"></div>
+    <div class="note warn" id="ec-banner" hidden role="alert"></div>
 
     <!-- HOME -->
     <section id="home" class="view active">
@@ -348,7 +360,9 @@ pre.code{background:#0f172a;color:#e2e8f0;border-radius:12px;padding:14px;font-s
           <div class="full"><label class="f" for="r-act" data-i="r.act">การจัดการเบื้องต้น / หมายเหตุ</label><textarea class="in" id="r-act" style="min-height:70px"></textarea></div>
           <div class="full"><label class="switch"><input type="checkbox" id="r-fu" checked> <span data-i="r.fu">ตั้งเตือนติดตามอาการหลังผู้รับบริการกลับไป</span></label>
             <select class="in" id="r-fuh" style="max-width:220px;margin-top:6px"><option value="2" data-i="h.2">อีก 2 ชั่วโมง</option><option value="6" data-i="h.6">อีก 6 ชั่วโมง</option><option value="24" selected data-i="h.24">อีก 24 ชั่วโมง</option><option value="48" data-i="h.48">อีก 48 ชั่วโมง</option></select></div>
-          <div class="full"><label class="switch" style="align-items:flex-start"><input type="checkbox" id="r-consent"> <span data-i="r.consent">ได้แจ้งผู้รับบริการและได้รับความยินยอมในการเก็บข้อมูลเพื่อการเฝ้าระวังความปลอดภัยแล้ว (PDPA)</span></label></div>
+          <div class="full"><label class="switch" style="align-items:flex-start"><input type="checkbox" id="r-consent"> <span data-i="r.consent">ผู้รับบริการได้รับทราบประกาศความเป็นส่วนตัว และยินยอมให้เก็บข้อมูลเพื่อเฝ้าระวังความปลอดภัย (PDPA)</span></label></div>
+          <div class="full"><label class="switch" style="align-items:flex-start"><input type="checkbox" id="r-rc"> <span data-i="r.rc">ยินยอมให้ใช้ข้อมูลแบบไม่ระบุตัวตนเพื่อการวิจัย (ไม่บังคับ — ไม่ยินยอมก็รับบริการได้ตามปกติ)</span></label></div>
+          <div class="full"><button type="button" class="btn sec sm" id="r-info">📄 <span data-i="r.readinfo">อ่านประกาศความเป็นส่วนตัว / พิมพ์หนังสือยินยอม</span></button></div>
           <div class="full row"><button class="btn" type="submit" id="r-submit">💾 <span data-i="save">บันทึก</span></button><button class="btn sec" type="button" id="r-cancel" hidden data-i="r.cancel">ยกเลิกการแก้ไข</button></div>
         </form>
       </div>
@@ -442,6 +456,7 @@ pre.code{background:#0f172a;color:#e2e8f0;border-radius:12px;padding:14px;font-s
       </div>
       <div class="row">
         <button class="btn" id="s-print">🖨 <span data-i="s.print">พิมพ์รายงานประจำเดือน</span></button>
+        <button class="btn sec sm" id="s-res">🔬 <span data-i="s.res">ชุดข้อมูลวิจัย (ไม่ระบุตัวตน)</span></button>
         <button class="btn sec sm" id="s-csv">⬇ <span data-i="s.csv">ผลคัดกรอง (CSV)</span></button>
       </div>
     </section>
@@ -459,10 +474,40 @@ pre.code{background:#0f172a;color:#e2e8f0;border-radius:12px;padding:14px;font-s
         </div>
       </div>
       <div class="card">
+        <h3>🔬 <span data-i="rs.h">โครงการวิจัย / จริยธรรมการวิจัย</span></h3>
+        <p class="muted" data-i="rs.note">กรอกข้อมูลตามที่คณะกรรมการจริยธรรมรับรอง ระบบจะแสดงบนหัวรายงานและเอกสารยินยอม และเตือนเมื่อใบรับรองใกล้/หมดอายุ</p>
+        <div class="form">
+          <div class="full"><label class="f" for="g-proj" data-i="rs.proj">ชื่อโครงการวิจัย</label><input class="in" id="g-proj"></div>
+          <div><label class="f" for="g-ecno" data-i="rs.ecno">เลขที่หนังสือรับรอง (EC)</label><input class="in" id="g-ecno"></div>
+          <div><label class="f" for="g-pi" data-i="rs.pi">ผู้วิจัยหลัก</label><input class="in" id="g-pi"></div>
+          <div><label class="f" for="g-ecd" data-i="rs.ecd">วันที่รับรอง</label><input class="in" type="date" id="g-ecd"></div>
+          <div><label class="f" for="g-ece" data-i="rs.ece">วันหมดอายุการรับรอง</label><input class="in" type="date" id="g-ece"></div>
+          <div class="full"><label class="f" for="g-ct" data-i="rs.ct">ช่องทางติดต่อผู้วิจัย/คณะกรรมการจริยธรรม</label><input class="in" id="g-ct"></div>
+          <div class="full"><label class="f" for="g-info" data-i="rs.info">ข้อความเอกสารชี้แจงผู้เข้าร่วม (ถ้ามี จะใช้แทนแม่แบบ)</label><textarea class="in" id="g-info" style="min-height:110px" data-ip="rs.infoph" placeholder="วางข้อความฉบับที่ EC รับรองที่นี่ หากเว้นว่างจะใช้แม่แบบของแอป"></textarea></div>
+          <div class="full"><label class="switch"><input type="checkbox" id="g-needrc" checked> <span data-i="rs.needrc">ซิงก์/ส่งออกข้อมูลวิจัยเฉพาะผู้ที่ยินยอมให้ใช้ข้อมูลเพื่อการวิจัย</span></label></div>
+        </div>
+        <div class="row" style="margin-top:10px"><button class="btn sec sm" id="g-view">📄 <span data-i="rs.view">ดูประกาศ/เอกสารชี้แจง</span></button><button class="btn sec sm" id="g-pc">🖨 <span data-i="rs.print">พิมพ์หนังสือยินยอม</span></button></div>
+        <p class="muted" style="margin:10px 0 0"><span data-i="g.cv">เวอร์ชันเกณฑ์คัดกรอง</span>: <b id="g-cv"></b> · <span data-i="g.consv">เวอร์ชันหนังสือยินยอม</span>: <b id="g-consv"></b></p>
+      </div>
+      <div class="card">
+        <h3>🔒 <span data-i="sec.h">ความปลอดภัยข้อมูล</span></h3>
+        <div class="note" data-i="sec.note">PIN ป้องกันการเปิดดูโดยไม่ตั้งใจบนเครื่องที่ใช้ร่วมกัน แต่ไม่ใช่การเข้ารหัสข้อมูล ผู้ที่เข้าถึงเครื่องและมีความรู้ทางเทคนิคอาจยังอ่านข้อมูลได้ ควรใช้ร่วมกับการล็อกหน้าจอของเครื่อง</div>
+        <p><b data-i="sec.state">สถานะ</b>: <span id="sec-state"></span></p>
+        <div class="form">
+          <div><label class="f" for="sec-pin1" data-i="sec.pin1">PIN ใหม่ (ตัวเลข 4-6 หลัก)</label><input class="in" id="sec-pin1" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password"></div>
+          <div><label class="f" for="sec-pin2" data-i="sec.pin2">ยืนยัน PIN</label><input class="in" id="sec-pin2" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password"></div>
+          <div><label class="f" for="sec-auto" data-i="sec.auto">ล็อกอัตโนมัติเมื่อไม่ได้ใช้งาน</label><select class="in" id="sec-auto"><option value="1" data-i="sec.m1">1 นาที</option><option value="3" data-i="sec.m3">3 นาที</option><option value="5" selected data-i="sec.m5">5 นาที</option><option value="10" data-i="sec.m10">10 นาที</option><option value="30" data-i="sec.m30">30 นาที</option></select></div>
+          <div><label class="f" for="sec-ret" data-i="sec.ret">ลบข้อมูลเก่าอัตโนมัติ</label><select class="in" id="sec-ret"><option value="0" selected data-i="sec.r0">ไม่ลบ</option><option value="30" data-i="sec.r30">เกิน 30 วัน</option><option value="90" data-i="sec.r90">เกิน 90 วัน</option><option value="180" data-i="sec.r180">เกิน 180 วัน</option><option value="365" data-i="sec.r365">เกิน 1 ปี</option></select></div>
+        </div>
+        <p class="muted" data-i="sec.retnote">การลบอัตโนมัติลบถาวรทั้งบันทึกอาการ ผลคัดกรอง และรายการติดตามที่เก่ากว่ากำหนด ควรซิงก์หรือส่งออกข้อมูลวิจัยก่อนถึงกำหนด</p>
+        <div class="row"><button class="btn sm" id="sec-set">🔐 <span data-i="sec.set">ตั้ง/เปลี่ยน PIN</span></button><button class="btn sec sm" id="sec-off">🔓 <span data-i="sec.off">ปิด PIN</span></button><button class="btn sec sm" id="sec-lock">🔒 <span data-i="sec.lock">ล็อกตอนนี้</span></button></div>
+      </div>
+      <div class="card">
         <h3>☁️ <span data-i="g.sync">ซิงก์ไป Google Sheets (ไม่ระบุตัวตน)</span></h3>
         <p class="muted" data-i="g.sync1">ส่งเฉพาะข้อมูลที่ไม่ระบุตัวตน: รหัสแฮชของผู้รับบริการ ช่วงอายุ เพศ วิธีใช้ อาการ ความรุนแรง ผลลัพธ์ — ไม่ส่งชื่อ โรคประจำตัว หรือหมายเหตุ ข้อความอิสระ</p>
         <div class="form">
           <div class="full"><label class="f" for="g-url">Apps Script Web App URL</label><input class="in" id="g-url" type="url" placeholder="https://script.google.com/macros/s/.../exec"></div>
+          <div class="full"><label class="f" for="g-token" data-i="g.token">รหัสลับ (ต้องตรงกับในสคริปต์)</label><div class="row" style="flex-wrap:nowrap"><input class="in" id="g-token" autocomplete="off" style="flex:1"><button type="button" class="btn sec sm" id="g-tokgen" data-i="g.tokgen">สุ่มรหัส</button></div></div>
           <div class="full"><label class="switch"><input type="checkbox" id="g-auto"> <span data-i="g.auto">ส่งอัตโนมัติทุกครั้งที่บันทึก</span></label></div>
         </div>
         <div class="row" style="margin-top:10px">
@@ -471,20 +516,42 @@ pre.code{background:#0f172a;color:#e2e8f0;border-radius:12px;padding:14px;font-s
           <button class="btn sec sm" id="g-flush">🔁 <span data-i="g.flush">ส่งที่ค้างอยู่</span> (<span id="g-q">0</span>)</button>
         </div>
         <details class="why" style="margin-top:12px"><summary data-i="g.how">วิธีตั้งค่า Apps Script (คลิกเพื่อดู)</summary>
-          <ol style="padding-left:20px"><li data-i="g.s1">สร้าง Google Sheet ใหม่ → เมนู ส่วนขยาย → Apps Script</li><li data-i="g.s2">วางโค้ดด้านล่างแทนของเดิม แล้วกด Deploy → New deployment → ประเภท Web app</li><li data-i="g.s3">ตั้ง Execute as: Me และ Who has access: Anyone แล้วคัดลอก URL มาวางด้านบน</li></ol>
-          <pre class="code" id="g-script">function doPost(e){
-  var d = JSON.parse(e.postData.contents);
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sh = ss.getSheetByName(d.kind) || ss.insertSheet(d.kind);
-  var keys = Object.keys(d.data);
-  if (sh.getLastRow() === 0) sh.appendRow(['time','facility'].concat(keys));
-  var row = [new Date(d.ts), d.facility];
-  keys.forEach(function(k){
-    var v = d.data[k];
-    row.push(Array.isArray(v) ? v.join('; ') : v);
-  });
-  sh.appendRow(row);
-  return ContentService.createTextOutput('ok');
+          <ol style="padding-left:20px"><li data-i="g.s1">สร้าง Google Sheet ใหม่ → เมนู ส่วนขยาย → Apps Script</li><li data-i="g.s2">วางโค้ดด้านล่างแทนของเดิม แล้วกด Deploy → New deployment → ประเภท Web app</li><li data-i="g.s3">ตั้ง Execute as: Me และ Who has access: Anyone แล้วคัดลอก URL มาวางด้านบน</li><li data-i="g.s4">กด "สุ่มรหัส" ในแอป แล้วคัดลอกรหัสไปแทนที่ใน TOKEN ของสคริปต์ (ต้องตรงกัน) จากนั้น Deploy ใหม่ — แอปไม่เห็นคำตอบจากสคริปต์ จึงต้องเปิดดูใน Sheet ว่าข้อมูลเข้าจริง</li></ol>
+          <pre class="code" id="g-script">var TOKEN = 'วางรหัสลับที่สุ่มจากแอปตรงนี้';
+var KINDS = ['record', 'screen', 'test'];
+
+function out(t) { return ContentService.createTextOutput(t); }
+
+function doPost(e) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    if (!e.postData || e.postData.contents.length > 20000) return out('bad');
+    var d = JSON.parse(e.postData.contents);
+    if (d.token !== TOKEN) return out('denied');
+    if (KINDS.indexOf(d.kind) === -1) return out('bad');
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sh = ss.getSheetByName(d.kind) || ss.insertSheet(d.kind);
+    if (sh.getLastRow() === 0) sh.appendRow(['time', 'facility']);
+    var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    Object.keys(d.data).forEach(function (k) {
+      if (head.indexOf(k) === -1) {
+        head.push(k);
+        sh.getRange(1, head.length).setValue(k);
+      }
+    });
+    var row = head.map(function (h) {
+      if (h === 'time') return new Date(d.ts);
+      if (h === 'facility') return d.facility;
+      var v = d.data[h];
+      if (v === undefined) return '';
+      return Array.isArray(v) ? v.join('; ') : v;
+    });
+    sh.appendRow(row);
+    return out('ok');
+  } finally {
+    lock.releaseLock();
+  }
 }</pre>
           <button class="btn sec sm" id="g-copy">📋 <span data-i="g.copy">คัดลอกโค้ด</span></button>
         </details>
@@ -518,6 +585,17 @@ pre.code{background:#0f172a;color:#e2e8f0;border-radius:12px;padding:14px;font-s
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="modal" id="modal"><div class="box" id="modal-box"></div></div>
 <div id="print-area"></div>
+<div id="lock" class="lock" hidden role="dialog" aria-modal="true" aria-labelledby="lock-t">
+  <div class="lock-box">
+    <svg class="lf" viewBox="-60 -90 120 110" aria-hidden="true"><use href="#leaf"/></svg>
+    <h2 id="lock-t" data-i="lk.t">ใส่รหัส PIN</h2>
+    <p class="muted" data-i="lk.hint">แอปนี้มีข้อมูลสุขภาพของผู้รับบริการ</p>
+    <input id="lock-pin" class="in" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="PIN">
+    <p class="muted" id="lock-msg" role="alert" style="min-height:1.4em;color:var(--bad)"></p>
+    <div class="row" style="justify-content:center"><button class="btn" id="lock-go">🔓 <span data-i="lk.go">ปลดล็อก</span></button></div>
+    <p style="margin:14px 0 0"><button class="btn sec sm" id="lock-forgot" data-i="lk.forgot">ลืม PIN</button></p>
+  </div>
+</div>
 
 <script>
 (function(){
@@ -526,6 +604,7 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem('care70_'+k);return v===null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('care70_'+k,JSON.stringify(v))}catch(e){}}};
 let lang=LS.get('lang','th');
+const CRIT_VER='2026-10-21.1',CONS_VER='v1';
 const L=(th,en)=>(lang==='en'&&en!==undefined)?en:th;
 const loc=()=>lang==='en'?'en-GB':'th-TH';
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),2600)}
@@ -569,6 +648,12 @@ const EN={
 'g.how':'How to set up Apps Script (tap to view)','g.s1':'Create a new Google Sheet → Extensions → Apps Script','g.s2':'Paste the code below, then Deploy → New deployment → Web app','g.s3':'Set Execute as: Me and Who has access: Anyone, then paste the URL above','g.copy':'Copy code',
 'g.pwa':'Install as app / use offline','g.pwa1':'Android/Chrome/Edge: tap install · iPhone/iPad: Share → "Add to Home Screen" · Open once online and it will work offline.',
 'g.crit':'Screening criteria (draft for review)','g.crit1':'Criteria 6-10 and the clinical text are based on general principles. A pharmacist/physician should review them against the latest Ministry of Public Health announcements and guidance before real use.','g.rv':'Reviewed by','g.rd':'Last reviewed',
+'lk.t':'Enter PIN','lk.hint':'This app holds clients\' health information','lk.go':'Unlock','lk.forgot':'Forgot PIN',
+'r.consent':'The client has been told about the privacy notice and consents to data collection for safety surveillance (PDPA)','r.rc':'Consents to anonymous use of data for research (optional — services are unaffected if declined)','r.readinfo':'Read privacy notice / print consent form',
+'rs.h':'Research project / ethics','rs.note':'Enter details as approved by the ethics committee. They appear on report headers and the consent form, and the app warns when approval is expiring.','rs.proj':'Research project title','rs.ecno':'Approval (EC) number','rs.pi':'Principal investigator','rs.ecd':'Approval date','rs.ece':'Approval expiry date','rs.ct':'Contact for investigator / ethics committee','rs.info':'Participant information text (if provided, replaces the template)','rs.infoph':'Paste the EC-approved text here; leave empty to use the app template','rs.needrc':'Sync/export research data only for clients who consented to research use','rs.view':'View notice / information sheet','rs.print':'Print consent form','g.cv':'Screening criteria version','g.consv':'Consent form version',
+'sec.h':'Data security','sec.note':'The PIN prevents accidental viewing on a shared device but is not encryption. Someone with access to the device and technical skill may still read the data. Use it together with the device screen lock.','sec.state':'Status','sec.pin1':'New PIN (4-6 digits)','sec.pin2':'Confirm PIN','sec.auto':'Auto-lock when idle','sec.ret':'Auto-delete old data','sec.m1':'1 minute','sec.m3':'3 minutes','sec.m5':'5 minutes','sec.m10':'10 minutes','sec.m30':'30 minutes','sec.r0':'Never','sec.r30':'Older than 30 days','sec.r90':'Older than 90 days','sec.r180':'Older than 180 days','sec.r365':'Older than 1 year',
+'sec.retnote':'Auto-delete permanently removes records, screenings and follow-ups older than the limit. Sync or export research data before it runs.','sec.set':'Set / change PIN','sec.off':'Turn off PIN','sec.lock':'Lock now',
+'g.token':'Secret token (must match the script)','g.tokgen':'Generate','g.s4':'Press "Generate" in the app and paste the token into TOKEN in the script (they must match), then redeploy. The app cannot read the script\'s reply, so check the Sheet to confirm data arrives.','s.res':'Research dataset (de-identified)',
 'g.data':'Data management','g.clear':'Erase all data'
 };
 function applyLang(){
@@ -611,6 +696,7 @@ function act(x){
   if(x==='lang'){lang=lang==='th'?'en':'th';LS.set('lang',lang);applyLang()}
   if(x==='more'){showModal(`<h3>${L('เมนูเพิ่มเติม','More')}</h3><div style="display:grid;gap:8px">${NAV.filter(n=>MORE.includes(n[0])).map(n=>`<button class="btn sec" data-go="${n[0]}">${n[1]} ${L(n[2],n[3])}</button>`).join('')}<button class="btn sec" data-act="install-now">📲 ${L('ติดตั้งเป็นแอป','Install as app')}</button><button class="btn sec" id="m-ok">${L('ปิด','Close')}</button></div>`)}
   if(x==='install-now')installApp();
+  if(x==='lock')lockNow();
 }
 
 /* ---------- Questions ---------- */
@@ -671,7 +757,7 @@ function evalCheck(scroll){
   box.innerHTML=h;
   if(scroll)box.scrollIntoView({behavior:'smooth',block:'center'});
 }
-$('#c-result').addEventListener('click',e=>{if(e.target.closest('#c-save')){const c=calc();const s=LS.get('screens',[]);const it={t:Date.now(),res:c.res,hard:c.hard,caut:c.caut};s.push(it);LS.set('screens',s);enqueue('screen',{res:c.res,hard:c.hard,caut:c.caut,novice:ans.novice==='risk'?1:0},it.t);resetCheck();toast(L('บันทึกผลแล้ว พร้อมประเมินรายต่อไป','Saved. Ready for the next person.'));window.scrollTo({top:0,behavior:'smooth'});renderHome()}});
+$('#c-result').addEventListener('click',e=>{if(e.target.closest('#c-save')){const c=calc();const s=LS.get('screens',[]);const it={t:Date.now(),res:c.res,hard:c.hard,caut:c.caut,ans:Object.assign({},ans),cv:CRIT_VER};s.push(it);LS.set('screens',s);enqueue('screen',screenPayload(it),it.t);resetCheck();toast(L('บันทึกผลแล้ว พร้อมประเมินรายต่อไป','Saved. Ready for the next person.'));window.scrollTo({top:0,behavior:'smooth'});renderHome()}});
 function resetCheck(){ans={};LS.set('ans',ans);paintQs();$('#c-result').innerHTML=''}
 $('#c-reset').addEventListener('click',()=>{resetCheck();toast(L('ล้างแบบประเมินแล้ว','Cleared'))});
 
@@ -744,11 +830,12 @@ $('#r-form').addEventListener('submit',e=>{
   e.preventDefault();
   if(!$('#r-consent').checked){toast(L('กรุณายืนยันการแจ้งความยินยอม (PDPA)','Please confirm consent (PDPA)'));return}
   if(!rSel.size){toast(L('กรุณาเลือกอาการอย่างน้อย 1 อย่าง','Select at least one symptom'));return}
-  const rec={id:editId||('r'+Date.now()),date:$('#r-date').value,name:$('#r-name').value.trim(),sex:$('#r-sex').value,age:$('#r-age').value,dis:$('#r-dis').value,src:$('#r-src').value,method:$('#r-method').value,qty:$('#r-qty').value,sym:[...rSel],sev:$('#r-sev').value,out:$('#r-out').value,act:$('#r-act').value};
+  const rec={id:editId||('r'+Date.now()),date:$('#r-date').value,name:$('#r-name').value.trim(),sex:$('#r-sex').value,age:$('#r-age').value,dis:$('#r-dis').value,src:$('#r-src').value,method:$('#r-method').value,qty:$('#r-qty').value,sym:[...rSel],sev:$('#r-sev').value,out:$('#r-out').value,act:$('#r-act').value,rc:$('#r-rc').checked,cons:CONS_VER,cv:CRIT_VER};
   let list=LS.get('records',[]);const isEdit=!!editId;
+  if(isEdit){const old=list.find(x=>x.id===editId);if(old){rec.cv=old.cv||rec.cv;rec.cons=old.cons||rec.cons}}
   if(isEdit)list=list.map(x=>x.id===editId?rec:x);else list.unshift(rec);
   LS.set('records',list);
-  if(!isEdit){recPayload(rec).then(p=>enqueue('record',p,Date.now()));if($('#r-fu').checked)addFU(rec.name,+$('#r-fuh').value,L('จากบันทึกอาการ','From AE record')+': '+rec.sym.map(symName).join(', '),rec.id,true)}
+  if(!isEdit){if(canSync(rec))recPayload(rec).then(p=>enqueue('record',p,Date.now()));if($('#r-fu').checked)addFU(rec.name,+$('#r-fuh').value,L('จากบันทึกอาการ','From AE record')+': '+rec.sym.map(symName).join(', '),rec.id,true)}
   toast(isEdit?L('แก้ไขเรียบร้อย','Updated'):L('บันทึกเรียบร้อย','Saved'));resetForm();renderRecs();
   if(rec.sev==='3'||topLvl(new Set(rec.sym))==='r')showModal(`<h3>🔴 ${L('พบอาการรุนแรง','Severe symptoms')}</h3><p>${L('พิจารณาส่งต่อสถานพยาบาลทันที','Consider immediate referral to a hospital.')}</p><a class="btn bad" href="tel:1669">📞 ${L('โทร 1669','Call 1669')}</a> <button class="btn sec" id="m-ok">${L('ปิด','Close')}</button>`);
 });
@@ -768,7 +855,7 @@ $('#r-search').addEventListener('input',renderRecs);$('#r-filter').addEventListe
 $('#r-list').addEventListener('click',e=>{
   const ed=e.target.closest('[data-edit]'),dd=e.target.closest('[data-del]');
   if(ed){const r=LS.get('records',[]).find(x=>x.id===ed.dataset.edit);if(!r)return;editId=r.id;
-    $('#r-date').value=r.date;$('#r-name').value=r.name;$('#r-sex').value=r.sex;$('#r-age').value=r.age;$('#r-dis').value=r.dis;$('#r-src').value=r.src;$('#r-method').value=r.method;$('#r-qty').value=r.qty;$('#r-sev').value=r.sev;$('#r-out').value=r.out;$('#r-act').value=r.act;
+    $('#r-date').value=r.date;$('#r-name').value=r.name;$('#r-sex').value=r.sex;$('#r-age').value=r.age;$('#r-dis').value=r.dis;$('#r-src').value=r.src;$('#r-method').value=r.method;$('#r-qty').value=r.qty;$('#r-sev').value=r.sev;$('#r-out').value=r.out;$('#r-act').value=r.act;$('#r-consent').checked=true;$('#r-rc').checked=!!r.rc;
     rSel=new Set(r.sym);buildRSym();$('#r-submit').lastElementChild.textContent=L('บันทึกการแก้ไข','Save changes');$('#r-cancel').hidden=false;$('#r-fu').checked=false;$('#r-form').scrollIntoView({behavior:'smooth'})}
   if(dd){showModal(`<h3>${L('ลบรายการนี้?','Delete this record?')}</h3><p class="muted">${L('ไม่สามารถกู้คืนได้','This cannot be undone')}</p><div class="row"><button class="btn bad" id="m-del" data-id="${esc(dd.dataset.del)}">${L('ลบ','Delete')}</button><button class="btn sec" id="m-ok">${L('ยกเลิก','Cancel')}</button></div>`)}
 });
@@ -788,7 +875,7 @@ $('#x-file').addEventListener('change',e=>{const f=e.target.files[0];if(!f)retur
   renderRecs();renderFollow();updateBadge();toast(L('นำเข้าข้อมูลสำเร็จ','Imported'))}catch(x){toast(L('ไฟล์ไม่ถูกต้อง','Invalid file'))}};rd.readAsText(f);e.target.value=''});
 function printHTML(h){$('#print-area').innerHTML=h;setTimeout(()=>window.print(),120)}
 const cfg=()=>LS.get('cfg',{});
-function repHead(title,sub){const c=cfg();return `<div style="text-align:center"><h2 style="margin:0">${esc(title)}</h2><div>${esc(L('สำนักงานสาธารณสุขจังหวัดสมุทรปราการ','Samut Prakan Provincial Health Office'))}</div>${(c.name||c.dist)?`<div>${esc(c.name||'')} ${c.dist?esc(L('อ.','Dist. '))+esc(c.dist):''}</div>`:''}${sub?`<div>${esc(sub)}</div>`:''}</div><div style="text-align:right;margin:6px 0">${esc(L('วันที่พิมพ์: ','Printed: '))}${new Date().toLocaleString(loc())}</div>`}
+function repHead(title,sub){const c=cfg();return `<div style="text-align:center"><h2 style="margin:0">${esc(title)}</h2><div>${esc(L('สำนักงานสาธารณสุขจังหวัดสมุทรปราการ','Samut Prakan Provincial Health Office'))}</div>${(c.name||c.dist)?`<div>${esc(c.name||'')} ${c.dist?esc(L('อ.','Dist. '))+esc(c.dist):''}</div>`:''}${c.proj?`<div>${esc(L('โครงการวิจัย: ','Research project: '))}${esc(c.proj)}${c.ecno?' · EC '+esc(c.ecno):''}</div>`:''}${sub?`<div>${esc(sub)}</div>`:''}</div><div style="text-align:right;margin:6px 0">${esc(L('วันที่พิมพ์: ','Printed: '))}${new Date().toLocaleString(loc())}</div>`}
 $('#x-pdf').addEventListener('click',()=>{const list=LS.get('records',[]);if(!list.length)return toast(L('ยังไม่มีข้อมูล','No data'));
   printHTML(repHead(L('แบบรายงานเหตุการณ์ไม่พึงประสงค์จากการใช้ผลิตภัณฑ์กัญชา','Adverse event report — cannabis products'))+`<table><thead><tr><th>#</th>${HEAD().map(h=>'<th>'+esc(h)+'</th>').join('')}</tr></thead><tbody>${list.map((r,i)=>'<tr><td>'+(i+1)+'</td>'+rowOf(r).map((c,j)=>'<td>'+esc(j===0?fmt(c):c)+'</td>').join('')+'</tr>').join('')}</tbody></table>`)});
 
@@ -805,8 +892,8 @@ function checkDue(){
   const n=Date.now();let list=FU(),ch=false,fresh=[];
   list.forEach(f=>{if(!f.done&&!f.notified&&f.due<=n){f.notified=true;ch=true;fresh.push(f)}});
   if(ch){LS.set('fu',list);beep();
-    fresh.forEach(f=>{try{if('Notification' in window&&Notification.permission==='granted')new Notification(L('ถึงเวลาติดตามอาการ','Follow-up due'),{body:f.code+(f.note?' · '+f.note:''),icon:'icon-192.png'})}catch(e){}});
-    showModal(`<h3>⏰ ${L('ถึงเวลาติดตามอาการ','Follow-up due')}</h3><ul>${fresh.map(f=>`<li><b>${esc(f.code)}</b> ${esc(f.note)}</li>`).join('')}</ul><div class="row"><button class="btn" data-go="follow">${L('ไปหน้าติดตาม','Open follow-up')}</button><button class="btn sec" id="m-ok">${L('ปิด','Close')}</button></div>`)}
+    fresh.forEach(f=>{try{if('Notification' in window&&Notification.permission==='granted')new Notification(L('ถึงเวลาติดตามอาการ','Follow-up due'),{body:hasPin()?L('มีรายการติดตามอาการรอดำเนินการ','A follow-up is pending'):f.code+(f.note?' · '+f.note:''),icon:'icon-192.png'})}catch(e){}});
+    if(!document.body.classList.contains('locked'))showModal(`<h3>⏰ ${L('ถึงเวลาติดตามอาการ','Follow-up due')}</h3><ul>${fresh.map(f=>`<li><b>${esc(f.code)}</b> ${esc(f.note)}</li>`).join('')}</ul><div class="row"><button class="btn" data-go="follow">${L('ไปหน้าติดตาม','Open follow-up')}</button><button class="btn sec" id="m-ok">${L('ปิด','Close')}</button></div>`)}
   updateBadge();if($('#follow').classList.contains('active'))renderFollow();renderHome();
 }
 setInterval(checkDue,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkDue()});
@@ -911,7 +998,7 @@ $('#s-print').addEventListener('click',()=>{
    kpi(L('คัดกรองทั้งหมด','Screened'),d.S.length)+kpi(L('ผ่าน','Eligible'),d.pass)+kpi(L('ผ่านแบบมีข้อควรระวัง','Eligible w/ cautions'),d.caut)+kpi(L('ไม่ผ่าน','Not eligible'),d.fail)+kpi(L('AE ที่บันทึก','AE logged'),d.R.length)+kpi(L('ติดตามสำเร็จ','Follow-ups done'),d.F.length?d.fdone+'/'+d.F.length:'-')+
    `<h3>${L('สาเหตุที่ไม่ผ่าน / ต้องระวัง','Reasons not eligible / caution')}</h3>${tbl(d.reasons)}<h3>${L('อาการที่พบ','Symptoms')}</h3>${tbl(d.syms)}<h3>${L('ความรุนแรง','Severity')}</h3>${tbl(d.sev)}`+
    `<h3>${L('รายการอาการไม่พึงประสงค์','Adverse event list')}</h3>${d.R.length?`<table><thead><tr><th>#</th><th>${L('วันเวลา','Date/time')}</th><th>${L('รหัส/ชื่อ','Code/name')}</th><th>${L('เพศ/อายุ','Sex/age')}</th><th>${L('วิธีใช้','Route')}</th><th>${L('อาการ','Symptoms')}</th><th>${L('ความรุนแรง','Severity')}</th><th>${L('ผลลัพธ์','Outcome')}</th></tr></thead><tbody>${d.R.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(fmt(r.date))}</td><td>${esc(m?mask(r.name):r.name)}</td><td>${esc(r.sex)} ${esc(r.age)}</td><td>${esc(r.method)} ${esc(r.qty)}</td><td>${esc(r.sym.map(symName).join(', '))}</td><td>${esc(SEV()[r.sev]||'')}</td><td>${esc(r.out)}</td></tr>`).join('')}</tbody></table>`:'<p>-</p>'}`+
-   `<div class="sig"><div>${L('ลงชื่อ','Signed')} ................................<br>(${esc(c.rep||'................................')})<br>${L('ผู้รายงาน','Reporter')}</div><div>${L('ลงชื่อ','Signed')} ................................<br>(................................)<br>${L('ผู้ตรวจสอบ','Verifier')}</div></div>`);
+   `<div class="sig"><div>${L('ลงชื่อ','Signed')} ................................<br>(${esc(c.rep||'................................')})<br>${L('ผู้รายงาน','Reporter')}</div><div>${L('ลงชื่อ','Signed')} ................................<br>(................................)<br>${L('ผู้ตรวจสอบ','Verifier')}</div></div><p style="font-size:8pt">${L('เวอร์ชันเกณฑ์คัดกรอง: ','Screening criteria version: ')}${CRIT_VER}</p>`);
 });
 $('#s-csv').addEventListener('click',()=>{const mk=$('#s-month').value||monthKey(Date.now());const S=monthData(mk).S;if(!S.length)return toast(L('ยังไม่มีข้อมูล','No data'));
   const nm=a=>a.map(i=>qn(QS.find(q=>q.id===i))).join('; ');
@@ -919,24 +1006,27 @@ $('#s-csv').addEventListener('click',()=>{const mk=$('#s-month').value||monthKey
 $('#s-clear').addEventListener('click',()=>showModal(`<h3>${L('ล้างข้อมูลทั้งหมด?','Erase all data?')}</h3><p class="muted">${L('ผลคัดกรอง บันทึกอาการ และรายการติดตามทั้งหมดในเครื่องนี้จะถูกลบ ควรสำรองข้อมูลก่อน','All screenings, records and follow-ups on this device will be deleted. Back up first.')}</p><div class="row"><button class="btn bad" id="m-clear">${L('ล้างข้อมูล','Erase')}</button><button class="btn sec" id="m-ok">${L('ยกเลิก','Cancel')}</button></div>`));
 
 /* ---------- Settings / Sync ---------- */
-function loadCfg(){const c=cfg();$('#g-name').value=c.name||'';$('#g-dist').value=c.dist||'';$('#g-rep').value=c.rep||'';$('#g-code').value=c.fac||'';$('#g-url').value=c.url||'';$('#g-auto').checked=!!c.auto;$('#g-rv').value=c.rv||'';$('#g-rd').value=c.rd||''}
-function saveCfg(){LS.set('cfg',{name:$('#g-name').value.trim(),dist:$('#g-dist').value.trim(),rep:$('#g-rep').value.trim(),fac:$('#g-code').value.trim(),url:$('#g-url').value.trim(),auto:$('#g-auto').checked,rv:$('#g-rv').value.trim(),rd:$('#g-rd').value})}
-['g-name','g-dist','g-rep','g-code','g-url','g-auto','g-rv','g-rd'].forEach(id=>$('#'+id).addEventListener('input',saveCfg));
+function loadCfg(){const c=cfg();$('#g-name').value=c.name||'';$('#g-dist').value=c.dist||'';$('#g-rep').value=c.rep||'';$('#g-code').value=c.fac||'';$('#g-url').value=c.url||'';$('#g-auto').checked=!!c.auto;$('#g-rv').value=c.rv||'';$('#g-rd').value=c.rd||'';$('#g-token').value=c.token||'';$('#g-proj').value=c.proj||'';$('#g-ecno').value=c.ecno||'';$('#g-pi').value=c.pi||'';$('#g-ecd').value=c.ecd||'';$('#g-ece').value=c.ece||'';$('#g-ct').value=c.ct||'';$('#g-info').value=c.info||'';$('#g-needrc').checked=c.needRc!==false}
+function saveCfg(){LS.set('cfg',{name:$('#g-name').value.trim(),dist:$('#g-dist').value.trim(),rep:$('#g-rep').value.trim(),fac:$('#g-code').value.trim(),url:$('#g-url').value.trim(),auto:$('#g-auto').checked,rv:$('#g-rv').value.trim(),rd:$('#g-rd').value,token:$('#g-token').value.trim(),proj:$('#g-proj').value.trim(),ecno:$('#g-ecno').value.trim(),pi:$('#g-pi').value.trim(),ecd:$('#g-ecd').value,ece:$('#g-ece').value,ct:$('#g-ct').value.trim(),info:$('#g-info').value,needRc:$('#g-needrc').checked});renderHome()}
+['g-name','g-dist','g-rep','g-code','g-url','g-auto','g-rv','g-rd','g-token','g-proj','g-ecno','g-pi','g-ecd','g-ece','g-ct','g-info','g-needrc'].forEach(id=>$('#'+id).addEventListener('input',saveCfg));
 function renderSettings(){
+  $('#g-cv').textContent=CRIT_VER;$('#g-consv').textContent=CONS_VER;renderSec();
   $('#g-crit').innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:.82rem">${QS.map((q,i)=>`<tr style="border-top:1px solid var(--bd)"><td style="padding:6px 4px;width:28px">${i+1}</td><td style="padding:6px 4px"><b>${esc(qn(q))}</b><br><span class="muted">${esc(L(q.c,q.ce))}</span></td><td style="padding:6px 4px;white-space:nowrap"><span class="pill ${q.l}">${q.l==='hard'?L('เกณฑ์หลัก','Core'):L('ข้อควรระวัง','Caution')}</span></td></tr>`).join('')}</table>`;
   updateQ();$('#g-offline').textContent=navigator.onLine?'':L('(ขณะนี้ออฟไลน์)','(currently offline)');
 }
 function updateQ(){$('#g-q').textContent=LS.get('queue',[]).length}
 async function hashId(s){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(s).trim().toLowerCase()));return [...new Uint8Array(b)].slice(0,5).map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))|0;return (h>>>0).toString(16)}}
 function ageBand(a){a=+a;if(!a)return '';if(a<20)return '<20';if(a>=60)return '60+';const lo=Math.floor(a/10)*10;return lo+'-'+(lo+9)}
-async function recPayload(r){return {pid:await hashId(r.name||r.id),date:r.date,age_band:ageBand(r.age),sex:r.sex,route:r.method,amount:r.qty,symptoms:r.sym,severity:['','mild','moderate','severe'][+r.sev||0],outcome:r.out}}
+async function recPayload(r){return {pid:await hashId(r.name||r.id),date:r.date,age_band:ageBand(r.age),sex:r.sex,route:r.method,amount:r.qty,symptoms:r.sym,severity:['','mild','moderate','severe'][+r.sev||0],outcome:r.out,crit_ver:r.cv||'',consent_ver:r.cons||'',research_consent:r.rc?1:0}}
+function screenPayload(it){const o={res:it.res,crit_ver:it.cv||'',core_fail_n:it.hard.length,caution_n:it.caut.length};QS.forEach(q=>{o['q_'+q.id]=it.ans?(it.ans[q.id]==='risk'?1:it.ans[q.id]==='safe'?0:''):''});return o}
+const canSync=r=>cfg().needRc===false||!!r.rc;
 function enqueue(kind,data,ts){const c=cfg();if(!c.url||!c.auto)return;const q=LS.get('queue',[]);q.push({kind,data,ts:ts||Date.now()});LS.set('queue',q);updateQ();flush()}
 async function flush(silent){
   const c=cfg();
   if(!c.url||!/^https:\/\/script\.google\.com\//.test(c.url)){if(!silent)toast(L('กรุณาใส่ URL ของ Apps Script (https://script.google.com/...)','Enter a valid Apps Script URL'));return}
   if(!navigator.onLine){if(!silent)toast(L('ออฟไลน์ — จะส่งเมื่อมีสัญญาณ','Offline — will send when online'));return}
   const q=LS.get('queue',[]);const rest=[];let ok=0;
-  for(const it of q){try{await fetch(c.url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({facility:c.fac||'',kind:it.kind,ts:it.ts,data:it.data})});ok++}catch(e){rest.push(it)}}
+  for(const it of q){try{await fetch(c.url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:c.token||'',facility:c.fac||'',kind:it.kind,ts:it.ts,data:it.data})});ok++}catch(e){rest.push(it)}}
   LS.set('queue',rest);updateQ();if(!silent)toast(L(`ส่งแล้ว ${ok} รายการ`,`Sent ${ok} item(s)`)+(rest.length?L(`, ค้าง ${rest.length}`,`, ${rest.length} pending`):''));
 }
 window.addEventListener('online',()=>{renderSettings();flush(true)});window.addEventListener('offline',renderSettings);
@@ -944,8 +1034,108 @@ $('#g-flush').addEventListener('click',()=>flush(false));
 $('#g-test').addEventListener('click',()=>{saveCfg();const q=LS.get('queue',[]);q.push({kind:'test',data:{msg:'CARE70 test',ver:70},ts:Date.now()});LS.set('queue',q);updateQ();flush(false)});
 $('#g-all').addEventListener('click',async()=>{saveCfg();const c=cfg();if(!c.url)return toast(L('กรุณาใส่ URL ก่อน','Enter the URL first'));
   const R=LS.get('records',[]),S=LS.get('screens',[]);if(!R.length&&!S.length)return toast(L('ยังไม่มีข้อมูล','No data'));
-  const q=LS.get('queue',[]);for(const r of R)q.push({kind:'record',data:await recPayload(r),ts:Date.now()});S.forEach(s=>q.push({kind:'screen',data:{res:s.res,hard:s.hard,caut:s.caut},ts:s.t}));LS.set('queue',q);updateQ();flush(false)});
+  const q=LS.get('queue',[]);for(const r of R.filter(canSync))q.push({kind:'record',data:await recPayload(r),ts:Date.now()});S.forEach(s=>q.push({kind:'screen',data:screenPayload(s),ts:s.t}));LS.set('queue',q);updateQ();flush(false)});
 $('#g-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('#g-script').textContent);toast(L('คัดลอกโค้ดแล้ว','Code copied'))}catch(e){toast(L('คัดลอกไม่สำเร็จ','Copy failed'))}});
+
+/* ---------- Security: PIN lock, auto-lock, retention ---------- */
+const SEC=()=>LS.get('sec',{});
+const hasPin=()=>!!SEC().hash;
+function enc(s){return new TextEncoder().encode(s)}
+async function pinHash(pin,salt){
+  try{const k=await crypto.subtle.importKey('raw',enc(pin),'PBKDF2',false,['deriveBits']);
+    const b=await crypto.subtle.deriveBits({name:'PBKDF2',salt:enc(salt),iterations:120000,hash:'SHA-256'},k,256);
+    return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+  catch(e){let h=5381;const t=salt+':'+pin;for(let r=0;r<2000;r++)for(let i=0;i<t.length;i++)h=((h<<5)+h+t.charCodeAt(i))|0;return 'f'+(h>>>0).toString(16)}
+}
+function randHex(n){try{const a=new Uint8Array(n);crypto.getRandomValues(a);return [...a].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){return (Math.random().toString(16).slice(2)+Date.now().toString(16)).slice(0,n*2)}}
+let idleT=null;
+function bump(){clearTimeout(idleT);const s=SEC();if(s.hash&&s.auto>0)idleT=setTimeout(lockNow,s.auto*60000)}
+function lockMsg(wrong){const w=Math.ceil((LS.get('lockUntil',0)-Date.now())/1000);$('#lock-msg').textContent=w>0?L(`ลองใหม่ได้ในอีก ${w} วินาที`,`Try again in ${w}s`):(wrong?L('รหัสไม่ถูกต้อง','Incorrect PIN'):'')}
+function lockNow(){if(!hasPin())return;closeModal();document.body.classList.add('locked');$('#lock').hidden=false;$('#lock-pin').value='';lockMsg(false);setTimeout(()=>{try{$('#lock-pin').focus()}catch(e){}},60)}
+function unlockUI(){document.body.classList.remove('locked');$('#lock').hidden=true;$('#lock-pin').value='';$('#lock-msg').textContent='';bump();checkDue()}
+async function tryUnlock(){
+  if(LS.get('lockUntil',0)>Date.now()){lockMsg(false);return}
+  const s=SEC();const h=await pinHash($('#lock-pin').value,s.salt);
+  if(h===s.hash){LS.set('failN',0);LS.set('lockUntil',0);unlockUI()}
+  else{const n=LS.get('failN',0)+1;LS.set('failN',n);if(n%5===0)LS.set('lockUntil',Date.now()+30000*(n/5));$('#lock-pin').value='';lockMsg(true)}
+}
+$('#lock-go').addEventListener('click',tryUnlock);
+$('#lock-pin').addEventListener('keydown',e=>{if(e.key==='Enter')tryUnlock()});
+$('#lock-forgot').addEventListener('click',()=>{
+  if(!confirm(L('หากลืม PIN ต้องลบข้อมูลทั้งหมดในเครื่องนี้เพื่อรีเซ็ต (ข้อมูลที่ซิงก์ไปแล้วไม่ถูกลบ) ต้องการดำเนินการต่อหรือไม่?','If you forgot the PIN, all data on this device must be erased to reset it (data already synced is not deleted). Continue?')))return;
+  ['screens','records','fu','queue'].forEach(k=>LS.set(k,[]));LS.set('ans',{});ans={};const s=SEC();delete s.hash;delete s.salt;LS.set('sec',s);LS.set('failN',0);LS.set('lockUntil',0);
+  unlockUI();paintQs();renderRecs();renderFollow();renderStats();renderHome();renderSec();updateBadge();toast(L('ลบข้อมูลและรีเซ็ต PIN แล้ว','Data erased and PIN reset'))});
+let pinCb=null;
+function askPin(cb){pinCb=cb;showModal(`<h3>🔐 ${L('ใส่ PIN ปัจจุบัน','Enter current PIN')}</h3><input class="in" id="m-pin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" style="margin:10px 0"><div class="row"><button class="btn" id="m-pinok">${L('ยืนยัน','Confirm')}</button><button class="btn sec" id="m-ok">${L('ยกเลิก','Cancel')}</button></div>`);setTimeout(()=>{try{$('#m-pin').focus()}catch(e){}},60)}
+$('#modal').addEventListener('click',async e=>{if(!e.target.closest('#m-pinok'))return;const s=SEC();const h=await pinHash($('#m-pin').value,s.salt);if(h===s.hash){const cb=pinCb;pinCb=null;closeModal();if(cb)cb()}else toast(L('PIN ไม่ถูกต้อง','Incorrect PIN'))});
+$('#sec-set').addEventListener('click',()=>{
+  const a=$('#sec-pin1').value,b=$('#sec-pin2').value;
+  if(!/^\d{4,6}$/.test(a))return toast(L('PIN ต้องเป็นตัวเลข 4-6 หลัก','PIN must be 4-6 digits'));
+  if(a!==b)return toast(L('PIN ทั้งสองช่องไม่ตรงกัน','PINs do not match'));
+  const doSet=async()=>{const salt=randHex(8);const s=SEC();s.salt=salt;s.hash=await pinHash(a,salt);LS.set('sec',s);$('#sec-pin1').value='';$('#sec-pin2').value='';renderSec();bump();toast(L('ตั้ง PIN แล้ว','PIN set'))};
+  hasPin()?askPin(doSet):doSet();
+});
+$('#sec-off').addEventListener('click',()=>{if(!hasPin())return toast(L('ยังไม่ได้ตั้ง PIN','No PIN set'));askPin(()=>{const s=SEC();delete s.hash;delete s.salt;LS.set('sec',s);clearTimeout(idleT);renderSec();toast(L('ปิด PIN แล้ว','PIN turned off'))})});
+$('#sec-lock').addEventListener('click',()=>hasPin()?lockNow():toast(L('ตั้ง PIN ก่อน','Set a PIN first')));
+$('#sec-auto').addEventListener('change',()=>{const s=SEC();s.auto=+$('#sec-auto').value;LS.set('sec',s);bump()});
+$('#sec-ret').addEventListener('change',()=>{const s=SEC();s.ret=+$('#sec-ret').value;LS.set('sec',s);if(s.ret){const n=purge();if(n)toast(L(`ลบข้อมูลเก่า ${n} รายการ`,`Deleted ${n} old item(s)`))}});
+function renderSec(){const s=SEC();$('#sec-state').textContent=s.hash?L('✅ เปิดใช้งาน PIN','✅ PIN enabled'):L('⚠️ ยังไม่ได้ตั้ง PIN','⚠️ No PIN set');$('#sec-auto').value=String(s.auto||5);$('#sec-ret').value=String(s.ret||0);$$('.lock-btn').forEach(b=>b.hidden=!s.hash)}
+function purge(){const d=SEC().ret|0;if(!d)return 0;const cut=Date.now()-d*86400000;let n=0;
+  const R=LS.get('records',[]),R2=R.filter(r=>{const t=new Date(r.date).getTime();return isNaN(t)||t>=cut});n+=R.length-R2.length;if(R2.length!==R.length)LS.set('records',R2);
+  const S=LS.get('screens',[]),S2=S.filter(x=>x.t>=cut);n+=S.length-S2.length;if(S2.length!==S.length)LS.set('screens',S2);
+  const F=FU(),F2=F.filter(f=>f.created>=cut);n+=F.length-F2.length;if(F2.length!==F.length)LS.set('fu',F2);return n}
+function initSecurity(){
+  ['pointerdown','keydown','touchstart','scroll'].forEach(ev=>window.addEventListener(ev,()=>{if(hasPin()&&!document.body.classList.contains('locked'))bump()},{passive:true,capture:true}));
+  const n=purge();if(n)setTimeout(()=>toast(L(`ลบข้อมูลเก่า ${n} รายการตามที่ตั้งไว้`,`Deleted ${n} old item(s) per retention setting`)),800);
+  setInterval(purge,3600000);
+  if(hasPin())lockNow();
+}
+$$('[data-act=lock]').forEach(b=>b.setAttribute('type','button'));
+
+/* ---------- Privacy notice, consent form, research export ---------- */
+$('#g-tokgen').addEventListener('click',()=>{$('#g-token').value=randHex(16);saveCfg();toast(L('สุ่มรหัสแล้ว — คัดลอกไปใส่ TOKEN ในสคริปต์','Token generated — copy it into TOKEN in the script'))});
+function infoHTML(){
+  const c=cfg();const d=SEC().ret|0;
+  if(c.info&&c.info.trim())return `<div style="white-space:pre-wrap;font-size:.9rem">${esc(c.info)}</div>`;
+  const li=(a,b)=>`<li style="margin-bottom:6px">${esc(L(a,b))}</li>`;
+  return `<ol style="padding-left:20px;font-size:.9rem">`+
+   li('วัตถุประสงค์: คัดกรองความปลอดภัยเบื้องต้นก่อนจำหน่ายช่อดอกกัญชา เฝ้าระวังและบันทึกอาการไม่พึงประสงค์ และ (หากท่านยินยอม) ใช้ข้อมูลแบบไม่ระบุตัวตนเพื่อการวิจัยด้านความปลอดภัยของผู้ใช้','Purpose: initial safety screening before dispensing cannabis flower, surveillance and recording of adverse events, and (only if you agree) use of de-identified data for user-safety research.')+
+   li('ข้อมูลที่เก็บ: ชื่อหรือรหัสของท่าน เพศ อายุ โรคประจำตัว/ยาที่ใช้ ผลิตภัณฑ์ วิธีและปริมาณที่ใช้ อาการที่พบ การจัดการ และผลลัพธ์','Data collected: your name or code, sex, age, conditions/medicines, product, route and amount, symptoms, management and outcome.')+
+   li('การเก็บรักษา: เก็บในอุปกรณ์ของสถานที่จำหน่าย ป้องกันด้วยรหัส PIN '+(d?`และลบอัตโนมัติเมื่อเกิน ${d} วัน`:'และเก็บตามระยะเวลาที่กำหนดในโครงการ'),'Storage: kept on the dispensary\'s device, protected by a PIN '+(d?`and deleted automatically after ${d} days`:'and retained for the period set in the project')+'.')+
+   li('การส่งข้อมูลเพื่อวิจัย: ทำเฉพาะเมื่อท่านให้ความยินยอม และส่งแบบไม่ระบุตัวตน (รหัสแฮช ช่วงอายุ เพศ วิธีใช้ อาการ ความรุนแรง ผลลัพธ์) โดยไม่ส่งชื่อ โรคประจำตัว หรือหมายเหตุ','Research data: sent only if you consent, and de-identified (hashed ID, age band, sex, route, symptoms, severity, outcome) — never your name, conditions or notes.')+
+   li('สิทธิของท่าน: การเข้าร่วมเป็นความสมัครใจ ปฏิเสธหรือถอนความยินยอมได้ทุกเมื่อโดยไม่กระทบการรับบริการ และขอให้ลบข้อมูลของท่านในอุปกรณ์ได้ (ข้อมูลไม่ระบุตัวตนที่ส่งไปแล้วอาจไม่สามารถระบุเพื่อลบได้)','Your rights: participation is voluntary; you may decline or withdraw at any time without affecting service, and ask us to delete your data on the device (de-identified data already sent may no longer be traceable).')+
+   li('การติดต่อ: '+(c.ct||'ผู้วิจัย/สถานที่จำหน่าย')+(c.ecno?' · เลขที่รับรองจริยธรรม '+c.ecno:''),'Contact: '+(c.ct||'the investigator / dispensary')+(c.ecno?' · Ethics approval no. '+c.ecno:''))+`</ol>`;
+}
+function infoHead(){const c=cfg();return `${c.proj?`<p><b>${esc(L('โครงการวิจัย: ','Project: '))}</b>${esc(c.proj)}${c.pi?' · '+esc(L('ผู้วิจัยหลัก ','PI ')+c.pi):''}</p>`:''}${c.ecno?`<p class="muted">EC: ${esc(c.ecno)}${c.ecd?' · '+esc(L('รับรองเมื่อ ','approved ')+c.ecd):''}${c.ece?' · '+esc(L('หมดอายุ ','expires ')+c.ece):''}</p>`:''}`}
+function showInfo(){showModal(`<h3>📄 ${L('ประกาศความเป็นส่วนตัวและข้อมูลโครงการวิจัย','Privacy notice and research information')}</h3>${infoHead()}${infoHTML()}<div class="row" style="margin-top:12px"><button class="btn sm" id="m-pc">🖨 ${L('พิมพ์หนังสือยินยอม','Print consent form')}</button><button class="btn sec sm" id="m-ok">${L('ปิด','Close')}</button></div>`)}
+$('#r-info').addEventListener('click',showInfo);$('#g-view').addEventListener('click',showInfo);
+$('#modal').addEventListener('click',e=>{if(e.target.closest('#m-pc')){closeModal();printConsent()}});
+function printConsent(){
+  const c=cfg();const line='................................................';
+  printHTML(`<div class="portrait">${repHead(L('เอกสารชี้แจงผู้เข้าร่วมและหนังสือยินยอม','Participant information and consent form'),'')}${infoHead()}${infoHTML()}
+   <p>☐ ${esc(L('ข้าพเจ้ายินยอมให้เก็บข้อมูลเพื่อเฝ้าระวังความปลอดภัย','I consent to data collection for safety surveillance'))}</p>
+   <p>☐ ${esc(L('ข้าพเจ้ายินยอมให้ใช้ข้อมูลแบบไม่ระบุตัวตนเพื่อการวิจัย','I consent to anonymous use of my data for research'))}</p>
+   <p>${esc(L('ชื่อ-สกุล ผู้รับบริการ ','Client name '))}${line}　${esc(L('วันที่ ','Date '))}................</p>
+   <div class="sig"><div>${esc(L('ลงชื่อ','Signed'))} ........................<br>${esc(L('ผู้รับบริการ','Client'))}</div><div>${esc(L('ลงชื่อ','Signed'))} ........................<br>${esc(L('ผู้ให้ข้อมูล/พยาน','Informant / witness'))} (${esc(c.rep||'................')})</div></div>
+   <p style="font-size:8pt">${esc(L('เวอร์ชันหนังสือยินยอม ','Consent version '))}${CONS_VER} · ${esc(L('เวอร์ชันเกณฑ์ ','Criteria version '))}${CRIT_VER}</p></div>`)}
+$('#g-pc').addEventListener('click',printConsent);
+function toCsv(rows){return '﻿'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n')}
+async function exportResearch(){
+  const c=cfg();const S=LS.get('screens',[]);const needRc=c.needRc!==false;const R=LS.get('records',[]).filter(r=>!needRc||r.rc);const F=FU();
+  if(!S.length&&!R.length)return toast(L('ยังไม่มีข้อมูล','No data'));
+  const qk=QS.map(q=>q.id);const pad=(n,w)=>String(n).padStart(w,'0');
+  const sRows=[['screen_id','datetime_iso','facility','criteria_ver','result'].concat(qk.map(k=>'q_'+k),['core_fail_n','caution_n'])].concat(S.map((x,i)=>['S'+pad(i+1,4),new Date(x.t).toISOString(),c.fac||'',x.cv||'',x.res].concat(qk.map(k=>x.ans?(x.ans[k]==='risk'?1:x.ans[k]==='safe'?0:''):''),[x.hard.length,x.caut.length])));
+  const rRows=[['pid','datetime','facility','criteria_ver','consent_ver','research_consent','age_band','sex','route','amount','symptoms','severity_1to3','outcome','followup_done','followup_outcome']];
+  for(const r of R){const f=F.find(z=>z.rid===r.id);rRows.push([await hashId(r.name||r.id),r.date,c.fac||'',r.cv||'',r.cons||'',r.rc?1:0,ageBand(r.age),r.sex,r.method,r.qty,r.sym.join('; '),r.sev,r.out,f?(f.done?1:0):'',f&&f.outcome?f.outcome:''])}
+  const dict=['CARE APP Ver.70 — Data dictionary','Generated: '+new Date().toISOString(),'Facility code: '+(c.fac||'-'),'Project: '+(c.proj||'-')+' | EC no.: '+(c.ecno||'-'),'Criteria version: '+CRIT_VER+' | Consent version: '+CONS_VER,'','== screenings.csv ==','screen_id: running number (not linked to any person)','datetime_iso: UTC time of screening','result: pass | caution | fail   (fail = at least one CORE criterion at risk; caution = only CAUTION criteria at risk)','q_<id>: 1 = at-risk answer, 0 = safe answer, blank = not recorded (screenings saved before Ver.70 have no per-item answers)']
+   .concat(QS.map(q=>'  q_'+q.id+' ['+(q.l==='hard'?'CORE':'CAUTION')+'] '+q.te+' — at-risk: '+q.re+' | safe: '+q.se),['core_fail_n / caution_n: number of at-risk items per tier','','== ae_records.csv ==','pid: first 10 hex of SHA-256(lowercase client name/code); same client -> same pid; not reversible without the original name','age_band: <20, 20-29, ... 50-59, 60+','severity_1to3: 1 mild, 2 moderate, 3 severe','symptoms: Thai labels, separated by "; "','research_consent: 1 = client agreed to research use','followup_done: 1 if follow-up completed; followup_outcome: result recorded at follow-up','Only records with research consent are exported'+(needRc?' (setting: research consent required).':' (setting: research consent NOT required).'),'Free-text fields (name, conditions, product, notes) are NOT exported.']);
+  const stamp=new Date().toISOString().slice(0,10);
+  dl('CARE70_research_screenings_'+stamp+'.csv',toCsv(sRows),'text/csv;charset=utf-8');
+  setTimeout(()=>dl('CARE70_research_ae_records_'+stamp+'.csv',toCsv(rRows),'text/csv;charset=utf-8'),500);
+  setTimeout(()=>dl('CARE70_research_data_dictionary_'+stamp+'.txt','﻿'+dict.join('\r\n'),'text/plain;charset=utf-8'),1000);
+  toast(L('กำลังดาวน์โหลด 3 ไฟล์ (หากเบราว์เซอร์ถาม ให้อนุญาตการดาวน์โหลดหลายไฟล์)','Downloading 3 files (allow multiple downloads if asked)'));
+}
+$('#s-res').addEventListener('click',exportResearch);
 
 /* ---------- PWA ---------- */
 let deferred=null;
@@ -959,6 +1149,7 @@ if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){window.add
 const UQ='?auto=format&fit=crop&w=600&q=70';
 const TILE_IMG={check:'https://images.unsplash.com/photo-1598257006458-087169a1f08d'+UQ,advise:'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d'+UQ,record:'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40'+UQ,escalate:'https://images.unsplash.com/photo-1587745416684-47953f16f02f'+UQ};
 function renderHome(){
+  {const c=cfg(),eb=$('#ec-banner');let m='';if(c.ece){const days=Math.ceil((new Date(c.ece+'T23:59:59')-Date.now())/86400000);if(days<0)m=L('⚠️ ใบรับรองจริยธรรมการวิจัยหมดอายุแล้ว — ควรต่ออายุก่อนเก็บข้อมูลเพิ่ม','⚠️ The research ethics approval has expired — renew it before collecting more data');else if(days<=30)m=L(`⚠️ ใบรับรองจริยธรรมการวิจัยจะหมดอายุในอีก ${days} วัน`,`⚠️ Research ethics approval expires in ${days} day(s)`)}eb.hidden=!m;eb.textContent=m}
   const S=LS.get('screens',[]);const d0=new Date();d0.setHours(0,0,0,0);
   $('#h-today').textContent=S.filter(s=>s.t>=d0.getTime()).length;
   $('#h-rec').textContent=LS.get('records',[]).length;
@@ -979,6 +1170,7 @@ function renderAll(){renderHome();renderQs();evalCheck(false);buildAdv();buildSy
   document.documentElement.style.setProperty('--fs',LS.get('fs',16)+'px');
   loadCfg();$('#r-date').value=nowLocal();
   applyLang();
+  initSecurity();
   show((location.hash||'#home').slice(1),false);
   window.addEventListener('hashchange',()=>show(location.hash.slice(1),false));
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
