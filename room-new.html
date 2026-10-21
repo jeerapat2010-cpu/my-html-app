@@ -667,7 +667,7 @@ function chunkFloors(base, cats){
   return out;
 }
 /* ตู้ส่วนตัว (ชั้น ๑): เก็บแอปโปรดของผู้ใช้ — ดึงจากดาว ★ ที่ปักไว้ ใช้ร่วมกับหน้าพอร์ทัล */
-const MINE={id:'mine',name:'ตู้ส่วนตัวของฉัน',short:'ตู้ส่วนตัว',emoji:'🎒',desc:'แอปโปรดที่ปักดาว ★ ไว้ · เก็บในเครื่องนี้',color:'#c9953a',floor:1,room:99,mine:true,
+const MINE={id:'mine',name:'ตู้ส่วนตัวของฉัน',short:'ตู้ส่วนตัว',emoji:'🎒',desc:'แอปโปรดที่ปักดาว ★ ไว้ · เก็บในเครื่องนี้',color:'#a8442e',floor:1,room:99,mine:true,
   get apps(){ const f=favGet(), map=new Map(cats.flatMap(c=>c.apps.map(a=>[a.href,{...a,cat:'ชั้น '+thaiNum(c.floor)+' · '+c.emoji+' '+c.short}]))); return f.map(h=>map.get(h)).filter(Boolean); } };
 async function loadAll(){
   const [ttm,f2]=await Promise.all([loadCatsTTM().catch(()=>[]), loadCats2().catch(e=>{ console.warn(e); return []; })]);
@@ -689,7 +689,8 @@ async function loadAll(){
   GLASS=true;   // ทุกชั้นเป็นห้องกระจก มองเห็นวิวเจ้าพระยา
   const all=[]; floors.forEach(fl=>fl.cats.forEach((c,ri)=>{ c.floor=fl.no; c.room=ri; c.gi=all.length; all.push(c); }));
   rooms=floors[FLOOR-1]?floors[FLOOR-1].cats:[];
-  if(FLOOR===1) rooms=[...rooms,MINE];   // ชั้นล่างมีตู้ส่วนตัวเพิ่มท้ายแถว
+
+  if(FLOOR===1) floors[0].cats.forEach(c=>c.room++);   // เลื่อนเลขห้องเพราะตู้ส่วนตัวขึ้นเป็นห้องแรก
   return all;
 }
 function floorSummary(){
@@ -887,6 +888,7 @@ const oakTex    = tex(512,512,(g,w,h)=>woodGrain(g,w,h,{seed:21,base:'#c9955a',d
 const ashTex    = tex(512,512,(g,w,h)=>woodGrain(g,w,h,{seed:5, base:'#e7d6b4',dark:'#cdb88e',light:'#f6ead0'}),{rep:[1,1]});
 const walnutTex = tex(512,512,(g,w,h)=>woodGrain(g,w,h,{seed:9, base:'#6b4a33',dark:'#432b1b',light:'#8a6444'}),{rep:[1,1]});
 const cherryTex = tex(512,512,(g,w,h)=>woodGrain(g,w,h,{seed:14,base:'#b4643f',dark:'#8a4025',light:'#d28659'}),{rep:[1,1]});
+const redCherryTex = tex(512,512,(g,w,h)=>woodGrain(g,w,h,{seed:27,base:'#8c2d1f',dark:'#5a170d',light:'#b5503a'}),{rep:[1,1]});
 const birchTex  = tex(512,512,(g,w,h)=>woodGrain(g,w,h,{seed:17,base:'#f0e2c2',dark:'#dcc9a0',light:'#fbf1d8'}),{rep:[1,1]});
 /* ผนัง: ไม้แอชระแนงตั้ง */
 const slatTex = tex(512,1024,(g,w,h)=>{
@@ -1223,6 +1225,7 @@ const M = {
   ash: new THREE.MeshStandardMaterial({map:ashTex, roughness:.6}),
   cherry: new THREE.MeshStandardMaterial({map:cherryTex, roughness:.45}),
   birch: new THREE.MeshStandardMaterial({map:birchTex, roughness:.65}),
+  redCherry: new THREE.MeshStandardMaterial({map:redCherryTex, roughness:.4, metalness:.05}),
   gold: new THREE.MeshStandardMaterial({color:'#e3b341', metalness:.72, roughness:.3}),
   brass: new THREE.MeshStandardMaterial({color:'#f0c860', metalness:.8, roughness:.24}),
   recess: new THREE.MeshStandardMaterial({color:'#3a2414', roughness:.9}),
@@ -1768,7 +1771,7 @@ function buildCabinet(cat,i){
   const G=new THREE.Group(); const yaw=-i*STEP;
   G.position.set(-Math.sin(yaw)*CAB_R,0,-Math.cos(yaw)*CAB_R); G.rotation.y=yaw;
   const faceW=2*ROOM_R*Math.sin(Math.PI/(N*2)), BZ=.5, D0=.1, ID=BZ-D0, IZ=-(D0+ID/2), DW=1.12, DH=2.28;
-  const pierM=new THREE.MeshStandardMaterial({map:slatTex,roughness:.7}), frameM=M.teakDark;
+  const RC=!!cat.mine, pierM=RC?M.redCherry:new THREE.MeshStandardMaterial({map:slatTex,roughness:.7}), frameM=RC?M.redCherry:M.teakDark;
   const add=(m,x,y,z,hit=false,shadow=true)=>{ m.position.set(x,y,z); m.castShadow=shadow; m.receiveShadow=true; m.userData.cab=i; G.add(m); if(hit){ hitMeshes.push(m); } return m; };
   const mk=(geo,m,x,y,z)=>{ const o=new THREE.Mesh(geo,m); o.position.set(x,y,z); o.receiveShadow=true; G.add(o); return o; };
   const bx=(w,h,d,m,x,y,z)=>mk(new THREE.BoxGeometry(w,h,d),m,x,y,z);
@@ -1780,7 +1783,7 @@ function buildCabinet(cat,i){
   const pw=(faceW*1.02-DW)/2;
   for(const sx of [-1,1]){
     add(new THREE.Mesh(new THREE.BoxGeometry(pw,WALL_H,.1),pierM),sx*(DW/2+pw/2),WALL_H/2,-.05,true);
-    add(new THREE.Mesh(new THREE.BoxGeometry(pw+.01,.95,.108),M.teakDark),sx*(DW/2+pw/2),.475,-.046);
+    add(new THREE.Mesh(new THREE.BoxGeometry(pw+.01,.95,.108),RC?M.redCherry:M.teakDark),sx*(DW/2+pw/2),.475,-.046);
     add(new THREE.Mesh(new THREE.BoxGeometry(pw+.02,.045,.118),M.cherry),sx*(DW/2+pw/2),.97,-.041,false,false);
   }
   add(new THREE.Mesh(new THREE.BoxGeometry(DW,WALL_H-DH,.1),pierM),0,(DH+WALL_H)/2,-.05,true);
@@ -1790,14 +1793,14 @@ function buildCabinet(cat,i){
   add(new THREE.Mesh(new THREE.BoxGeometry(DW+.22,.012,.125),M.gold),0,DH+.095,-.01,false,false);
   // ===== มิติ: ครีบข้างไม้เชอร์รี่ + หลังคาวอลนัท + ธรณีไม้โอ๊ค =====
   for(const sx of [-1,1]){
-    add(new THREE.Mesh(new THREE.BoxGeometry(.3,DH+.3,.3),M.cherry),sx*.78,(DH+.3)/2,.13,true);
+    add(new THREE.Mesh(new THREE.BoxGeometry(.3,DH+.3,.3),RC?M.redCherry:M.cherry),sx*.78,(DH+.3)/2,.13,true);
     add(new THREE.Mesh(new THREE.BoxGeometry(.17,DH-.25,.014),M.birch),sx*.78,(DH-.05)/2+.03,.287,true);
     add(new THREE.Mesh(new THREE.BoxGeometry(.012,DH+.3,.02),M.gold),sx*.63,(DH+.3)/2,.285,false,false);
   }
-  add(new THREE.Mesh(new THREE.BoxGeometry(1.9,.14,.46),M.teakDark),0,DH+.16,.15,true);
+  add(new THREE.Mesh(new THREE.BoxGeometry(1.9,.14,.46),RC?M.redCherry:M.teakDark),0,DH+.16,.15,true);
   add(new THREE.Mesh(new THREE.BoxGeometry(1.9,.016,.02),M.gold),0,DH+.1,.385,false,false);
   const soffit=new THREE.Mesh(new THREE.PlaneGeometry(1.2,.3),emi('#fff1c8')); soffit.rotation.x=Math.PI/2; soffit.position.set(0,DH+.088,.14); G.add(soffit);
-  add(new THREE.Mesh(new THREE.BoxGeometry(1.5,.07,.42),M.teak),0,.035,.2,true);
+  add(new THREE.Mesh(new THREE.BoxGeometry(1.5,.07,.42),RC?M.redCherry:M.teak),0,.035,.2,true);
   // ===== ภายในห้อง =====
   const floorM=new THREE.MeshStandardMaterial({map:oakTex,color:mixCol(acc,'#ffffff',.7),roughness:.45});
   const fl=new THREE.Mesh(new THREE.PlaneGeometry(DW,ID),floorM); fl.rotation.x=-Math.PI/2; fl.position.set(0,.012,IZ); G.add(fl);
