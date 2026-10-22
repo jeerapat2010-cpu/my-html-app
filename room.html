@@ -2321,6 +2321,20 @@ document.getElementById('lookBtn').onclick=()=>{
 
 /* ================= น้องลูกประคบ — มาสคอตตัวอ้วนประจำเคาน์เตอร์ประชาสัมพันธ์ (ไกด์ 3 มิติ) ================= */
 let buddy=null;
+/* ตัวนับผู้เข้าชม (บริการ abacus ฟรี — นับครั้งเดียวต่อรอบการเปิดเบราว์เซอร์) แสดงที่หน้าเคาน์เตอร์ */
+let visitN=null, visitCb=null;
+(async()=>{
+  const NS='ttm-sasuk-samutprakan', KEY='room-visits';
+  try{ const c=localStorage.getItem('room-visit-n'); if(c) visitN=+c; }catch(e){}
+  let counted=false; try{ counted=sessionStorage.getItem('room-hit')==='1'; }catch(e){}
+  const hit=!counted && /github\.io$/.test(location.hostname);
+  try{
+    const ctl=new AbortController(); setTimeout(()=>ctl.abort(),6000);
+    const r=await fetch('https://abacus.jasoncameron.dev/'+(hit?'hit':'get')+'/'+NS+'/'+KEY,{signal:ctl.signal});
+    const j=await r.json(); const v=Number(j.value);
+    if(Number.isFinite(v)){ visitN=v; try{ localStorage.setItem('room-visit-n',String(v)); if(hit) sessionStorage.setItem('room-hit','1'); }catch(e){} if(visitCb) visitCb(v); }
+  }catch(e){}
+})();
 function buildBuddy(){
   const yawC=-(N-1)*STEP, dirC=new THREE.Vector3(-Math.sin(yawC),0,-Math.cos(yawC));
   const apo=ROOM_R*Math.cos(Math.PI/(N*2)), faceW=2*ROOM_R*Math.sin(Math.PI/(N*2));
@@ -2339,11 +2353,15 @@ function buildBuddy(){
   const sw=Math.min(1.9,faceW*.85);
   const sign=new THREE.Mesh(new THREE.PlaneGeometry(sw,sw*300/1024),new THREE.MeshStandardMaterial({map:signT,emissive:'#ffffff',emissiveMap:signT,emissiveIntensity:.2,roughness:.4})); sign.position.set(0,2.62,wallZ+.02); C.add(sign);
   const CW=Math.min(1.7,faceW*.82);
-  const frontT=tex(768,320,(g,w,h)=>{
+  const frontDraw=(g,w,h,n)=>{
     g.fillStyle=FC.dark; g.fillRect(0,0,w,h); g.strokeStyle='#e3b341'; g.lineWidth=6; g.strokeRect(14,14,w-28,h-28); g.lineWidth=2; g.strokeRect(28,28,w-56,h-56);
     g.fillStyle='#e3b341'; for(let k=0;k<9;k++){ const x=70+k*(w-140)/8; g.beginPath(); g.moveTo(x,h-70); g.lineTo(x+16,h-54); g.lineTo(x,h-38); g.lineTo(x-16,h-54); g.closePath(); g.fill(); }
-    g.textAlign='center'; g.textBaseline='middle'; g.fillStyle='#fff6e0'; g.font='58px Prompt, Sarabun, sans-serif'; g.fillText('สอบถามได้ที่นี่ค่ะ',w/2,h*.42);
-  });
+    g.textAlign='center'; g.textBaseline='middle'; g.fillStyle='#fff6e0'; g.font='58px Prompt, Sarabun, sans-serif'; g.fillText('สอบถามได้ที่นี่ค่ะ',w/2,h*.38);
+    if(n!=null){ g.font='34px Prompt, Sarabun, sans-serif'; g.fillStyle='#ffe9a8'; g.fillText('👥 ผู้เข้าชม '+n.toLocaleString('th-TH')+' ครั้ง',w/2,h*.62); }
+  };
+  const frontT=tex(768,320,(g,w,h)=>frontDraw(g,w,h,visitN));
+  visitCb=n=>{ visitN=n; frontDraw(frontT.image.getContext('2d'),768,320,n); frontT.needsUpdate=true; };
+  if(visitN!=null) visitCb(visitN);
   const mkb=(geo,mat,x,y,z)=>mk(C,geo,mat,x,y,z);
   mkb(new THREE.BoxGeometry(CW,1.0,.5),M.teakDark,0,.5,.27);
   const fp=new THREE.Mesh(new THREE.PlaneGeometry(CW-.1,.84),new THREE.MeshStandardMaterial({map:frontT,roughness:.45})); fp.position.set(0,.5,.521); C.add(fp);
