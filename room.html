@@ -1291,6 +1291,12 @@ function buildRoom(){
     putWindow(dir,apo,yaw,false);
   }
 
+  // ชั้นล่าง: มุมกระจกที่ไม่มีตู้ — ต้นไม้ห้อยคลุมตลอดแนว + โซฟาครีมนุ่มฟูตั้งชิดกระจก
+  if(FLOOR===1) for(let i=rooms.length;i<N-1;i++){
+    const yaw=-i*STEP, apo=ROOM_R*Math.cos(Math.PI/(N*2))-.02, dir=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));
+    hangVines(dir,apo,yaw,faceW*.99,winH); buildSofa(dir,apo,yaw);
+  }
+
   // แชนเดอเลียร์คริสตัล (แบบโคมฝรั่งในราชสำนักยุค ร.๕)
   buildChandelier();
   placePlants();
@@ -1312,6 +1318,23 @@ function buildRoom(){
 }
 let curtainMat=null, curtainTex=null;
 const curtains=[];   // {geo, base:Float32Array, H, sx}
+/* โซฟาสีครีมนุ่มฟู (ตั้งชิดกระจก หันเข้าห้อง) */
+function buildSofa(dir,apo,yaw){
+  const g=new THREE.Group(); g.position.copy(dir.clone().multiplyScalar(apo-.6)); g.rotation.y=yaw; scene.add(g);
+  const fab=new THREE.MeshStandardMaterial({color:'#f2e8d2',roughness:.96}), fab2=new THREE.MeshStandardMaterial({color:'#e9dcc1',roughness:.96}), wood=M.teakDark;
+  const mk=(geo,m,x,y,z,rx=0,ry=0,rz=0,sc=null)=>{ const o=new THREE.Mesh(geo,m); o.position.set(x,y,z); o.rotation.set(rx,ry,rz); if(sc) o.scale.set(...sc); o.castShadow=true; o.receiveShadow=true; g.add(o); return o; };
+  mk(new THREE.BoxGeometry(1.46,.2,.7),fab2,0,.28,0);
+  for(const sx of [-1,1]) for(const sz of [-1,1]) mk(new THREE.CylinderGeometry(.03,.022,.15,10),wood,sx*.64,.075,sz*.27);
+  const cush=new THREE.CapsuleGeometry(.15,.5,8,16);
+  for(const sx of [-1,1]) mk(cush,fab,sx*.34,.46,.06,0,0,Math.PI/2,[.85,1,2.1]);          // เบาะนั่งอวบ
+  mk(new THREE.BoxGeometry(1.46,.5,.16),fab2,0,.6,-.32);
+  for(const sx of [-1,1]) mk(cush,fab,sx*.34,.78,-.27,-.28,0,Math.PI/2,[1,1,1.15]);        // พนักพิงนุ่ม
+  const arm=new THREE.CapsuleGeometry(.12,.3,8,14);
+  for(const sx of [-1,1]) mk(arm,fab,sx*.8,.52,-.02,0,0,0,[1,1,2.7]);                      // ที่วางแขนมน
+  mk(new THREE.SphereGeometry(.13,14,12),sm2('#d9b98a'),-.5,.74,-.05,.3,.5,0,[1,1,.4]);
+  mk(new THREE.SphereGeometry(.13,14,12),sm2('#b98a5e'),.52,.73,-.05,.3,-.5,0,[1,1,.4]);
+}
+const sm2=c=>new THREE.MeshStandardMaterial({color:c,roughness:.9});
 /* ต้นไม้ห้อยเป็นสายพุ่ม ๆ จากขอบหน้าต่างด้านบน (เฉพาะชั้นล่างสุด) พร้อมพริ้วไหวตามลม */
 const vineUpd=[];
 const faceWd=w=>2*ROOM_R*Math.sin(Math.PI/(N*2))*.99;
