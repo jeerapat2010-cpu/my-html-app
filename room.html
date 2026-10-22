@@ -2328,6 +2328,11 @@ let visitN=null, visitCb=null;
   try{ const c=localStorage.getItem('room-visit-n'); if(c) visitN=+c; }catch(e){}
   let counted=false; try{ counted=sessionStorage.getItem('room-hit')==='1'; }catch(e){}
   const hit=!counted && /github\.io$/.test(location.hostname);
+  try{   // ถ้ามี stats.json (ดึงจาก Google Analytics ทุกชั่วโมงโดย GitHub Action) ใช้ยอดจริงจาก GA
+    const sr=await fetch('stats.json?_='+Math.floor(Date.now()/3e5),{cache:'no-store'});
+    if(sr.ok){ const sj=await sr.json(); const gv=Number(sj.room_users>0?sj.room_users:sj.users);
+      if(Number.isFinite(gv)&&gv>0){ visitN=gv; try{ localStorage.setItem('room-visit-n',String(gv)); }catch(e){} if(visitCb) visitCb(gv); return; } }
+  }catch(e){}
   try{
     const ctl=new AbortController(); setTimeout(()=>ctl.abort(),6000);
     const r=await fetch('https://abacus.jasoncameron.dev/'+(hit?'hit':'get')+'/'+NS+'/'+KEY,{signal:ctl.signal});
