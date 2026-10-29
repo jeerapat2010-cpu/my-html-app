@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ดึง PM2.5 วัดจริงจาก Air4Thai (กรมควบคุมมลพิษ) เก็บเป็น data/air4thai.json
 รันบน GitHub Actions เพราะเว็บแอปดึงตรงจากเบราว์เซอร์ไม่ได้ (ติด CORS)"""
-import json, sys, time, urllib.request, datetime, os
+import json, sys, time, urllib.request, datetime, os, ssl
 os.makedirs('data', exist_ok=True)
 errs = []
 def status(m): open('data/air4thai_status.txt','w').write(datetime.datetime.utcnow().isoformat()+'Z '+m+'\n')
@@ -13,6 +13,12 @@ for u in URLS:
         try:
             req = urllib.request.Request(u, headers={'User-Agent': 'Mozilla/5.0 AreaReady-bot'})
             raw = json.load(urllib.request.urlopen(req, timeout=40)); break
+        except ssl.SSLError as e:
+            errs.append('ssl '+repr(e)[:80])
+            try:  # เซิร์ฟเวอร์ Air4Thai ส่งสายใบรับรองไม่ครบ → ยอมรับเฉพาะข้อมูลสาธารณะนี้ แล้วตรวจรูปแบบข้อมูลก่อนใช้
+                raw = json.load(urllib.request.urlopen(req, timeout=40, context=ssl._create_unverified_context())); break
+            except Exception as e2:
+                errs.append(repr(e2)[:120])
         except Exception as e:
             errs.append(u+' '+repr(e)[:150]); time.sleep(3)
     if raw: break
