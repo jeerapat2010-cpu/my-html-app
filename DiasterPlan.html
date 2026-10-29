@@ -144,6 +144,7 @@
       <button data-view="alerts">🌍 ภัยตอนนี้</button>
       <button data-view="checklist">🎒 อุปกรณ์</button>
       <button data-view="household">👨‍👩‍👧‍👦 ครอบครัว</button>
+      <button data-view="sources">📡 แหล่งข้อมูล</button>
       <button data-view="sos">🆘 SOS</button>
       <button data-view="data">⚙️ ตั้งค่า/โหมด</button>
     </div>
@@ -152,6 +153,7 @@
   <main class="main">
     <section class="view active" id="view-events"></section>
     <section class="view" id="view-event"></section>
+    <section class="view" id="view-sources"></section>
 
     <section class="view" id="view-dashboard"><button class="backbar no-print" type="button" data-view="events">← กลับไปหน้าเหตุการณ์</button>
       <div class="grid g4" id="kpiGrid"></div>
@@ -840,7 +842,7 @@ async function loadArea(force){
     ]);
     const d=f.daily||{};
     area={k:areaKey(),t:Date.now(),elev:Number.isFinite(+f.elevation)?+f.elevation:null,rain:(d.precipitation_sum||[]).map(Number),gust:(d.wind_gusts_10m_max||[]).map(Number),tmax:(d.temperature_2m_max||[]).map(Number),
-      pm25:a&&a.current&&Number.isFinite(+a.current.pm2_5)?+a.current.pm2_5:null,aqi:a&&a.current&&Number.isFinite(+a.current.us_aqi)?+a.current.us_aqi:null};
+      fcT:(d.time||[])[0]||null,aqT:a&&a.current?a.current.time:null,aqOK:!!(a&&a.current),pm25:a&&a.current&&Number.isFinite(+a.current.pm2_5)?+a.current.pm2_5:null,aqi:a&&a.current&&Number.isFinite(+a.current.us_aqi)?+a.current.us_aqi:null};
     ST(ARK,JSON.stringify(area));
   }catch(e){areaMsg=area?'ดึงข้อมูลใหม่ไม่สำเร็จ — แสดงข้อมูลที่เก็บไว้':'ดึงข้อมูลพื้นที่ไม่สำเร็จ (ออฟไลน์หรือบริการขัดข้อง)'}
   areaBusy=false;renderHub();renderEventPage();
@@ -891,7 +893,7 @@ function renderHub(){
   if(area){const d0=area.rain[0]||0,s3=sum(area.rain),g=Math.max(...area.gust.filter(Number.isFinite),0),e=bestEv(['quake']);
     tiles=tile('ความสูงพื้นที่',area.elev!=null?'~'+area.elev.toFixed(0)+' ม.':'-',area.elev!=null&&area.elev<=3?'md':'')+tile('ฝนวันนี้ / 3 วัน',Math.round(d0)+' / '+Math.round(s3)+' มม.',d0>=90||s3>=150?'hi':d0>=35||s3>=90?'md':'')+tile('ลมกระโชกสูงสุด',Math.round(g)+' กม./ชม.',g>=90?'hi':g>=60?'md':'')+tile('PM2.5 ตอนนี้',area.pm25!=null?area.pm25.toFixed(0)+' µg/ม.³':'-',area.pm25>75?'hi':area.pm25>37.5?'md':'')+tile('แผ่นดินไหวใกล้สุด 24 ชม.',e?'M'+e.e.mag.toFixed(1)+' • '+H.fmtKm(e.d):(H.evS().loaded?'ไม่พบ':'-'),e&&e.imp.lvl==='high'?'hi':e&&e.imp.lvl==='med'?'md':'');
   }
-  const areaNote=area?'<div class="hz-small" style="margin-top:8px">ข้อมูลพื้นที่ ณ '+new Date(area.t).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'})+' • แหล่ง: Open-Meteo (พยากรณ์/คุณภาพอากาศ ประมาณการจากแบบจำลอง) • USGS'+(areaMsg?' • ⚠️ '+esc(areaMsg):'')+'</div>':'<div class="hz-small" style="margin-top:10px">'+(areaBusy?'⏳ กำลังดึงข้อมูลพื้นที่...':esc(areaMsg||'ยังไม่มีข้อมูลพื้นที่'))+(m==='online'&&!areaBusy?' <button class="btn blue" type="button" data-act="area">โหลดข้อมูลพื้นที่</button>':'')+'</div>';
+  const areaNote=area?'<div class="hz-small" style="margin-top:8px">ดึงข้อมูลพื้นที่เมื่อ '+new Date(area.t).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'})+' ('+H.ago(area.t)+')'+(Date.now()-area.t>6*3600e3?' <b style="color:#b91c1c">• เก่ากว่า 6 ชม. กดอัปเดต</b>':'')+' • แหล่ง: Open-Meteo (แบบจำลอง ไม่ใช่เครื่องวัดจริง) • USGS • <a href="#" data-view="sources">ที่มา/วิธีดึงข้อมูล</a>'+(areaMsg?' • ⚠️ '+esc(areaMsg):'')+'</div>':'<div class="hz-small" style="margin-top:10px">'+(areaBusy?'⏳ กำลังดึงข้อมูลพื้นที่...':esc(areaMsg||'ยังไม่มีข้อมูลพื้นที่'))+(m==='online'&&!areaBusy?' <button class="btn blue" type="button" data-act="area">โหลดข้อมูลพื้นที่</button>':'')+'</div>';
   const banner=hot.length?'<div class="alert danger" style="margin-top:12px"><b>⚠️ เหตุการณ์ที่ควรให้ความสำคัญตอนนี้:</b> '+hot.map(k=>DISASTERS[k][0]+' '+DISASTERS[k][1]+(S[k].txt?' ('+esc(S[k].txt)+')':'')).join(' • ')+'</div>':(area||H.evS().loaded?'<div class="alert success" style="margin-top:12px"><b>🟢 ยังไม่พบสัญญาณที่น่ากังวลสำหรับพื้นที่ของคุณ</b> จากข้อมูลที่ตรวจได้ตอนนี้ (ภัยบางชนิดไม่มีข้อมูลสดในแอป)</div>':'');
   const sorted=[...ORDER].sort((a,b)=>LVN[S[b].lvl]-LVN[S[a].lvl]||ORDER.indexOf(a)-ORDER.indexOf(b));
   const grid=sorted.map(k=>{const I=INFO[k],s=S[k],r=readyFor(k);return '<button type="button" class="ar-ev '+s.lvl+'" data-ev="'+k+'"><div class="ic">'+DISASTERS[k][0]+'</div><h3>'+esc(DISASTERS[k][1])+'</h3><span class="hz-badge '+(s.lvl==='na'?'low':s.lvl)+'" style="margin-left:0">'+NAMES[s.lvl]+'</span><p>'+esc(s.txt||I.lead)+'</p><div class="ar-bar"><i style="width:'+r.pct+'%"></i></div><p style="margin-top:4px">เตรียมอุปกรณ์ <b>'+r.pct+'%</b> ('+r.done+'/'+r.n+')</p></button>'}).join('');
@@ -899,10 +901,11 @@ function renderHub(){
   el.innerHTML='<div class="section-title"><div><h2>🧭 เหตุการณ์ในพื้นที่ของคุณ</h2><p>เลือกเหตุการณ์เพื่อดู ผลกระทบ → สิ่งที่ควรทำ → อุปกรณ์ที่ต้องเตรียม และส่งออกเป็น PDF</p></div></div>'
    +'<div class="card"><div class="hz-locbar"><div class="hz-locstat">'+locLine()+'</div><div class="hz-btns"><button type="button" class="btn red" data-hz="gps">📍 ใช้ GPS ของฉัน</button><button type="button" class="btn outline" data-hz="manual">✏️ ใส่พิกัดเอง</button></div></div><div class="hz-manual"><div class="field"><label>ละติจูด</label><input class="hz-lat" inputmode="decimal" placeholder="13.5991"></div><div class="field"><label>ลองจิจูด</label><input class="hz-lon" inputmode="decimal" placeholder="100.5998"></div><button type="button" class="btn green" data-hz="setmanual">ตกลง</button></div>'
    +'<div class="ar-tiles">'+tiles+'</div>'+areaNote
-   +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px"><span class="chip '+(m==='online'?'':'high')+'">'+(m==='online'?'🌐 โหมดออนไลน์':'📴 โหมดออฟไลน์')+'</span><button class="btn outline" type="button" data-act="togglemode">สลับเป็น'+(m==='online'?'ออฟไลน์':'ออนไลน์')+'</button>'+inst+'<button class="btn outline" type="button" data-act="prepoffline">⬇️ เตรียมใช้ออฟไลน์</button><button class="btn outline" type="button" data-act="pdfall">📄 PDF ภาพรวม</button></div>'
+   +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px"><span class="chip '+(m==='online'?'':'high')+'">'+(m==='online'?'🌐 โหมดออนไลน์':'📴 โหมดออฟไลน์')+'</span><button class="btn outline" type="button" data-act="togglemode">สลับเป็น'+(m==='online'?'ออฟไลน์':'ออนไลน์')+'</button>'+inst+'<button class="btn blue" type="button" data-act="refresh">'+(refBusy?'⏳ กำลังอัปเดต...':'🔄 อัปเดตข้อมูล')+'</button><button class="btn outline" type="button" data-act="prepoffline">⬇️ เตรียมใช้ออฟไลน์</button><button class="btn outline" type="button" data-act="pdfall">📄 PDF ภาพรวม</button></div>'
    +'<p class="hz-small" style="margin:10px 0 0">🔒 ตำแหน่งเก็บไว้ในเครื่องนี้เท่านั้น • ออนไลน์: ส่งพิกัดปัด ~1 กม. ไปขอพยากรณ์จาก Open-Meteo • ออฟไลน์: ไม่เรียกบริการภายนอก</p></div>'
    +banner+'<div class="ar-grid">'+grid+'</div>'
    +'<div class="alert" style="margin-top:14px"><b>อ่านก่อนใช้:</b> สัญญาณในหน้านี้เป็นการประเมินแบบง่ายจากพยากรณ์/ข้อมูลเปิด <b>ไม่ใช่คำเตือนภัยอย่างเป็นทางการ</b> ให้ยึดประกาศ ปภ. และกรมอุตุนิยมวิทยาเสมอ • <a href="#" data-view="alerts">ดูเหตุการณ์สดทั่วโลก</a> • <a href="#" data-view="checklist">เช็กลิสต์อุปกรณ์ทั้งหมด</a></div>';
+  try{renderSources()}catch(e){}
   const mc=$('modeChip');if(mc)mc.textContent=(m==='online'?'🌐 ออนไลน์':'📴 ออฟไลน์')+' • v'+VER+' • '+CREDIT;
 }
 
@@ -919,7 +922,7 @@ function renderEventPage(){
   +'<div class="section-title"><div><h2>'+D[0]+' '+esc(D[1])+'</h2><p>'+esc(I.lead)+'</p></div><button class="btn primary no-print" type="button" data-act="pdf">📄 ส่งออก PDF</button></div>'
   +'<div class="card">'+'<div class="hz-locstat" style="font-size:13px">'+locLine()+'</div></div>'
   +'<div class="ar-h"><span>1</span><h2>ผลกระทบต่อพื้นที่ของคุณ</h2></div>'
-  +'<div class="ar-sig '+(s.lvl==='na'?'info':s.lvl)+'"><span class="big">'+(s.lvl==='high'?'⚠️ ':s.lvl==='med'?'🟠 ':s.lvl==='low'?'🟢 ':'ℹ️ ')+sigMsg+'</span>'+esc(s.txt)+(s.lines.length?'<ul style="margin:8px 0 0 18px">'+li(s.lines)+'</ul>':'')+'</div>'
+  +'<div class="ar-sig '+(s.lvl==='na'?'info':s.lvl)+'"><span class="big">'+(s.lvl==='high'?'⚠️ ':s.lvl==='med'?'🟠 ':s.lvl==='low'?'🟢 ':'ℹ️ ')+sigMsg+'</span>'+esc(s.txt)+(s.lines.length?'<ul style="margin:8px 0 0 18px">'+li(s.lines)+'</ul>':'')+'<div class="hz-small" style="margin-top:8px">'+srcLine(k)+'</div></div>'
   +'<div class="card"><h3 style="margin-top:0">ถ้าเกิดเหตุ อาจเกิดอะไรขึ้นบ้าง</h3><ul>'+li(I.impact)+'</ul>'+(I.local&&(nearHome()||k==='nuclear')?'<div class="note" style="margin-top:8px">📌 '+esc(I.local)+'</div>':'')+'</div>'
   +'<div class="ar-h"><span>2</span><h2>ควรทำอะไร</h2></div>'
   +'<div class="grid g3"><div class="card"><h3 style="margin-top:0">ก่อนเกิดเหตุ</h3><ol class="ar-steps">'+li(I.before)+'</ol></div><div class="card"><h3 style="margin-top:0">ระหว่างเกิดเหตุ</h3><ol class="ar-steps">'+li(I.during)+'</ol></div><div class="card"><h3 style="margin-top:0">หลังเหตุการณ์</h3><ol class="ar-steps">'+li(I.after)+'</ol></div></div>'
@@ -950,7 +953,7 @@ function renderReport(key){
   let tbl='';
   if(area)tbl='<h2>ข้อมูลพื้นที่ (Open-Meteo)</h2><table><tr><td>ความสูงพื้นที่</td><td>'+(area.elev!=null?'~'+area.elev.toFixed(0)+' ม.':'-')+'</td><td>ฝน 3 วัน (มม.)</td><td>'+area.rain.map(x=>Math.round(x)).join(' / ')+'</td></tr><tr><td>ลมกระโชกสูงสุด 3 วัน (กม./ชม.)</td><td>'+area.gust.map(x=>Math.round(x)).join(' / ')+'</td><td>PM2.5</td><td>'+(area.pm25!=null?area.pm25.toFixed(0)+' µg/ม.³':'-')+'</td></tr></table>';
   pa.innerHTML='<div class="rpt"><h1>'+D[0]+' '+esc(D[1])+' — รายงานเตรียมพร้อมตามพื้นที่</h1>'+metaBlock()
-   +'<h2>1) ผลกระทบต่อพื้นที่ของคุณ</h2><div class="sig"><b>สัญญาณ: '+NAMES[s.lvl]+'</b> — '+esc(s.txt)+(s.lines.length?'<ul>'+li(s.lines)+'</ul>':'')+'</div><ul>'+li(I.impact)+'</ul>'+((I.local&&(nearHome()||key==='nuclear'))?'<p class="meta">📌 '+esc(I.local)+'</p>':'')+tbl
+   +'<h2>1) ผลกระทบต่อพื้นที่ของคุณ</h2><div class="sig"><b>สัญญาณ: '+NAMES[s.lvl]+'</b> — '+esc(s.txt)+(s.lines.length?'<ul>'+li(s.lines)+'</ul>':'')+'<div class="meta">'+srcLine(key).replace(/<a [^>]*>.*?<\/a>/,'')+'</div></div><ul>'+li(I.impact)+'</ul>'+((I.local&&(nearHome()||key==='nuclear'))?'<p class="meta">📌 '+esc(I.local)+'</p>':'')+tbl
    +'<h2>2) ควรทำอะไร</h2><b>ก่อนเกิดเหตุ</b><ol>'+li(I.before)+'</ol><b>ระหว่างเกิดเหตุ</b><ol>'+li(I.during)+'</ol><b>หลังเหตุการณ์</b><ol>'+li(I.after)+'</ol>'+extra
    +'<h2>3) อุปกรณ์ที่ต้องเตรียม — พร้อม '+r.pct+'% ('+r.done+'/'+r.n+' รายการ)</h2><table><thead><tr><th>✓</th><th>รายการ</th><th>จำนวน</th><th>ความสำคัญ</th><th>คำแนะนำ</th></tr></thead><tbody>'+items.map(i=>'<tr><td>'+(i.checked?'☑':'☐')+'</td><td><b>'+esc(i.name)+'</b></td><td>'+qty(i)+' '+esc(i.unit)+'</td><td>'+(i.priority==='high'?'จำเป็นมาก':i.priority==='medium'?'ปานกลาง':'เผื่อไว้')+'</td><td>'+esc(i.advice||'')+'</td></tr>').join('')+'</tbody></table>'
    +planBlock()+sosBlock()+'<h2>แหล่งข้อมูลทางการ</h2><ul>'+I.links.map(l=>'<li>'+esc(l[0])+' — '+esc(l[1])+'</li>').join('')+'</ul>'+DISC+'</div>';
@@ -1006,6 +1009,42 @@ function renderSettings(){
   +'<div class="card" style="margin-top:12px;margin-bottom:14px"><h3 style="margin-top:0">ℹ️ เกี่ยวกับแอป</h3><p class="note"><b>'+APPFULL+'</b><br>เวอร์ชัน '+VER+' • ปรับปรุง '+UPD+'<br>พัฒนาโดย <b>'+CREDIT+'</b></p></div>';
 }
 
+
+/* ---------- รีเฟรช + หน้าแหล่งข้อมูล ---------- */
+let refBusy=false;
+async function refreshAll(){
+  if(!H.NET()){showModal('อัปเดตข้อมูล','<p>ตอนนี้อยู่ในโหมดออฟไลน์/ไม่มีอินเทอร์เน็ต จึงอัปเดตไม่ได้ — สลับเป็น “ออนไลน์” แล้วกดอีกครั้ง</p>');return}
+  if(refBusy)return;refBusy=true;renderHub();renderSources();
+  try{await Promise.all([loadArea(true),H.loadEvents()])}catch(e){}
+  refBusy=false;renderHub();renderEventPage();renderSources();
+}
+const fmtT=t=>t?new Date(t).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):'—';
+function srcStat(ok,t,cached){return ok?(cached?'<span class="hz-badge info">ใช้ข้อมูลที่เก็บไว้</span>':'<span class="hz-badge low" style="background:#dcfce7;color:#166534">ดึงสำเร็จ</span>'):(t?'<span class="hz-badge med">ดึงใหม่ไม่สำเร็จ</span>':'<span class="hz-badge low">ยังไม่มีข้อมูล</span>')}
+function srcLine(k){
+  const ev=H.evS();
+  const m={flood:['Open-Meteo (แบบจำลองพยากรณ์) + NASA EONET',area&&area.t],storm:['Open-Meteo (แบบจำลองพยากรณ์) + NASA EONET',area&&area.t],pm25:['Open-Meteo Air Quality (แบบจำลอง CAMS) + NASA EONET',area&&area.t],earthquake:['USGS Earthquake Hazards Program',ev.t]}[k];
+  return m?'ที่มา: '+m[0]+' • ดึงเมื่อ '+(m[1]?fmtT(m[1])+' ('+H.ago(m[1])+')':'— ยังไม่มีข้อมูล')+' • <a href="#" data-view="sources">ดูรายละเอียดแหล่งข้อมูล</a>':'ที่มา: ไม่มีข้อมูลสดสำหรับภัยนี้ — เนื้อหาเป็นแนวปฏิบัติทั่วไป • <a href="#" data-view="sources">ดูรายละเอียดแหล่งข้อมูล</a>';
+}
+function renderSources(){
+  const el=$('view-sources');if(!el)return;const ev=H.evS(),a=area,evErr=ev.err||'';
+  const nowT=Date.now(),stale=a&&nowT-a.t>6*3600e3;
+  const row=(n,what,how,use,t,st)=>'<tr><td><b>'+n+'</b><br><span class="hz-small">'+what+'</span></td><td>'+how+'</td><td>'+use+'</td><td>'+t+'</td><td>'+st+'</td></tr>';
+  const rows=[
+   row('Open-Meteo — พยากรณ์อากาศ','api.open-meteo.com • ฝนรายวัน ลมกระโชกสูงสุด 3 วัน','แบบจำลองอากาศเชิงตัวเลข (ไม่ใช่ข้อมูลสถานีตรวจวัดจริง และไม่ใช่ของกรมอุตุนิยมวิทยา) ขอด้วยพิกัดปัด ~1 กม.','น้ำท่วม, พายุ',a?fmtT(a.t)+'<br><span class="hz-small">'+H.ago(a.t)+(a.fcT?' • วันที่ข้อมูล '+esc(a.fcT):'')+'</span>':'—',srcStat(!!a,a&&a.t,!!areaMsg)),
+   row('Open-Meteo — คุณภาพอากาศ','air-quality-api.open-meteo.com • PM2.5, US AQI ปัจจุบัน','ค่าจากแบบจำลองคุณภาพอากาศ (อิง CAMS/Copernicus) ไม่ใช่เครื่องวัดจริง อาจต่างจาก Air4Thai — ควรเทียบกับสถานีตรวจวัดทางการ','PM2.5/ควัน',a&&a.aqOK?fmtT(a.t)+'<br><span class="hz-small">เวลาข้อมูล '+esc(a.aqT||'-')+'</span>':'—',srcStat(!!(a&&a.aqOK),a&&a.t,false)),
+   row('Open-Meteo — ความสูงพื้นที่','ข้อมูลระดับความสูงภูมิประเทศ (DEM ความละเอียดราว 90 ม.)','ค่าประมาณ คลาดเคลื่อนได้หลายเมตรในที่ลุ่มต่ำ/ในเมือง ใช้เป็นเกณฑ์คร่าวๆ (≤3 ม. = ลุ่มต่ำ) เท่านั้น','น้ำท่วม',a?fmtT(a.t):'—',srcStat(!!(a&&a.elev!=null),a&&a.t,false)),
+   row('USGS — แผ่นดินไหว','earthquake.usgs.gov • ฟีด M4.5+ ใน 24 ชม. ทั่วโลก','ดึงรายการจากฟีดสาธารณะ ไม่รวมแผ่นดินไหวเล็กกว่า M4.5 คำนวณระยะห่าง (haversine) และประเมินผลด้วยสูตรง่ายจากขนาด+ความลึก — ไม่ใช่ PAGER/การประเมินทางการ','แผ่นดินไหว',ev.t?fmtT(ev.t)+'<br><span class="hz-small">'+H.ago(ev.t)+'</span>':'—',srcStat(ev.loaded&&!/USGS/.test(evErr)&&H.getEV().some(e=>e.src==='USGS')||(ev.loaded&&!/USGS/.test(evErr)),ev.t,ev.cached||ev.off)),
+   row('NASA EONET','eonet.gsfc.nasa.gov • เหตุที่เปิดอยู่ 14 วันล่าสุด: พายุ ไฟป่า น้ำท่วม ภูเขาไฟ ดินถล่ม หมอกควัน','รวบรวมจากหน่วยงานต่างๆ (เช่น GDACS, หน่วยงานดับเพลิง/ภัยพิบัติ) จุดเกิดเหตุเป็นจุดกลาง/ล่าสุดของเหตุ ไม่ใช่ขอบเขตจริง และอาจไม่ครบทุกเหตุ ไม่ใช่ข้อมูลจุดความร้อน (hotspot) แบบเรียลไทม์','พายุ, น้ำท่วม (เสริม), ไฟป่า/หมอกควัน (เสริมสัญญาณ PM2.5)',ev.t?fmtT(ev.t):'—',srcStat(ev.loaded&&!/EONET/.test(evErr),ev.t,ev.cached||ev.off)),
+   row('เนื้อหาแนวปฏิบัติ','คำแนะนำก่อน/ระหว่าง/หลังเหตุ และรายการอุปกรณ์','เรียบเรียงจากแนวปฏิบัติสาธารณะทั่วไปของหน่วยงาน (เช่น ปภ. กรมควบคุมโรค ปส.) ไม่ได้ดึงสด ควรตรวจกับประกาศทางการเสมอ','ทุกภัย','ปรับปรุง '+UPD,'<span class="hz-badge info">เนื้อหาคงที่</span>')
+  ].join('');
+  el.innerHTML='<div class="section-title"><div><h2>📡 แหล่งข้อมูล & เวลาอัปเดต</h2><p>ข้อมูลในแอปมาจากไหน ดึงอย่างไร ใช้ตัดสินอะไร และอัปเดตล่าสุดเมื่อไร</p></div><button class="btn primary no-print" type="button" data-act="refresh">'+(refBusy?'⏳ กำลังอัปเดต...':'🔄 อัปเดตข้อมูลตอนนี้')+'</button></div>'
+  +'<div class="card"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="chip '+(H.NET()?'':'high')+'">'+(H.NET()?'🌐 ออนไลน์':'📴 ออฟไลน์')+'</span><span class="hz-small">ตำแหน่ง: '+esc(H.getMe().label)+' • ข้อมูลพื้นที่แคชไว้ 3 ชม. แล้วอัปเดตอัตโนมัติเมื่อเปิดแอป/กลับมาที่หน้านี้</span></div>'+(stale?'<div class="alert" style="margin-top:10px">⏱️ ข้อมูลพื้นที่เก่ากว่า 6 ชั่วโมง — กดอัปเดตก่อนตัดสินใจ</div>':'')+(areaMsg?'<div class="alert" style="margin-top:10px">⚠️ '+esc(areaMsg)+'</div>':'')+(evErr?'<div class="alert" style="margin-top:10px">⚠️ ดึงไม่สำเร็จ: '+esc(evErr)+'</div>':'')+'</div>'
+  +'<div class="card" style="margin-top:12px;overflow:auto"><table class="table" style="min-width:760px"><thead><tr><th>แหล่งข้อมูล</th><th>ดึง/ประมวลผลอย่างไร</th><th>ใช้กับ</th><th>ดึงล่าสุด</th><th>สถานะ</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+  +'<div class="grid g2" style="margin-top:12px"><div class="card"><h3 style="margin-top:0">เกณฑ์ที่ใช้ให้สัญญาณ</h3><ul style="margin:0 0 0 18px;line-height:1.7;font-size:13px"><li><b>น้ำท่วม:</b> ฝนวันนี้ ≥90 มม. หรือ 3 วัน ≥150 = อาจกระทบ; ≥35 หรือ ≥90 = ควรติดตาม; ที่สูง ≤3 ม. เพิ่มข้อควรระวัง</li><li><b>พายุ:</b> ลมกระโชก ≥90 กม./ชม. = อาจกระทบ; ≥60 หรือฝน ≥50 มม. = ควรติดตาม; รวมพายุจาก NASA ตามระยะ (≤300 / ≤800 กม.)</li><li><b>PM2.5:</b> >75 = อาจกระทบ; >37.5 (เกณฑ์ไทย 24 ชม.) = ควรติดตาม; ไฟป่า/หมอกควันใกล้ ≤300–500 กม. เพิ่มข้อสังเกต</li><li><b>แผ่นดินไหว:</b> ประเมินจากขนาด ความลึก และระยะห่าง (ระยะรู้สึกสั่น/อาคารเสียหายแบบประมาณ)</li></ul><p class="hz-small">เกณฑ์เป็นค่าตั้งต้นที่ผู้พัฒนากำหนดเพื่อช่วยคัดกรอง ไม่ใช่เกณฑ์เตือนภัยของทางการ</p></div>'
+  +'<div class="card"><h3 style="margin-top:0">การตรวจสอบข้อมูล & ข้อจำกัด</h3><ul style="margin:0 0 0 18px;line-height:1.7;font-size:13px"><li>แอปตรวจช่วงค่าพิกัดและค่าตัวเลข ตัดรายการที่ไม่มีพิกัด/ขนาด และกรองข้อความจากภายนอกก่อนแสดง</li><li><b>ไม่ได้เทียบข้อมูลข้ามแหล่ง</b> และไม่ได้ผ่านการยืนยันโดยหน่วยงานราชการ — เป็นข้อมูลแบบจำลอง/ข้อมูลเปิด</li><li><b>ไม่มีข้อมูลสด:</b> ไฟไหม้อาคาร สารเคมีรั่ว ไฟดับ รังสี โรคระบาด ความไม่สงบ สงคราม ไซเบอร์ — ต้องติดตามจากทางการ</li><li>ฝนตกจริง ณ จุดของคุณอาจต่างจากพยากรณ์มาก ให้ดูเรดาร์/ThaiWater ประกอบ</li><li>ออฟไลน์: แสดงข้อมูลที่เก็บไว้ครั้งล่าสุด ไม่อัปเดต</li></ul></div></div>'
+  +'<div class="card" style="margin-top:12px"><h3 style="margin-top:0">แหล่งทางการที่ควรตรวจซ้ำ</h3><div class="ar-links"><a class="btn outline" href="https://www.tmd.go.th/" target="_blank" rel="noopener">กรมอุตุนิยมวิทยา ↗</a><a class="btn outline" href="https://tmdradar.tmd.go.th/" target="_blank" rel="noopener">เรดาร์ฝน ↗</a><a class="btn outline" href="https://samutprakan.thaiwater.net/" target="_blank" rel="noopener">ThaiWater ↗</a><a class="btn outline" href="http://air4thai.pcd.go.th/" target="_blank" rel="noopener">Air4Thai ↗</a><a class="btn outline" href="https://earthquake.tmd.go.th/" target="_blank" rel="noopener">แผ่นดินไหว TMD ↗</a><a class="btn outline" href="https://www.disaster.go.th/home" target="_blank" rel="noopener">กรม ปภ. ↗</a><a class="btn outline" href="https://firms.modaps.eosdis.nasa.gov/map/" target="_blank" rel="noopener">NASA FIRMS (จุดความร้อน) ↗</a></div></div>';
+}
+
 /* ---------- Onboarding ---------- */
 function onbHTML(){const p=state.profile,m=mode();return '<div class="modalbox ar-ob"><div class="modalhead"><b>👋 ยินดีต้อนรับสู่ Area Ready</b></div><div class="modalbody"><p style="margin-top:0">ตั้งค่า 3 ข้อ ใช้เวลาไม่ถึงนาที — ปรับภายหลังได้ที่ “ตั้งค่า/โหมด”</p>'
  +'<div class="st">1) เลือกโหมด</div><label class="opt"><input type="radio" name="obmode" value="online" '+(m==='online'?'checked':'')+'><b>ออนไลน์</b> — ดูพยากรณ์และเหตุการณ์สดตามพื้นที่ของคุณ</label><label class="opt"><input type="radio" name="obmode" value="offline" '+(m==='offline'?'checked':'')+'><b>ออฟไลน์</b> — ไม่ส่งข้อมูลออกนอกเครื่อง ใช้ข้อมูลที่เก็บไว้ (ติดตั้งแอป/เตรียมข้อมูลไว้ล่วงหน้าได้)</label>'
@@ -1032,7 +1071,7 @@ document.addEventListener('click',e=>{
   const a=e.target.closest('[data-act]');
   if(a){const t=a.dataset.act;
     if(t==='install')installApp();else if(t==='prepoffline')prepOffline();else if(t==='pdf')exportPDF(curEv);else if(t==='pdfall')exportPDF(null);
-    else if(t==='togglemode')setMode(mode()==='online'?'offline':'online');else if(t==='area')loadArea(true);
+    else if(t==='togglemode')setMode(mode()==='online'?'offline':'online');else if(t==='area')loadArea(true);else if(t==='refresh')refreshAll();
     else if(t==='clearloc'){H.clearMe();area=null;renderHub();renderSettings()}else if(t==='onb')openOnb();
   }
   if(e.target.closest('[data-arclose]'))$('arModal').classList.remove('open');
@@ -1049,10 +1088,10 @@ $('printBtn').onclick=()=>{const v=document.querySelector('.view.active');export
 
 /* ---------- ครอบ setView / renderAll ---------- */
 const _sv=window.setView;
-window.setView=function(v){_sv(v);const map={event:'events',dashboard:'events',situation:'events',nuclear:'events'};if(map[v])document.querySelectorAll('#navBar button').forEach(b=>b.classList.toggle('active',b.dataset.view===map[v]));if(v==='events'){renderHub();try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}if(v==='data')renderSettings();if(v==='event')renderEventPage()};
+window.setView=function(v){_sv(v);const map={event:'events',dashboard:'events',situation:'events',nuclear:'events'};if(map[v])document.querySelectorAll('#navBar button').forEach(b=>b.classList.toggle('active',b.dataset.view===map[v]));if(v==='events'){renderHub();try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}if(v==='data')renderSettings();if(v==='sources')renderSources();if(v==='event')renderEventPage()};
 const _ra=window.renderAll;
-window.renderAll=function(){_ra();try{renderHub();renderEventPage();renderSettings()}catch(e){console.error(e)}};
-H.onLoc(()=>{area=readAreaCache();renderHub();renderSettings();renderEventPage();const ol=document.querySelector('#onbModal.open .ob-loc');if(ol)ol.innerHTML=locLine();if(H.NET())loadArea(false)});
+window.renderAll=function(){_ra();try{renderHub();renderEventPage();renderSettings();renderSources()}catch(e){console.error(e)}};
+H.onLoc(()=>{area=readAreaCache();renderSources();renderHub();renderSettings();renderEventPage();const ol=document.querySelector('#onbModal.open .ob-loc');if(ol)ol.innerHTML=locLine();if(H.NET())loadArea(false)});
 
 /* ---------- เริ่มต้น ---------- */
 renderAll();
@@ -1065,6 +1104,7 @@ else{
   try{if(H.getMe().src==='gps'&&navigator.permissions&&navigator.permissions.query)navigator.permissions.query({name:'geolocation'}).then(p=>{if(p.state==='granted')H.useGPS(true)}).catch(()=>{})}catch(e){}
 }
 if(H.NET()){loadArea(false);H.loadEvents().then(()=>{renderHub();renderEventPage()})}else loadArea(false);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&H.NET()&&area&&Date.now()-area.t>3*3600e3)refreshAll()});
 window.AR={signal,INFO,openEvent,renderReport,readyFor,loadArea,get area(){return area}};
 })();
 </script>
