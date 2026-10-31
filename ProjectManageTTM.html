@@ -403,7 +403,7 @@ body.viewer #btnQuickAddProject, body.viewer [onclick*="Form("], body.viewer [on
    ========================================================================= */
 
 const STORAGE_KEY = 'thaimed_ops_v1';
-const APP_VERSION = 'v3.38';
+const APP_VERSION = 'v3.39';
 const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const FY_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
 const STATUS_LIST = [
@@ -5920,11 +5920,12 @@ function xlApply(){
 
 /* ================= v3.29 · สรุปนำเสนอ 5 นาที (Infographic → PDF) ================= */
 const BRIEF_ORG = 'กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สำนักงานสาธารณสุขจังหวัดสมุทรปราการ';
-function briefCodeCmp(a,b){ return String(a&&a.projectCode||'').localeCompare(String(b&&b.projectCode||''),undefined,{numeric:true}); }
+function briefCodeKey(c){ c=String(c||''); const m=c.match(/(\d{2})$/); return (m?m[1]:'99')+'|'+c; }
+function briefCodeCmp(a,b){ return briefCodeKey(a&&a.projectCode).localeCompare(briefCodeKey(b&&b.projectCode)); }
 function briefProjects(){ return yearProjects().filter(p=>p.status!=='cancelled').sort(briefCodeCmp); }
 /* กลุ่มโครงการ: นโยบาย (เขียว) / งานประจำ (น้ำเงิน) / อื่นๆ ใช้สีหมวดเดิม */
 function briefGrp(p){ const c=getCategory(p&&p.categoryId)||{}; const nm=String(c.name||'');
-  if(/นโยบาย/.test(nm)) return {c:'#146C43',t:'โครงการตามนโยบาย',k:'p'};
+  if(/นโยบาย/.test(nm)) return {c:'#F26B0F',t:'โครงการตามนโยบาย',k:'p'};
   if(/ประจำ/.test(nm)) return {c:'#2D6FA5',t:'งานประจำ',k:'r'};
   return {c:c.color||'#8A9A92',t:nm||'อื่นๆ',k:'o'}; }
 function briefGDot(p){ const g=briefGrp(p); return `<i class="bs-gd" title="${escapeHtml(g.t)}" style="background:${g.c};"></i>`; }
@@ -6057,7 +6058,7 @@ function briefProjDetail(p){
     +`<div class="bs-ct" style="margin-top:10px;">กิจกรรม OKR (${briefActN(p)})</div>`+briefOkrDetail(p.projectCode);
 }
 function briefSlideHead(n,title,sub){
-  return `<div class="bs-head"><div><div class="bs-kicker">${BRIEF_GROUP} · ปีงบประมาณ ${DB.currentYear}</div><h2>${title}</h2>${sub?`<div class="bs-sub">${sub}</div>`:''}</div><div style="text-align:right;"><div class="bs-no">${n}<small>/12</small></div><div class="bs-lg"><i class="bs-gd" style="background:#146C43;"></i>โครงการตามนโยบาย <i class="bs-gd" style="background:#2D6FA5;margin-left:8px;"></i>งานประจำ</div><div class="bs-hint no-print">👆 แตะรายการเพื่อดูรายละเอียด</div></div></div>`;
+  return `<div class="bs-head"><div><div class="bs-kicker">${BRIEF_GROUP} · ปีงบประมาณ ${DB.currentYear}</div><h2>${title}</h2>${sub?`<div class="bs-sub">${sub}</div>`:''}</div><div style="text-align:right;"><div class="bs-no">${n}<small>/12</small></div><div class="bs-lg"><i class="bs-gd" style="background:#F26B0F;"></i><b>โครงการตามนโยบาย</b> <i class="bs-gd" style="background:#2D6FA5;margin-left:8px;"></i>งานประจำ</div><div class="bs-hint no-print">👆 แตะรายการเพื่อดูรายละเอียด</div></div></div>`;
 }
 function briefSlideFoot(){ return `<div class="bs-foot">${BRIEF_ORG}</div>`; }
 
@@ -6070,7 +6071,7 @@ function briefSlide1(list){
   const disb=list.reduce((s,p)=>s+disbBySourceTotal(p),0);
   const top=list.slice().sort((a,b)=>(b.budgetAmount||0)-(a.budgetAmount||0)).slice(0,5).sort(briefCodeCmp);
   const maxB=Math.max(1,...top.map(p=>Number(p.budgetAmount)||0));
-  const byCode=list.slice().sort((a,b)=>String(a.projectCode).localeCompare(String(b.projectCode)));
+  const byCode=list.slice().sort((a,b)=>briefCodeKey(a.projectCode).localeCompare(briefCodeKey(b.projectCode)));
   const actTot=list.reduce((s,p)=>s+briefActN(p),0);
   const t1=bTbl(['โครงการ','กลุ่ม','งบ (บาท)'],byCode.map(p=>[briefPName(p),escapeHtml(((getCategory(p.categoryId)||{}).name||'').replace(/^ส่วนที่ \d · /,'').slice(0,28)),bR(money(p.budgetAmount))]));
   const t2=`<div class="bs-ct">ตามกลุ่ม</div>`+bTbl(['กลุ่ม','โครงการ','งบ (บาท)','%'],cats.map(x=>[escapeHtml(x.c.name),bR(x.n),bR(money(x.b)),bR(Math.round(x.b/(total||1)*100)+'%')]))+`<div class="bs-ct" style="margin-top:10px;">ตามแหล่งงบ</div>`+bTbl(['แหล่งงบ','งบ (บาท)','%'],srcRows.map(x=>[escapeHtml(x[0]),bR(money(x[1])),bR(Math.round(x[1]/srcTot*100)+'%')]));
@@ -6087,15 +6088,15 @@ function briefSlide1(list){
       <div class="bs-card"><div class="bs-ct">จำนวนโครงการและงบประมาณ แยกตามกลุ่ม</div>
         <div style="display:flex;gap:16px;align-items:center;">
           <div style="position:relative;">${briefDonut(cats.map(x=>({v:x.b||x.n*0.001,c:x.c.color})),170,26)}<div class="bs-donut-c"><b>${list.length}</b><span>โครงการ</span></div></div>
-          <div style="flex:1;display:flex;flex-direction:column;gap:6px;">${cats.map(x=>`<div class="bs-click" ${BCK} style="padding:4px 6px;"><div style="display:flex;gap:6px;align-items:center;font-size:12px;"><i style="width:10px;height:10px;border-radius:3px;background:${x.c.color};flex:none;"></i><span style="flex:1;line-height:1.25;">${escapeHtml(x.c.name)}</span></div><div style="margin-left:16px;font-size:12px;color:#4B6358;"><b style="color:${x.c.color};font-size:15px;">${x.n}</b> โครงการ · <b>${money(x.b)}</b> บาท (${total?Math.round(x.b/total*100):0}%) · <b>${x.ps.reduce((q,p)=>q+briefActN(p),0)}</b> กิจกรรม</div>${briefDet(x.c.name,bTbl(['โครงการ','กิจกรรม','งบ (บาท)'],x.ps.slice().sort((a,b)=>String(a.projectCode).localeCompare(String(b.projectCode))).map(p=>[briefPName(p),bR(briefActN(p)),bR(money(p.budgetAmount))])))}</div>`).join('')}</div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;">${cats.map(x=>`<div class="bs-click" ${BCK} style="padding:4px 6px;"><div style="display:flex;gap:6px;align-items:center;font-size:12px;"><i style="width:10px;height:10px;border-radius:3px;background:${x.c.color};flex:none;"></i><span style="flex:1;line-height:1.25;">${escapeHtml(x.c.name)}</span></div><div style="margin-left:16px;font-size:12px;color:#4B6358;"><b style="color:${x.c.color};font-size:15px;">${x.n}</b> โครงการ · <b>${money(x.b)}</b> บาท (${total?Math.round(x.b/total*100):0}%) · <b>${x.ps.reduce((q,p)=>q+briefActN(p),0)}</b> กิจกรรม</div>${briefDet(x.c.name,bTbl(['โครงการ','กิจกรรม','งบ (บาท)'],x.ps.slice().sort((a,b)=>briefCodeKey(a.projectCode).localeCompare(briefCodeKey(b.projectCode))).map(p=>[briefPName(p),bR(briefActN(p)),bR(money(p.budgetAmount))])))}</div>`).join('')}</div>
         </div></div>
     </div>
     <div class="bs-col">
       <div class="bs-card"><div class="bs-ct">สัดส่วนตามแหล่งงบประมาณ</div>
         <div style="display:flex;height:22px;border-radius:11px;overflow:hidden;margin:6px 0 10px;">${srcRows.map((x,i)=>`<div style="width:${x[1]/srcTot*100}%;background:${srcCol[i%6]};"></div>`).join('')}</div>
-        ${srcRows.map((x,i)=>`<div class="bs-row bs-click" ${BCK} style="padding:3px 6px;"><i style="background:${srcCol[i%6]};"></i><span>${escapeHtml(x[0])}</span><b>${money(x[1])}</b><em>${Math.round(x[1]/srcTot*100)}%</em>${briefDet('แหล่งงบ: '+x[0],bTbl(['โครงการ','งบจากแหล่งนี้ (บาท)'],list.filter(p=>projectBudgetSplit(p).some(y=>y.source===x[0])).sort((a,b)=>String(a.projectCode).localeCompare(String(b.projectCode))).map(p=>[briefPName(p),bR(money(projectBudgetSplit(p).filter(y=>y.source===x[0]).reduce((s,y)=>s+(Number(y.amount)||0),0)))])))}</div>`).join('')||'<div class="small-muted">ยังไม่มีข้อมูลงบ</div>'}</div>
-      <div class="bs-card"><div class="bs-ct">5 โครงการงบสูงสุด (เรียงตามรหัสโครงการ)</div>
-        ${top.map(p=>{ const b=Number(p.budgetAmount)||0; return `<div class="bs-click" ${BCK} style="margin:5px 0;padding:3px 6px;"><div style="font-size:11.5px;display:flex;justify-content:space-between;gap:8px;"><span>${briefPName(p,46)}</span><b>${money(b)}</b></div><div class="bs-bar"><div style="width:${b/maxB*100}%;background:${(getCategory(p.categoryId)||{}).color||'#146C43'};"></div></div>${briefNotice(p)?`<div style="font-size:10px;color:#9C6B0B;margin-top:2px;line-height:1.3;">📌 ${escapeHtml(briefNotice(p))}</div>`:''}${briefDet(shortProjName(p),briefProjDetail(p))}</div>`; }).join('')}</div>
+        ${srcRows.map((x,i)=>`<div class="bs-row bs-click" ${BCK} style="padding:3px 6px;"><i style="background:${srcCol[i%6]};"></i><span>${escapeHtml(x[0])}</span><b>${money(x[1])}</b><em>${Math.round(x[1]/srcTot*100)}%</em>${briefDet('แหล่งงบ: '+x[0],bTbl(['โครงการ','งบจากแหล่งนี้ (บาท)'],list.filter(p=>projectBudgetSplit(p).some(y=>y.source===x[0])).sort((a,b)=>briefCodeKey(a.projectCode).localeCompare(briefCodeKey(b.projectCode))).map(p=>[briefPName(p),bR(money(projectBudgetSplit(p).filter(y=>y.source===x[0]).reduce((s,y)=>s+(Number(y.amount)||0),0)))])))}</div>`).join('')||'<div class="small-muted">ยังไม่มีข้อมูลงบ</div>'}</div>
+      <div class="bs-card"><div class="bs-ct">5 โครงการงบสูงสุด (เรียงตามเลข 2 ตัวท้ายของรหัส)</div>
+        ${top.map(p=>{ const b=Number(p.budgetAmount)||0; return `<div class="bs-click" ${BCK} style="margin:5px 0;padding:3px 6px;"><div style="font-size:11.5px;display:flex;justify-content:space-between;gap:8px;"><span>${briefPName(p,46)}</span><b>${money(b)}</b></div><div class="bs-bar"><div style="width:${b/maxB*100}%;background:${briefGrp(p).c};"></div></div>${briefNotice(p)?`<div style="font-size:10px;color:#9C6B0B;margin-top:2px;line-height:1.3;">📌 ${escapeHtml(briefNotice(p))}</div>`:''}${briefDet(shortProjName(p),briefProjDetail(p))}</div>`; }).join('')}</div>
     </div>
   </div>${briefSlideFoot()}</section>`;
 }
@@ -6107,9 +6108,9 @@ function briefSlide2(list){
   const q=currentFYQuarter(DB.currentYear);
   const krN=items.reduce((s,i)=>s+(i.krs||[]).length,0);
   const tasks=list.reduce((a,p)=>a.concat(tasksOfProject(p.id)),[]); const tdone=tasks.filter(t=>t.status==='done').length;
-  const rows=list.map(p=>{ const it=items.filter(i=>i.projectCode&&i.projectCode===p.projectCode); return {p,n:it.length,pr:it.length?Math.round(it.reduce((s,i)=>s+itemProgress(i),0)/it.length):null}; }).filter(x=>x.n>0).sort((a,b)=>String(a.p.projectCode).localeCompare(String(b.p.projectCode)));
+  const rows=list.map(p=>{ const it=items.filter(i=>i.projectCode&&i.projectCode===p.projectCode); return {p,n:it.length,pr:it.length?Math.round(it.reduce((s,i)=>s+itemProgress(i),0)/it.length):null}; }).filter(x=>x.n>0).sort((a,b)=>briefCodeKey(a.p.projectCode).localeCompare(briefCodeKey(b.p.projectCode)));
   const itemRow=i=>[escapeHtml(i.projectCode+' · '+i.no+'. '+String(i.name).slice(0,70)),qLabel(i),bR(itemProgress(i)+'%'),okrBadge(itemHealth(i))];
-  const allT=bTbl(['กิจกรรม OKR','ไตรมาส','ก้าวหน้า','สถานะ'],items.slice().sort((a,b)=>String(a.projectCode).localeCompare(String(b.projectCode))||String(a.no).localeCompare(String(b.no),undefined,{numeric:true})).map(itemRow));
+  const allT=bTbl(['กิจกรรม OKR','ไตรมาส','ก้าวหน้า','สถานะ'],items.slice().sort((a,b)=>briefCodeKey(a.projectCode).localeCompare(briefCodeKey(b.projectCode))||String(a.no).localeCompare(String(b.no),undefined,{numeric:true})).map(itemRow));
   const kpiBox=['14','15','26'].map(code=>{ const k=kps.find(x=>String(x.code)===code)||{code,name:(KPI_SEED.find(z=>z.code===code)||{}).name||'',unit:''}; const t=briefState().kpiTxt[code]; const pr=kpiProgress(k);
     const linked=((k.projectIds||[]).length?(k.projectIds||[]).map(getProject).filter(Boolean):t.link.map(c=>briefProjByCode(list,c)).filter(Boolean));
     const det=bKV([['ชื่อตัวชี้วัด',escapeHtml(k.name)],['หน่วย',escapeHtml(k.unit||'-')],['สูตร/นิยาม',escapeHtml(t.formula)],['เกณฑ์/เป้า',escapeHtml(t.criteria)],['แหล่งข้อมูล',escapeHtml(t.source)],['เป้า/ผลจริง',`เป้า ${k.target===''||k.target==null?'รอกรมฯ':escapeHtml(k.target)} · ผลจริง ${k.actual===''||k.actual==null?'–':escapeHtml(k.actual)}`],['โครงการรองรับ'+((k.projectIds||[]).length?'':' (ร่าง)'),linked.map(p=>'• '+briefPName(p)).join('<br>')||'–']])
@@ -6203,7 +6204,7 @@ function briefSlideMatrix(list){
   const KS=['หมอพื้นบ้าน','ภูมิปัญญา ≥3','นายทะเบียน','TFGH 50 เมนู','IMC 25%','ยา UC','งานกรมฯ'];
   const mk=(v,c)=>v===2?`<span style="display:inline-block;width:15px;height:15px;border-radius:50%;background:${c};box-shadow:0 1px 3px ${c}88;"></span>`:v===1?`<span style="display:inline-block;width:12px;height:12px;border-radius:50%;border:2px solid ${c};"></span>`:'';
   const COLS='262px repeat(7,50px) 8px repeat(8,50px)';
-  const rowsData=Object.keys(BRIEF_MATRIX).sort().map(code=>({code,p:briefProjByCode(list,code),m:BRIEF_MATRIX[code]})).filter(x=>x.p);
+  const rowsData=Object.keys(BRIEF_MATRIX).sort((x,y)=>briefCodeKey(x).localeCompare(briefCodeKey(y))).map(code=>({code,p:briefProjByCode(list,code),m:BRIEF_MATRIX[code]})).filter(x=>x.p);
   const cntK=n=>rowsData.filter(r=>r.m.k[n]).length, cntP=n=>rowsData.filter(r=>r.m.p[n]).length;
   const rows=rowsData.map((r,ri)=>{
     const kl=Object.keys(r.m.k).map(n=>`${r.m.k[n]===2?'●':'○'} ตัวชี้วัดที่ ${n}: ${KS[n-1]}`), pl=Object.keys(r.m.p).map(n=>{ const q=BRIEF_POL[n-1]; return `${r.m.p[n]===2?'●':'○'} นโยบายที่ ${n}: ${q.full}`; });
@@ -6229,7 +6230,7 @@ function briefSlideMatrix(list){
 function briefSlide3(list){
   const fy=briefFY(); const fyStart=fy.s, fyEnd=fy.e, sy=fyStart.getFullYear(); const span=fyEnd-fyStart+86400000;
   const flags=briefGanttFlags(list,fyStart,fyEnd); const Q=briefQuarters();
-  const sorted=list.slice().sort((a,b)=>String(a.projectCode).localeCompare(String(b.projectCode)));
+  const sorted=list.slice().sort((a,b)=>briefCodeKey(a.projectCode).localeCompare(briefCodeKey(b.projectCode)));
   const items=okrItems(DB.currentYear);
   const now=new Date(); const nowPct=Math.max(0,Math.min(100,(now-fyStart)/span*100)); const showNow=now>=fyStart&&now<=fyEnd;
   const LW=380;
@@ -6240,7 +6241,7 @@ function briefSlide3(list){
   const nFlag=sorted.filter(p=>flags[p.id]).length;
   const rowH=sorted.length>16?23:sorted.length>12?27:32;
   const bars=sorted.map(p=>{
-    const s=parseISODate(p.startDate), e=parseISODate(p.endDate); const fl=flags[p.id]||[]; const col=(getCategory(p.categoryId)||{}).color||'#146C43';
+    const s=parseISODate(p.startDate), e=parseISODate(p.endDate); const fl=flags[p.id]||[]; const col=briefGrp(p).c;
     let bar='';
     if(s&&e){ const l=Math.max(0,(s-fyStart)/span*100), w=Math.max(1.2,Math.min(100-l,((e-s)/86400000+1)*86400000/span*100)); const risk=fl.some(f=>f.c==='risk'); const done=p.status==='done';
       bar=`<div style="position:absolute;left:${l}%;width:${w}%;top:4px;height:${rowH-8}px;border-radius:6px;background:${col};opacity:.9;${risk?'outline:2px solid #D64545;':''}"></div>
@@ -6262,7 +6263,7 @@ function briefSlide3(list){
 }
 function briefSlideMoney(list){
   const fy=briefFY(), span=fy.e-fy.s+86400000; const Q=briefQuarters();
-  const sorted=list.slice().sort((a,b)=>String(a.projectCode).localeCompare(String(b.projectCode)));
+  const sorted=list.slice().sort((a,b)=>briefCodeKey(a.projectCode).localeCompare(briefCodeKey(b.projectCode)));
   const total=list.reduce((s,p)=>s+(Number(p.budgetAmount)||0),0)||1;
   const alloc=sorted.map(p=>({p,a:briefAlloc(p)}));
   const qSum=[0,1,2,3].map(k=>alloc.reduce((s,x)=>s+x.a[k],0));
@@ -6275,7 +6276,7 @@ function briefSlideMoney(list){
   const RH=sorted.length>14?21:25; const LW=300;
   const qcol=['#146C43','#1A8754','#22A05F','#2D8E6A'];
   const head=`<div style="display:grid;grid-template-columns:${LW}px 1fr repeat(4,62px) 72px;font-size:10px;font-weight:700;color:#0F5132;align-items:end;margin-bottom:2px;"><div>โครงการ</div><div style="display:flex;">${Q.map((q,k)=>`<div style="flex:1;text-align:center;background:${qcol[k]};color:#fff;border-radius:5px 5px 0 0;border-left:2px solid #fff;">ไตรมาส ${q.i}</div>`).join('')}</div>${Q.map(q=>`<div style="text-align:right;">Q${q.i} (บาท)</div>`).join('')}<div style="text-align:right;">รวม (บาท)</div></div>`;
-  const rows=alloc.map(x=>{ const p=x.p, s=parseISODate(p.startDate), e=parseISODate(p.endDate); const col=(getCategory(p.categoryId)||{}).color||'#146C43'; let bar='';
+  const rows=alloc.map(x=>{ const p=x.p, s=parseISODate(p.startDate), e=parseISODate(p.endDate); const col=briefGrp(p).c; let bar='';
     if(s&&e){ const l=Math.max(0,(s-fy.s)/span*100), w=Math.max(1.2,Math.min(100-l,((e-s)/86400000+1)*86400000/span*100)); bar=`<div style="position:absolute;left:${l}%;width:${w}%;top:3px;height:${RH-6}px;border-radius:5px;background:${col};opacity:.9;color:#fff;font-size:9px;line-height:${RH-6}px;text-align:center;overflow:hidden;white-space:nowrap;">${Number(p.budgetAmount)?money(p.budgetAmount):''}</div>`; }
     return `<div class="bs-click" data-rv ${BCK} style="display:grid;grid-template-columns:${LW}px 1fr repeat(4,62px) 72px;height:${RH}px;align-items:center;border-top:1px solid rgba(0,0,0,.05);font-size:10px;position:relative;z-index:1;"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:6px;font-size:10.5px;">${briefPName(p,32)}</div><div style="position:relative;height:${RH}px;">${bar}</div>${x.a.map(v=>`<div style="text-align:right;color:${v?'#173226':'#B6C4BC'};">${v?money(v):'–'}</div>`).join('')}<div style="text-align:right;font-weight:700;">${money(p.budgetAmount)}</div>${briefDet(p.projectCode+' · งบตามแผนรายไตรมาส',bKV([['โครงการ',briefPName(p)],['งบทั้งหมด',money(p.budgetAmount)+' บาท'],['ระยะเวลา',fmtDateShort(p.startDate)+' – '+fmtDateShort(p.endDate)]])+bTbl(['ไตรมาส','งบตามแผน (บาท)','สะสม (บาท)'],x.a.map((v,k)=>['ไตรมาส '+(k+1)+' ('+Q[k].lbl+')',bR(money(v)),bR(money(x.a.slice(0,k+1).reduce((a,b)=>a+b,0)))]))+'<div class="small-muted" style="margin-top:6px;">คำนวณโดยกระจายงบเท่ากันตามจำนวนวันของโครงการในแต่ละไตรมาส</div>')}</div>`; }).join('');
   const qBg=`<div style="position:absolute;left:${LW}px;right:${62*4+72}px;top:0;bottom:0;display:flex;z-index:0;pointer-events:none;">${['#EAF6EF','#F6FAF8','#EAF6EF','#F6FAF8'].map(c=>`<div style="flex:1;background:${c};border-left:2px solid #fff;"></div>`).join('')}</div>`;
@@ -6357,7 +6358,7 @@ const BRIEF_OUTCOMES = [
 ];
 function briefSlideOutcome(list){
   const items=okrItems(DB.currentYear); const nKr=items.reduce((s,i)=>s+(i.krs||[]).length,0);
-  const cards=BRIEF_OUTCOMES.slice().sort((a,b)=>String(a.code).localeCompare(String(b.code))).map(o=>{ const p=briefProjByCode(list,o.code); const gc=p?briefGrp(p).c:o.c; const det=p?`<div style="background:#F3FAF6;border-radius:8px;padding:8px 12px;margin-bottom:10px;"><b>${escapeHtml(o.big)}</b> ${escapeHtml(o.lab)}<br>${escapeHtml(o.sub)}</div>`+briefOkrDetail(o.code):'<div class="small-muted">ไม่พบโครงการ</div>';
+  const cards=BRIEF_OUTCOMES.slice().sort((a,b)=>briefCodeKey(a.code).localeCompare(briefCodeKey(b.code))).map(o=>{ const p=briefProjByCode(list,o.code); const gc=p?briefGrp(p).c:o.c; const det=p?`<div style="background:#F3FAF6;border-radius:8px;padding:8px 12px;margin-bottom:10px;"><b>${escapeHtml(o.big)}</b> ${escapeHtml(o.lab)}<br>${escapeHtml(o.sub)}</div>`+briefOkrDetail(o.code):'<div class="small-muted">ไม่พบโครงการ</div>';
     return `<div class="bs-card bs-click" ${BCK} style="padding:14px 16px;border-top:6px solid ${o.c};display:flex;flex-direction:column;gap:5px;">
       <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:32px;">${o.ic}</span><span style="font-size:10.5px;background:${gc}1F;color:${gc};border-radius:10px;padding:2px 9px;font-weight:700;">${p?briefGDot(p):''}${o.code}${o.kpi?' · '+o.kpi:''}</span></div>
       <div style="font-size:38px;font-weight:800;color:${o.c};line-height:1.1;">${escapeHtml(o.big)}</div>
@@ -6382,7 +6383,7 @@ function briefSlideCompare(list){
   const srcKeys=[...new Set(Object.keys(A.bySource).concat(Object.keys(B.bySource)))];
   const srcRows=srcKeys.map(k=>{ const a=A.bySource[k]||0,b=B.bySource[k]||0,mx=Math.max(A.budget,B.budget,1); return `<div style="margin:5px 0;"><div style="font-size:11px;display:flex;justify-content:space-between;"><span>${escapeHtml(k.replace('งบกองทุนส่งเสริมภูมิปัญญา','กองทุนภูมิปัญญา').replace('งบสำนักงานเขตสุขภาพที่ 6','เขตสุขภาพที่ 6'))}</span><span style="color:${dcol(b-a)};font-weight:700;">${arrow(b-a)} ${b-a>0?'+':''}${money(b-a)}</span></div><div style="display:flex;gap:4px;align-items:center;"><div style="height:7px;border-radius:4px;background:#B8C4BD;width:${a/mx*100}%;min-width:${a?2:0}px;"></div><span style="font-size:9.5px;color:#7A8A82;white-space:nowrap;">${money(a)}</span></div><div style="display:flex;gap:4px;align-items:center;"><div style="height:7px;border-radius:4px;background:#1A8754;width:${b/mx*100}%;min-width:${b?2:0}px;"></div><span style="font-size:9.5px;color:#0F5132;white-space:nowrap;">${money(b)}</span></div></div>`; }).join('');
   const matched=rows.filter(r=>r.a&&r.b); const newR=rows.filter(r=>!r.a&&r.b), remR=rows.filter(r=>r.a&&!r.b);
-  const rcode=r=>String((r.b||r.a||{}).projectCode||''); const key=rows.slice().sort((x,y)=>Math.max(y.ba,y.bb)-Math.max(x.ba,x.bb)).filter(r=>Math.max(r.ba,r.bb)>0).slice(0,7).sort((x,y)=>rcode(x).localeCompare(rcode(y)));
+  const rcode=r=>briefCodeKey((r.b||r.a||{}).projectCode); const key=rows.slice().sort((x,y)=>Math.max(y.ba,y.bb)-Math.max(x.ba,x.bb)).filter(r=>Math.max(r.ba,r.bb)>0).slice(0,7).sort((x,y)=>rcode(x).localeCompare(rcode(y)));
   const mx=Math.max(1,...key.map(r=>Math.max(r.ba,r.bb)));
   const nm=r=>escapeHtml(shortProjName(r.b||r.a).replace(/^โครงการ/,'').trim().slice(0,38));
   const kr=key.map(r=>{ const d=r.bb-r.ba; const tag=r.kind==='new'?'<span style="background:#E1F5E9;color:#0F7A45;border-radius:8px;padding:0 6px;font-size:10px;">ใหม่</span>':r.kind==='removed'?'<span style="background:#FDE4E4;color:#B02A2A;border-radius:8px;padding:0 6px;font-size:10px;">ไม่มีในปีนี้</span>':'';
@@ -6448,7 +6449,7 @@ function briefSlideFlag(list){
     const p=briefProjByCode(list,d.code); if(!p) return '';
     const it=items.filter(i=>i.projectCode===p.projectCode); const pr=it.length?Math.round(it.reduce((s,i)=>s+itemProgress(i),0)/it.length):0;
     const kk=kps.filter(k=>(k.projectIds||[]).includes(p.id)||(d.kpi||[]).includes(String(k.code)));
-    const col=ix===0?'#C89B3C':(getCategory(p.categoryId)||{}).color||'#146C43'; const big=ix===0;
+    const col=ix===0?'#C89B3C':briefGrp(p).c; const big=ix===0;
     return `<div class="bs-card bs-flag bs-click" ${BCK} style="border-top:7px solid ${col};${big?'grid-row:span 2;':''}">
       <div style="display:inline-block;background:${col};color:#fff;border-radius:20px;padding:3px 14px;font-weight:700;font-size:${big?16:13}px;">${ix===0?'★ ':''}${escapeHtml(d.theme)}</div>
       ${d.sub?`<div style="font-size:${big?15:12.5}px;color:#4B6358;margin-top:6px;">${escapeHtml(d.sub)}</div>`:''}
@@ -6470,7 +6471,7 @@ function briefSlideFlag(list){
 function briefSlideInteg(list){
   const b=briefState();
   const T={W:['Wellness','#1A8754'],F:['อาหารเป็นยา','#C89B3C'],WF:['Wellness + อาหารเป็นยา','#7C4FA0']};
-  const rows=b.integP.map(l=>{ const a=String(l).split('|'); return {code:(a[0]||'').trim(),th:(a[1]||'W').trim().toUpperCase(),txt:a.slice(2).join('|').trim()}; }).sort((x,y)=>x.code.localeCompare(y.code));
+  const rows=b.integP.map(l=>{ const a=String(l).split('|'); return {code:(a[0]||'').trim(),th:(a[1]||'W').trim().toUpperCase(),txt:a.slice(2).join('|').trim()}; }).sort((x,y)=>briefCodeKey(x.code).localeCompare(briefCodeKey(y.code)));
   const cards=rows.map(r=>{
     const p=briefProjByCode(list,r.code); if(!p) return '';
     const t=T[r.th]||T.W;
@@ -6665,7 +6666,7 @@ function briefNavHtml(isExport){
   return `<div class="bs-nav no-print"><button type="button" class="btn btn-sm" onclick="briefGo((window.__bsI||0)-1)">◀</button><b id="bsLbl" style="min-width:48px;text-align:center;">1 / 14</b><button type="button" class="btn btn-sm" onclick="briefGo((window.__bsI||0)+1)">▶</button><span class="bs-dots">${dots}</span><button type="button" class="btn btn-sm" id="bsModeBtn" onclick="briefMode(!window.__bsSingle)">📜 เลื่อนดูทุกสไลด์</button><button type="button" class="btn btn-sm bs-tg" id="bsRvBtn" onclick="briefRvToggle()">🎬 เปิดทีละช่อง</button><button type="button" class="btn btn-sm bs-tg" id="bsFxBtn" onclick="briefFxToggle('fx')">✨ วิบวับ</button><button type="button" class="btn btn-sm bs-tg" id="bsMcBtn" onclick="briefFxToggle('mc')">🌿 น้องลูกประคบ</button><button type="button" class="btn btn-sm" onclick="briefFull()">⛶ เต็มจอ</button>${isExport?'<button type="button" class="btn btn-sm btn-primary" onclick="window.print()">⬇️ พิมพ์ / บันทึก PDF</button>':''}</div>`;
 }
 function briefAppendixHtml(list){
-  const blocks=list.slice().sort((a,b)=>String(a.projectCode).localeCompare(String(b.projectCode))).filter(p=>briefActN(p)).map(p=>`<div style="break-inside:avoid;margin:0 0 10px;"><div style="font-weight:700;color:#0F5132;border-bottom:1px solid #DCEAE2;">${briefPName(p)} · ${money(p.budgetAmount)} บาท</div>${briefOkrCompact(p.projectCode)}</div>`).join('');
+  const blocks=list.slice().sort((a,b)=>briefCodeKey(a.projectCode).localeCompare(briefCodeKey(b.projectCode))).filter(p=>briefActN(p)).map(p=>`<div style="break-inside:avoid;margin:0 0 10px;"><div style="font-weight:700;color:#0F5132;border-bottom:1px solid #DCEAE2;">${briefPName(p)} · ${money(p.budgetAmount)} บาท</div>${briefOkrCompact(p.projectCode)}</div>`).join('');
   return `<div class="bapx"><div style="font-size:18px;font-weight:800;color:#0F5132;margin-bottom:2px;">ภาคผนวก · กิจกรรม OKR และผลลัพธ์ที่คาดหวังรายโครงการ</div><div style="font-size:11px;color:#4B6358;margin-bottom:10px;">${BRIEF_GROUP} · ปีงบประมาณ ${DB.currentYear}</div><div class="bapx-cols">${blocks}</div></div><div class="bapx bapx-last"><div style="font-size:18px;font-weight:800;color:#0F5132;margin-bottom:8px;">ภาคผนวก · สูตรคำนวณและที่มาของ Carbon Footprint</div><div class="bapx-ref">${briefCarbonRef()}</div></div>`;
 }
 function briefExportHTML(){
