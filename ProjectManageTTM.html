@@ -265,6 +265,7 @@ body.viewer #btnQuickAddProject, body.viewer [onclick*="Form("], body.viewer [on
 @keyframes thShine{0%{background-position:130% 0}100%{background-position:-130% 0}}
 .bs-head{border-bottom:3px solid transparent;border-image:linear-gradient(90deg,#C89B3C,#F6D77C,#C89B3C) 1;}
 @media (prefers-reduced-motion:reduce){.bs-head::after,.brand::after{animation:none;opacity:.5;}}
+.bs-gd{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle;box-shadow:0 0 0 1.5px rgba(255,255,255,.85);} .bs-lg{font-size:10.5px;color:#fff;margin-top:2px;white-space:nowrap;} .bslide:not(:first-of-type) .bs-lg{display:block;}
 /* โหมดเลื่อนดูทุกสไลด์: ปิดแอนิเมชันตกแต่งทั้งหมด (เดิมรัน ~100 ตัวพร้อมกัน ทำให้เครื่องช้า) */
 .brief-wrap:not(.single) .bslide *,.brief-wrap:not(.single) .bslide::before,.brief-wrap:not(.single) .bslide::after,.brief-wrap:not(.single) .bs-head::before,.brief-wrap:not(.single) .bs-head::after,.brief-wrap:not(.single) .bslide *::before,.brief-wrap:not(.single) .bslide *::after{animation:none!important;} .brief-wrap:not(.single) .bs-sp{display:none;}
 @media print{.bs-head::after,.brand::after{display:none;}}
@@ -402,7 +403,7 @@ body.viewer #btnQuickAddProject, body.viewer [onclick*="Form("], body.viewer [on
    ========================================================================= */
 
 const STORAGE_KEY = 'thaimed_ops_v1';
-const APP_VERSION = 'v3.35';
+const APP_VERSION = 'v3.38';
 const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const FY_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
 const STATUS_LIST = [
@@ -5919,7 +5920,14 @@ function xlApply(){
 
 /* ================= v3.29 · สรุปนำเสนอ 5 นาที (Infographic → PDF) ================= */
 const BRIEF_ORG = 'กลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สำนักงานสาธารณสุขจังหวัดสมุทรปราการ';
-function briefProjects(){ return yearProjects().filter(p=>p.status!=='cancelled'); }
+function briefCodeCmp(a,b){ return String(a&&a.projectCode||'').localeCompare(String(b&&b.projectCode||''),undefined,{numeric:true}); }
+function briefProjects(){ return yearProjects().filter(p=>p.status!=='cancelled').sort(briefCodeCmp); }
+/* กลุ่มโครงการ: นโยบาย (เขียว) / งานประจำ (น้ำเงิน) / อื่นๆ ใช้สีหมวดเดิม */
+function briefGrp(p){ const c=getCategory(p&&p.categoryId)||{}; const nm=String(c.name||'');
+  if(/นโยบาย/.test(nm)) return {c:'#146C43',t:'โครงการตามนโยบาย',k:'p'};
+  if(/ประจำ/.test(nm)) return {c:'#2D6FA5',t:'งานประจำ',k:'r'};
+  return {c:c.color||'#8A9A92',t:nm||'อื่นๆ',k:'o'}; }
+function briefGDot(p){ const g=briefGrp(p); return `<i class="bs-gd" title="${escapeHtml(g.t)}" style="background:${g.c};"></i>`; }
 function briefFmtM(n){ n=Number(n)||0; return n>=1e6 ? (n/1e6).toLocaleString('th-TH',{maximumFractionDigits:2})+' ล้าน' : n>=1e3 ? (n/1e3).toLocaleString('th-TH',{maximumFractionDigits:1})+' พัน' : money(n); }
 /* ตรวจความเหมาะสมของระยะเวลา (กฎเชิงประมาณ ไม่ใช่คำตัดสิน) */
 function briefGanttFlags(list, fyStart, fyEnd){
@@ -5992,9 +6000,12 @@ function briefState(){
   return b;
 }
 function briefActN(p){ return okrItems(DB.currentYear).filter(i=>i.projectCode&&i.projectCode===p.projectCode).length; }
+const BRIEF_NOTICE = {'70130113':'งบ 500,000 บาท ส่วนใหญ่เป็นค่าจ้างผู้ช่วย (พนักงานนวด 2 คน ประมาณ 300,000 บาท / ปี)'};
+function briefNotice(p){ return (p&&BRIEF_NOTICE[p.projectCode])||''; }
+function briefNoticeBox(p){ const t=briefNotice(p); return t?`<div style="background:#FFF3D6;color:#7A5408;border:1px solid #E8C777;border-radius:8px;padding:7px 12px;font-size:12px;margin:0 0 8px;"><b>📌 Notice:</b> ${escapeHtml(t)}</div>`:''; }
 function briefPName(p,max){
   const nm=normProjName(p.name).replace(/^โครงการ/,'').trim(); const n=briefActN(p);
-  return `<b style="color:#146C43;">${escapeHtml(p.projectCode||'-')}</b> ${escapeHtml(max&&nm.length>max?nm.slice(0,max-1)+'…':nm)}${n?` <span style="font-weight:500;color:#4B6358;white-space:nowrap;">(${n} กิจกรรม)</span>`:''}`;
+  return `${briefGDot(p)}<b style="color:${briefGrp(p).c};">${escapeHtml(p.projectCode||'-')}</b> ${escapeHtml(max&&nm.length>max?nm.slice(0,max-1)+'…':nm)}${n?` <span style="font-weight:500;color:#4B6358;white-space:nowrap;">(${n} กิจกรรม)</span>`:''}${briefNotice(p)?` <span title="${escapeHtml(briefNotice(p))}" style="color:#C77D0A;font-weight:800;">ⓘ</span>`:''}`;
 }
 function briefProjByCode(list,code){ return list.find(p=>p.projectCode===code); }
 function briefKrTexts(code,n){
@@ -6033,7 +6044,7 @@ function briefOkrCompact(code){
 function briefProjDetail(p){
   const tk=tasksOfProject(p.id); const fy=briefFY(); const fl=(briefGanttFlags(briefProjects(),fy.s,fy.e)[p.id])||[];
   const cat=getCategory(p.categoryId)||{}; const dis=disbBySourceTotal(p);
-  return bKV([
+  return briefNoticeBox(p)+bKV([
     ['กลุ่ม',escapeHtml(cat.name||'-')],
     ['งบประมาณ',`<b>${money(p.budgetAmount)}</b> บาท · ${escapeHtml(projectBudgetSplit(p).map(x=>x.source+' '+money(x.amount)).join(' + ')||'ไม่ใช้งบ')}`],
     ['เบิกจ่าย',`${money(dis)} บาท (${disbBySourcePercent(p)}%)`],
@@ -6046,7 +6057,7 @@ function briefProjDetail(p){
     +`<div class="bs-ct" style="margin-top:10px;">กิจกรรม OKR (${briefActN(p)})</div>`+briefOkrDetail(p.projectCode);
 }
 function briefSlideHead(n,title,sub){
-  return `<div class="bs-head"><div><div class="bs-kicker">${BRIEF_GROUP} · ปีงบประมาณ ${DB.currentYear}</div><h2>${title}</h2>${sub?`<div class="bs-sub">${sub}</div>`:''}</div><div style="text-align:right;"><div class="bs-no">${n}<small>/11</small></div><div class="bs-hint no-print">👆 แตะรายการเพื่อดูรายละเอียด</div></div></div>`;
+  return `<div class="bs-head"><div><div class="bs-kicker">${BRIEF_GROUP} · ปีงบประมาณ ${DB.currentYear}</div><h2>${title}</h2>${sub?`<div class="bs-sub">${sub}</div>`:''}</div><div style="text-align:right;"><div class="bs-no">${n}<small>/12</small></div><div class="bs-lg"><i class="bs-gd" style="background:#146C43;"></i>โครงการตามนโยบาย <i class="bs-gd" style="background:#2D6FA5;margin-left:8px;"></i>งานประจำ</div><div class="bs-hint no-print">👆 แตะรายการเพื่อดูรายละเอียด</div></div></div>`;
 }
 function briefSlideFoot(){ return `<div class="bs-foot">${BRIEF_ORG}</div>`; }
 
@@ -6057,7 +6068,7 @@ function briefSlide1(list){
   const srcRows=Object.entries(bySrc).sort((a,b)=>b[1]-a[1]);
   const srcTot=srcRows.reduce((s,x)=>s+x[1],0)||1; const srcCol=['#146C43','#2D6FA5','#C89B3C','#7C4FA0','#DE9A1F','#8A9A92'];
   const disb=list.reduce((s,p)=>s+disbBySourceTotal(p),0);
-  const top=list.slice().sort((a,b)=>(b.budgetAmount||0)-(a.budgetAmount||0)).slice(0,5);
+  const top=list.slice().sort((a,b)=>(b.budgetAmount||0)-(a.budgetAmount||0)).slice(0,5).sort(briefCodeCmp);
   const maxB=Math.max(1,...top.map(p=>Number(p.budgetAmount)||0));
   const byCode=list.slice().sort((a,b)=>String(a.projectCode).localeCompare(String(b.projectCode)));
   const actTot=list.reduce((s,p)=>s+briefActN(p),0);
@@ -6083,8 +6094,8 @@ function briefSlide1(list){
       <div class="bs-card"><div class="bs-ct">สัดส่วนตามแหล่งงบประมาณ</div>
         <div style="display:flex;height:22px;border-radius:11px;overflow:hidden;margin:6px 0 10px;">${srcRows.map((x,i)=>`<div style="width:${x[1]/srcTot*100}%;background:${srcCol[i%6]};"></div>`).join('')}</div>
         ${srcRows.map((x,i)=>`<div class="bs-row bs-click" ${BCK} style="padding:3px 6px;"><i style="background:${srcCol[i%6]};"></i><span>${escapeHtml(x[0])}</span><b>${money(x[1])}</b><em>${Math.round(x[1]/srcTot*100)}%</em>${briefDet('แหล่งงบ: '+x[0],bTbl(['โครงการ','งบจากแหล่งนี้ (บาท)'],list.filter(p=>projectBudgetSplit(p).some(y=>y.source===x[0])).sort((a,b)=>String(a.projectCode).localeCompare(String(b.projectCode))).map(p=>[briefPName(p),bR(money(projectBudgetSplit(p).filter(y=>y.source===x[0]).reduce((s,y)=>s+(Number(y.amount)||0),0)))])))}</div>`).join('')||'<div class="small-muted">ยังไม่มีข้อมูลงบ</div>'}</div>
-      <div class="bs-card"><div class="bs-ct">5 โครงการงบสูงสุด</div>
-        ${top.map(p=>{ const b=Number(p.budgetAmount)||0; return `<div class="bs-click" ${BCK} style="margin:5px 0;padding:3px 6px;"><div style="font-size:11.5px;display:flex;justify-content:space-between;gap:8px;"><span>${briefPName(p,46)}</span><b>${money(b)}</b></div><div class="bs-bar"><div style="width:${b/maxB*100}%;background:${(getCategory(p.categoryId)||{}).color||'#146C43'};"></div></div>${briefDet(shortProjName(p),briefProjDetail(p))}</div>`; }).join('')}</div>
+      <div class="bs-card"><div class="bs-ct">5 โครงการงบสูงสุด (เรียงตามรหัสโครงการ)</div>
+        ${top.map(p=>{ const b=Number(p.budgetAmount)||0; return `<div class="bs-click" ${BCK} style="margin:5px 0;padding:3px 6px;"><div style="font-size:11.5px;display:flex;justify-content:space-between;gap:8px;"><span>${briefPName(p,46)}</span><b>${money(b)}</b></div><div class="bs-bar"><div style="width:${b/maxB*100}%;background:${(getCategory(p.categoryId)||{}).color||'#146C43'};"></div></div>${briefNotice(p)?`<div style="font-size:10px;color:#9C6B0B;margin-top:2px;line-height:1.3;">📌 ${escapeHtml(briefNotice(p))}</div>`:''}${briefDet(shortProjName(p),briefProjDetail(p))}</div>`; }).join('')}</div>
     </div>
   </div>${briefSlideFoot()}</section>`;
 }
@@ -6116,7 +6127,7 @@ function briefSlide2(list){
         <div style="font-size:10px;color:#7A5408;background:#FFF3D6;border-radius:6px;padding:4px 8px;margin-top:4px;line-height:1.35;"><b>หมายเหตุ:</b> KPI PA ปี ${DB.currentYear} ยังรอความชัดเจนจากกรมฯ</div></div>
     </div>
     <div class="bs-card"><div class="bs-ct">ความก้าวหน้า OKR รายโครงการ (${rows.length} โครงการ · แตะเพื่อดู OKR)</div>
-      <div style="display:grid;gap:3px;margin-top:6px;">${rows.map(x=>{ const col=(getCategory(x.p.categoryId)||{}).color||'#146C43'; return `<div class="bs-click" ${BCK} style="display:grid;grid-template-columns:1fr 130px 34px;gap:8px;align-items:center;font-size:11px;padding:3px 6px;"><span style="line-height:1.25;">${briefPName(x.p,52)}</span><div class="bs-bar"><div style="width:${x.pr}%;background:${col};"></div></div><b style="text-align:right;">${x.pr}%</b>${briefDet('OKR · '+x.p.projectCode+' '+shortProjName(x.p),briefOkrDetail(x.p.projectCode))}</div>`; }).join('')||'<div class="small-muted">ยังไม่มี OKR ผูกกับโครงการ</div>'}</div>
+      <div style="display:grid;gap:3px;margin-top:6px;">${rows.map(x=>{ const col=briefGrp(x.p).c; return `<div class="bs-click" ${BCK} style="display:grid;grid-template-columns:1fr 130px 34px;gap:8px;align-items:center;font-size:11px;padding:3px 6px;"><span style="line-height:1.25;">${briefPName(x.p,52)}</span><div class="bs-bar"><div style="width:${x.pr}%;background:${col};"></div></div><b style="text-align:right;">${x.pr}%</b>${briefDet('OKR · '+x.p.projectCode+' '+shortProjName(x.p),briefOkrDetail(x.p.projectCode))}</div>`; }).join('')||'<div class="small-muted">ยังไม่มี OKR ผูกกับโครงการ</div>'}</div>
       ${avg===0?'<div style="margin-top:10px;font-size:11.5px;color:#9C6B0B;background:#FFF3D6;border-radius:8px;padding:6px 10px;">หมายเหตุ: ปีงบยังไม่เริ่ม/ยังไม่มีการเช็คอิน ผลลัพธ์จึงเป็น 0% — ใช้สไลด์นี้นำเสนอเป้าหมายและโครงสร้างติดตาม</div>':''}</div>
   </div>${briefSlideFoot()}</section>`;
 }
@@ -6138,11 +6149,12 @@ function briefSlideKpi70(list){
   const cols='34px 236px 104px repeat(4,118px) 1fr';
   const rows=KPI70.map(k=>{
     const rec=kps.find(x=>String(x.code)===KPI70_CODE(k.n)); const ids=rec&&(rec.projectIds||[]).length?rec.projectIds.map(getProject).filter(Boolean):k.link.map(c=>briefProjByCode(list,c)).filter(Boolean);
+    ids.sort(briefCodeCmp);
     const qs=(rec&&rec.q&&rec.q.length===4)?rec.q:k.q;
     const det=bKV([['ตัวชี้วัด',escapeHtml(k.full)],['เป้าหมายปี',escapeHtml(k.tgt)],['เกณฑ์รายไตรมาส','ไตรมาส 1: '+escapeHtml(qs[0])+'<br>ไตรมาส 2: '+escapeHtml(qs[1])+'<br>ไตรมาส 3: '+escapeHtml(qs[2])+'<br>ไตรมาส 4: '+escapeHtml(qs[3])],['รายละเอียด/ขอบเขต',escapeHtml(k.scope)],['หน่วยงานเจ้าของตัวชี้วัด',escapeHtml(k.owner)],['โครงการรองรับ',ids.map(p=>'• '+briefPName(p)).join('<br>')||'–'],['ความสอดคล้องกับแผน',escapeHtml(k.status)]])
       +`<div style="background:#FFF3D6;color:#7A5408;border-radius:8px;padding:8px 12px;font-size:12px;margin-top:8px;">ที่มา: เกณฑ์ตัวชี้วัดนายทะเบียนจังหวัด ปีงบประมาณ 2570 (สิ่งที่ส่งมาด้วย 4)${k.pa?' · '+escapeHtml(k.pa)+' ของ KPI PA':''}</div>`;
     const qc=qs.map((t,i)=>`<div style="font-size:10px;line-height:1.3;padding:3px 5px;border-radius:6px;${q===i+1?'background:#FFF3D6;border:1px solid #DE9A1F;font-weight:700;color:#7A5408;':'background:#F3FAF6;color:#35503F;'}">${escapeHtml(t)}</div>`).join('');
-    const pj=ids.slice(0,3).map(p=>`<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">• ${escapeHtml((p.projectCode||'').slice(-3))} ${escapeHtml(shortProjName(p).replace(/^โครงการ/,'').slice(0,26))}</div>`).join('')||'<span style="color:#B02A2A;">ยังไม่มีโครงการ</span>';
+    const pj=ids.slice().sort(briefCodeCmp).slice(0,3).map(p=>`<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${briefGDot(p)}${escapeHtml((p.projectCode||'').slice(-3))} ${escapeHtml(shortProjName(p).replace(/^โครงการ/,'').slice(0,26))}</div>`).join('')||'<span style="color:#B02A2A;">ยังไม่มีโครงการ</span>';
     return `<div class="bs-click" data-rv ${BCK} style="display:grid;grid-template-columns:${cols};gap:6px;align-items:center;min-height:62px;border-top:1px solid rgba(0,0,0,.06);padding:3px 6px;">
       <div style="width:28px;height:28px;border-radius:50%;background:#146C43;color:#fff;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;">${k.n}</div>
       <div style="line-height:1.25;font-size:12px;"><b>${escapeHtml(k.short)}</b>${k.pa?`<div style="font-size:10px;color:#9C6B0B;font-weight:700;">${escapeHtml(k.pa)}</div>`:''}</div>
@@ -6157,6 +6169,61 @@ function briefSlideKpi70(list){
       ${note('<b>ตัวชี้วัดที่ 5 · IMC</b> ร้อยละ 25 (10/15/20/25) เทียบกับ KR เดิม 8/12/16% — ปรับตามเกณฑ์ใหม่','#DE9A1F')}
       ${note('<b>ตัวชี้วัดที่ 6 · ยาสมุนไพร UC</b> เป้าเขต 6 = 168.41 ล้านบาท (สูงกว่าปี 2569 ร้อยละ 46.16) — รอเป้ารายจังหวัด','#2D6FA5')}
     </div>
+  </div>${briefSlideFoot()}</section>`;
+}
+const BRIEF_POL = [
+  {n:1,c:'#2D6FA5',s:'ปฐมภูมิ',full:'Smart Life & Primary Care Connectivity — สุขภาพดีทุกช่วงวัย เสริมความเข้มแข็งระบบปฐมภูมิ'},
+  {n:2,c:'#E8731A',s:'การเงินปฐมภูมิ',full:'The New Primary Care Financing — ปฏิรูประบบการเงินปฐมภูมิ จ่ายตามผลลัพธ์สุขภาพ'},
+  {n:3,c:'#1A8754',s:'นวัตกรรม',full:'Advanced Medicine & Innovation — นวัตกรรมการแพทย์อัจฉริยะ'},
+  {n:4,c:'#D6457A',s:'Health for Wealth',full:'Health for Wealth — เศรษฐกิจสุขภาพ (Service/R&D/Product Hub, Wellness)'},
+  {n:5,c:'#7C4FA0',s:'ธรรมาภิบาล',full:'Smart Governance & Health Security — บริหารโปร่งใส การเงินการคลัง ความมั่นคงสุขภาพ'},
+  {n:6,c:'#0E9AA7',s:'Net Zero',full:'Excellence & Net Zero MOPH — โรงพยาบาลสีเขียว ลดปล่อยก๊าซเรือนกระจก'},
+  {n:7,c:'#C8941C',s:'บุคลากร',full:'Happy Health Workforce — บุคลากรสาธารณสุขมีความสุข'},
+  {n:8,c:'#234E8F',s:'มาตรฐานสากล',full:'Global Health Standard — ยกระดับมาตรฐานสุขภาพไทยสู่เวทีโลก'}
+];
+/* ● = ตอบสนองโดยตรง (2) · ○ = สนับสนุน (1) · ร่างจากการวิเคราะห์เนื้อหาโครงการ ปรับได้ */
+const BRIEF_MATRIX = {
+  '70130101':{k:{5:2},p:{1:2,7:1}},
+  '70130502':{k:{4:2},p:{4:2,1:1}},
+  '70130503':{k:{},p:{3:2,4:2}},
+  '70130504':{k:{1:1,2:2,3:2},p:{5:2,4:1}},
+  '70130105':{k:{2:2,7:2},p:{4:2,8:1}},
+  '70130506':{k:{},p:{1:2,5:1}},
+  '70130107':{k:{3:2},p:{5:2}},
+  '70130108':{k:{3:2},p:{5:2,6:1}},
+  '70130109':{k:{6:2},p:{4:2,2:1}},
+  '70130510':{k:{1:1},p:{7:2,8:1}},
+  '70130511':{k:{1:2},p:{1:2,7:1}},
+  '70130512':{k:{},p:{1:2,2:1}},
+  '70130113':{k:{},p:{1:2,2:1}},
+  '70130014':{k:{},p:{7:2,4:1}},
+  '70130515':{k:{5:1},p:{2:2,5:1}}
+};
+function briefSlideMatrix(list){
+  const KS=['หมอพื้นบ้าน','ภูมิปัญญา ≥3','นายทะเบียน','TFGH 50 เมนู','IMC 25%','ยา UC','งานกรมฯ'];
+  const mk=(v,c)=>v===2?`<span style="display:inline-block;width:15px;height:15px;border-radius:50%;background:${c};box-shadow:0 1px 3px ${c}88;"></span>`:v===1?`<span style="display:inline-block;width:12px;height:12px;border-radius:50%;border:2px solid ${c};"></span>`:'';
+  const COLS='262px repeat(7,50px) 8px repeat(8,50px)';
+  const rowsData=Object.keys(BRIEF_MATRIX).sort().map(code=>({code,p:briefProjByCode(list,code),m:BRIEF_MATRIX[code]})).filter(x=>x.p);
+  const cntK=n=>rowsData.filter(r=>r.m.k[n]).length, cntP=n=>rowsData.filter(r=>r.m.p[n]).length;
+  const rows=rowsData.map((r,ri)=>{
+    const kl=Object.keys(r.m.k).map(n=>`${r.m.k[n]===2?'●':'○'} ตัวชี้วัดที่ ${n}: ${KS[n-1]}`), pl=Object.keys(r.m.p).map(n=>{ const q=BRIEF_POL[n-1]; return `${r.m.p[n]===2?'●':'○'} นโยบายที่ ${n}: ${q.full}`; });
+    const det=briefNoticeBox(r.p)+bKV([['โครงการ',briefPName(r.p)+' · งบ '+money(r.p.budgetAmount)+' บาท'],['ตอบสนองตัวชี้วัดกรมฯ',kl.length?kl.map(escapeHtml).join('<br>'):'– (ไม่มีตัวชี้วัดกรมฯ ตรงๆ — เป็นงานพื้นฐาน/สนับสนุน)'],['ตอบสนองนโยบายมุ่งเน้น สธ.',pl.length?pl.map(escapeHtml).join('<br>'):'–']])+`<div style="background:#FFF3D6;color:#7A5408;border-radius:8px;padding:8px 12px;font-size:12px;margin-top:8px;">● = ตอบสนองโดยตรง · ○ = สนับสนุน · การจับคู่เป็นร่างจากเนื้อหาโครงการ</div>`;
+    const kc=KS.map((_,i)=>`<div style="text-align:center;">${mk(r.m.k[i+1],'#146C43')}</div>`).join(''), pc=BRIEF_POL.map(q=>`<div style="text-align:center;">${mk(r.m.p[q.n],q.c)}</div>`).join('');
+    return `<div class="bs-click" data-rv ${BCK} style="display:grid;grid-template-columns:${COLS};align-items:center;height:31px;border-top:1px solid rgba(0,0,0,.06);${ri%2?'background:rgba(20,108,67,.035);':''}padding:0 4px;">
+      <div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${briefGDot(r.p)}<b style="color:${briefGrp(r.p).c};">${escapeHtml(String(r.code).slice(-3))}</b> ${escapeHtml(shortProjName(r.p).replace(/^โครงการ/,''))}</div>${kc}<div></div>${pc}${briefDet('ตอบสนองอะไรบ้าง · '+shortProjName(r.p),det)}</div>`; }).join('');
+  const hk=KS.map((t,i)=>`<div style="text-align:center;font-size:9.5px;line-height:1.15;font-weight:700;color:#146C43;padding:0 1px;"><span style="display:block;font-size:12px;">ตช.${i+1}</span>${escapeHtml(t)}</div>`).join('');
+  const hp=BRIEF_POL.map(q=>`<div style="text-align:center;font-size:9.5px;line-height:1.15;font-weight:700;color:${q.c};padding:0 1px;"><span style="display:block;font-size:12px;">นโยบาย ${q.n}</span>${escapeHtml(q.s)}</div>`).join('');
+  const fk=KS.map((_,i)=>`<div style="text-align:center;font-weight:800;color:#146C43;font-size:13px;">${cntK(i+1)}</div>`).join(''), fp=BRIEF_POL.map(q=>`<div style="text-align:center;font-weight:800;color:${q.c};font-size:13px;">${cntP(q.n)}</div>`).join('');
+  const none=rowsData.filter(r=>!Object.keys(r.m.k).length).length;
+  return `<section class="bslide">${briefSlideHead(4,'โครงการตอบสนองตัวชี้วัดกรมฯ และนโยบายมุ่งเน้น สธ. ปี 2570','เห็นภาพรวมว่าแต่ละโครงการสนับสนุนตัวชี้วัด 7 ข้อของกรมฯ และนโยบายมุ่งเน้นกระทรวง 8 ข้อ · แตะแถวเพื่อดูรายละเอียด')}
+  <div class="bs-body" style="grid-template-columns:1fr;gap:6px;align-content:start;">
+    <div class="bs-card" style="padding:6px 10px 6px;">
+      <div style="display:grid;grid-template-columns:${COLS};padding:0 4px;"><div></div><div style="grid-column:2/9;text-align:center;background:#146C43;color:#fff;border-radius:8px 8px 0 0;font-size:11.5px;font-weight:800;padding:2px 0;">ตัวชี้วัดกรมการแพทย์แผนไทยฯ ปี 2570 (ตช.1–7)</div><div></div><div style="grid-column:10/18;text-align:center;background:#2D6FA5;color:#fff;border-radius:8px 8px 0 0;font-size:11.5px;font-weight:800;padding:2px 0;">นโยบายมุ่งเน้น กระทรวงสาธารณสุข ปี 2570 (ข้อ 1–8)</div></div>
+      <div style="display:grid;grid-template-columns:${COLS};align-items:end;padding:4px 4px 4px;"><div style="font-size:10.5px;color:#4B6358;font-weight:700;">โครงการ (15 โครงการ)</div>${hk}<div></div>${hp}</div>
+      ${rows}
+      <div style="display:grid;grid-template-columns:${COLS};align-items:center;height:30px;border-top:2px solid #146C43;padding:0 4px;"><div style="font-size:11px;font-weight:800;">จำนวนโครงการที่ตอบสนอง</div>${fk}<div></div>${fp}</div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:center;justify-content:center;font-size:11px;color:#35503F;"><span>${mk(2,'#146C43')} ตอบสนองโดยตรง</span><span>${mk(1,'#146C43')} สนับสนุน</span><span style="color:#4B6358;">โครงการที่ไม่มีตัวชี้วัดกรมฯ ตรงๆ ${none} โครงการ เป็นงานพื้นฐาน/สนับสนุนระบบ · นโยบายข้อ 9–10 เป็นภาพรวมของแผนจึงไม่แยกคอลัมน์ · การจับคู่เป็นร่าง ปรับได้</span></div>
   </div>${briefSlideFoot()}</section>`;
 }
 function briefSlide3(list){
@@ -6183,7 +6250,7 @@ function briefSlide3(list){
   }).join('');
   const fmap={}; sorted.forEach(p=>(flags[p.id]||[]).forEach(f=>{ const k=f.t.replace(/\d+/g,'N'); (fmap[k]=fmap[k]||[]).push(p); }));
   const months=FY_MONTHS_TH.map(m=>`<div style="flex:1;font-size:9.5px;text-align:center;color:#4B6358;">${m}</div>`).join('');
-  return `<section class="bslide">${briefSlideHead(4,'Gantt Chart รายไตรมาส · ระยะเวลาเหมาะสมหรือไม่',`${list.length} โครงการ · มีข้อสังเกต ${nFlag} โครงการ · ● = ควรพิจารณา · ✓ = วันสิ้นสุดโครงการ`)}
+  return `<section class="bslide">${briefSlideHead(5,'Gantt Chart รายไตรมาส · ระยะเวลาเหมาะสมหรือไม่',`${list.length} โครงการ · มีข้อสังเกต ${nFlag} โครงการ · ● = ควรพิจารณา · ✓ = วันสิ้นสุดโครงการ`)}
   <div class="bs-body" style="grid-template-columns:1fr;gap:10px;">
     <div class="bs-card" style="padding:10px 14px;"><div style="display:flex;margin-left:${LW}px;">${hdr}</div><div style="display:flex;margin-left:${LW}px;">${months}</div>
       <div style="position:relative;"><div style="position:absolute;left:${LW}px;right:0;top:0;bottom:0;display:flex;z-index:0;pointer-events:none;">${qCols.map(c=>`<div style="flex:1;background:${c};border-left:2px solid #fff;"></div>`).join('')}</div>${bars}${showNow?`<div style="position:absolute;top:0;bottom:0;left:calc(${LW}px + (100% - ${LW}px)*${nowPct/100});border-left:2px dashed #D64545;pointer-events:none;z-index:2;"><span style="position:absolute;bottom:-13px;left:-12px;font-size:9px;color:#D64545;background:#fff;white-space:nowrap;">วันนี้</span></div>`:''}</div>
@@ -6221,7 +6288,7 @@ function briefSlideMoney(list){
       ${briefDet('สิ้นไตรมาส '+q.i+' · ใช้เงินตามแผน',bKV([['ใช้ในไตรมาสนี้',money(qSum[k])+' บาท'],['สะสมถึงสิ้นไตรมาส',money(cum[k])+' บาท ('+cp+'%)'],['โครงการเสร็จตามกำหนด',doneBy[k].length+' โครงการ = '+money(doneAmt[k])+' บาท ('+dp+'%)']])+bTbl(['โครงการที่ใช้เงินในไตรมาส','บาท'],alloc.filter(x=>x.a[k]>0).map(x=>[briefPName(x.p),bR(money(x.a[k]))])))}</div>`; }).join('');
   const ring=briefRing(endPct,128,'#C89B3C','ใช้ตามแผน');
   const lagTxt=inFY?`ณ วันนี้ ตามแผนควรใช้ ${Math.round(toDate/total*100)}% (${money(toDate)} บาท) · เบิกจริง ${Math.round(actual/total*100)}% (${money(actual)} บาท)`:`เบิกจริงรวม ${Math.round(actual/total*100)}% (${money(actual)} บาท)`;
-  return `<section class="bslide">${briefSlideHead(5,'Gantt Chart งบประมาณ · ใช้เงินตามแผนกี่ %',`หากทุกโครงการเสร็จตามกำหนด ใช้เงิน ${money(endAmt)} บาท = ${endPct}% ของงบ ${money(total)} บาท`)}
+  return `<section class="bslide">${briefSlideHead(6,'Gantt Chart งบประมาณ · ใช้เงินตามแผนกี่ %',`หากทุกโครงการเสร็จตามกำหนด ใช้เงิน ${money(endAmt)} บาท = ${endPct}% ของงบ ${money(total)} บาท`)}
   <div class="bs-body" style="grid-template-columns:1fr;gap:8px;padding-top:10px;">
     <div class="bs-card" style="padding:8px 14px 6px;">${head}<div style="position:relative;">${qBg}${rows}</div>${tot}</div>
     <div style="display:grid;grid-template-columns:230px repeat(4,1fr);gap:10px;">
@@ -6290,15 +6357,15 @@ const BRIEF_OUTCOMES = [
 ];
 function briefSlideOutcome(list){
   const items=okrItems(DB.currentYear); const nKr=items.reduce((s,i)=>s+(i.krs||[]).length,0);
-  const cards=BRIEF_OUTCOMES.map(o=>{ const p=briefProjByCode(list,o.code); const det=p?`<div style="background:#F3FAF6;border-radius:8px;padding:8px 12px;margin-bottom:10px;"><b>${escapeHtml(o.big)}</b> ${escapeHtml(o.lab)}<br>${escapeHtml(o.sub)}</div>`+briefOkrDetail(o.code):'<div class="small-muted">ไม่พบโครงการ</div>';
+  const cards=BRIEF_OUTCOMES.slice().sort((a,b)=>String(a.code).localeCompare(String(b.code))).map(o=>{ const p=briefProjByCode(list,o.code); const gc=p?briefGrp(p).c:o.c; const det=p?`<div style="background:#F3FAF6;border-radius:8px;padding:8px 12px;margin-bottom:10px;"><b>${escapeHtml(o.big)}</b> ${escapeHtml(o.lab)}<br>${escapeHtml(o.sub)}</div>`+briefOkrDetail(o.code):'<div class="small-muted">ไม่พบโครงการ</div>';
     return `<div class="bs-card bs-click" ${BCK} style="padding:14px 16px;border-top:6px solid ${o.c};display:flex;flex-direction:column;gap:5px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:32px;">${o.ic}</span><span style="font-size:10.5px;background:${o.c}1F;color:${o.c};border-radius:10px;padding:2px 9px;font-weight:700;">${o.code}${o.kpi?' · '+o.kpi:''}</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:32px;">${o.ic}</span><span style="font-size:10.5px;background:${gc}1F;color:${gc};border-radius:10px;padding:2px 9px;font-weight:700;">${p?briefGDot(p):''}${o.code}${o.kpi?' · '+o.kpi:''}</span></div>
       <div style="font-size:38px;font-weight:800;color:${o.c};line-height:1.1;">${escapeHtml(o.big)}</div>
       <div style="font-size:14px;font-weight:700;line-height:1.3;">${escapeHtml(o.lab)}</div>
       <div style="font-size:12px;color:#4B6358;line-height:1.45;">${escapeHtml(o.sub)}</div>
       ${briefDet(o.code+' · '+(p?shortProjName(p):''),det)}</div>`; }).join('');
   const flow=(a,b,c)=>`<div style="flex:1;text-align:center;"><div style="font-size:22px;font-weight:800;">${a}</div><div style="font-size:10.5px;">${b}</div></div>`;
-  return `<section class="bslide">${briefSlideHead(8,'ผลลัพธ์ที่คาดหวังและผลต่อประชาชน',`จากกิจกรรม ${items.length} รายการ สู่ผลลัพธ์ที่วัดได้ ${nKr} ตัว · แตะการ์ดเพื่อดู OKR ของโครงการนั้น`)}
+  return `<section class="bslide">${briefSlideHead(9,'ผลลัพธ์ที่คาดหวังและผลต่อประชาชน',`จากกิจกรรม ${items.length} รายการ สู่ผลลัพธ์ที่วัดได้ ${nKr} ตัว · แตะการ์ดเพื่อดู OKR ของโครงการนั้น`)}
   <div class="bs-body" style="grid-template-columns:1fr;gap:12px;align-content:start;">
     <div data-rv style="display:flex;align-items:center;gap:8px;background:linear-gradient(90deg,#0F5132,#1A8754);color:#fff;border-radius:14px;padding:10px 18px;">
       ${flow(items.length,'กิจกรรม OKR')}<div style="font-size:24px;opacity:.7;">➜</div>${flow(nKr,'ผลลัพธ์ที่วัดได้ (KR)')}<div style="font-size:24px;opacity:.7;">➜</div>${flow(list.length,'โครงการ ในแผนปฏิบัติการ')}<div style="font-size:24px;opacity:.7;">➜</div><div style="flex:1.6;text-align:center;font-size:15px;font-weight:700;line-height:1.35;">ประชาชนสมุทรปราการเข้าถึง<br>การแพทย์แผนไทยที่ปลอดภัยและมีคุณภาพ</div></div>
@@ -6308,23 +6375,23 @@ function briefSlideOutcome(list){
 }
 function briefSlideCompare(list){
   const cy=DB.currentYear, py=cy-1; const A=yearStats(py), B=yearStats(cy);
-  if(!A.n) return `<section class="bslide">${briefSlideHead(6,'เทียบงบประมาณและโครงการสำคัญกับปีก่อน','ไม่มีข้อมูลปีงบประมาณก่อนหน้า')}<div class="bs-body"><div class="bs-card">ยังไม่มีข้อมูลโครงการของปี ${py} ในระบบ</div></div>${briefSlideFoot()}</section>`;
+  if(!A.n) return `<section class="bslide">${briefSlideHead(7,'เทียบงบประมาณและโครงการสำคัญกับปีก่อน','ไม่มีข้อมูลปีงบประมาณก่อนหน้า')}<div class="bs-body"><div class="bs-card">ยังไม่มีข้อมูลโครงการของปี ${py} ในระบบ</div></div>${briefSlideFoot()}</section>`;
   const rows=yearMatch(py,cy); const pct=(a,b)=>a?Math.round((b-a)/a*1000)/10:null; const dB=pct(A.budget,B.budget);
   const dcol=d=>d>0?'#1A8754':d<0?'#D64545':'#5C6B63'; const arrow=d=>d>0?'▲':d<0?'▼':'■';
   const hero=(t,a,b,u,sty)=>{ const d=b-a; return `<div class="bs-card bs-click" ${BCK} style="padding:10px 14px;${sty||''}"><div style="font-size:11px;color:#4B6358;">${t}</div><div style="display:flex;align-items:baseline;gap:8px;"><span style="font-size:14px;color:#8A9A92;text-decoration:line-through;">${money(a)}</span><span style="font-size:24px;font-weight:800;color:#0F5132;">${money(b)}</span><small style="color:#4B6358;">${u}</small></div><div style="font-size:12px;color:${dcol(d)};font-weight:700;">${arrow(d)} ${d>0?'+':''}${money(d)} ${a?'('+(d>0?'+':'')+pct(a,b)+'%)':''}</div></div>`; };
   const srcKeys=[...new Set(Object.keys(A.bySource).concat(Object.keys(B.bySource)))];
   const srcRows=srcKeys.map(k=>{ const a=A.bySource[k]||0,b=B.bySource[k]||0,mx=Math.max(A.budget,B.budget,1); return `<div style="margin:5px 0;"><div style="font-size:11px;display:flex;justify-content:space-between;"><span>${escapeHtml(k.replace('งบกองทุนส่งเสริมภูมิปัญญา','กองทุนภูมิปัญญา').replace('งบสำนักงานเขตสุขภาพที่ 6','เขตสุขภาพที่ 6'))}</span><span style="color:${dcol(b-a)};font-weight:700;">${arrow(b-a)} ${b-a>0?'+':''}${money(b-a)}</span></div><div style="display:flex;gap:4px;align-items:center;"><div style="height:7px;border-radius:4px;background:#B8C4BD;width:${a/mx*100}%;min-width:${a?2:0}px;"></div><span style="font-size:9.5px;color:#7A8A82;white-space:nowrap;">${money(a)}</span></div><div style="display:flex;gap:4px;align-items:center;"><div style="height:7px;border-radius:4px;background:#1A8754;width:${b/mx*100}%;min-width:${b?2:0}px;"></div><span style="font-size:9.5px;color:#0F5132;white-space:nowrap;">${money(b)}</span></div></div>`; }).join('');
   const matched=rows.filter(r=>r.a&&r.b); const newR=rows.filter(r=>!r.a&&r.b), remR=rows.filter(r=>r.a&&!r.b);
-  const key=rows.slice().sort((x,y)=>Math.max(y.ba,y.bb)-Math.max(x.ba,x.bb)).filter(r=>Math.max(r.ba,r.bb)>0).slice(0,7);
+  const rcode=r=>String((r.b||r.a||{}).projectCode||''); const key=rows.slice().sort((x,y)=>Math.max(y.ba,y.bb)-Math.max(x.ba,x.bb)).filter(r=>Math.max(r.ba,r.bb)>0).slice(0,7).sort((x,y)=>rcode(x).localeCompare(rcode(y)));
   const mx=Math.max(1,...key.map(r=>Math.max(r.ba,r.bb)));
   const nm=r=>escapeHtml(shortProjName(r.b||r.a).replace(/^โครงการ/,'').trim().slice(0,38));
   const kr=key.map(r=>{ const d=r.bb-r.ba; const tag=r.kind==='new'?'<span style="background:#E1F5E9;color:#0F7A45;border-radius:8px;padding:0 6px;font-size:10px;">ใหม่</span>':r.kind==='removed'?'<span style="background:#FDE4E4;color:#B02A2A;border-radius:8px;padding:0 6px;font-size:10px;">ไม่มีในปีนี้</span>':'';
-    return `<div style="display:grid;grid-template-columns:190px 1fr 104px;gap:8px;align-items:center;margin:6px 0;"><div style="font-size:11.5px;line-height:1.25;"><b style="color:#146C43;">${r.b?r.b.projectCode:''}</b> ${nm(r)} ${tag}</div>
+    return `<div style="display:grid;grid-template-columns:190px 1fr 104px;gap:8px;align-items:center;margin:6px 0;"><div style="font-size:11.5px;line-height:1.25;">${briefGDot(r.b||r.a)}<b style="color:${briefGrp(r.b||r.a).c};">${r.b?r.b.projectCode:''}</b> ${nm(r)} ${tag}</div>
       <div><div style="display:flex;align-items:center;gap:4px;"><div style="height:9px;border-radius:5px;background:#B8C4BD;width:${r.ba/mx*100}%;min-width:${r.ba?2:0}px;"></div><span style="font-size:9.5px;color:#7A8A82;white-space:nowrap;">${money(r.ba)}</span></div><div style="display:flex;align-items:center;gap:4px;margin-top:2px;"><div style="height:9px;border-radius:5px;background:#1A8754;width:${r.bb/mx*100}%;min-width:${r.bb?2:0}px;"></div><span style="font-size:9.5px;color:#0F5132;font-weight:700;white-space:nowrap;">${money(r.bb)}</span></div></div>
       <div style="text-align:right;font-size:12px;font-weight:700;color:${dcol(d)};">${arrow(d)} ${d>0?'+':''}${money(d)}</div></div>`; }).join('');
-  const allT=bTbl(['โครงการ ('+cy+')','งบ '+py,'งบ '+cy,'ผลต่าง'],rows.slice().sort((x,y)=>Math.max(y.ba,y.bb)-Math.max(x.ba,x.bb)).map(r=>[escapeHtml(((r.b&&r.b.projectCode)||'—')+' '+shortProjName(r.b||r.a)+(r.kind==='removed'?' (เฉพาะปี '+py+')':'')),bR(money(r.ba)),bR(money(r.bb)),bR((r.d>0?'+':'')+money(r.d))]));
+  const allT=bTbl(['โครงการ ('+cy+')','งบ '+py,'งบ '+cy,'ผลต่าง'],rows.slice().sort((x,y)=>rcode(x).localeCompare(rcode(y))).map(r=>[escapeHtml(((r.b&&r.b.projectCode)||'—')+' '+shortProjName(r.b||r.a)+(r.kind==='removed'?' (เฉพาะปี '+py+')':'')),bR(money(r.ba)),bR(money(r.bb)),bR((r.d>0?'+':'')+money(r.d))]));
   const chip=(r,k)=>`<span style="display:inline-block;margin:2px 3px 0 0;padding:1px 8px;border-radius:9px;font-size:10px;background:${k?'#E1F5E9':'#FDE4E4'};color:${k?'#0F7A45':'#B02A2A'};">${escapeHtml(nm(r).replace(/&[a-z]+;/g,'').slice(0,26))}${money(k?r.bb:r.ba)?' · '+money(k?r.bb:r.ba):''}</span>`;
-  return `<section class="bslide">${briefSlideHead(6,`เทียบงบประมาณและโครงการสำคัญ · ปี ${py} กับ ${cy}`,`งบรวม ${money(A.budget)} → ${money(B.budget)} บาท (${dB>0?'+':''}${dB}%) · โครงการ ${A.n} → ${B.n}`)}
+  return `<section class="bslide">${briefSlideHead(7,`เทียบงบประมาณและโครงการสำคัญ · ปี ${py} กับ ${cy}`,`งบรวม ${money(A.budget)} → ${money(B.budget)} บาท (${dB>0?'+':''}${dB}%) · โครงการ ${A.n} → ${B.n}`)}
   <div class="bs-body" style="grid-template-columns:.8fr 1.5fr;gap:12px;align-content:start;">
     <div class="bs-col" style="gap:9px;">
       ${hero('งบประมาณรวม (บาท)',A.budget,B.budget,'บาท','border-left:6px solid #C89B3C;')}
@@ -6364,7 +6431,7 @@ function briefSlideStaff(list){
       ${briefDet(nm+' · ภาระงานปี '+cy,det)}</div>`; }).join('');
   const top=ps[0];
   const stat=(b,t,c)=>`<div class="bs-kpi ${c||''}" style="padding:10px 14px;"><b>${b}</b><span>${t}</span></div>`;
-  return `<section class="bslide">${briefSlideHead(9,'ภาระงานและผู้รับผิดชอบ',`บุคลากร ${ps.length} คน รับผิดชอบ ${list.length} โครงการ · ${totAct} กิจกรรม OKR · แตะรายชื่อเพื่อดูรายละเอียด`)}
+  return `<section class="bslide">${briefSlideHead(10,'ภาระงานและผู้รับผิดชอบ',`บุคลากร ${ps.length} คน รับผิดชอบ ${list.length} โครงการ · ${totAct} กิจกรรม OKR · แตะรายชื่อเพื่อดูรายละเอียด`)}
   <div class="bs-body" style="grid-template-columns:1fr;gap:10px;align-content:start;">
     <div class="bs-kpis" style="grid-template-columns:repeat(4,1fr);">${stat(ps.length,'คนที่รับผิดชอบโครงการ/กิจกรรม')}${stat(avg.toFixed(1),'กิจกรรมเฉลี่ยต่อคน','gold')}${stat(top?top.acts.length:0,'กิจกรรมสูงสุดต่อคน ('+(top?escapeHtml(short(top.pe.name).split(' ')[0]):'-')+')','red')}${stat(ps.filter(x=>x.nProj>=2).length,'คนที่ดูแล ≥ 2 โครงการ','blue')}</div>
     <div class="bs-card" style="padding:6px 10px 8px;"><div style="display:grid;grid-template-columns:46px 250px 1fr 150px 76px;gap:10px;font-size:10.5px;color:#4B6358;font-weight:700;padding:0 6px 4px;"><span></span><span>ผู้รับผิดชอบ</span><span>จำนวนกิจกรรม OKR</span><span>โครงการ / งบหลัก (บาท)</span><span style="text-align:center;">ระดับภาระงาน</span></div>${rowsH}</div>
@@ -6396,14 +6463,14 @@ function briefSlideFlag(list){
       ${briefDet(d.theme+' · '+p.projectCode,'<div style="background:#FFF8E6;border-radius:8px;padding:8px 12px;margin-bottom:10px;"><b>💡 เหตุผลที่เลือก</b>'+briefFlagWhy(p.projectCode).map(t=>'<div>• '+escapeHtml(t)+'</div>').join('')+'</div>'+briefProjDetail(p))}
     </div>`;
   }).join('');
-  return `<section class="bslide">${briefSlideHead(7,'โครงการเรือธง (Flagship)',manual.length?'โครงการที่คัดเลือกเป็นเรือธงปีงบนี้ (เลือกเอง)':'เรือธง: IMC · ลำดับรอง: Wellness และมูลค่าสมุนไพร สิทธิ UC')}
+  return `<section class="bslide">${briefSlideHead(8,'โครงการเรือธง (Flagship)',manual.length?'โครงการที่คัดเลือกเป็นเรือธงปีงบนี้ (เลือกเอง)':'เรือธง: IMC · ลำดับรอง: Wellness และมูลค่าสมุนไพร สิทธิ UC')}
   <div class="bs-body" style="grid-template-columns:1.25fr 1fr;grid-template-rows:1fr 1fr;">${cards||'<div class="bs-card">ยังไม่มีโครงการ</div>'}</div>
   ${briefSlideFoot()}</section>`;
 }
 function briefSlideInteg(list){
   const b=briefState();
   const T={W:['Wellness','#1A8754'],F:['อาหารเป็นยา','#C89B3C'],WF:['Wellness + อาหารเป็นยา','#7C4FA0']};
-  const rows=b.integP.map(l=>{ const a=String(l).split('|'); return {code:(a[0]||'').trim(),th:(a[1]||'W').trim().toUpperCase(),txt:a.slice(2).join('|').trim()}; });
+  const rows=b.integP.map(l=>{ const a=String(l).split('|'); return {code:(a[0]||'').trim(),th:(a[1]||'W').trim().toUpperCase(),txt:a.slice(2).join('|').trim()}; }).sort((x,y)=>x.code.localeCompare(y.code));
   const cards=rows.map(r=>{
     const p=briefProjByCode(list,r.code); if(!p) return '';
     const t=T[r.th]||T.W;
@@ -6414,7 +6481,7 @@ function briefSlideInteg(list){
       ${briefDet('บูรณาการ · '+p.projectCode+' '+shortProjName(p),`<div style="background:#F3FAF6;border-radius:8px;padding:8px 12px;margin-bottom:10px;"><b style="color:#2D6FA5;">ร่วมกับ คบส. (ร่าง):</b> ${escapeHtml(r.txt)}</div>`+briefProjDetail(p))}</div>`;
   }).join('');
   const tot=rows.map(r=>briefProjByCode(list,r.code)).filter(Boolean).reduce((s,p)=>s+(Number(p.budgetAmount)||0),0);
-  return `<section class="bslide">${briefSlideHead(10,'บูรณาการ Wellness + อาหารเป็นยา ร่วมกับ คบส.',`คัดเลือก ${rows.filter(r=>briefProjByCode(list,r.code)).length} โครงการ · ร่างข้อเสนอ รอยืนยันกับ คบส.`)}
+  return `<section class="bslide">${briefSlideHead(11,'บูรณาการ Wellness + อาหารเป็นยา ร่วมกับ คบส.',`คัดเลือก ${rows.filter(r=>briefProjByCode(list,r.code)).length} โครงการ · ร่างข้อเสนอ รอยืนยันกับ คบส.`)}
   <div class="bs-body" style="grid-template-columns:1fr;gap:12px;align-content:start;">${cards||'<div class="bs-card">ยังไม่ได้เลือกโครงการ</div>'}</div>
   <div data-rv style="margin:0 28px;padding:10px 18px;border-radius:12px;background:linear-gradient(90deg,#0F5132,#1A8754);color:#fff;font-size:13.5px;"><b>ข้อเสนอ:</b> ${escapeHtml(b.ask)} <span style="opacity:.8;">(รวมงบโครงการที่เกี่ยวข้อง ${money(tot)} บาท)</span></div>
   ${briefSlideFoot()}</section>`;
@@ -6448,7 +6515,7 @@ function briefSlideCarbon(){
       <div style="display:flex;height:9px;border-radius:5px;overflow:hidden;margin:5px 0;">${L.map(l=>`<div style="width:${l.v/x.k*100}%;background:${l.c};"></div>`).join('')}</div>
       <div style="font-size:11px;color:#4B6358;">${L.map(l=>`<span style="color:${l.c};">●</span> ${l.h.split(' (')[0]} ${Math.round(l.v/x.k*100)}%`).join(' · ')} · <span style="color:#1A6B43;">เป้าหลังลด ${fmtKg(x.tg)} kg</span> <span class="no-print" style="color:#1A8754;">· 👆 แตะดูที่มา/สูตร</span></div>
       ${briefDet(x.pl.name+' — ที่มาของตัวเลข',det)}</div>`; }).join('');
-  return `<section class="bslide">${briefSlideHead(11,'Carbon Footprint ของโครงการ',`แผนลดคาร์บอน ${c.plans.length} แผน · ปีงบ ${c.year} · แตะเพื่อดูที่มาของตัวเลข`)}
+  return `<section class="bslide">${briefSlideHead(12,'Carbon Footprint ของโครงการ',`แผนลดคาร์บอน ${c.plans.length} แผน · ปีงบ ${c.year} · แตะเพื่อดูที่มาของตัวเลข`)}
   <div class="bs-body" style="grid-template-columns:.62fr 1.38fr;gap:14px;">
     <div class="bs-col">
       <div class="bs-kpis" style="grid-template-columns:1fr;gap:8px;">
@@ -6594,8 +6661,8 @@ function briefInit(){
   briefFxInit();
 }
 function briefNavHtml(isExport){
-  const dots=[1,2,3,4,5,6,7,8,9,10,11,12,13].map(i=>`<button type="button" class="bs-dot" onclick="briefGo(${i-1})">${i}</button>`).join('');
-  return `<div class="bs-nav no-print"><button type="button" class="btn btn-sm" onclick="briefGo((window.__bsI||0)-1)">◀</button><b id="bsLbl" style="min-width:48px;text-align:center;">1 / 13</b><button type="button" class="btn btn-sm" onclick="briefGo((window.__bsI||0)+1)">▶</button><span class="bs-dots">${dots}</span><button type="button" class="btn btn-sm" id="bsModeBtn" onclick="briefMode(!window.__bsSingle)">📜 เลื่อนดูทุกสไลด์</button><button type="button" class="btn btn-sm bs-tg" id="bsRvBtn" onclick="briefRvToggle()">🎬 เปิดทีละช่อง</button><button type="button" class="btn btn-sm bs-tg" id="bsFxBtn" onclick="briefFxToggle('fx')">✨ วิบวับ</button><button type="button" class="btn btn-sm bs-tg" id="bsMcBtn" onclick="briefFxToggle('mc')">🌿 น้องลูกประคบ</button><button type="button" class="btn btn-sm" onclick="briefFull()">⛶ เต็มจอ</button>${isExport?'<button type="button" class="btn btn-sm btn-primary" onclick="window.print()">⬇️ พิมพ์ / บันทึก PDF</button>':''}</div>`;
+  const dots=[1,2,3,4,5,6,7,8,9,10,11,12,13,14].map(i=>`<button type="button" class="bs-dot" onclick="briefGo(${i-1})">${i}</button>`).join('');
+  return `<div class="bs-nav no-print"><button type="button" class="btn btn-sm" onclick="briefGo((window.__bsI||0)-1)">◀</button><b id="bsLbl" style="min-width:48px;text-align:center;">1 / 14</b><button type="button" class="btn btn-sm" onclick="briefGo((window.__bsI||0)+1)">▶</button><span class="bs-dots">${dots}</span><button type="button" class="btn btn-sm" id="bsModeBtn" onclick="briefMode(!window.__bsSingle)">📜 เลื่อนดูทุกสไลด์</button><button type="button" class="btn btn-sm bs-tg" id="bsRvBtn" onclick="briefRvToggle()">🎬 เปิดทีละช่อง</button><button type="button" class="btn btn-sm bs-tg" id="bsFxBtn" onclick="briefFxToggle('fx')">✨ วิบวับ</button><button type="button" class="btn btn-sm bs-tg" id="bsMcBtn" onclick="briefFxToggle('mc')">🌿 น้องลูกประคบ</button><button type="button" class="btn btn-sm" onclick="briefFull()">⛶ เต็มจอ</button>${isExport?'<button type="button" class="btn btn-sm btn-primary" onclick="window.print()">⬇️ พิมพ์ / บันทึก PDF</button>':''}</div>`;
 }
 function briefAppendixHtml(list){
   const blocks=list.slice().sort((a,b)=>String(a.projectCode).localeCompare(String(b.projectCode))).filter(p=>briefActN(p)).map(p=>`<div style="break-inside:avoid;margin:0 0 10px;"><div style="font-weight:700;color:#0F5132;border-bottom:1px solid #DCEAE2;">${briefPName(p)} · ${money(p.budgetAmount)} บาท</div>${briefOkrCompact(p.projectCode)}</div>`).join('');
@@ -6618,7 +6685,7 @@ function viewBrief(){
   const list=briefProjects(); const b=briefState();
   const ctl=`<div class="card card-pad no-print" style="margin-bottom:14px;">
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-      <div style="flex:1;min-width:260px;"><b>📽️ สรุปนำเสนอ 5 นาที</b> · ${BRIEF_GROUP} · ปีงบ ${DB.currentYear}<div class="small-muted">แตะรายการในสไลด์เพื่อดูรายละเอียด · ลูกศรซ้าย/ขวาเลื่อนสไลด์ · PDF: A4 แนวนอน 13 หน้า (ปก + 11 สไลด์ + ปิด) + ภาคผนวก (เลือก "บันทึกเป็น PDF" · ขอบ "ไม่มี" · เปิด "กราฟิกพื้นหลัง")</div></div>
+      <div style="flex:1;min-width:260px;"><b>📽️ สรุปนำเสนอ 5 นาที</b> · ${BRIEF_GROUP} · ปีงบ ${DB.currentYear}<div class="small-muted">แตะรายการในสไลด์เพื่อดูรายละเอียด · ลูกศรซ้าย/ขวาเลื่อนสไลด์ · PDF: A4 แนวนอน 14 หน้า (ปก + 12 สไลด์ + ปิด) + ภาคผนวก (เลือก "บันทึกเป็น PDF" · ขอบ "ไม่มี" · เปิด "กราฟิกพื้นหลัง")</div></div>
       <button class="btn btn-primary" onclick="briefPrint()">⬇️ ส่งออก PDF</button><button class="btn" onclick="briefExportHTML()">🌐 ส่งออก HTML (อินเตอร์แอคทีฟ)</button></div>
     <div style="margin-top:10px;">${briefNavHtml(false)}</div>
     <details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:600;font-size:13px;">⚙️ ตั้งค่าเนื้อหา: เรือธง / เกณฑ์ KPI PA / โครงการร่วม คบส.</summary>
@@ -6631,7 +6698,7 @@ function viewBrief(){
         <div style="margin-top:6px;font-size:12px;font-weight:600;">ข้อเสนอ/สิ่งที่ขอ</div><input id="bi_ask" class="input" value="${escapeHtml(b.ask)}" style="width:100%;">
         <div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="briefSaveText()">💾 บันทึก</button> <button class="btn btn-sm" onclick="briefResetText()">คืนค่าเริ่มต้น</button></div></div>
     </details></div>`;
-  return `${ctl}<div class="brief-wrap"><button type="button" class="bs-arr l no-print" onclick="briefGo((window.__bsI||0)-1)">‹</button><button type="button" class="bs-arr r no-print" onclick="briefGo((window.__bsI||0)+1)">›</button>${briefCoverSlide()}${briefSlide1(list)}${briefSlide2(list)}${briefSlideKpi70(list)}${briefSlide3(list)}${briefSlideMoney(list)}${briefSlideCompare(list)}${briefSlideFlag(list)}${briefSlideOutcome(list)}${briefSlideStaff(list)}${briefSlideInteg(list)}${briefSlideCarbon()}${briefClosingSlide()}</div>${briefAppendixHtml(list)}<img class="no-print" alt="" style="display:none" src="data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs=" onload="briefInit()">`;
+  return `${ctl}<div class="brief-wrap"><button type="button" class="bs-arr l no-print" onclick="briefGo((window.__bsI||0)-1)">‹</button><button type="button" class="bs-arr r no-print" onclick="briefGo((window.__bsI||0)+1)">›</button>${briefCoverSlide()}${briefSlide1(list)}${briefSlide2(list)}${briefSlideKpi70(list)}${briefSlideMatrix(list)}${briefSlide3(list)}${briefSlideMoney(list)}${briefSlideCompare(list)}${briefSlideFlag(list)}${briefSlideOutcome(list)}${briefSlideStaff(list)}${briefSlideInteg(list)}${briefSlideCarbon()}${briefClosingSlide()}</div>${briefAppendixHtml(list)}<img class="no-print" alt="" style="display:none" src="data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAACAkQBADs=" onload="briefInit()">`;
 }
 
 function setYearVsThr(v){ yearVsState().thr=Number(v); render(); }
