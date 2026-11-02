@@ -404,7 +404,7 @@ body.viewer #btnQuickAddProject, body.viewer [onclick*="Form("], body.viewer [on
    ========================================================================= */
 
 const STORAGE_KEY = 'thaimed_ops_v1';
-const APP_VERSION = 'v3.42';
+const APP_VERSION = 'v3.43';
 const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const FY_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
 const STATUS_LIST = [
@@ -1093,6 +1093,10 @@ function projectProgress(pid){
   const done=ts.filter(t=>t.status==='done').length;
   return Math.round(done/ts.length*100);
 }
+/* ความก้าวหน้าการเบิกจ่าย (สีอำพัน) */
+function disbMiniHtml(p){ const b=Number(p.budgetAmount)||0; if(b<=0) return '<div class="small-muted" style="margin-top:3px;">💸 ไม่ใช้งบ</div>'; const pc=disbBySourcePercent(p); return `<div class="progress-bar" style="margin-top:5px;background:#F3E3CC;"><div class="progress-fill" style="width:${pc}%;background:#B45309;"></div></div><div class="small-muted" style="margin-top:2px;color:#B45309;">💸 เบิกแล้ว ${pc}% (${money(disbBySourceTotal(p))})</div>`; }
+function disbSummaryCard(list){ const tb=list.reduce((q,p)=>q+(Number(p.budgetAmount)||0),0), sp=list.reduce((q,p)=>q+disbBySourceTotal(p),0), pc=tb?Math.round(sp/tb*100):0; const done=list.filter(p=>(Number(p.budgetAmount)||0)>0&&disbBySourcePercent(p)>=100).length, none=list.filter(p=>(Number(p.budgetAmount)||0)>0&&disbBySourceTotal(p)===0).length;
+  return `<div class="card card-pad" style="margin-bottom:14px;"><div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;"><div style="min-width:220px;flex:1;"><div style="font-weight:700;color:#B45309;">💸 สรุปการเบิกจ่ายปีงบ ${DB.currentYear}</div><div class="progress-bar" style="margin-top:8px;height:14px;background:#F3E3CC;"><div class="progress-fill" style="width:${pc}%;background:#B45309;"></div></div><div class="small-muted" style="margin-top:4px;">เบิกจ่ายแล้ว <b style="color:#B45309;">${pc}%</b> ของงบทั้งหมด</div></div><div><div class="small-muted">งบรวม</div><b>${money(tb)}</b> บาท</div><div><div class="small-muted">เบิกจ่ายแล้ว</div><b style="color:#B45309;">${money(sp)}</b> บาท</div><div><div class="small-muted">คงเหลือ</div><b>${money(tb-sp)}</b> บาท</div><div><div class="small-muted">เบิกครบ / ยังไม่เบิก</div><b>${done}</b> / <b>${none}</b> โครงการ</div></div></div>`; }
 function yearProjects(){ return DB.projects.filter(p=>p.year===DB.currentYear); }
 
 /* การ์ดแยกแสดงรายละเอียดงบผสม ในหน้ารายละเอียดโครงการ */
@@ -1655,12 +1659,13 @@ function viewProjects(){
     <button class="btn btn-primary btn-sm" id="btnMoveProjYear" ${selCount?'':'disabled'}>📋 ย้าย/คัดลอกที่เลือกไปปีงบอื่น</button>
   </div>
 
+  ${disbSummaryCard(projs)}
   <div class="card">
     <div class="tbl-wrap">
     <table>
       <thead><tr>
         <th style="width:30px;"></th><th>ลำดับ</th><th>รหัสโครงการ</th><th>โครงการ</th><th>หมวดหมู่</th><th>ผู้รับผิดชอบ</th><th>ระยะเวลา</th>
-        <th>งบประมาณ / ประเภท / แหล่งงบ</th><th>ความคืบหน้า</th><th>ความสำคัญ</th><th>สถานะ</th><th></th>
+        <th>งบประมาณ / ประเภท / แหล่งงบ</th><th>ความคืบหน้า / เบิกจ่าย</th><th>ความสำคัญ</th><th>สถานะ</th><th></th>
       </tr></thead>
       <tbody>
         ${projs.length? projs.map((p,idx)=>{
@@ -1680,7 +1685,7 @@ function viewProjects(){
             <td>${escapeHtml(projectOwnerNames(p))}</td>
             <td class="small-muted">${fmtDateShort(p.startDate)} – ${fmtDateShort(p.endDate)}</td>
             <td style="min-width:130px;"><div style="font-weight:700;">${money(p.budgetAmount)}</div><div class="small-muted">${escapeHtml(p.budgetType)||'-'}</div>${isMixedBudget(p)? `<div class="small-muted" style="color:#9C6B0B;">งบผสม</div>${projectBudgetSplit(p).map(x=>`<div class="small-muted">${escapeHtml(budgetSourceShort(x.source))} ${money(x.amount)}</div>`).join('')}` : `<div class="small-muted">${escapeHtml(p.budgetSource)||'-'}</div>`}</td>
-            <td style="min-width:110px;">${prog===null?'<span class="small-muted">ไม่มีงานย่อย</span>':`<div class="progress-bar"><div class="progress-fill" style="width:${prog}%"></div></div><div class="small-muted" style="margin-top:3px;">${prog}%</div>`}</td>
+            <td style="min-width:110px;">${prog===null?'<span class="small-muted">ไม่มีงานย่อย</span>':`<div class="progress-bar"><div class="progress-fill" style="width:${prog}%"></div></div><div class="small-muted" style="margin-top:3px;">${prog}%</div>`}${disbMiniHtml(p)}</td>
             <td><span class="badge ${pr.cls}">${pr.label}</span></td>
             <td><span class="badge ${st.cls}"><span class="badge-dot" style="background:${st.color}"></span>${st.label}</span></td>
             <td><button class="icon-btn" onclick="event.stopPropagation();deleteProject('${p.id}')">🗑️</button></td>
@@ -1715,6 +1720,7 @@ function openProjectDetail(id){
       <div><span class="small-muted">สถานะ / ความสำคัญ</span><div style="margin-top:3px;"><span class="badge ${st.cls}">${st.label}</span> <span class="badge ${pr.cls}">${pr.label}</span></div></div>
     </div>
     ${renderBudgetSplitCard(p)}
+    <div style="margin-top:10px;"><span class="small-muted">💸 ความก้าวหน้าการเบิกจ่าย</span>${disbMiniHtml(p)}</div>
     ${p.strategicGoalId? `<div style="margin-top:10px;"><span class="small-muted">ยุทธศาสตร์ที่ตอบสนอง</span><div style="margin-top:2px;"><span class="tag-chip">${escapeHtml(p.strategicGoalId)}</span></div></div>` : ''}
 
     ${renderKpiChips(p)}
@@ -2581,7 +2587,7 @@ function viewTimeline(){
           <td><input class="input tl-start" type="date" value="${p.startDate||''}" onchange="updateProjectTimelineDate('${p.id}','startDate',this.value)"></td>
           <td><input class="input tl-end" type="date" value="${p.endDate||''}" onchange="updateProjectTimelineDate('${p.id}','endDate',this.value)"></td>
           <td>${timePct===null? '<span class="small-muted">— ยังไม่ระบุวันที่ —</span>' : `<div class="progress-bar"><div class="progress-fill" style="width:${timePct}%;background:linear-gradient(90deg,#2D6FA5,#3B7BB0);"></div></div><div class="small-muted" style="margin-top:3px;">${timePct}% ของระยะเวลาโครงการ</div>`}</td>
-          <td>${workPct===null? '<span class="small-muted">ไม่มีงานย่อย</span>' : `<div class="progress-bar"><div class="progress-fill" style="width:${workPct}%"></div></div><div class="${compareCls}" style="margin-top:3px;">${workPct}% เสร็จแล้ว${compareNote?' · '+compareNote:''}</div>`}</td>
+          <td>${workPct===null? '<span class="small-muted">ไม่มีงานย่อย</span>' : `<div class="progress-bar"><div class="progress-fill" style="width:${workPct}%"></div></div><div class="${compareCls}" style="margin-top:3px;">${workPct}% เสร็จแล้ว${compareNote?' · '+compareNote:''}</div>`}${disbMiniHtml(p)}</td>
           <td><span class="badge ${statusObj(p.status).cls}">${statusObj(p.status).label}</span></td>
         </tr>`;
         }).join('') : `<tr><td colspan="6"><div class="empty-state">ยังไม่มีโครงการในปีงบนี้</div></td></tr>`}
