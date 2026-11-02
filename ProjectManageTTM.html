@@ -404,7 +404,7 @@ body.viewer #btnQuickAddProject, body.viewer [onclick*="Form("], body.viewer [on
    ========================================================================= */
 
 const STORAGE_KEY = 'thaimed_ops_v1';
-const APP_VERSION = 'v3.44';
+const APP_VERSION = 'v3.45';
 const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const FY_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
 const STATUS_LIST = [
@@ -5709,8 +5709,19 @@ function ensureOkrKpi70(){
 const DISB_PATCHES = [
   {id:'d1',code:'70130504',year:2570,src:'01',amount:10200,note:'1.1 ประชุมชี้แจงนโยบาย รวมพิธีถวายราชสักการะวันภูมิปัญญาฯ (เงินบำรุง)'}
 ];
+const TASK_PATCHES = [
+  {id:'t1',code:'70130504',year:2570,prefix:'1.1 ประชุมชี้แจงนโยบาย',status:'done'}
+];
 function ensureDisbPatches(){
   if(!DB.disbPatchDone) DB.disbPatchDone=[]; let n=0;
+  TASK_PATCHES.forEach(d=>{
+    if(DB.disbPatchDone.includes(d.id)) return;
+    const p=DB.projects.find(x=>x.year===d.year&&x.projectCode===d.code); if(!p) return;
+    const t=(DB.tasks||[]).find(x=>x.projectId===p.id&&String(x.name).startsWith(d.prefix));
+    if(t&&t.status==='notstarted'){ t.status=d.status; n++;
+      if(!DB.auditLog) DB.auditLog=[]; DB.auditLog.unshift({id:uid('log'),action:'ปรับสถานะงานย่อยอัตโนมัติ',detail:d.code+' · '+String(t.name).slice(0,60)+' → เสร็จสิ้น',actor:'ระบบ (อัตโนมัติ)',at:new Date().toISOString()}); }
+    DB.disbPatchDone.push(d.id);
+  });
   DISB_PATCHES.forEach(d=>{
     if(DB.disbPatchDone.includes(d.id)) return;
     const p=DB.projects.find(x=>x.year===d.year&&x.projectCode===d.code); if(!p) return;
