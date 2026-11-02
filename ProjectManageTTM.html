@@ -338,6 +338,16 @@ body.viewer #btnQuickAddProject, body.viewer [onclick*="Form("], body.viewer [on
 .bs-nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 .bs-dots{display:inline-flex;gap:4px;} .bs-dot{width:28px;height:28px;border-radius:50%;border:1px solid #BFE3CF;background:#fff;color:#0F5132;font-weight:700;} .bs-dot.on{background:#146C43;color:#fff;border-color:#146C43;}
 .brief-wrap{position:relative;}
+
+.bs-note{display:none;} .brief-wrap.single.shownote .bs-note{display:block;margin:10px auto 0;width:calc(1122px * var(--bz,.82));max-height:300px;overflow:auto;background:#0F2F25;color:#F3FAF6;border-radius:12px;padding:12px 16px;font-size:14px;line-height:1.55;box-shadow:var(--shadow);box-sizing:border-box;}
+.brief-wrap:fullscreen.single.shownote .bs-note{position:fixed;left:0;right:0;bottom:0;width:auto;margin:0;border-radius:0;max-height:36vh;z-index:60;background:rgba(10,36,28,.96);}
+.bs-note .nh{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;} .bs-note .nh b{font-size:15px;color:#FFD66B;} .bs-note .nt{font-size:12px;opacity:.8;}
+.bs-note ul{margin:4px 0 4px 18px;padding:0;} .bs-note li{margin:2px 0;} .bs-note .np{margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.28);font-size:13px;} .bs-note .np span{display:inline-block;margin:2px 12px 2px 0;} .bs-note .np i{display:inline-block;width:19px;height:19px;line-height:19px;border-radius:50%;background:#E11D48;color:#fff;font-style:normal;font-weight:800;font-size:12px;text-align:center;margin-right:5px;}
+.bs-note .ngw{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0;} .bs-note .ngw>div{background:rgba(255,255,255,.1);border-radius:8px;padding:6px 10px;font-size:13.5px;} .bs-note .ngw b{display:block;color:#FFD66B;font-size:12.5px;margin-bottom:1px;}
+.bs-note .nq{margin-top:4px;color:#BFE9D4;font-size:13px;}
+.bs-pt{outline:3px solid #E11D48!important;outline-offset:-3px;border-radius:6px;} .bs-pt.bs-rel{position:relative;}
+.bs-pn.in{top:2px!important;left:2px!important;} .bs-pn{position:absolute;top:-10px;left:-10px;z-index:40;width:24px;height:24px;line-height:24px;border-radius:50%;background:#E11D48;color:#fff;font-style:normal;font-weight:800;font-size:14px;text-align:center;box-shadow:0 0 0 2px #fff,0 2px 6px rgba(0,0,0,.35);pointer-events:none;}
+@media print{.bs-note,.bs-pn{display:none!important;} .bs-pt{outline:none!important;}}
 .brief-wrap.single{display:block;} .brief-wrap.single .bslide{display:none;margin:0 auto;} .brief-wrap.single .bslide.on{display:flex;}
 .bs-arr{display:none;position:absolute;top:50%;transform:translateY(-50%);z-index:5;width:40px;height:60px;border:0;border-radius:12px;background:rgba(15,81,50,.75);color:#fff;font-size:30px;line-height:1;} .brief-wrap.single .bs-arr{display:block;} .bs-arr.l{left:2px;} .bs-arr.r{right:2px;}
 .brief-wrap:fullscreen{background:#0B3D2E;display:flex;align-items:center;justify-content:center;}
@@ -404,7 +414,7 @@ body.viewer #btnQuickAddProject, body.viewer [onclick*="Form("], body.viewer [on
    ========================================================================= */
 
 const STORAGE_KEY = 'thaimed_ops_v1';
-const APP_VERSION = 'v3.45';
+const APP_VERSION = 'v3.46';
 const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const FY_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
 const STATUS_LIST = [
@@ -6613,7 +6623,7 @@ function briefFit(){
   var fs=!!document.fullscreenElement, single=w.classList.contains('single');
   var aw=fs?window.innerWidth:((w.parentElement&&w.parentElement.clientWidth)||1122)-6;
   var z=Math.min(1,aw/1122);
-  if(single){ var ah=fs?window.innerHeight:(window.innerHeight-150); z=Math.min(z,ah/794); }
+  if(single){ var nt=!!window.__bsNote; var ah=fs?window.innerHeight*(nt?0.62:1):(window.innerHeight-150-(nt?315:0)); z=Math.min(z,ah/794); }
   z=Math.max(0.35,z); w.style.setProperty('--bz',z);
 }
 function briefRvTargets(sl){
@@ -6655,6 +6665,7 @@ function briefGo(n){
   var d=document.querySelectorAll('.bs-dot'); for(var j=0;j<d.length;j++) d[j].classList.toggle('on',j===i);
   briefFit();
   briefRvStart(sl[i]);
+  if(typeof briefNoteRender==='function') briefNoteRender();
 }
 function briefMode(single){
   var w=document.querySelector('.brief-wrap'); if(!w) return;
@@ -6672,6 +6683,7 @@ function briefKey(e){
   if(!document.querySelector('.brief-wrap')) return;
   var tg=(e.target&&e.target.tagName)||''; if(tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT') return;
   if(e.key==='Escape'){ briefDetailClose(); return; }
+  if((e.key==='n'||e.key==='N')&&!e.ctrlKey&&!e.metaKey&&!e.altKey){ briefNoteToggle(); return; }
   var m=document.getElementById('bsModal'); if(m&&m.style.display==='flex') return;
   if(!document.querySelector('.brief-wrap.single')) return;
   if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' ') { e.preventDefault(); var cs=document.querySelector('.bslide.on'); if(cs&&cs.__rvLeft>0){ briefRvShowAll(cs); return; } briefGo((window.__bsI||0)+1); }
@@ -6704,6 +6716,110 @@ function briefMascotSay(el){
   var t=el.querySelector('.mc-say'); window.__bsTip=((window.__bsTip||0)+1)%tips.length; t.textContent=tips[window.__bsTip];
   el.classList.add('talk'); clearTimeout(el.__tm); el.__tm=setTimeout(function(){ el.classList.remove('talk'); },2600);
 }
+const BRIEF_NOTES=[
+{t:15,k:'แผนปี 2570 ครอบคลุม 15 โครงการ งบรวม 896,345 บาท — เล่าให้จบใน 5 นาที',
+ p:['กล่าวทักทาย แนะนำกลุ่มงานการแพทย์แผนไทยและการแพทย์ทางเลือก สสจ.สมุทรปราการ','บอกลำดับเรื่อง: งบ → ตัวชี้วัด/นโยบาย → แผนรายไตรมาส → โครงการเรือธง → ผลลัพธ์ → ขอสนับสนุน','ข้อมูลทุกตัวดึงจากระบบบริหารแผนงานโครงการโดยตรง อัปเดตยอดเบิกจ่ายได้ตลอด'],ptr:[]},
+{t:30,k:'งบ 896,345 บาท ส่วนใหญ่เป็นงานประจำ แต่โครงการตามนโยบายเป็นหัวใจที่ต้องผลักดัน',
+ p:['งบรวม 15 โครงการ: ตามนโยบาย 3 โครงการ 152,380 บาท (17%) และงานประจำ 12 โครงการ 743,965 บาท (83%)','แหล่งเงิน: เงินบำรุง 716,495 บาท (80%) และกองทุนภูมิปัญญา 179,850 บาท (20%)','กิจกรรมตาม OKR 32 กิจกรรม 96 ผลลัพธ์หลัก (KR)','เบิกจ่ายแล้ว 10,200 บาท ≈ 1.1% เพราะเพิ่งเข้าไตรมาส 1'],
+ q:'เชื่อมสไลด์ถัดไป: งบเหล่านี้ผูกกับเป้าหมายอะไรบ้าง',
+ ptr:[{s:'.bs-kpi',n:1,l:'งบรวม 896,345 บาท'},{s:'.bs-kpi',n:3,l:'เบิกจ่ายแล้ว 10,200 บาท (~1%)'},{s:'.bs-row',n:0,in:1,l:'เงินบำรุง 80% — แหล่งเงินหลัก'},{s:'.bs-card',n:0,l:'แยกกลุ่ม: นโยบาย (สีส้ม) 17% / งานประจำ (สีน้ำเงิน) 83%'}]},
+{t:30,k:'ทุกงบผูกกับเป้าหมายที่วัดได้ และเห็นยอดเบิกจ่ายเทียบแผนในที่เดียว',
+ p:['OKR คือกิจกรรม 32 รายการ แตกเป็นผลลัพธ์หลัก 96 ข้อ','ความก้าวหน้าเฉลี่ยยังเป็น 0% ทำเสร็จแล้ว 1 จาก 32 งานย่อย','KPI PA 14, 15, 26 คือตัวชี้วัดตามคำรับรองการปฏิบัติราชการ'],
+ q:'คำถามที่อาจเจอ: ทำไมเบิกจ่ายยังน้อย → กิจกรรมส่วนใหญ่เริ่มไตรมาส 2 เป็นต้นไป',
+ ptr:[{s:'.bs-card',n:0,l:'ความก้าวหน้า OKR เฉลี่ย / งานย่อยเสร็จ 1/32'},{s:'.bs-card',n:2,l:'สรุปเบิกจ่ายเทียบงบรวม'},{s:'.bs-card',n:3,l:'KPI PA 14 / 15 / 26'}]},
+{t:35,k:'ตัวชี้วัดกรมฯ ปี 2570 มี 7 ข้อ พร้อมเกณฑ์รายไตรมาสที่ต้องไปให้ถึง',
+ p:['ตช.1 หมอพื้นบ้านที่ได้รับการพัฒนา ≥ 50% · ตช.2 ภูมิปัญญา ≥ 3 เรื่อง · ตช.3 ภารกิจนายทะเบียน ≥ 4 กิจกรรม','ตช.4 TFGH 50 เมนู (10/15/30/50) · ตช.5 IMC 25% (10/15/20/25)','ตช.6 ยาสมุนไพรใน UC เขต 6 เป้า 168,406,399 บาท เพิ่ม 46.16% จากปี 2569','ตช.7 จัดงานอย่างน้อย 2 ครั้ง','ไฮไลต์สีเหลืองคือไตรมาสปัจจุบัน (ไตรมาส 1)'],
+ q:'เคล็ดลับ: ไม่ต้องอ่านครบ เน้น ตช.4–6 ที่มีเกณฑ์รายไตรมาสชัดเจน',
+ ptr:[{s:'.bs-card > div',n:0,l:'หัวตาราง: คอลัมน์ไตรมาสปัจจุบันไฮไลต์เหลือง'},{s:'.bs-click',n:3,l:'ตช.4 TFGH 50 เมนู'},{s:'.bs-click',n:4,l:'ตช.5 IMC 25%'},{s:'.bs-click',n:5,l:'ตช.6 ยาสมุนไพร UC'}]},
+{t:35,k:'ทุกโครงการตอบสนองตัวชี้วัดกรมฯ และนโยบายมุ่งเน้นของกระทรวง ไม่มีโครงการลอย',
+ p:['อธิบายสัญลักษณ์: ● ตอบสนองโดยตรง ○ สนับสนุน','แต่ละตัวชี้วัดมีโครงการรับผิดชอบอย่างน้อยหนึ่งโครงการ','สีส้ม = โครงการตามนโยบาย สีน้ำเงิน = งานประจำ ใช้สีเดียวกันทั้งแอปและสไลด์','ชี้โครงการที่ตอบหลายตัวชี้วัดพร้อมกัน เพราะคุ้มค่างบที่สุด'],
+ q:'เชื่อมสไลด์ถัดไป: แล้วงานเหล่านี้เกิดขึ้นเมื่อไร',
+ ptr:[{s:'.bs-card > div',n:1,l:'หัวคอลัมน์: ตช.1–7 และนโยบาย 1–8'},{s:'.bs-click',n:0,l:'ตัวอย่างโครงการ: ดูว่าตอบสนองกี่ตัวชี้วัด'}]},
+{t:20,k:'งานกระจายตัวตลอดปี ไม่กระจุกที่ปลายปีงบประมาณ',
+ p:['ปีงบประมาณ 2570 เริ่ม 1 ต.ค. 2569 สิ้นสุด 30 ก.ย. 2570 ตอนนี้อยู่ไตรมาส 1','ชี้ช่วงที่หลายโครงการซ้อนกัน เพื่อเตือนเรื่องการจัดคนและการประสานงาน','โครงการเรียงตามเลขท้าย 2 หลักของรหัส ดูง่ายและตรวจกับเอกสารงบได้'],
+ ptr:[{s:'.bs-card > div',n:0,l:'สรุปโครงการเสร็จสิ้นรายไตรมาส'},{s:'.bs-card > div',n:1,l:'แกนเดือน ต.ค.–ก.ย.'}]},
+{t:25,k:'เห็นพร้อมกันว่าแต่ละโครงการใช้เงินเท่าไรและเบิกไปแล้วเท่าไร',
+ p:['70130113 งบ 500,000 บาท ใหญ่สุด ส่วนใหญ่เป็นค่าจ้างผู้ช่วย (พนักงานนวด 2 คน ประมาณ 300,000 บาท/ปี) ควรบอกที่มาของตัวเลข','เบิกจ่ายแล้ว 10,200 บาท อยู่ที่ 70130504 (ประมาณ 16% ของงบโครงการนั้น)','แจ้งว่าจะรายงานความก้าวหน้าการเบิกจ่ายทุกไตรมาส'],
+ ptr:[{s:'.bs-card > div',n:0,l:'หัวตาราง: งบรายไตรมาส + เบิกแล้ว'},{s:'.bs-click',m:'70130113',l:'70130113 งบ 500,000 บาท (Notice ค่าจ้างผู้ช่วย)'},{s:'.bs-click',m:'70130504',l:'70130504 เบิกแล้ว 10,200 บาท'}]},
+{t:20,k:'ปีนี้ทำงานมีประสิทธิภาพขึ้น โครงการลด 1 โครงการ งบลดเล็กน้อย',
+ p:['ปี 2569: 16 โครงการ 943,000 บาท','ปี 2570: 15 โครงการ 896,345 บาท ลดลง 4.9% (−46,655 บาท)','งบเฉลี่ยต่อโครงการเพิ่ม 1.4% แปลว่ารวมงานให้ใหญ่ขึ้น','เป้าหมายไม่ลดตาม โดยเฉพาะ ตช.6 ที่เพิ่ม 46.16%'],
+ ptr:[{s:'.bs-card',n:0,l:'งบรวม 943,000 → 896,345 (−4.9%)'},{s:'.bs-card',n:1,l:'โครงการ 16 → 15'},{s:'.bs-card',n:4,l:'7 โครงการสำคัญ'}]},
+{t:40,k:'3 โครงการธงทองคือหัวใจที่จะวัดความสำเร็จของกลุ่มงานในปีนี้',
+ p:['70130101 IMC (129,000 บาท): เป้าผู้ป่วยได้รับการดูแล 10/15/20/25% ตลอดปี','70130502 Wellness (12,480 บาท): สนับสนุน TFGH 50 เมนู ตามขั้น 10/15/30/50','70130109 ยาสมุนไพรใน UC (875 บาท): งบน้อยแต่ผลกระทบสูง เป้าเขต 6 คือ 168.41 ล้านบาท','เลือกจากผลต่อตัวชี้วัดกรมฯ ไม่ใช่จากขนาดงบ'],
+ q:'ข้อควรพูด: งบสูงไม่ได้แปลว่าสำคัญที่สุด',
+ ptr:[{s:'.bs-flag',n:0,l:'IMC — โครงการเรือธงหลัก'},{s:'.bs-flag',n:1,l:'Wellness'},{s:'.bs-flag',n:2,l:'ยาสมุนไพรใน UC'}]},
+{t:15,k:'เมื่อจบปี ประชาชนและหน่วยบริการจะได้อะไรเป็นรูปธรรม',
+ p:['กิจกรรม 32 → ผลลัพธ์วัดได้ 96 → โครงการ 15 → ประชาชนเข้าถึงแพทย์แผนไทยมากขึ้น','ยกตัวอย่างผลลัพธ์ IMC 25% และแพทย์แผนไทยผ่านอบรม 90 ชม. 45 คน','ผูกกลับกับตัวชี้วัดในสไลด์ 3'],
+ ptr:[{s:'.bs-body > div',n:0,l:'ห่วงโซ่ 32 → 96 → 15 → ผลต่อประชาชน'},{s:'.bs-card',n:0,l:'ตัวอย่าง: IMC 25%'},{s:'.bs-card',n:1,l:'ตัวอย่าง: แพทย์แผนไทย 45 คน'}]},
+{t:15,k:'งานกระจุกที่บุคลากรบางคน ต้องบริหารสมดุลภาระงาน',
+ p:['ผู้รับผิดชอบ 8 คน เฉลี่ย 4.0 กิจกรรมต่อคน','ขจีวรรณและศรัญญูรับ 9 กิจกรรมเท่ากัน รัตนาวลี 8 กิจกรรม','เสนอสลับผู้ช่วยหรือเลื่อนกิจกรรมที่ไม่เร่งด่วนให้พ้นช่วงงานซ้อน'],
+ q:'หมายเหตุ: สไลด์นี้เป็นข้อมูลภายใน หากนำเสนอต่อบุคคลภายนอกให้พิจารณาข้ามหรือตัดออก',
+ ptr:[{s:'.bs-kpi',n:2,l:'ภาระสูงสุด 9 กิจกรรมต่อคน'},{s:'.bs-click',n:0,l:'แถวแรก: ผู้ที่ภาระสูงสุด'}]},
+{t:20,k:'ทำงานร่วมกับ คบส. เพื่อลดความซ้ำซ้อนและขยายผลสู่ชุมชน',
+ p:['70130502 (Wellness และ Flagship) และ 70130503 (Flagship) บูรณาการกับ คบส.','ประโยชน์: ใช้เครือข่ายและงบร่วมกัน ลดภาระกิจกรรมซ้ำ','ขอให้ที่ประชุมช่วยประสานผู้รับผิดชอบฝั่ง คบส.'],
+ ptr:[{s:'.bs-card',n:0,l:'Wellness + อาหารเป็นยา 12,480 บาท'},{s:'.bs-card',n:1,l:'อาหารเป็นยา 10,900 บาท'}]},
+{t:20,k:'ประเมินการปล่อยก๊าซ 17.29 tCO2e ตั้งเป้าลดเหลือ 13.99 tCO2e หรือราว 19%',
+ p:['แยกตามขอบเขต: ขอบเขต 1 = 1.64, ขอบเขต 2 = 8.78, ขอบเขต 3 = 6.87 tCO2e','ไฟฟ้า (ขอบเขต 2) สัดส่วนมากสุด จึงลดได้ผลที่สุด','มีแผนลดรวม 16 แผน ค่าจริงยังเป็น 0 เพราะยังไม่เริ่มบันทึก'],
+ ptr:[{s:'.bs-kpi',n:0,l:'ประมาณการ 17,294.5 kgCO₂e'},{s:'.bs-kpi',n:1,l:'เป้า 13,992.2 kgCO₂e'},{s:'.bs-kpi',n:2,l:'ลดได้ ~19%'},{s:'.bs-row',n:1,in:1,l:'ขอบเขต 2 ไฟฟ้า 51% — จุดลดหลัก'}]},
+{t:15,k:'สรุป 3 เรื่อง แล้วขอสิ่งที่ต้องการให้ชัด',
+ p:['สรุป: 15 โครงการ 896,345 บาท ผูกตัวชี้วัดกรมครบ มี 3 โครงการเรือธงเป็นตัวนำ','ติดตามด้วยระบบ รายงานทุกไตรมาส','สิ่งที่ขอ: สนับสนุนการเบิกจ่ายให้ทันไตรมาส และการประสานกับ คบส.','ปิดด้วยเชิญซักถาม'],ptr:[]}
+];
+
+
+var BRIEF_GW=[
+['ปิดปีงบ 2570 ให้ผ่านเกณฑ์ตัวชี้วัดกรมฯ ครบ 7 ข้อ ด้วยงบ 896,345 บาท','ให้ผู้บริหารเห็นภาพรวมทั้งหมดและตัดสินใจสนับสนุนได้ภายใน 5 นาที'],
+['ใช้งบ 896,345 บาท ให้คุ้มค่า และเบิกจ่ายตามแผนรายไตรมาสจนครบเมื่อสิ้นปี','เงินบำรุงคือ 80% ของงบและต้องเบิกให้ทันปีงบ · งานประจำ (83%) เป็นภารกิจที่ต้องทำทุกปี ส่วนโครงการตามนโยบาย (17%) คือส่วนที่ต้องพิสูจน์ผลงาน'],
+['ทำกิจกรรม OKR 32 รายการให้สำเร็จ และให้ KPI PA 14, 15, 26 ผ่านเกณฑ์','ทุกบาทที่ใช้ต้องอธิบายได้ว่าได้ผลลัพธ์อะไร และติดตามเทียบแผนได้ทุกไตรมาส ไม่ต้องรอปลายปี'],
+['ตช.1 ≥ 50% · ตช.2 ≥ 3 เรื่อง · ตช.3 ≥ 4 กิจกรรม · ตช.4 50 เมนู · ตช.5 IMC 25% · ตช.6 168,406,399 บาท (+46.16%) · ตช.7 ≥ 2 ครั้ง','กรมฯ ใช้เกณฑ์เหล่านี้ประเมินจังหวัด จึงแตกเป็นเป้ารายไตรมาส เพื่อไม่ให้ไปเร่งทำตอนปลายปี'],
+['ทุกตัวชี้วัดมีโครงการรับผิดชอบอย่างน้อย 1 โครงการ และเชื่อมนโยบายกระทรวงได้','กันตัวชี้วัดตกหล่น และแสดงให้เห็นว่างบถูกใช้ตรงกับนโยบายมุ่งเน้นของกระทรวง'],
+['ทำกิจกรรมให้เสร็จตามไตรมาสที่วางไว้','ถ้างานกระจุกปลายปี เสี่ยงเบิกจ่ายไม่ทันและคุณภาพงานตก การกระจายงานทำให้จัดคนได้พอดี'],
+['เบิกจ่ายให้ครบตามแผนรายไตรมาส (ประมาณ 100% เมื่อสิ้นปี)','เห็นล่วงหน้าว่าไตรมาสไหนใช้เงินมาก จะเตรียมเอกสารจัดซื้อจัดจ้างทัน และอธิบายโครงการใหญ่ 70130113 ได้'],
+['รักษาเป้าหมายให้เท่าเดิมหรือสูงขึ้น แม้งบลด 4.9%','เพื่อแสดงว่าลดงบโดยไม่ลดผลงาน การรวมโครงการทำให้งบเฉลี่ยต่อโครงการเพิ่ม 1.4% และลดความซ้ำซ้อน'],
+['IMC 25% (10/15/20/25) · TFGH 50 เมนู (10/15/30/50) · ยาสมุนไพรใน UC เขต 6 = 168.41 ล้านบาท','เป็นตัวชี้วัดที่ส่งผลต่อประชาชนและรายได้ระบบมากที่สุด จึงติดตามใกล้ชิดแม้งบบางโครงการน้อย'],
+['ได้ผลลัพธ์ที่วัดได้ครบ 96 ข้อเมื่อสิ้นปี','เพื่อตอบได้ว่าประชาชนได้อะไรจริง ไม่ใช่รายงานแค่ว่าจัดกิจกรรมกี่ครั้ง'],
+['ไม่ให้ผู้ใดแบกงานเกินกำลัง โดยปรับให้ใกล้ค่าเฉลี่ย 4.0 กิจกรรมต่อคน','งานกระจุกที่ 9 กิจกรรมต่อคนเสี่ยงล่าช้าหรือคุณภาพตก และกระทบเป้าหมายทั้งปี'],
+['โครงการ 70130502 และ 70130503 ได้รับความร่วมมือจาก คบส. ตามแผน','ใช้เครือข่ายและทรัพยากรร่วมกัน ลดงานซ้ำ และขยายผลสู่ชุมชนได้กว้างขึ้น'],
+['ลดการปล่อยจาก 17.29 เหลือ 13.99 tCO2e (ลด 3.30 tCO2e หรือราว 19%)','ตรงกับนโยบายที่ 6 Net Zero ของกระทรวง และไฟฟ้า (ขอบเขต 2) เป็น 51% จึงลดตรงนี้ได้ผลที่สุด'],
+['ได้รับการสนับสนุน 2 เรื่อง: การเบิกจ่ายทันไตรมาส และการประสานกับ คบส.','เป็นสองจุดที่ถ้าติดขัดจะกระทบตัวชี้วัดทั้งปี จึงขอความช่วยเหลือเรื่องนี้เป็นพิเศษ']
+];
+BRIEF_GW.forEach(function(x,i){ if(BRIEF_NOTES[i]){ BRIEF_NOTES[i].g=x[0]; BRIEF_NOTES[i].w=x[1]; } });
+function briefNoteEl(sl,p){
+  var all=sl.querySelectorAll(p.s);
+  if(p.m){ for(var i=0;i<all.length;i++){ if((all[i].textContent||'').indexOf(p.m)>=0) return all[i]; } return null; }
+  return all[p.n||0]||null;
+}
+function briefNoteRender(){
+  var w=document.querySelector('.brief-wrap'); if(!w) return;
+  var on=!!window.__bsNote, single=w.classList.contains('single');
+  var bt=document.getElementById('bsNoteBtn'); if(bt) bt.classList.toggle('off',!on);
+  w.classList.toggle('shownote',on);
+  var old=w.querySelectorAll('.bs-pn'); for(var a=0;a<old.length;a++) old[a].remove();
+  var oc=w.querySelectorAll('.bs-pt'); for(var b=0;b<oc.length;b++){ oc[b].classList.remove('bs-pt','bs-rel'); }
+  var box=w.querySelector('.bs-note');
+  if(!box){ box=document.createElement('div'); box.className='bs-note no-print'; w.appendChild(box); }
+  if(!on||!single){ box.innerHTML=''; return; }
+  var i=window.__bsI||0, sl=w.querySelectorAll('.bslide')[i], n=BRIEF_NOTES[i]; if(!sl||!n){ box.innerHTML=''; return; }
+  var tot=0; for(var k=0;k<BRIEF_NOTES.length;k++) tot+=BRIEF_NOTES[k].t;
+  var h='<div class="nh"><b>'+(i===0?'สไลด์ปก':(i===BRIEF_NOTES.length-1?'สไลด์ปิดท้าย':'สไลด์ '+i))+'</b><span class="nt">⏱ ~'+n.t+' วินาที (รวมทั้งชุด ~'+Math.round(tot/6)/10+' นาที) · กด N เพื่อซ่อน</span></div><div style="font-weight:700;margin:2px 0;">'+n.k+'</div>'+(n.g?'<div class="ngw"><div><b>🎯 เป้าหมาย</b>'+n.g+'</div><div><b>💡 เหตุผล</b>'+n.w+'</div></div>':'')+'<ul>'+n.p.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul>';
+  if(n.ptr&&n.ptr.length){
+    h+='<div class="np"><b>👉 จุดที่ต้องชี้:</b> ';
+    for(var j=0;j<n.ptr.length;j++){
+      var el=briefNoteEl(sl,n.ptr[j]);
+      h+='<span><i>'+(j+1)+'</i>'+n.ptr[j].l+(el?'':' (ไม่พบในสไลด์)')+'</span>';
+      if(el){ el.classList.add('bs-pt'); if(getComputedStyle(el).position==='static') el.classList.add('bs-rel');
+        var m=document.createElement('i'); m.className='bs-pn no-print'+(n.ptr[j].in?' in':''); m.textContent=String(j+1); el.appendChild(m); }
+    }
+    h+='</div>';
+  }
+  if(n.q) h+='<div class="nq">💬 '+n.q+'</div>';
+  box.innerHTML=h; box.scrollTop=0;
+}
+function briefNoteToggle(){
+  window.__bsNote=!window.__bsNote;
+  var w=document.querySelector('.brief-wrap'); if(!w) return;
+  if(window.__bsNote && !w.classList.contains('single')) briefMode(true);
+  briefNoteRender(); briefFit();
+}
 function briefInit(){
   if(window.__bsSingle===undefined) window.__bsSingle=true; if(window.__bsAuto===undefined) window.__bsAuto=true;
   if(!window.__bsHooked){ window.__bsHooked=true; document.addEventListener('keydown',briefKey); document.addEventListener('click',function(e){ var w=document.querySelector('.brief-wrap.single'); if(!w||!w.contains(e.target)) return; if(e.target.closest('.bs-click,.bs-arr,button,.bs-mc,.bs-modal')) return; briefRvNext(w.querySelector('.bslide.on')); }); window.addEventListener('resize',briefFit); document.addEventListener('fullscreenchange',briefFit); }
@@ -6712,7 +6828,7 @@ function briefInit(){
 }
 function briefNavHtml(isExport){
   const dots=[1,2,3,4,5,6,7,8,9,10,11,12,13,14].map(i=>`<button type="button" class="bs-dot" onclick="briefGo(${i-1})">${i}</button>`).join('');
-  return `<div class="bs-nav no-print"><button type="button" class="btn btn-sm" onclick="briefGo((window.__bsI||0)-1)">◀</button><b id="bsLbl" style="min-width:48px;text-align:center;">1 / 14</b><button type="button" class="btn btn-sm" onclick="briefGo((window.__bsI||0)+1)">▶</button><span class="bs-dots">${dots}</span><button type="button" class="btn btn-sm" id="bsModeBtn" onclick="briefMode(!window.__bsSingle)">📜 เลื่อนดูทุกสไลด์</button><button type="button" class="btn btn-sm bs-tg" id="bsRvBtn" onclick="briefRvToggle()">🎬 เปิดทีละช่อง</button><button type="button" class="btn btn-sm bs-tg" id="bsFxBtn" onclick="briefFxToggle('fx')">✨ วิบวับ</button><button type="button" class="btn btn-sm bs-tg" id="bsMcBtn" onclick="briefFxToggle('mc')">🌿 น้องลูกประคบ</button><button type="button" class="btn btn-sm" onclick="briefFull()">⛶ เต็มจอ</button>${isExport?'<button type="button" class="btn btn-sm btn-primary" onclick="window.print()">⬇️ พิมพ์ / บันทึก PDF</button>':''}</div>`;
+  return `<div class="bs-nav no-print"><button type="button" class="btn btn-sm" onclick="briefGo((window.__bsI||0)-1)">◀</button><b id="bsLbl" style="min-width:48px;text-align:center;">1 / 14</b><button type="button" class="btn btn-sm" onclick="briefGo((window.__bsI||0)+1)">▶</button><span class="bs-dots">${dots}</span><button type="button" class="btn btn-sm" id="bsModeBtn" onclick="briefMode(!window.__bsSingle)">📜 เลื่อนดูทุกสไลด์</button><button type="button" class="btn btn-sm bs-tg" id="bsRvBtn" onclick="briefRvToggle()">🎬 เปิดทีละช่อง</button><button type="button" class="btn btn-sm bs-tg" id="bsFxBtn" onclick="briefFxToggle('fx')">✨ วิบวับ</button><button type="button" class="btn btn-sm bs-tg" id="bsMcBtn" onclick="briefFxToggle('mc')">🌿 น้องลูกประคบ</button><button type="button" class="btn btn-sm bs-tg off" id="bsNoteBtn" onclick="briefNoteToggle()">📝 คำบรรยาย</button><button type="button" class="btn btn-sm" onclick="briefFull()">⛶ เต็มจอ</button>${isExport?'<button type="button" class="btn btn-sm btn-primary" onclick="window.print()">⬇️ พิมพ์ / บันทึก PDF</button>':''}</div>`;
 }
 function briefAppendixHtml(list){
   const blocks=list.slice().sort((a,b)=>briefCodeKey(a.projectCode).localeCompare(briefCodeKey(b.projectCode))).filter(p=>briefActN(p)).map(p=>`<div style="break-inside:avoid;margin:0 0 10px;"><div style="font-weight:700;color:#0F5132;border-bottom:1px solid #DCEAE2;">${briefPName(p)} · ${money(p.budgetAmount)} บาท</div>${briefOkrCompact(p.projectCode)}</div>`).join('');
@@ -6723,9 +6839,9 @@ function briefExportHTML(){
   const styles=[...document.querySelectorAll('style')].map(s=>s.outerHTML).join('\n');
   const links=[...document.querySelectorAll('link[rel=stylesheet],link[rel=preconnect]')].map(l=>l.outerHTML).join('\n');
   const apx=[...document.querySelectorAll('.bapx')].map(a=>a.outerHTML).join('');
-  const rt=[briefDetail,briefDetailClose,briefFit,briefGo,briefMode,briefFull,briefKey,briefRvTargets,briefRvClear,briefRvShowAll,briefRvNext,briefRvStart,briefRvToggle,briefFxInit,briefFxToggle,briefMascotSay,briefInit].map(f=>f.toString()).join('\n');
+  const rt=[briefDetail,briefDetailClose,briefFit,briefGo,briefMode,briefFull,briefKey,briefRvTargets,briefRvClear,briefRvShowAll,briefRvNext,briefRvStart,briefRvToggle,briefFxInit,briefFxToggle,briefMascotSay,briefNoteEl,briefNoteRender,briefNoteToggle,briefInit].map(f=>f.toString()).join('\n');
   const clone=wrap.cloneNode(true); clone.querySelectorAll('img').forEach(i=>i.remove());
-  const html=`<!DOCTYPE html>\n<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>สรุปแผนงานโครงการ ${BRIEF_GROUP} ปีงบประมาณ ${DB.currentYear}</title>\n${links}\n${styles}\n<style>body{padding:14px;} .bs-nav{margin-bottom:10px;justify-content:center;}</style></head><body class="bs-export">${briefNavHtml(true)}${clone.outerHTML}${apx}<script>${rt}\nbriefInit();<\/script></body></html>`;
+  const html=`<!DOCTYPE html>\n<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>สรุปแผนงานโครงการ ${BRIEF_GROUP} ปีงบประมาณ ${DB.currentYear}</title>\n${links}\n${styles}\n<style>body{padding:14px;} .bs-nav{margin-bottom:10px;justify-content:center;}</style></head><body class="bs-export">${briefNavHtml(true)}${clone.outerHTML}${apx}<script>const BRIEF_NOTES=${JSON.stringify(BRIEF_NOTES)};\n${rt}\nbriefInit();<\/script></body></html>`;
   const blob=new Blob([html],{type:'text/html;charset=utf-8'}); const a=document.createElement('a');
   a.href=URL.createObjectURL(blob); a.download=`สรุปแผนงานโครงการ_ปีงบ${DB.currentYear}_interactive.html`; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
   showToast('ส่งออกไฟล์ HTML แบบอินเตอร์แอคทีฟแล้ว');
