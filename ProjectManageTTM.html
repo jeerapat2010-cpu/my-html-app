@@ -404,7 +404,7 @@ body.viewer #btnQuickAddProject, body.viewer [onclick*="Form("], body.viewer [on
    ========================================================================= */
 
 const STORAGE_KEY = 'thaimed_ops_v1';
-const APP_VERSION = 'v3.43';
+const APP_VERSION = 'v3.44';
 const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const FY_MONTHS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
 const STATUS_LIST = [
@@ -769,7 +769,7 @@ function loadDB(){
   }
   window.__autoOKRCount = ensureOKRData();
   ensureKpiSeed();
-  ensureKpi70(); ensureOkrKpi70();
+  ensureKpi70(); ensureOkrKpi70(); ensureDisbPatches();
   window.__autoCarbonCount = ensureCarbonData();
   window.__autoCoOwnerCount = backfillCoOwners();
   purgeOldTrash();
@@ -4322,7 +4322,7 @@ function handleImportJSON(e){
       const data=JSON.parse(reader.result);
       if(!data.projects || !data.personnel){ showToast('ไฟล์ไม่ถูกต้อง'); return; }
       if(confirm('นำเข้าข้อมูลนี้จะแทนที่ข้อมูลปัจจุบันทั้งหมด ยืนยันหรือไม่?')){
-        DB=data; ensureOKRData(); ensureCarbonData(); ensureKpiSeed(); ensureKpi70(); ensureOkrKpi70(); saveDB(); render(); showToast('นำเข้าข้อมูลเรียบร้อย');
+        DB=data; ensureOKRData(); ensureCarbonData(); ensureKpiSeed(); ensureKpi70(); ensureOkrKpi70(); ensureDisbPatches(); saveDB(); render(); showToast('นำเข้าข้อมูลเรียบร้อย');
       }
     }catch(err){ showToast('อ่านไฟล์ไม่สำเร็จ: ไฟล์ไม่ใช่ JSON ที่ถูกต้อง'); }
   };
@@ -5704,6 +5704,22 @@ function ensureOkrKpi70(){
   o.kpi70=true;
   if(!DB.auditLog) DB.auditLog=[]; DB.auditLog.unshift({id:uid('log'),action:'ปรับ OKR ตามตัวชี้วัดปี 70 อัตโนมัติ',detail:'แก้ข้อความ KR/เป้าหมายให้ตรงเกณฑ์นายทะเบียนจังหวัด ปี 2570 ('+n+' จุด): IMC 25% · TFGH 50 เมนู · ยา UC เป้าเขต 6 · เลขตัวชี้วัดที่ 7/7 ตัว',actor:'ระบบ (อัตโนมัติ)',at:new Date().toISOString()});
   saveDB(); return n;
+}
+/* บันทึกยอดเบิกจ่ายที่แจ้งมา (ครั้งเดียว ไม่ทับค่าที่กรอกเองแล้ว) */
+const DISB_PATCHES = [
+  {id:'d1',code:'70130504',year:2570,src:'01',amount:10200,note:'1.1 ประชุมชี้แจงนโยบาย รวมพิธีถวายราชสักการะวันภูมิปัญญาฯ (เงินบำรุง)'}
+];
+function ensureDisbPatches(){
+  if(!DB.disbPatchDone) DB.disbPatchDone=[]; let n=0;
+  DISB_PATCHES.forEach(d=>{
+    if(DB.disbPatchDone.includes(d.id)) return;
+    const p=DB.projects.find(x=>x.year===d.year&&x.projectCode===d.code); if(!p) return;
+    const m=ensureDisbBySource(p);
+    if(!(Number(m[d.src])>0)){ m[d.src]=d.amount; n++;
+      if(!DB.auditLog) DB.auditLog=[]; DB.auditLog.unshift({id:uid('log'),action:'บันทึกยอดเบิกจ่ายอัตโนมัติ',detail:d.code+' · '+d.note+' · '+d.amount.toLocaleString('en-US')+' บาท',actor:'ระบบ (อัตโนมัติ)',at:new Date().toISOString()}); }
+    DB.disbPatchDone.push(d.id);
+  });
+  if(n) saveDB(); return n;
 }
 function ensureKpiSeed(){
   if(!Array.isArray(DB.kpis)) DB.kpis=[];
