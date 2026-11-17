@@ -3509,5 +3509,189 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 </script>
 
-</body>
+<style id="noCommonCss">[data-tab="cannabis"],#tab-cannabis,[onclick*="showTab('cannabis')"],#tab-common > :not(.opdpa),#commonDiseaseChart,#commonCompare,#commonSwot,[class*="card"]:has(#commonDiseaseChart):not(:has(canvas:not(#commonDiseaseChart))),*:has(> #commonDiseaseChart){display:none!important}</style><script>window.__OPDPA={"fy": "2569", "asOf": "ปีงบประมาณ 2569 ทั้งปี (HDC)", "dk": "บางเสาธง", "country": {"b": 164306699.0, "a": 35131762.0}, "region": {"b": 14437520.0, "a": 2739106.0}, "prov": {"b": 2300305.0, "a": 506764.0}, "dists": [{"name": "เมืองสมุทรปราการ", "b": 1114447.0, "a": 239363.0, "prev": null}, {"name": "บางบ่อ", "b": 318216.0, "a": 62919.0, "prev": null}, {"name": "บางพลี", "b": 385481.0, "a": 62841.0, "prev": null}, {"name": "พระประแดง", "b": 240082.0, "a": 77776.0, "prev": null}, {"name": "พระสมุทรเจดีย์", "b": 157837.0, "a": 42827.0, "prev": null}, {"name": "บางเสาธง", "b": 84242.0, "a": 21038.0, "prev": null}], "units": [{"code": "00987", "name": "รพ.สต.เมืองใหม่บางพลี", "b": 5261.0, "a": 2301.0, "prev": null}, {"code": "00988", "name": "รพ.สต.เสาธงกลาง ตำบลบางเสาธง", "b": 1955.0, "a": 1588.0, "prev": null}, {"code": "00989", "name": "รพ.สต.บางเสาธง", "b": 0.0, "a": 0.0, "prev": null}, {"code": "00990", "name": "รพ.สต.ศรีษะจระเข้น้อย", "b": 4371.0, "a": 2573.0, "prev": null}, {"code": "00991", "name": "รพ.สต.ศีรษะจรเข้ใหญ่", "b": 1007.0, "a": 591.0, "prev": null}, {"code": "00992", "name": "รพ.สต.วัดศรีวารีน้อย ตำบลศีรษะจรเข้ใหญ่", "b": 4844.0, "a": 2938.0, "prev": null}, {"code": "24411", "name": "รพ.สต.เจริญราษฎร์", "b": 4830.0, "a": 1944.0, "prev": null}, {"code": "24412", "name": "รพ.สต.กัลปพฤกษ์ ตำบลบางเสาธง", "b": 2261.0, "a": 1387.0, "prev": null}, {"code": "28785", "name": "รพ.บางเสาธง", "b": 59713.0, "a": 7716.0, "prev": null}]};</script><script id="opdpa">(function(){
+/* ตัวชี้วัด PA สป. ปี 2570: ร้อยละผู้ป่วยนอกได้รับบริการแพทย์แผนไทยฯ (รวมแผนจีน) — แทรกในหน้า คปสอ. แทนแท็บ Common
+   ข้อมูลมาจาก window.__OPDPA = {fy, asOf, dk, country:{b,a}, region:{b,a}, prov:{b,a}, dists:[{name,b,a,prev}], units:[{code,name,b,a,prev}]} */
+var X=window.__OPDPA; if(!X) return;
+var PA={hosp:{pass:15,bands:[9,11,13,15],label:'รพ.'},pcu:{pass:50,bands:[35,40,45,50],label:'สสอ.'}};
+function pc(a,b){ return b>0? a/b*100 : null; }
+function P(v){ return v==null||!isFinite(v)?'–':Number(v).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})+'%'; }
+function N(v){ return v==null||!isFinite(v)?'–':Math.round(v).toLocaleString('th-TH'); }
+function E(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function short(s){ return String(s||'').replace(/^\d{5}\s*:\s*/,'').replace('โรงพยาบาลส่งเสริมสุขภาพตำบล','รพ.สต.').replace('สถานีอนามัยเฉลิมพระเกียรติ 60 พรรษา นวมินทราชินี','สอน.').replace('ศูนย์สุขภาพชุมชน','ศสช.').replace('โรงพยาบาล','รพ.').trim(); }
+function type(n){ if(/^(รพ\.สต\.|สอน\.|สถานีอนามัย|รพ\.ส่งเสริมสุขภาพ)/.test(n)) return 'pcu'; if(/^(ศสช|ศูนย์แพทย์|ศูนย์สุขภาพ)/.test(n)) return 'cmu'; if(/^รพ\./.test(n)) return 'hosp'; return 'pcu'; }
+function score(p,l){ if(p==null) return null; var b=PA[l].bands; return p<b[0]?1:p<b[1]?2:p<b[2]?3:p<b[3]?4:5; }
+function dots(s){ if(s==null) return '<span class="opx-muted">–</span>'; var h=''; for(var i=1;i<=5;i++) h+='<i class="opx-dot'+(i<=s?' on':'')+'"></i>'; return '<span class="opx-score s'+s+'">'+h+'<b>'+s+'</b></span>'; }
+var U=(X.units||[]).map(function(u){ var n=short(u.name), t=type(n), p=pc(u.a,u.b); return {code:u.code,name:n,t:t,b:+u.b||0,a:+u.a||0,p:p,prev:u.prev,s:t==='cmu'?null:score(p,t)}; });
+var H=U.filter(function(u){return u.t==='hosp';}), C=U.filter(function(u){return u.t==='pcu';});
+function sum(L,k){ return L.reduce(function(s,u){return s+(u[k]||0);},0); }
+var hb=sum(H,'b'), ha=sum(H,'a'), hp=pc(ha,hb), cb=sum(C,'b'), ca=sum(C,'a'), cp=pc(ca,cb);
+var dRow=(X.dists||[]).find(function(d){return d.name===X.dk;})||{b:sum(U,'b'),a:sum(U,'a')};
+var dp=pc(dRow.a,dRow.b), pp=X.prov?pc(X.prov.a,X.prov.b):null, rp=X.region?pc(X.region.a,X.region.b):null, np=X.country?pc(X.country.a,X.country.b):null;
+var hS=score(hp,'hosp'), cS=score(cp,'pcu');
+var rankL=(X.dists||[]).map(function(d){return {name:d.name,p:pc(d.a,d.b)};}).filter(function(d){return d.p!=null;}).sort(function(a,b){return b.p-a.p;});
+var rank=rankL.findIndex(function(d){return d.name===X.dk;})+1;
+var lbl='คปสอ.'+(X.dk==='เมืองสมุทรปราการ'?'เมืองสมุทรปราการ':X.dk);
+var TITLE='ตัวชี้วัด PA สป. ปี 2570 ร้อยละผู้ป่วยนอกได้รับบริการด้วยการแพทย์แผนไทยและการแพทย์ทางเลือก (รวมแผนจีน)'+(String(X.fy)!=='2570'?' — ข้อมูลปีงบ '+X.fy:'');
+var src='HDC: ร้อยละของผู้ป่วยนอกได้รับบริการการแพทย์แผนไทยและการแพทย์ทางเลือก [นับรวมแผนจีน U78x–U79x ไม่นับ U77x] • ปีงบประมาณ '+E(X.fy)+' • ข้อมูล ณ '+E(X.asOf);
+function need(a,b,t){ return b>0? Math.max(0,Math.ceil(b*t/100-a)) : null; }
+function block(cls,ic,lab,val,unit,sub,st){ if(typeof window.infoBlock==='function'&&typeof window.renderInfographic==='function'){ try{ return window.infoBlock(cls,ic,lab,val,unit,sub,st); }catch(e){} }
+  return '<div class="opx-ib opx-b-'+cls+'"'+(st?' style="'+st+'"':'')+'><div class="opx-ic">'+ic+'</div><div class="opx-lab">'+lab+'</div><div class="opx-val">'+val+'</div><div class="opx-unit">'+(unit||'')+'</div><div class="opx-sub">'+(sub||'')+'</div></div>'; }
+function flow(){ var B=[block('crit','🎯','เกณฑ์ PA (รพ. / สสอ.)','15 / 50','ร้อยละ','คะแนนเต็ม 5'),block('nat','🇹🇭','ประเทศ',P(np),'',''),block('zon','🗺️','เขต 6',P(rp),'',''),block('prov','🏙️','จ.สมุทรปราการ',P(pp),'',''),block('dist','📍',lbl,P(dp),'',rank?('อันดับ '+rank+'/'+rankL.length+' ของจังหวัด'):'','background:linear-gradient(135deg,#0f766e,#14b8a6);')];
+  if(typeof window.renderInfographic==='function'){ try{ return window.renderInfographic('📊 '+TITLE,B); }catch(e){} }
+  return '<div class="chart-card opx-card"><h3>📊 '+TITLE+'</h3><div class="opx-flow">'+B.join('<div class="opx-arrow">→</div>')+'</div></div>'; }
+function paCards(){ var hTxt=H.length?H.map(function(u){return E(u.name)+' '+P(u.p);}).join(' • '):'ไม่มี รพ. ในข้อมูล';
+  return '<div class="opx-pa">'+
+   '<div class="opx-pc '+(hp!=null&&hp>=15?'ok':'bad')+'"><div class="opx-pt">🏥 ระดับ รพ. (เกณฑ์ ≥15%)</div><div class="opx-pv">'+P(hp)+'</div><div>'+dots(hS)+'</div><div class="opx-ps">'+hTxt+'<br>แผนไทย '+N(ha)+' / OPD '+N(hb)+' ครั้ง'+(hp!=null&&hp<15?' • ต้องเพิ่มอีก ~'+N(need(ha,hb,15))+' ครั้ง':'')+'</div></div>'+
+   '<div class="opx-pc '+(cp!=null&&cp>=50?'ok':'bad')+'"><div class="opx-pt">🏡 ระดับ สสอ. รวม รพ.สต. (เกณฑ์ ≥50%)</div><div class="opx-pv">'+P(cp)+'</div><div>'+dots(cS)+'</div><div class="opx-ps">'+C.length+' หน่วย • ผ่าน 50% '+C.filter(function(u){return u.p!=null&&u.p>=50;}).length+' หน่วย<br>แผนไทย '+N(ca)+' / OPD '+N(cb)+' ครั้ง'+(cp!=null&&cp<50?' • ต้องเพิ่มอีก ~'+N(need(ca,cb,50))+' ครั้ง':'')+'</div></div>'+
+   '<div class="opx-pc"><div class="opx-pt">📍 '+E(lbl)+' (รวมทุกหน่วย)</div><div class="opx-pv">'+P(dp)+'</div><div class="opx-ps">แผนไทย '+N(dRow.a)+' / OPD '+N(dRow.b)+' ครั้ง'+(dRow.prev!=null?'<br>ปีงบก่อน '+P(dRow.prev):'')+'<br>จังหวัด '+P(pp)+(rank?' • อันดับ '+rank+'/'+rankL.length:'')+'</div></div></div>'; }
+function insights(){ var L=[]; var lowC=C.filter(function(u){return u.p!=null&&u.p<35;}).sort(function(a,b){return a.p-b.p;}); var top=U.filter(function(u){return u.p!=null&&u.t!=='hosp';}).sort(function(a,b){return b.p-a.p;}).slice(0,3);
+  L.push('ภาพรวม '+E(lbl)+' '+P(dp)+(pp!=null?(dp>=pp?' สูงกว่า':' ต่ำกว่า')+'ค่าจังหวัด ('+P(pp)+')':'')+(rank?' อยู่อันดับ '+rank+' จาก '+rankL.length+' อำเภอ':''));
+  if(H.length) L.push('ระดับ รพ. '+P(hp)+(hp>=15?' ผ่านเกณฑ์ PA 15% ได้ '+hS+' คะแนน — รักษาระดับและกระจายบริการไปคลินิก OPD ทั่วไป':' ยังไม่ผ่านเกณฑ์ 15% ('+hS+' คะแนน) ต้องเพิ่มบริการแผนไทยอีกประมาณ '+N(need(ha,hb,15))+' ครั้ง เช่น ส่งต่อผู้ป่วย OPD กลุ่มปวดกล้ามเนื้อ/ทางเดินหายใจ/ระบบย่อยอาหารมารับยาสมุนไพรหรือหัตถการ'));
+  if(C.length) L.push('ระดับ สสอ. (รวม รพ.สต.) '+P(cp)+(cp>=50?' ผ่านเกณฑ์ 50% ได้ '+cS+' คะแนน':' ยังไม่ผ่านเกณฑ์ 50% ('+cS+' คะแนน) ต้องเพิ่มอีกประมาณ '+N(need(ca,cb,50))+' ครั้ง'));
+  if(lowC.length) L.push('หน่วยที่ต่ำกว่า 35% (1 คะแนน) ควรติดตามก่อน: '+lowC.slice(0,6).map(function(u){return E(u.name)+' '+P(u.p);}).join(', ')+(lowC.length>6?' และอีก '+(lowC.length-6)+' หน่วย':''));
+  if(top.length) L.push('หน่วยต้นแบบ: '+top.map(function(u){return E(u.name)+' '+P(u.p);}).join(', ')+' — ใช้เป็นพี่เลี้ยงการบันทึกรหัส U78x–U79x และการสั่งใช้ยาสมุนไพร');
+  L.push('ข้อสังเกตข้อมูล: ตัวชี้วัดนับรวมแผนจีน (U78x–U79x) แต่ไม่นับ U77x — ตรวจสอบการบันทึกรหัสบริการให้ครบก่อนตัดข้อมูลรายไตรมาส');
+  return '<ul class="opx-ul">'+L.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul>'; }
+function distTable(){ if(!rankL.length) return ''; var mx=Math.max.apply(null,rankL.map(function(d){return d.p;}).concat([50]));
+  return '<div class="chart-card opx-card"><h3>📊 เปรียบเทียบ 6 อำเภอ (ร้อยละผู้ป่วยนอกได้รับบริการแผนไทยฯ)</h3>'+rankL.map(function(d,i){ var me=d.name===X.dk; return '<div class="opx-bar'+(me?' me':'')+'"><span class="opx-bn">'+(i+1)+'. '+E(d.name)+'</span><span class="opx-bt"><i style="width:'+Math.max(2,d.p/mx*100)+'%"></i></span><b>'+P(d.p)+'</b></div>'; }).join('')+'</div>'; }
+function unitTable(){ if(!U.length) return '<div class="chart-card opx-card"><h3>รายหน่วยบริการ</h3><p class="opx-muted">ยังไม่มีข้อมูลรายหน่วยบริการ</p></div>';
+  var S=U.slice().sort(function(a,b){ return (a.t==='hosp'?0:1)-(b.t==='hosp'?0:1) || (b.p||-1)-(a.p||-1); }); var hasPrev=S.some(function(u){return u.prev!=null;});
+  return '<div class="chart-card opx-card"><h3>🏥 รายหน่วยบริการ '+E(lbl)+' ('+U.length+' หน่วย) — คะแนน PA: รพ. 9/11/13/15% • รพ.สต. 35/40/45/50%</h3><div class="opx-tw"><table class="data-table opx-t"><thead><tr><th>#</th><th>หน่วยบริการ</th><th>ประเภท</th><th>OPD (ครั้ง)</th><th>แผนไทยฯ (ครั้ง)</th><th>ร้อยละ</th>'+(hasPrev?'<th>ปีงบก่อน</th>':'')+'<th>คะแนน PA</th></tr></thead><tbody>'+
+   S.map(function(u,i){ var tg=u.t==='hosp'?'<span class="opx-tag h">รพ.</span>':u.t==='cmu'?'<span class="opx-tag c">ศสช.</span>':'<span class="opx-tag p">รพ.สต.</span>'; var cr=u.t==='hosp'?15:50; var cl=u.p==null?'':u.p>=cr?'opx-ok':u.p>=cr*0.8?'opx-warn':'opx-bad';
+     return '<tr><td>'+(i+1)+'</td><td style="text-align:left">'+E(u.name)+' <span class="opx-muted">('+E(u.code)+')</span></td><td>'+tg+'</td><td>'+N(u.b)+'</td><td>'+N(u.a)+'</td><td class="'+cl+'"><b>'+P(u.p)+'</b></td>'+(hasPrev?'<td>'+P(u.prev)+'</td>':'')+'<td>'+(u.t==='cmu'?'<span class="opx-muted">ไม่คิดคะแนน</span>':dots(u.s))+'</td></tr>'; }).join('')+
+   '<tr class="opx-tot"><td></td><td style="text-align:left">รวม '+E(lbl)+'</td><td></td><td>'+N(dRow.b)+'</td><td>'+N(dRow.a)+'</td><td><b>'+P(dp)+'</b></td>'+(hasPrev?'<td>'+P(dRow.prev)+'</td>':'')+'<td></td></tr></tbody></table></div></div>'; }
+var CSS='.opdpa{font-family:inherit}.opdpa .opx-head{background:linear-gradient(135deg,#0f766e,#0891b2);color:#fff;border-radius:16px;padding:18px 20px;margin-bottom:16px;display:flex;gap:16px;justify-content:space-between;align-items:center;flex-wrap:wrap}.opdpa .opx-head h2{margin:0 0 4px;font-size:1.15rem;color:#fff}.opdpa .opx-head p{margin:0;opacity:.9;font-size:.82rem}.opdpa .opx-crit{background:rgba(255,255,255,.18);border-radius:12px;padding:8px 14px;text-align:center;font-weight:700}.opdpa .opx-crit small{display:block;font-weight:400;font-size:.72rem}'+
+ '.opdpa .opx-card{margin-bottom:16px}.opx-flow{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap}.opx-ib{flex:1 1 140px;border-radius:14px;padding:12px;color:#fff;background:linear-gradient(135deg,#334155,#64748b);text-align:center}.opx-ib.opx-b-nat{background:linear-gradient(135deg,#1d4ed8,#60a5fa)}.opx-ib.opx-b-zon{background:linear-gradient(135deg,#7e22ce,#c084fc)}.opx-ib.opx-b-prov{background:linear-gradient(135deg,#15803d,#4ade80)}.opx-ic{font-size:1.4rem}.opx-lab{font-size:.75rem;opacity:.9}.opx-val{font-size:1.35rem;font-weight:800}.opx-unit,.opx-sub{font-size:.72rem;opacity:.9}.opx-arrow{align-self:center;color:#94a3b8}'+
+ '.opdpa .opx-pa{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:16px}.opx-pc{background:#fff;border:1px solid #e2e8f0;border-left:6px solid #0891b2;border-radius:14px;padding:14px}.opx-pc.ok{border-left-color:#16a34a}.opx-pc.bad{border-left-color:#dc2626}.opx-pt{font-weight:700;font-size:.9rem}.opx-pv{font-size:1.7rem;font-weight:800;margin:4px 0}.opx-pc.ok .opx-pv{color:#15803d}.opx-pc.bad .opx-pv{color:#b91c1c}.opx-ps{font-size:.78rem;color:#475569;margin-top:6px;line-height:1.5}'+
+ '.opx-score{display:inline-flex;align-items:center;gap:3px}.opx-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#e2e8f0}.opx-score.s5 .opx-dot.on{background:#16a34a}.opx-score.s4 .opx-dot.on,.opx-score.s3 .opx-dot.on{background:#f59e0b}.opx-score.s2 .opx-dot.on,.opx-score.s1 .opx-dot.on{background:#ef4444}.opx-score b{margin-left:4px}'+
+ '.opx-bar{display:flex;align-items:center;gap:10px;margin:6px 0;font-size:.85rem}.opx-bar.me{font-weight:800}.opx-bn{flex:0 0 190px}.opx-bt{flex:1;height:14px;background:#f1f5f9;border-radius:99px;overflow:hidden}.opx-bt i{display:block;height:100%;background:linear-gradient(90deg,#0891b2,#14b8a6);border-radius:99px}.opx-bar.me .opx-bt i{background:linear-gradient(90deg,#ea580c,#f59e0b)}'+
+ '.opx-tw{overflow-x:auto;max-height:640px}.opx-t td,.opx-t th{white-space:nowrap}.opx-tot td{font-weight:800;background:#f8fafc}.opx-tag{font-size:.7rem;border-radius:6px;padding:1px 6px}.opx-tag.h{background:#fef3c7;color:#92400e}.opx-tag.p{background:#ccfbf1;color:#115e59}.opx-tag.c{background:#f1f5f9;color:#475569}.opx-ok{color:#15803d}.opx-warn{color:#b45309}.opx-bad{color:#b91c1c}.opx-muted{color:#94a3b8;font-size:.75rem}.opx-ul{margin:0;padding-left:20px;line-height:1.7;font-size:.88rem}.opx-ul li{margin:4px 0}'+
+ '@media(max-width:640px){.opx-bn{flex-basis:120px}}';
+function full(){ return '<div class="opx-head"><div><h2>🏥 '+TITLE+'</h2><p>'+src+'</p></div><div class="opx-crit">รพ. ≥15% • สสอ. ≥50%<small>เกณฑ์ PA สสจ.สมุทรปราการ ปีงบ 2570</small></div></div>'+flow()+paCards()+
+  '<div class="chart-card opx-card"><h3>🔎 บทวิเคราะห์เชิงบริหาร</h3>'+insights()+'</div>'+distTable()+unitTable(); }
+function summary(){ return flow()+paCards(); }
+function mount(){
+  if(!document.getElementById('opdpaCss')){ var st=document.createElement('style'); st.id='opdpaCss'; st.textContent=CSS; document.head.appendChild(st); }
+  document.querySelectorAll('[data-tab="common"],[onclick*="showTab(\'common\')"],[onclick*="ShowTab(\'common\')"]').forEach(function(b){ if(b.dataset.opd) return; var dot=b.querySelector('.nav-dot'); b.textContent=''; if(dot) b.appendChild(dot); b.appendChild(document.createTextNode(' 🏥 PA ผู้ป่วยนอกแผนไทย')); b.dataset.opd='1'; b.dataset.noc='1'; b.style.removeProperty('display'); });
+  var tab=document.getElementById('tab-common');
+  if(tab&&!tab.querySelector(':scope > .opdpa')){ var d=document.createElement('div'); d.className='opdpa'; d.innerHTML=full(); tab.insertBefore(d,tab.firstChild); }
+  var ov=document.getElementById('overviewInfographics')||document.getElementById('tab-overview');
+  if(ov&&!ov.querySelector('.opdpa')){ var s=document.createElement('div'); s.className='opdpa'; s.innerHTML=summary();
+    var first=ov.id==='overviewInfographics'? ov.firstElementChild : [].find.call(ov.children,function(c){ return /chart-card|card|section|kpi/.test(c.className||'')&&/ปฐมภูมิ|KPI\s*14|ตชว\.?\s*14/.test(c.textContent||''); });
+    if(first&&first.nextSibling) ov.insertBefore(s,first.nextSibling); else if(ov.id==='overviewInfographics') ov.appendChild(s); else { var t=ov.querySelector('.sec-title,h2'); if(t&&t.parentElement===ov) ov.insertBefore(s,t.nextSibling); else ov.insertBefore(s,ov.firstChild); } }
+}
+var busy=false; function run(){ if(busy) return; busy=true; try{ mount(); }catch(e){ console.warn('opdpa',e); } busy=false; }
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ run(); setTimeout(run,300); }); else run();
+window.addEventListener('load',function(){ run(); setTimeout(run,600); setTimeout(run,1500); });
+var t=null; new MutationObserver(function(){ if(busy) return; clearTimeout(t); t=setTimeout(run,80); }).observe(document.documentElement,{childList:true,subtree:true});
+})();
+</script><script id="noCommon">(function(){
+var RE=/common\s*dis|common|ตัวชี้วัด\s*15|ตชว\.?\s*15|KPI\s*15|กัญชา|cannabis|\bCMD\b/i;
+var CARD=/card|kpi|stat|tile|box|metric|badge-card|summary-item|mini/i;
+var TOK=/Common(?:\s*Diseases?)?(?:\s*(?:and|&)\s*Symptoms)?|กัญชา(?:ทางการแพทย์)?(?:\s*(?:PC|Growth))?/i;
+function strip(t){ if(!TOK.test(t)) return t; var pos=t.search(TOK), urg=t.search(/ต้องเร่ง|ควรเร่ง|เร่ง/), passed=urg<0||pos<urg;
+  var K='(?:Common(?:\\s*Diseases?)?(?:\\s*(?:and|&)\\s*Symptoms)?|กัญชา(?:ทางการแพทย์)?(?:\\s*(?:PC|Growth))?)';
+  var o=t.replace(new RegExp('\\s*[,/]\\s*'+K+'(?=[\\s,/)]|$)','gi'),'').replace(new RegExp(K+'\\s*[,/]\\s*','gi'),'').replace(new RegExp('\\s*และ\\s*'+K,'gi'),'').replace(new RegExp(K+'\\s*และ\\s*','gi'),'');
+  if(o===t) o=t.replace(/\s*,\s*Common(?:\s*Diseases?)?(?:\s*(?:and|&)\s*Symptoms)?(?=[\s,)]|$)/gi,'').replace(/Common(?:\s*Diseases?)?(?:\s*(?:and|&)\s*Symptoms)?\s*,\s*/gi,'').replace(/\s*(?:และ|\/)\s*Common(?:\s*Diseases?)?/gi,'').replace(/Common(?:\s*Diseases?)?\s*(?:และ|\/)\s*/gi,'');
+  if(o===t&&/^(?:[^<]{0,40})(?:ควร)?เร่ง/.test(t)) o=t.replace(new RegExp('\\s*'+K+'\\s*','gi'),' ').replace(/\s{2,}/g,' ');
+  if(o!==t){ o=o.replace(/(ประเมิน(?:ได้)?\s*)(\d+)\/(\d+)(\s*KPI)/,function(m,a,x,y,b){ return a+Math.max(0,x-(passed&&/ผ่าน/.test(t)?1:0))+'/'+(y-1)+b; }).replace(/(ประเมิน\s*)(\d+)(\s*KPI)/,function(m,a,x,b){ return a+(x-1)+b; }); }
+  return o; }
+function hide(e){ if(e&&e.style){ e.style.setProperty('display','none','important'); if(e.parentElement) e.parentElement.dataset.nocTouched='1'; } }
+function hideUp(e){ var a=e, L=(e.textContent||'').length;
+  while(a.parentElement&&a.parentElement!==document.body&&!/^(MAIN|SECTION|TBODY|TABLE|UL|OL)$/.test(a.parentElement.tagName)&&!/tab-content|tab-pane/.test(a.parentElement.className||'')){
+    var p=a.parentElement, pl=(p.textContent||'').length; if(pl>L+140||p.querySelectorAll('canvas').length>(a.querySelectorAll?a.querySelectorAll('canvas').length:0)) break;
+    var sib=[].filter.call(p.children,function(c){ return c!==a&&c.offsetParent!==null&&(c.textContent||'').trim().length>40; }); if(sib.length) break; a=p; }
+  hide(a); }
+var DONE=new WeakSet();
+function counts(){ var w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT), n; while(n=w.nextNode()){ if(DONE.has(n)) continue; DONE.add(n); var v=n.nodeValue; if(!/KPI|ตัวชี้วัด/.test(v)||/SCRIPT|STYLE/.test(n.parentElement&&n.parentElement.tagName)) continue;
+  var o=v.replace(/(^|[^\d\/.])4(\s*KPI)(?!\s*\d)/g,'$13$2').replace(/(^|[^\d\/.])4(\s*ตัวชี้วัดหลัก)/g,'$13$2').replace(/UC\s*\+\s*3\s*KPI/g,'UC + 2 KPI'); if(o!==v) n.nodeValue=o; } }
+function width(r){ var w=0; for(var i=0;i<r.cells.length;i++) w+=r.cells[i].colSpan||1; return w; }
+function grid(rows){ var G=[]; for(var ri=0;ri<rows.length;ri++){ var r=rows[ri]; G[ri]=G[ri]||[]; var c=0;
+  for(var ci=0;ci<r.cells.length;ci++){ var cell=r.cells[ci]; while(G[ri][c]) c++; var cs=cell.colSpan||1, rs=cell.rowSpan||1;
+    for(var y=0;y<rs;y++){ G[ri+y]=G[ri+y]||[]; for(var x=0;x<cs;x++) G[ri+y][c+x]=cell; } c+=cs; } } return G; }
+function cutRow(r,idx){ // idx: sorted column indexes to remove (in the row's own grid)
+  var c=0, kill=[]; for(var ci=0;ci<r.cells.length;ci++){ var cell=r.cells[ci], cs=cell.colSpan||1, n=0;
+    for(var x=0;x<cs;x++) if(idx.indexOf(c+x)>=0) n++;
+    if(n>=cs) kill.push(cell); else if(n) cell.colSpan=cs-n; c+=cs; }
+  kill.forEach(function(k){ k.remove(); }); }
+function tables(){
+  document.querySelectorAll('table').forEach(function(tb){ if(tb.closest('.opdpa')) return;
+    var rows=[].slice.call(tb.rows); if(!rows.length) return;
+    if(!tb.dataset.nocDone){
+      var head=[]; for(var i=0;i<rows.length;i++){ var r=rows[i]; if(r.parentNode.tagName==='THEAD'||(r.cells.length&&[].every.call(r.cells,function(c){return c.tagName==='TH';}))) head.push(r); else break; }
+      var W=head.length?width(head[0]):0, G=grid(head), idx=[];
+      for(var col=0;col<W;col++){ for(var y=0;y<G.length;y++){ var c=G[y]&&G[y][col]; if(c&&RE.test(c.textContent)&&!(c.colSpan>=W)){ idx.push(col); break; } } }
+      if(idx.length && idx.length<W && !(idx.indexOf(0)>=0)){
+        // ตัดเฉพาะคอลัมน์ Common (หัวตารางใช้ grid ของหัว, แถวข้อมูลใช้ตำแหน่งเดียวกัน)
+        var hdrCells=[]; idx.forEach(function(col){ for(var y=0;y<G.length;y++){ var c=G[y][col]; if(c&&hdrCells.indexOf(c)<0) hdrCells.push(c);} });
+        hdrCells.forEach(function(c){ var n=0; idx.forEach(function(col){ for(var y=0;y<G.length;y++){ if(G[y][col]===c){ n++; break; } } }); if(n>=(c.colSpan||1)) c.remove(); else c.colSpan=(c.colSpan||1)-n; });
+        tb.dataset.nocIdx=idx.join(','); tb.dataset.nocW=W;
+      }
+      if(head.length) tb.dataset.nocDone='1';
+    }
+    var I=(tb.dataset.nocIdx||'').split(',').filter(Boolean).map(Number), W0=Number(tb.dataset.nocW||0);
+    [].forEach.call(tb.rows,function(r){
+      if(r.dataset.noc) return;
+      var first=r.cells[0]; if(first&&RE.test(first.textContent)&&r.cells.length>1){ hide(r); r.dataset.noc='1'; return; }
+      if([].some.call(r.cells,function(c){ return /^\s*(?:ตชว\.?\s*15\s*)?Common(?:\s*Diseases?)?\s*$/i.test(c.textContent); })){ hide(r); r.dataset.noc='1'; return; }
+      if(I.length&&width(r)===W0&&!r.closest('thead')&&[].some.call(r.cells,function(c){return c.tagName==='TD';})){ cutRow(r,I); }
+      r.dataset.noc='1';
+    });
+  });
+}
+function collapse(){
+  for(var it=0;it<6;it++){ var ch=0; document.querySelectorAll('[data-noc-touched]').forEach(function(c){ if(c===document.body||/^(MAIN|BODY|SECTION|TBODY|TABLE)$/.test(c.tagName)||c.style.display==='none'||!c.children.length) return;
+    var vis=[].filter.call(c.children,function(k){ return getComputedStyle(k).display!=='none'; }); if(!vis.length&&!(c.textContent||'').replace(/[\s\S]/g,function(x){return '';}).length){ var own=[].some.call(c.childNodes,function(n){return n.nodeType===3&&n.nodeValue.trim();}); if(!own){ hide(c); ch++; } } }); if(!ch) break; }
+  document.querySelectorAll('[class*=grid]').forEach(function(g){ var cs=getComputedStyle(g); if(cs.display!=='grid') return; var vis=[].filter.call(g.children,function(k){ return getComputedStyle(k).display!=='none'; });
+    if(vis.length===1&&g.children.length>1) vis[0].style.gridColumn='1 / -1'; });
+}
+function charts(){
+  var C=window.Chart; if(!C) return; var inst=C.instances?Object.values(C.instances):[];
+  inst.forEach(function(ch){ if(ch.$noc) return; var cv=ch.canvas, d=ch.data||{}; var changed=false;
+    if(cv&&(RE.test(cv.id||'')||(d.datasets||[]).length&&d.datasets.every(function(s){return RE.test(s.label||'');}))){ hideUp(cv); ch.$noc=1; return; }
+    var ds=(d.datasets||[]).filter(function(s){ return !RE.test(s.label||''); }); if(ds.length!==(d.datasets||[]).length){ d.datasets=ds; changed=true; }
+    var L=d.labels||[]; for(var i=L.length-1;i>=0;i--){ if(RE.test(String(L[i]))){ L.splice(i,1); d.datasets.forEach(function(s){ ['data','backgroundColor','borderColor'].forEach(function(k){ if(Array.isArray(s[k])&&s[k].length>i) s[k].splice(i,1); }); }); changed=true; } }
+    ch.$noc=1; if(changed) try{ ch.update('none'); }catch(e){}
+  });
+}
+function cellText(){
+  var w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT), n, L=[]; while(n=w.nextNode()){ if(RE.test(n.nodeValue)&&n.parentElement&&!/SCRIPT|STYLE|TEXTAREA/.test(n.parentElement.tagName)) L.push(n); }
+  L.forEach(function(n){ if(n.parentElement.closest('.opdpa')) return;
+    var m=n.nodeValue.match(/\s*(?:และ|,)?\s*(?:Common(?:\s*Diseases?)?|กัญชา\S*)\s*$/i), nx=n.nextSibling;
+    if(m&&nx&&nx.nodeType===1&&/^(STRONG|B|SPAN)$/.test(nx.tagName)&&(nx.textContent||'').length<20){ n.nodeValue=n.nodeValue.slice(0,m.index)+' '; var t2=nx.nextSibling; nx.remove(); if(t2&&t2.nodeType===3) t2.nodeValue=t2.nodeValue.replace(/^\s*(?:ยังไม่ผ่านเกณฑ์|ผ่านเกณฑ์|ต่ำกว่าเกณฑ์|ใกล้เกณฑ์)?/,''); return; }
+    var o=strip(n.nodeValue); if(o!==n.nodeValue){ n.nodeValue=o; return; }
+    var td=n.parentElement.closest('td'); if(td&&/^\s*[•\-–]/.test(n.nodeValue)){ var blk=n.parentElement===td?null:n.parentElement; if(blk) hide(blk); else n.nodeValue=''; } });
+}
+function heads(){
+  document.querySelectorAll('h1,h2,h3,h4,.sec-title,.section-title,[class*="kpi-header"] h2').forEach(function(h){ if(h.dataset.noc||h.closest('.opdpa')) return; h.dataset.noc='1'; if(!RE.test(h.textContent)) return;
+    var p=h.parentElement; if(p&&p.firstElementChild===h&&!/^(MAIN|BODY)$/.test(p.tagName)&&!/^tab-/.test(p.id||'')&&!/tab-content|main/.test(p.className||'')){ hide(p); return; }
+    hide(h); var n=h.nextElementSibling; while(n&&!/^H[1-4]$/.test(n.tagName)&&!/sec-title|section-title/.test(n.className||'')){ if(n.querySelector&&n.querySelector('h1,h2,h3,h4')&&!RE.test(n.textContent)) break; hide(n); n=n.nextElementSibling; } });
+}
+function texts(){
+  // รายการ / การ์ดสั้น ๆ ที่พูดถึง Common → ซ่อนทั้งก้อน
+  document.querySelectorAll('li,option').forEach(function(e){ if(e.closest('.opdpa')) return; if(!e.dataset.noc&&RE.test(e.textContent)&&e.textContent.length<600){ hide(e); } e.dataset.noc='1'; });
+  document.querySelectorAll('div,section,article,p,h1,h2,h3,h4,h5,span,strong,b,small,td').forEach(function(e){
+    if(e.dataset.noc||!RE.test(e.textContent)||e.closest('.opdpa')) return;
+    if(e.closest('table')) return;
+    var own=[].some.call(e.childNodes,function(n){ return n.nodeType===3&&RE.test(n.nodeValue); });
+    if(!own) return;
+    var card=e.closest('div'); var k=e; while(k&&k!==document.body){ if(k.className&&typeof k.className==='string'&&CARD.test(k.className)&&k.textContent.length<700&&!k.querySelector('table,canvas')){ card=k; break; } k=k.parentElement; }
+    if(k&&k!==document.body&&card===k){ hide(card); return; }
+    var t=e.textContent.trim();
+    if(/^(span|strong|b|small)$/i.test(e.tagName)&&t.length<60&&e.parentElement&&(e.parentElement.textContent||'').length>t.length+80){ var p=e.previousSibling; if(p&&p.nodeType===3) p.nodeValue=p.nodeValue.replace(/[,،]\s*$/,' '); e.remove(); return; }
+    if(t.length<260&&/^(p|h\d|div|span|small|strong|b|label)$/i.test(e.tagName)&&!e.querySelector('canvas,table')){ hideUp(e); return; }
+    [].forEach.call(e.childNodes,function(n){ if(n.nodeType===3&&RE.test(n.nodeValue)) n.nodeValue=n.nodeValue.replace(/\s*[,،]?\s*(?:และ\s*)?Common\s*Diseases?(?:\s*(?:and|&)\s*Symptoms)?\s*/gi,' ').replace(/\s*[,،]?\s*Common\s*/gi,' '); });
+    e.dataset.noc='1';
+  });
+}
+var busy=false;
+function run(){ if(busy) return; busy=true; try{ tables(); charts(); heads(); cellText(); texts(); counts(); collapse(); }catch(e){ console.warn('noCommon',e); } busy=false; }
+var tmr=null; function later(){ clearTimeout(tmr); tmr=setTimeout(run,60); }
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ run(); setTimeout(run,400); setTimeout(run,1500); }); else { run(); setTimeout(run,400); }
+window.addEventListener('load',function(){ run(); setTimeout(run,800); });
+new MutationObserver(function(){ if(!busy) later(); }).observe(document.documentElement,{childList:true,subtree:true});
+document.addEventListener('click',function(){ setTimeout(run,120); setTimeout(run,700); },true);
+})();
+</script></body>
 </html>
