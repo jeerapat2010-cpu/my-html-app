@@ -17,6 +17,8 @@
   var p = location.pathname;
   var appName = /ReportBuilder/i.test(p) ? "ระบบสร้างรายงานประจำเดือน (ReportBuilder)"
     : /\/reports\/(index\.html)?$/i.test(p) ? "คลังรายงานเดือน กวป. ย้อนหลัง"
+    : /\/reports\/\d{4}-\d{2}-\d{2}\/(index\.html)?$/i.test(p) ? "รายงานย่อย กวป. (สารบัญเดือน)"
+    : /\/reports\/\d{4}-\d{2}-\d{2}\//i.test(p) ? "รายงานย่อย กวป. " + decodeURIComponent(p.split('/').pop()).replace(/\.html$/i, '')
     : /\/reports\//i.test(p) ? "รายงานเดือน กวป. ย้อนหลัง"
     : "รายงานเดือน กวป. แพทย์แผนไทย (ล่าสุด)";
   var appCategory = "cat-1";
@@ -321,9 +323,12 @@ footer.credit .herbs i{width:12px;height:12px;border-radius:4px;display:block}
     </div>
     <div id="wfOut" style="margin-top:10px"></div>
     <h3>อัปรายงานขึ้น TTM Digital Portal</h3>
-    <p class="sub">อัปแดชบอร์ด HTML ของเดือนนี้ขึ้น GitHub Pages เป็นลิงก์ถาวร <b>TTMReport70.html</b> (ล่าสุดเสมอ) และเก็บย้อนหลังใน <b>reports/</b> — การ์ด “รายงานเดือน กวป. ล่าสุด” ใน Portal จะเปิดฉบับใหม่ทันที</p>
+    <p class="sub">อัปแดชบอร์ด HTML ของเดือนนี้ขึ้น GitHub Pages เป็นลิงก์ถาวร <b>TTMReport70.html</b> (ล่าสุดเสมอ) และเก็บย้อนหลังใน <b>reports/</b> — การ์ด “รายงานเดือน กวป. ล่าสุด” ใน Portal จะเปิดฉบับใหม่ทันที • รายงานย่อยทั้งชุด (PrimarySer, OPDTTM, IMC, PPCare, HerbUC, PAYBackUC และหน้า คปสอ. 6 อำเภอ) อัปไว้ที่ <b>reports/&lt;วันที่&gt;/</b> พร้อมหน้าสารบัญ และลิงก์จากคลังรายงาน</p>
     <div class="row">
       <button class="btn" id="ghPubBtn" onclick="publishPortal()">⬆ อัปขึ้น Portal</button>
+      <button class="btn ghost" id="ghSubBtn" onclick="publishSubs()">⬆ อัปรายงานย่อย (PrimarySer, IMC, คปสอ. ฯลฯ)</button>
+      <label class="muted" style="font-size:13px"><input type="checkbox" id="ghWithSubs" onchange="try{localStorage.setItem('ttm-gh-subs',this.checked?'1':'0')}catch(e){}"> อัปรายงานย่อยไปด้วยเมื่อกด ⬆ อัปขึ้น Portal</label>
+      <label class="muted" style="font-size:13px"><input type="checkbox" id="ghSubGA" onchange="try{localStorage.setItem('ttm-gh-subga',this.checked?'1':'0')}catch(e){}"> ใส่ GA4 ในรายงานย่อย</label>
       <label class="muted" style="font-size:13px"><input type="checkbox" id="ghAuto" onchange="try{localStorage.setItem('ttm-gh-auto',this.checked?'1':'')}catch(e){}"> อัปขึ้น Portal อัตโนมัติเมื่อกด ▶ Auto</label>
       <span id="ghState"></span>
     </div>
@@ -481,7 +486,7 @@ footer.credit .herbs i{width:12px;height:12px;border-radius:4px;display:block}
 /* ====================================================================
    CONSTANTS
 ==================================================================== */
-const APP_VERSION='2.1.0', APP_DATE='17 พ.ย. 2569';
+const APP_VERSION='2.1.1', APP_DATE='17 พ.ย. 2569';
 document.querySelectorAll('.appVer').forEach(e=>e.textContent=APP_VERSION); document.querySelectorAll('.appDate').forEach(e=>e.textContent='ปรับปรุงล่าสุด '+APP_DATE);
 const PRISTINE_HTML = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
 const UNITS = [["00933","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลสำโรงเหนือ","P"],["00934","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางเมือง","P"],["00935","เมืองสมุทรปราการ","สถานีอนามัยเฉลิมพระเกียรติ 60 พรรษา นวมินทราชินี บ้านคลองบางปิ้ง","P"],["00936","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางปูใหม่","P"],["00937","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลแพรกษา","P"],["00938","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางโปรง","P"],["00939","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางปู","P"],["00940","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางด้วน","P"],["00941","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางเมืองใหม่","P"],["00942","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลเทพารักษ์","P"],["00943","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลท้ายบ้านใหม่","P"],["00944","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลแพรกษาใหม่","P"],["10685","เมืองสมุทรปราการ","โรงพยาบาลสมุทรปราการ","H"],["12251","เมืองสมุทรปราการ","โรงพยาบาลยุวประสาทไวทโยปถัมภ์","H"],["13812","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลท้ายบ้าน","P"],["15048","เมืองสมุทรปราการ","ศูนย์สุขภาพชุมชนเมือง โรงพยาบาลสมุทรปราการ","P"],["23945","เมืองสมุทรปราการ","สถานีอนามัยเฉลิมพระเกียรติ 60 พรรษา นวมินทราชินี สาขาวัดบางปิ้ง","P"],["24027","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลพุทธรักษา","P"],["24028","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลร่มโพธิ์","P"],["24029","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลบุญศิริ","P"],["24702","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลเทศบาลตำบลสำโรงเหนือ","P"],["28826","เมืองสมุทรปราการ","โรงพยาบาลส่งเสริมสุขภาพตำบลมังกรทอง","P"],["00945","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางบ่อ","P"],["00946","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านระกาศ หมู่ 3","P"],["00947","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านระกาศ หมู่ 8","P"],["00948","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางพลีน้อย หมู่ที่ 3","P"],["00949","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางพลีน้อย หมู่ที่ 5","P"],["00950","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางพลีน้อย หมู่ที่ 8","P"],["00951","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลบางเพรียง","P"],["00952","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลคลองด่าน หมู่ที่ 1","P"],["00953","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลคลองด่าน หมู่ที่ 13","P"],["00954","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลคลองสวน","P"],["00955","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลเปร็ง","P"],["00956","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลนิยมยาตรา","P"],["10752","บางบ่อ","โรงพยาบาลบางบ่อ","H"],["23032","บางบ่อ","ศูนย์สุขภาพชุมชนโรงพยาบาลบางบ่อ","P"],["23911","บางบ่อ","โรงพยาบาลส่งเสริมสุขภาพตำบลคลองด่าน หมู่ 7","P"],["00957","บางพลี","โรงพยาบาลส่งเสริมสุขภาพตำบลบางแก้ว","P"],["00958","บางพลี","โรงพยาบาลส่งเสริมสุขภาพตำบลวัดสลุด ตำบลบางแก้ว","P"],["00959","บางพลี","โรงพยาบาลส่งเสริมสุขภาพตำบลบางปลา","P"],["00960","บางพลี","โรงพยาบาลส่งเสริมสุขภาพตำบลคลองสี่","P"],["00961","บางพลี","โรงพยาบาลส่งเสริมสุขภาพตำบลบางโฉลง","P"],["00962","บางพลี","โรงพยาบาลส่งเสริมสุขภาพตำบลราชาเทวะ","P"],["00963","บางพลี","โรงพยาบาลส่งเสริมสุขภาพตำบลหนองปรือ","P"],["10753","บางพลี","โรงพยาบาลบางพลี","H"],["23034","บางพลี","ศูนย์แพทย์ชุมชนวัดบางพลีใหญ่กลาง","P"],["24675","บางพลี","โรงพยาบาลส่งเสริมสุขภาพบัวเกราะ ตำบลราชาเทวะ","P"],["99826","บางพลี","ศูนย์สุขภาพชุมชน 1 โรงพยาบาลบางพลี","P"],["00964","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางพึ่ง","P"],["00965","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางจาก","P"],["00966","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางครุ","P"],["00967","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางหญ้าแพรก","P"],["00968","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางหัวเสือ","P"],["00969","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางยอ","P"],["00970","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางกะเจ้า","P"],["00971","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางน้ำผึ้ง","P"],["00972","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางกระสอบ","P"],["00973","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางกอบัว","P"],["00974","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางกอ","P"],["00975","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลทรงคนอง","P"],["00976","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลสำโรง","P"],["00977","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลสำโรงกลาง","P"],["00978","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลสำโรงใต้","P"],["10754","พระประแดง","โรงพยาบาลบางจาก","H"],["23944","พระประแดง","โรงพยาบาลส่งเสริมสุขภาพตำบลอยู่เจริญ","P"],["00979","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านขุนสมุทรไทย","P"],["00980","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลนาเกลือ","P"],["00981","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านคลองทะเล","P"],["00982","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านคลองสวน","P"],["00983","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลแหลมฟ้าผ่า","P"],["00984","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านขุนสมุทร","P"],["00985","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลในคลองบางปลากด","P"],["00986","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านคู่สร้าง","P"],["10755","พระสมุทรเจดีย์","โรงพยาบาลพระสมุทรเจดีย์สวาทยานนท์","H"],["24410","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลบ้านคลองนาเกลือน้อย","P"],["24559","พระสมุทรเจดีย์","โรงพยาบาลส่งเสริมสุขภาพตำบลคลองกระออม","P"],["00987","บางเสาธง","โรงพยาบาลส่งเสริมสุขภาพตำบลเมืองใหม่บางพลี","P"],["00988","บางเสาธง","โรงพยาบาลส่งเสริมสุขภาพตำบลเสาธงกลาง ตำบลบางเสาธง","P"],["00989","บางเสาธง","โรงพยาบาลส่งเสริมสุขภาพตำบลบางเสาธง","P"],["00990","บางเสาธง","โรงพยาบาลส่งเสริมสุขภาพตำบลศรีษะจระเข้น้อย","P"],["00991","บางเสาธง","โรงพยาบาลส่งเสริมสุขภาพตำบลศีรษะจรเข้ใหญ่","P"],["00992","บางเสาธง","โรงพยาบาลส่งเสริมสุขภาพตำบลวัดศรีวารีน้อย ตำบลศีรษะจรเข้ใหญ่","P"],["24411","บางเสาธง","โรงพยาบาลส่งเสริมสุขภาพตำบลเจริญราษฎร์","P"],["24412","บางเสาธง","โรงพยาบาลส่งเสริมสุขภาพตำบลกัลปพฤกษ์ ตำบลบางเสาธง","P"],["28785","บางเสาธง","โรงพยาบาลบางเสาธง","H"]]; // [code5, district, name, H|P]
@@ -2284,7 +2289,7 @@ function fyFromRootName(n){ const m=String(n||'').match(/(\d{2})\s*$/); return m
 
 /* ---- connect ---- */
 async function wfInit(){
-  renderSteps(); $('wfNewName').value=defaultMonthName(); ghStatus(); try{ $('ghAuto').checked=localStorage.getItem('ttm-gh-auto')==='1'; }catch(e){}
+  renderSteps(); $('wfNewName').value=defaultMonthName(); ghStatus(); try{ $('ghAuto').checked=localStorage.getItem('ttm-gh-auto')==='1'; const ws=localStorage.getItem('ttm-gh-subs'); $('ghWithSubs').checked=ws!=='0'; const sg=localStorage.getItem('ttm-gh-subga'); $('ghSubGA').checked= sg==null? SUB_GA_DEFAULT : sg==='1'; }catch(e){}
   $('wfFilterNote').textContent = (()=>{ try{ return localStorage.getItem('ttm-filter-note')||FILTER_NOTE_DEFAULT; }catch(e){ return FILTER_NOTE_DEFAULT; } })();
   if(!FS_OK){ $('wfFsWarn').classList.remove('hidden'); renderGrid(); return; }
   const r=await idb.get('root'); const d=await idb.get('dl');
@@ -2604,12 +2609,49 @@ async function publishPortal(){
     if(isLatest) await ghPut(GH.latest, html, `รายงานเดือน กวป. ${stamp} (ล่าสุด)`);
     else wfLog(`เดือนนี้เก่ากว่ารายงานล่าสุดบน Portal — เก็บเข้าคลังย้อนหลังอย่างเดียว ไม่ทับหน้า “ล่าสุด”`,'info');
     await ghPut(`${GH.dir}/TTMReport-${key}.html`, html, `รายงานเดือน กวป. ${stamp}`);
-    man=man.filter(x=>x.key!==key); man.push({key,label:`ข้อมูล ณ ${thaiDate(M.iso)}`,file:`TTMReport-${key}.html`,updated:new Date().toISOString()}); man.sort((a,b)=>String(b.key).localeCompare(String(a.key)));
+    const old=man.find(x=>x.key===key)||{}; man=man.filter(x=>x.key!==key); man.push({...old,key,label:`ข้อมูล ณ ${thaiDate(M.iso)}`,file:`TTMReport-${key}.html`,updated:new Date().toISOString()}); man.sort((a,b)=>String(b.key).localeCompare(String(a.key)));
     await ghPut(`${GH.dir}/manifest.json`, JSON.stringify(man,null,1), `อัปเดตรายการรายงาน ${stamp}`);
+    let subNote=''; if($('ghWithSubs')&&$('ghWithSubs').checked){ $('ghMsg').textContent='อัปแดชบอร์ดแล้ว — กำลังอัปรายงานย่อย…'; const ok=await publishSubs(true); subNote=ok? ` • รายงานย่อย: <a href="${PORTAL_URL}${GH.dir}/${key}/index.html" target="_blank" rel="noopener">สารบัญรายงานย่อย</a>` : ' • <b>รายงานย่อยอัปไม่สำเร็จ</b> (ดูบันทึก) — กด ⬆ อัปรายงานย่อย อีกครั้ง'; }
     const link=isLatest? PORTAL_URL+GH.latest : PORTAL_URL+`${GH.dir}/TTMReport-${key}.html`;
-    $('ghMsg').innerHTML=`อัปขึ้น Portal แล้ว (GitHub Pages ใช้เวลาประมาณ 1–2 นาที) • <a href="${link}" target="_blank" rel="noopener">${link}</a>`;
+    $('ghMsg').innerHTML=`อัปขึ้น Portal แล้ว (GitHub Pages ใช้เวลาประมาณ 1–2 นาที) • <a href="${link}" target="_blank" rel="noopener">${link}</a>${subNote}`;
     wfLog(`อัปรายงาน ${stamp} ขึ้น Portal แล้ว`,'ok'); return true;
   }catch(e){ $('ghMsg').textContent='อัปไม่สำเร็จ: '+e.message; wfLog('อัปขึ้น Portal ไม่สำเร็จ: '+e.message,'bad'); return false; }
+  finally{ if(b) b.disabled=false; }
+}
+
+/* ---- รายงานย่อย (ReportOut HTML) → reports/<วันที่>/ ---- */
+const SUB_GA_DEFAULT=false; // ค่าเริ่มต้นช่อง "ใส่ GA4 ในรายงานย่อย"
+function gaBlock(){ const a=PRISTINE_HTML.indexOf('<!-- TTM-GA4-APP START -->'), z=PRISTINE_HTML.indexOf('<!-- TTM-GA4-APP END -->'); return a<0||z<0? '' : PRISTINE_HTML.slice(a,z+'<!-- TTM-GA4-APP END -->'.length); }
+function withGA(h){ if(/TTM-GA4-APP START/.test(h)) return h; const g=gaBlock(); if(!g) return h; const m=h.match(/<head[^>]*>/i); return m? h.replace(m[0],m[0]+'\n'+g) : g+h; }
+function subIndexHtml(M,key,L,ga){ const stamp=thaiDate(M.iso); const grp=n=>/^(DATA|DataBP)/i.test(n)?'d':'k';
+  const item=([n,_,t])=>`<a class="item" href="${encodeURIComponent(n)}"><b>${esc(t)}</b><span>${esc(n)}</span></a>`;
+  const h=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>รายงานย่อย กวป. ${esc(stamp)}</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+<style>:root{--teal:#0f766e;--ink:#13232b;--muted:#5d6b75;--line:#dfe7ea;--bg:#f4f7f8}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Thai",Tahoma,sans-serif}main{max-width:820px;margin:auto;padding:28px 16px}h1{font-size:22px;margin:0 0 4px;color:var(--teal)}h2{font-size:17px;margin:22px 0 10px}p{color:var(--muted);margin:0 0 14px}.grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}a.item{display:flex;flex-direction:column;gap:2px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;text-decoration:none;color:var(--ink)}a.item:hover{border-color:var(--teal)}a.item span{color:var(--muted);font-size:12.5px}.top{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}.top a{color:var(--teal);text-decoration:none}</style></head><body><main>
+<div class="top"><a href="../index.html">← คลังรายงานทุกเดือน</a><a href="../TTMReport-${key}.html">📊 แดชบอร์ดสรุปเดือนนี้</a><a href="../../index.html">🏠 TTM Digital Portal</a></div>
+<h1>รายงานย่อย กวป. งานแพทย์แผนไทย</h1><p>ข้อมูล ณ ${esc(stamp)} • สร้างจาก ReportBuilder v${APP_VERSION} • ${L.length} รายงาน</p>
+<h2>รายตัวชี้วัด</h2><div class="grid">${L.filter(x=>grp(x[0])==='k').map(item).join('')}</div>
+<h2>ราย คปสอ. (อำเภอ)</h2><div class="grid">${L.filter(x=>grp(x[0])==='d').map(item).join('')}</div>
+</main></body></html>`; return ga? withGA(h) : h; }
+async function publishSubs(fromMain){
+  const M=MONTHS[CUR]; if(!M){ wfLog('ยังไม่มีรายงาน — กด “ตรวจสอบ & สร้างแดชบอร์ด” ก่อน','warn'); return false; }
+  if(!ghToken()){ wfLog('ยังไม่ได้ตั้งค่า GitHub token (ขั้นที่ 7)','warn'); return false; }
+  const b=$('ghSubBtn'); if(b) b.disabled=true; const msg=$('ghMsg');
+  try{
+    const key=M.iso||CUR, stamp=fileStamp(M), ga=!!($('ghSubGA')&&$('ghSubGA').checked);
+    const T=(typeof WF!=='undefined'&&WF.root)? await loadTemplates() : {};
+    const L=buildAllSubs(M,T); if(!L.length){ wfLog('ไม่มีรายงานย่อยให้ส่ง','warn'); return false; }
+    const dir=`${GH.dir}/${key}`;
+    for(let i=0;i<L.length;i++){ const [n,h]=L[i]; msg.textContent=`กำลังอัปรายงานย่อย ${i+1}/${L.length}: ${n}`; await ghPut(`${dir}/${n}`, ga?withGA(h):h, `รายงานย่อย ${n} ${stamp}`); }
+    await ghPut(`${dir}/index.html`, subIndexHtml(M,key,L,ga), `สารบัญรายงานย่อย ${stamp}`);
+    let man=(await ghGetJson(`${GH.dir}/manifest.json`))||[]; if(!Array.isArray(man)) man=[];
+    const old=man.find(x=>x.key===key)||{key,label:`ข้อมูล ณ ${thaiDate(M.iso)}`,updated:new Date().toISOString()};
+    man=man.filter(x=>x.key!==key); man.push({...old,subIndex:`${key}/index.html`,subs:L.map(([n,_,t])=>({file:`${key}/${n}`,label:t})),subsUpdated:new Date().toISOString()}); man.sort((a,c)=>String(c.key).localeCompare(String(a.key)));
+    await ghPut(`${GH.dir}/manifest.json`, JSON.stringify(man,null,1), `อัปเดตรายการรายงานย่อย ${stamp}`);
+    const link=PORTAL_URL+`${dir}/index.html`;
+    msg.innerHTML=(fromMain?'อัปแดชบอร์ด + ':'')+`อัปรายงานย่อย ${L.length} ไฟล์แล้ว${ga?' (มี GA4)':''} (GitHub Pages ใช้เวลาประมาณ 1–2 นาที) • <a href="${link}" target="_blank" rel="noopener">${link}</a>`;
+    wfLog(`อัปรายงานย่อย ${L.length} ไฟล์ ${stamp} ขึ้น Portal แล้ว`,'ok'); return true;
+  }catch(e){ msg.textContent='อัปรายงานย่อยไม่สำเร็จ: '+e.message; wfLog('อัปรายงานย่อยไม่สำเร็จ: '+e.message,'bad'); return false; }
   finally{ if(b) b.disabled=false; }
 }
 
