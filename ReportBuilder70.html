@@ -1310,7 +1310,8 @@ async function exportWord(){
   C.push(new D.Paragraph({heading:D.HeadingLevel.HEADING_1,children:[T('สารบัญ')]}));
   C.push(new D.TableOfContents('สารบัญ',{hyperlink:true,headingStyleRange:'1-2'}));
   C.push(new D.Paragraph({children:[new D.PageBreak()]}));
-  C.push(H1('บทสรุปผู้บริหาร')); execBullets(M).forEach(b=>C.push(BUL(M.ucNote&&/UC|สปสช|ชดเชย/.test(b)?b+' [ข้อมูลปีงบ 2569 ใช้แทนชั่วคราว]':b)));
+  C.push(H1('บทสรุปผู้บริหาร')); execBullets(M).filter(b=>!(M.ucNote&&/UC|สปสช|ชดเชย|ยาสมุนไพร/.test(b))).forEach(b=>C.push(BUL(b)));
+  if(M.ucNote) C.push(BUL('มูลค่าการใช้ยาสมุนไพรสิทธิ UC และเงินชดเชย สปสช.: รอเป้าหมายจากเขตสุขภาพที่ 6 และข้อมูลปีงบ 2570 จาก HDC จึงแสดงข้อมูลปีงบ 2569 ไม่มีการวิเคราะห์ (ดูหัวข้อ 3 และ 4)'));
   // 1
   C.push(H1('1. ภาพรวมตัวชี้วัดจังหวัด'));
   C.push(P('เทียบผลการดำเนินงานจังหวัดกับเกณฑ์ ระดับเขตสุขภาพที่ 6 และระดับประเทศ'));
@@ -1339,7 +1340,7 @@ async function exportWord(){
   const fm=(v,d=0)=>fmt(v,d);
   // 3 UC
   if(S.UC){ const u=S.UC; C.push(H1('3. มูลค่าการใช้ยาสมุนไพรสิทธิ UC'+(M.ucNote?' (ข้อมูลปีงบ 2569)':''))); if(M.ucNote) C.push(P('หมายเหตุ: '+M.ucNote,{run:{italics:true,color:'B45309'}}));
-    C.push(P(`มูลค่าจังหวัด ${fm(u.province)} บาท คิดเป็น ${fm(u.pct12,1)}% ของเป้า 12 เดือน (${fm(u.target12)} บาท) และ ${fm(u.pctNow,1)}% ของเป้าสะสม ${u.monthsElapsed} เดือน`));
+    if(!M.ucNote) C.push(P(`มูลค่าจังหวัด ${fm(u.province)} บาท คิดเป็น ${fm(u.pct12,1)}% ของเป้า 12 เดือน (${fm(u.target12)} บาท) และ ${fm(u.pctNow,1)}% ของเป้าสะสม ${u.monthsElapsed} เดือน`)); else C.push(P(`ข้อมูลปีงบประมาณ 2569 (ทั้งปี): มูลค่าการใช้ยาสมุนไพรสิทธิ UC รวมจังหวัด ${fm(u.province)} บาท`));
     C.push(H2('3.1 รายอำเภอเทียบเป้าหมาย'));
     C.push(TABLE(['อำเภอ','มูลค่า (บาท)','เป้า 12 ด.','% 12 ด.','% เป้าสะสม','GAP ทั้งปี'],u.districts.map(r=>[r.name,fm(r.value),fm(r.target12),fm(r.pct12,1),fm(r.pctNow,1),fm(r.target12-r.value)]),['รวมจังหวัด',fm(u.province),fm(u.target12),fm(u.pct12,1),fm(u.pctNow,1),fm(u.target12-u.province)]));
     C.push(await IMG(chartUC(M)));
@@ -1347,7 +1348,7 @@ async function exportWord(){
     C.push(TABLE(['จังหวัด','มูลค่า (บาท)','เป้า 12 ด.','% 12 ด.'],u.regionRows.map(r=>[r.name,fm(r.value),fm(r.target),fm(pct(r.value,r.target),1)]))); }
   // 4 OnTop
   if(S.ONTOP){ const o=S.ONTOP; C.push(H1('4. เงินชดเชยค่ายาสมุนไพรจาก สปสช.'+(M.ucNote?' (ข้อมูลปีงบ 2569)':''))); if(M.ucNote) C.push(P('หมายเหตุ: '+M.ucNote,{run:{italics:true,color:'B45309'}}));
-    C.push(P(`เงินชดเชยรวมจังหวัด ${fm(o.province)} บาท คิดเป็น ${fm(o.payback,1)}% ของมูลค่าการใช้ยา UC`));
+    C.push(P(M.ucNote?`ข้อมูลปีงบประมาณ 2569 (ทั้งปี): เงินชดเชยรวมจังหวัด ${fm(o.province)} บาท`:`เงินชดเชยรวมจังหวัด ${fm(o.province)} บาท คิดเป็น ${fm(o.payback,1)}% ของมูลค่าการใช้ยา UC`));
     C.push(H2('4.1 สัดส่วนเงินชดเชย รพ.แม่ข่าย / หน่วยปฐมภูมิ รายอำเภอ'));
     C.push(TABLE(['อำเภอ','มูลค่าใช้ UC','ชดเชย รพ.','ชดเชย ปฐมภูมิ','ชดเชยรวม','อัตรา %','GAP'],o.districts.map(r=>[r.name,fm(r.value),fm(r.compH),fm(r.compP),fm(r.comp),fm(r.payback,1),fm(r.gap)])));
     C.push(await IMG(chartOnTop(M)));
