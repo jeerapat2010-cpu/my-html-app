@@ -205,6 +205,14 @@ body.onepage .tab{display:none!important}body.onepage #executive{display:block!i
   .kpi-card{min-height:115px}.kpi-card .value{font-size:27px}.quadrant{height:280px}
 }
 </style>
+<style id="ttm-pa-tag-css">
+.ttm-pa-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;margin:0 4px;border-radius:999px;font-size:.72em;font-weight:800;line-height:1.5;vertical-align:middle;white-space:nowrap;color:#78350f;background:linear-gradient(90deg,#fde68a,#fbbf24,#fff7d6,#fbbf24,#fde68a);background-size:250% 100%;border:1px solid rgba(217,119,6,.45);animation:ttmPaFlow 2.6s linear infinite,ttmPaGlow 1.3s ease-in-out infinite alternate}
+.ttm-pa-tag.ttm-pa-lg{font-size:.85rem;padding:4px 14px}
+@keyframes ttmPaFlow{to{background-position:250% 0}}
+@keyframes ttmPaGlow{from{box-shadow:0 0 3px rgba(251,191,36,.35)}to{box-shadow:0 0 14px rgba(251,191,36,.95),0 0 4px #fff inset}}
+@media (prefers-reduced-motion:reduce){.ttm-pa-tag{animation:none}}
+@media print{.ttm-pa-tag{animation:none;box-shadow:none}}
+</style>
 </head>
 <body data-mode="executive">
 <header class="app-header">
@@ -383,7 +391,7 @@ body.onepage .tab{display:none!important}body.onepage #executive{display:block!i
       <div class="card analysis orange" id="commonAnalysis"></div>
     </div>
     <div class="grid two" style="margin-top:15px">
-      <div class="card"><h3>มิเตอร์ Intermediate Care รายอำเภอ</h3><p class="gauge-subtitle">เกณฑ์ IMC ≥30%</p><div class="meter-grid" id="imcBars"></div></div>
+      <div class="card"><h3>มิเตอร์ Intermediate Care รายอำเภอ <span class="ttm-pa-tag" title="ตัวชี้วัด PA หลักของจังหวัดสมุทรปราการ ปีงบประมาณ 2570 (เป้าหมาย ≥ 25%)">🏅 PA จังหวัด</span></h3><p class="gauge-subtitle">เกณฑ์ IMC ≥30%</p><div class="meter-grid" id="imcBars"></div></div>
       <div class="card analysis" id="imcAnalysis"></div>
     </div>
     <div class="card analyst-only" style="margin-top:15px"><h3>ตารางเชื่อมโยงตัวชี้วัดคลินิก–บริการ–การเงิน</h3><div class="table-wrap"><table id="clinicalTable"></table></div></div>
@@ -470,7 +478,8 @@ const weightedRegion=DATA.finance.region.reduce((s,r)=>s+r.pay,0)/DATA.finance.r
 const fmtSigned=v=>(v>=0?'+':'')+pc(v);
 
 function metric(label,value,small=''){return `<div class="metric"><small>${label}</small><div class="n">${value}</div>${small?`<small>${small}</small>`:''}</div>`}
-function kpi(label,value,sub,cls='navy'){return `<div class="card kpi-card ${cls}" data-search="${label} ${sub}"><div class="label">${label}</div><div class="value">${value}</div><div class="sub">${sub}</div></div>`}
+const PA_TAG='<span class="ttm-pa-tag" title="ตัวชี้วัด PA หลักของจังหวัดสมุทรปราการ ปีงบประมาณ 2570 (เป้าหมาย ≥ 25%)">🏅 PA จังหวัด</span>';
+function kpi(label,value,sub,cls='navy',tag=''){return `<div class="card kpi-card ${cls}" data-search="${label} ${sub}"><div class="label">${label}${tag}</div><div class="value">${value}</div><div class="sub">${sub}</div></div>`}
 function pill(v,good=70,mid=50){return `<span class="status ${statusClass(v,good,mid)}">${statusText(v,good,mid)}</span>`}
 function trainingGauge(title,rate,approved,total,sub='',overall=false){
  const r=clamp(rate,0,100),deg=-90+(r*1.8),cls=r>=80?'good':r>=60?'mid':'bad',status=r>=80?'ผลลัพธ์ดี':r>=60?'เฝ้าระวัง':'ต้องเร่งรัด';
@@ -511,20 +520,20 @@ function renderExecutive(){
    kpi('มูลค่าสมุนไพร UC',mil(DATA.service.uc.total),`${pc(DATA.service.uc.percent10)} ของเป้า 10 เดือน`,'blue')+
    kpi('ค่าชดเชย สปสช.',mil(official.pay),`อัตราชดเชยทางการ ${pc(official.ratio,1)}`,'green')+
    kpi('GAP ทางการเงิน',mil(official.use-official.pay),'มูลค่าใช้ที่ยังไม่เปลี่ยนเป็นค่าชดเชย','red')+
-   kpi('IMC',pc(DATA.clinical.imc.province),`ต่ำกว่าเกณฑ์ ≥${DATA.clinical.imc.criterion}% อยู่ ${pc(DATA.clinical.imc.criterion-DATA.clinical.imc.province)}`,'orange');
+   kpi('IMC',pc(DATA.clinical.imc.province),`ต่ำกว่าเกณฑ์ ≥${DATA.clinical.imc.criterion}% อยู่ ${pc(DATA.clinical.imc.criterion-DATA.clinical.imc.province)}`,'orange',PA_TAG);
  }else{
   const x=byDistrict[sel],u=x.ucRow;
   document.getElementById('execKpis').innerHTML=
    kpi('Access '+sel,pc(x.access),x.access>=50?'ผ่านเกณฑ์ ≥50%':'ยังไม่ผ่านเกณฑ์ ≥50%',x.access>=50?'blue':'red')+
    kpi('UC '+sel,mil(u.value),`${pc(x.uc)} ของเป้า 10 เดือน`,x.uc>=100?'green':'orange')+
    kpi('ค่าชดเชย '+sel,mil(x.pay),`Conversion ${pc(x.payRatio)}`,x.payRatio>=70?'green':x.payRatio>=50?'orange':'red')+
-   kpi('IMC '+sel,pc(x.imc),`GAP ถึง 30% = ${pc(Math.max(0,30-x.imc))}`,x.imc>=30?'green':'red');
+   kpi('IMC '+sel,pc(x.imc),`GAP ถึง 30% = ${pc(Math.max(0,30-x.imc))}`,x.imc>=30?'green':'red',PA_TAG);
  }
  document.getElementById('execDonut').style.setProperty('--p',official.ratio);
  document.getElementById('financeMetrics').innerHTML=metric('มูลค่าใช้ทางการ',mil(official.use))+metric('ค่าชดเชยทางการ',mil(official.pay))+metric('ผลรวมรายละเอียด',mil(detailPay),pc(detailRatio,1))+metric('อันดับในเขต','7 / 8','ต่ำกว่าค่าเขต '+pc(weightedRegion-official.ratio,1));
  document.getElementById('reconcileAlert').innerHTML=`ยอดชดเชยทางการสูงกว่าผลรวมรายละเอียด <b>${money(official.pay-detailPay)}</b> และยอดใช้ต่าง ${money(detailUse-official.use)} จึงต้องแสดงแยกจนกว่าจะกระทบยอดสำเร็จ`;
  const city=byDistrict['เมือง'],bp=byDistrict['บางพลี'],pst=byDistrict['พระสมุทรเจดีย์'],bst=byDistrict['บางเสาธง'];
- document.getElementById('execAlerts').innerHTML=[['red','1','IMC 7.25% ยังห่างเกณฑ์ 30%','ทุกอำเภอยังไม่ผ่าน; พระสมุทรเจดีย์สูงสุด 22.08%'],['red','2','เมืองมี GAP ทางการเงินสูงสุด',`${mil(city.gap)} หรือ ${(city.gap/detailGap*100).toFixed(1)}% ของ GAP รายละเอียดทั้งจังหวัด`],['amber','3','ลูกข่ายบางพลีมี conversion เพียง '+pc(bp.nRatio,2),'ควร audit การ map รหัสยา ราคา และ claim rejection รายหน่วย'],['amber','4','พบค่าชดเชย รพ. สูงกว่ามูลค่าใช้','รพ.บางเสาธง '+pc(bst.hRatio,1)+' และ รพ.พระสมุทรเจดีย์ '+pc(pst.hRatio,1)],['green','5','บางบ่อเป็นต้นแบบสมดุล','UC 107.69% และชดเชย 62.97% โดย รพ.–ลูกข่ายไม่มี outlier รุนแรง']].map(x=>`<div class="signal-row"><span class="signal-icon ${x[0]}">${x[1]}</span><div><strong>${x[2]}</strong><small>${x[3]}</small></div></div>`).join('');
+ document.getElementById('execAlerts').innerHTML=[['red','1','IMC 7.25% ยังห่างเกณฑ์ 30%'+PA_TAG,'ทุกอำเภอยังไม่ผ่าน; พระสมุทรเจดีย์สูงสุด 22.08%'],['red','2','เมืองมี GAP ทางการเงินสูงสุด',`${mil(city.gap)} หรือ ${(city.gap/detailGap*100).toFixed(1)}% ของ GAP รายละเอียดทั้งจังหวัด`],['amber','3','ลูกข่ายบางพลีมี conversion เพียง '+pc(bp.nRatio,2),'ควร audit การ map รหัสยา ราคา และ claim rejection รายหน่วย'],['amber','4','พบค่าชดเชย รพ. สูงกว่ามูลค่าใช้','รพ.บางเสาธง '+pc(bst.hRatio,1)+' และ รพ.พระสมุทรเจดีย์ '+pc(pst.hRatio,1)],['green','5','บางบ่อเป็นต้นแบบสมดุล','UC 107.69% และชดเชย 62.97% โดย รพ.–ลูกข่ายไม่มี outlier รุนแรง']].map(x=>`<div class="signal-row"><span class="signal-icon ${x[0]}">${x[1]}</span><div><strong>${x[2]}</strong><small>${x[3]}</small></div></div>`).join('');
  renderQuadrant();
  document.getElementById('crossAnalysis').innerHTML=`<h3>บทวิเคราะห์เชื่อมโยงตัวชี้วัด</h3><p><strong>ความสัมพันธ์เชิงพรรณนา:</strong> ใน 6 อำเภอ ผลงาน UC เทียบเป้า 10 เดือนสัมพันธ์กับอัตราชดเชยในทิศทางบวกค่อนข้างสูง (r≈0.76) แต่จำนวนพื้นที่น้อย จึงใช้เพื่อคัดกรอง ไม่ใช่สรุปเหตุ–ผล</p><p><strong>กลุ่มผลงานสมดุล:</strong> บางบ่อมี UC 107.69% และชดเชย 62.97% เหมาะถอดบทเรียนทั้งการสั่งใช้และการเคลม</p><p><strong>High use–Low conversion:</strong> เมืองและพระประแดงมี GAP รวม <b>${mil(city.gap+byDistrict['พระประแดง'].gap)}</b> คิดเป็น 70.4% ของ GAP รายละเอียดจังหวัด จึงควรเป็นเป้าหมายทางการเงินอันดับแรก</p><p><strong>Data anomaly:</strong> บางเสาธงและพระสมุทรเจดีย์อยู่ในโซนชดเชยสูง แต่มีค่าชดเชยโรงพยาบาลสูงกว่ามูลค่าใช้ ต้องตรวจช่วงเวลาเคลมย้อนหลัง ก่อนยกเป็น Best Practice</p>`;
  renderSpotlight();renderCompare();updateFilterState();
@@ -539,9 +548,9 @@ function renderQuadrant(){
 function renderSpotlight(){
  const sel=selectedDistrict();
  if(sel==='ALL'){
-  document.getElementById('districtSpotlight').innerHTML=`<div class="callout"><b>ภาพรวมทุกอำเภอ</b> • เลือกอำเภอจาก Dropdown ด้านบนเพื่อกรองทั้งรายงานพร้อมกัน</div><div class="matrix" style="margin-top:10px">${metric('Access จังหวัด',pc(DATA.service.access.province),'ผ่านเกณฑ์')}${metric('UC 10 เดือน',pc(DATA.service.uc.percent10),'18.03 ล้านบาท')}${metric('อัตราชดเชยทางการ',pc(official.ratio,1),'อันดับ 7/8 เขต')}${metric('IMC จังหวัด',pc(DATA.clinical.imc.province),'เกณฑ์ 30%')}</div><div class="callout warn" style="margin-top:10px">Dropdown ใช้ข้อมูลที่มีอยู่แล้วครบ 6 อำเภอ และจะกรองเมนูการเงิน, Service & UC, Flagship, Clinical, Cannabis และตารางรายละเอียดโดยอัตโนมัติ</div>`;return;
+  document.getElementById('districtSpotlight').innerHTML=`<div class="callout"><b>ภาพรวมทุกอำเภอ</b> • เลือกอำเภอจาก Dropdown ด้านบนเพื่อกรองทั้งรายงานพร้อมกัน</div><div class="matrix" style="margin-top:10px">${metric('Access จังหวัด',pc(DATA.service.access.province),'ผ่านเกณฑ์')}${metric('UC 10 เดือน',pc(DATA.service.uc.percent10),'18.03 ล้านบาท')}${metric('อัตราชดเชยทางการ',pc(official.ratio,1),'อันดับ 7/8 เขต')}${metric('IMC จังหวัด'+PA_TAG,pc(DATA.clinical.imc.province),'เกณฑ์ 30%')}</div><div class="callout warn" style="margin-top:10px">Dropdown ใช้ข้อมูลที่มีอยู่แล้วครบ 6 อำเภอ และจะกรองเมนูการเงิน, Service & UC, Flagship, Clinical, Cannabis และตารางรายละเอียดโดยอัตโนมัติ</div>`;return;
  }
- const x=byDistrict[sel];document.getElementById('districtSpotlight').innerHTML=`<div class="callout"><b>${sel}</b> • มูลค่าใช้ ${mil(x.use)} • ค่าชดเชย ${mil(x.pay)} • GAP ${mil(x.gap)}</div><div class="matrix" style="margin-top:10px">${metric('Access',pc(x.access),x.access>=50?'ผ่าน':'ไม่ผ่าน')}${metric('UC เทียบเป้า',pc(x.uc),x.uc>=100?'เกินเป้า':'ยังไม่ถึงเป้า')}${metric('อัตราชดเชย',pc(x.payRatio),statusText(x.payRatio))}${metric('IMC',pc(x.imc),`GAP ${pc(Math.max(0,DATA.clinical.imc.criterion-x.imc))}`)}</div><div class="callout ${x.payRatio<50?'bad':x.payRatio<70?'warn':'good'}" style="margin-top:10px">${districtAdvice(sel,x)}</div>`;
+ const x=byDistrict[sel];document.getElementById('districtSpotlight').innerHTML=`<div class="callout"><b>${sel}</b> • มูลค่าใช้ ${mil(x.use)} • ค่าชดเชย ${mil(x.pay)} • GAP ${mil(x.gap)}</div><div class="matrix" style="margin-top:10px">${metric('Access',pc(x.access),x.access>=50?'ผ่าน':'ไม่ผ่าน')}${metric('UC เทียบเป้า',pc(x.uc),x.uc>=100?'เกินเป้า':'ยังไม่ถึงเป้า')}${metric('อัตราชดเชย',pc(x.payRatio),statusText(x.payRatio))}${metric('IMC'+PA_TAG,pc(x.imc),`GAP ${pc(Math.max(0,DATA.clinical.imc.criterion-x.imc))}`)}</div><div class="callout ${x.payRatio<50?'bad':x.payRatio<70?'warn':'good'}" style="margin-top:10px">${districtAdvice(sel,x)}</div>`;
 }
 function districtAdvice(d,x){
  if(d==='เมือง')return 'ข้อสั่งการ: แยกยอดใช้ที่เข้าเกณฑ์เคลม/ไม่เข้าเกณฑ์ ตรวจ claim rejection และตั้งเป้าลด GAP 4.47 ล้านบาทเป็นรายเดือน';
@@ -624,18 +633,18 @@ function renderFlagship(){
 function renderClinical(){
  const sel=selectedDistrict(),names=filteredNames(),common=filteredRows(DATA.clinical.common.rows).sort((a,b)=>b.value-a.value),imc=filteredRows(DATA.clinical.imc.rows).sort((a,b)=>b.value-a.value);
  if(sel==='ALL'){
-  document.getElementById('clinicalKpis').innerHTML=kpi('Common Disease',fmtSigned(DATA.clinical.common.province),`เกณฑ์ ≥ ${DATA.clinical.common.criterion}%`,'orange')+kpi('อำเภอผ่าน Common','2 / 6','บางเสาธง และเมือง','green')+kpi('IMC จังหวัด',pc(DATA.clinical.imc.province),`เกณฑ์ ≥ ${DATA.clinical.imc.criterion}%`,'red')+kpi('IMC สูงสุด',pc(DATA.clinical.imc.rows[0].value),'พระสมุทรเจดีย์ • ยังขาด 7.92 จุด','purple');
+  document.getElementById('clinicalKpis').innerHTML=kpi('Common Disease',fmtSigned(DATA.clinical.common.province),`เกณฑ์ ≥ ${DATA.clinical.common.criterion}%`,'orange')+kpi('อำเภอผ่าน Common','2 / 6','บางเสาธง และเมือง','green')+kpi('IMC จังหวัด',pc(DATA.clinical.imc.province),`เกณฑ์ ≥ ${DATA.clinical.imc.criterion}%`,'red',PA_TAG)+kpi('IMC สูงสุด',pc(DATA.clinical.imc.rows[0].value),'พระสมุทรเจดีย์ • ยังขาด 7.92 จุด','purple');
   document.getElementById('commonAnalysis').innerHTML=`<h3>บทวิเคราะห์ Common Disease</h3><p><strong>ภาพรวม:</strong> +15.31% ยังต่ำกว่าเกณฑ์ 25% อยู่ 9.69 จุดร้อยละ แต่สูงกว่าประเทศและเขต</p><p><strong>Star performer:</strong> บางเสาธง +60.88% และเมือง +28.61% ผ่านเกณฑ์</p><p><strong>จุดถดถอย:</strong> บางบ่อ -2.10% และบางพลี -3.42% ต้องตรวจรายการยา กลุ่มโรค และผู้สั่งใช้ที่ลดลง</p>`;
-  document.getElementById('imcAnalysis').innerHTML=`<h3>บทวิเคราะห์ IMC เกณฑ์ ≥30%</h3><p><strong>Critical gap:</strong> จังหวัดทำได้ 7.25% ห่างเกณฑ์ 22.75 จุดร้อยละ และทุกอำเภอยังไม่ผ่าน</p><p><strong>พื้นที่นำ:</strong> พระสมุทรเจดีย์ 22.08% เหลือ GAP 7.92 จุด เหมาะเป็นพื้นที่ Quick Win</p><p><strong>ฐานผู้ป่วยขนาดใหญ่:</strong> เมืองมีผู้ป่วย 1,207 คน แต่ได้รับแผนไทย 44 คน (3.65%) หากเพิ่ม coverage จะสร้างผลลัพธ์จังหวัดได้มากที่สุด</p><p><strong>ข้อสั่งการ:</strong> ทำ case-list รายสัปดาห์ เชื่อมทีม Stroke/กายภาพ/แผนไทย และกำหนด referral trigger ตั้งแต่จำหน่ายผู้ป่วย</p>`;
+  document.getElementById('imcAnalysis').innerHTML=`<h3>บทวิเคราะห์ IMC เกณฑ์ ≥30% ${PA_TAG}</h3><p><strong>Critical gap:</strong> จังหวัดทำได้ 7.25% ห่างเกณฑ์ 22.75 จุดร้อยละ และทุกอำเภอยังไม่ผ่าน</p><p><strong>พื้นที่นำ:</strong> พระสมุทรเจดีย์ 22.08% เหลือ GAP 7.92 จุด เหมาะเป็นพื้นที่ Quick Win</p><p><strong>ฐานผู้ป่วยขนาดใหญ่:</strong> เมืองมีผู้ป่วย 1,207 คน แต่ได้รับแผนไทย 44 คน (3.65%) หากเพิ่ม coverage จะสร้างผลลัพธ์จังหวัดได้มากที่สุด</p><p><strong>ข้อสั่งการ:</strong> ทำ case-list รายสัปดาห์ เชื่อมทีม Stroke/กายภาพ/แผนไทย และกำหนด referral trigger ตั้งแต่จำหน่ายผู้ป่วย</p>`;
  }else{
   const x=byDistrict[sel],ir=x.imcRow;
-  document.getElementById('clinicalKpis').innerHTML=kpi('Common '+sel,fmtSigned(x.common),`เกณฑ์ ≥25%`,x.common>=25?'green':'orange')+kpi('IMC '+sel,pc(x.imc),`เกณฑ์ ≥30%`,'red')+kpi('ผู้ป่วย IMC ได้แผนไทย',`${ir.ttm}/${ir.total} ราย`,`GAP coverage ${pc(Math.max(0,30-x.imc))}`,'purple')+kpi('Access '+sel,pc(x.access),`UC ${pc(x.uc)}`,'blue');
+  document.getElementById('clinicalKpis').innerHTML=kpi('Common '+sel,fmtSigned(x.common),`เกณฑ์ ≥25%`,x.common>=25?'green':'orange')+kpi('IMC '+sel,pc(x.imc),`เกณฑ์ ≥30%`,'red',PA_TAG)+kpi('ผู้ป่วย IMC ได้แผนไทย',`${ir.ttm}/${ir.total} ราย`,`GAP coverage ${pc(Math.max(0,30-x.imc))}`,'purple')+kpi('Access '+sel,pc(x.access),`UC ${pc(x.uc)}`,'blue');
   document.getElementById('commonAnalysis').innerHTML=`<h3>Common Disease: ${sel}</h3><p><strong>ผลงาน:</strong> ${fmtSigned(x.common)} ${x.common>=25?'ผ่าน':'ยังไม่ผ่าน'}เกณฑ์ 25%</p><p><strong>เชื่อมโยง:</strong> Access ${pc(x.access)}, UC ${pc(x.uc)} และค่าชดเชย ${pc(x.payRatio)}</p><p><strong>ข้อสั่งการ:</strong> ตรวจกลุ่มโรค รายการยา และผู้สั่งใช้รายหน่วย โดยเน้นการเปลี่ยนคำสั่งใช้เป็น claim ที่ครบถ้วน</p>`;
-  document.getElementById('imcAnalysis').innerHTML=`<h3>IMC: ${sel}</h3><p><strong>ผลงาน:</strong> ${pc(x.imc)} หรือ ${ir.ttm}/${ir.total} ราย ยังขาด ${pc(Math.max(0,30-x.imc))} ถึงเกณฑ์ 30%</p><p><strong>ข้อสั่งการ:</strong> ${districtAdvice(sel,x)}</p>`;
+  document.getElementById('imcAnalysis').innerHTML=`<h3>IMC: ${sel} ${PA_TAG}</h3><p><strong>ผลงาน:</strong> ${pc(x.imc)} หรือ ${ir.ttm}/${ir.total} ราย ยังขาด ${pc(Math.max(0,30-x.imc))} ถึงเกณฑ์ 30%</p><p><strong>ข้อสั่งการ:</strong> ${districtAdvice(sel,x)}</p>`;
  }
  document.getElementById('commonBars').innerHTML=common.map(r=>metricGauge(r.district,r.value,{min:-10,max:70,display:fmtSigned(r.value),criterion:25,good:25,mid:0,labels:['ผ่านเกณฑ์','ยังเป็นบวก','ติดลบ'],detail:`เทียบเกณฑ์ 25%`,sub:`${r.value>=25?'สูงกว่า':'ต่ำกว่า'}เกณฑ์ ${pc(Math.abs(r.value-25))}`})).join('');
  document.getElementById('imcBars').innerHTML=imc.map(r=>metricGauge(r.district,r.value,{min:0,max:30,display:pc(r.value),criterion:30,good:30,mid:15,labels:['ผ่านเกณฑ์','Quick Win','เร่งรัด'],detail:`ได้รับแผนไทย ${r.ttm}/${r.total} ราย`,sub:`GAP ${pc(Math.max(0,30-r.value))}`})).join('');
- document.getElementById('clinicalTable').innerHTML=`<thead><tr><th>อำเภอ</th><th>Access</th><th>Common</th><th>IMC</th><th>UC 10 เดือน</th><th>ชดเชย</th><th>ข้อสังเกต</th></tr></thead><tbody>`+names.map(d=>{const x=byDistrict[d];let note=x.imc>20?'Quick Win IMC':x.access<50?'Access ต่ำ':x.payRatio<50?'Conversion ต่ำ':'เฝ้าระวัง';return `<tr><td>${d}</td><td>${pc(x.access)}</td><td>${fmtSigned(x.common)}</td><td>${pc(x.imc)}</td><td>${pc(x.uc)}</td><td>${pc(x.payRatio)}</td><td>${note}</td></tr>`}).join('')+'</tbody>';
+ document.getElementById('clinicalTable').innerHTML=`<thead><tr><th>อำเภอ</th><th>Access</th><th>Common</th><th>IMC ${PA_TAG}</th><th>UC 10 เดือน</th><th>ชดเชย</th><th>ข้อสังเกต</th></tr></thead><tbody>`+names.map(d=>{const x=byDistrict[d];let note=x.imc>20?'Quick Win IMC':x.access<50?'Access ต่ำ':x.payRatio<50?'Conversion ต่ำ':'เฝ้าระวัง';return `<tr><td>${d}</td><td>${pc(x.access)}</td><td>${fmtSigned(x.common)}</td><td>${pc(x.imc)}</td><td>${pc(x.uc)}</td><td>${pc(x.payRatio)}</td><td>${note}</td></tr>`}).join('')+'</tbody>';
 }
 
 function renderCannabis(){
