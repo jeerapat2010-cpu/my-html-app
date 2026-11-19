@@ -3,10 +3,10 @@
 import json, re, time, urllib.request, datetime, os, email.utils
 import xml.etree.ElementTree as ET
 os.makedirs('data', exist_ok=True)
-FEEDS = [('NASA', 'https://www.nasa.gov/feed/'), ('SETI Institute', 'https://www.seti.org/feed/'),
-         ('Phys.org', 'https://phys.org/rss-feed/space-news/astronomy/'), ('ESA', 'https://www.esa.int/rssfeed/Our_Activities/Space_Science'),
-         ('Sky at Night', 'https://www.skyatnightmagazine.com/feed/')]
-KW = re.compile(r'\b(alien|extraterrestrial|UAP|UFO|SETI|technosignature|biosignature|habitable|exoplanet|life on mars|search for life|interstellar|3I/ATLAS|astrobiolog|Europa|Enceladus|Perseverance)\b', re.I)
+FEEDS = [('NASA', 'https://www.nasa.gov/feed/'), ('NASA Science', 'https://science.nasa.gov/feed/'),
+         ('Phys.org', 'https://phys.org/rss-feed/space-news/astronomy/'), ('Space.com', 'https://www.space.com/feeds/all'),
+         ('Universe Today', 'https://www.universetoday.com/feed/'), ('ScienceDaily', 'https://www.sciencedaily.com/rss/space_time/astrobiology.xml')]
+KW = re.compile(r'\b(alien|extraterrestrial|UAP|UFO|SETI|technosignature|biosignature|habitable|exoplanet|life on mars|search for life|interstellar|3I/ATLAS|astrobiolog|Europa|Enceladus|Perseverance|Mars|comet|Webb|life beyond|alien life)\b', re.I)
 items, log = [], []
 def status(m): open('data/alien_news_status.txt', 'w').write(datetime.datetime.utcnow().isoformat() + 'Z ' + m + '\n')
 for name, url in FEEDS:
