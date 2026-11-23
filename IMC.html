@@ -192,6 +192,7 @@ footer.credits{background:linear-gradient(135deg,#2a0010,#6b0a1f 50%,#9b111e);co
  <section class="panel" id="p-compare"></section>
  <section class="panel" id="p-dist"></section>
  <section class="panel" id="p-unit"></section>
+ <section class="panel" id="p-flow"></section>
  <section class="panel" id="p-deep"></section>
  <section class="panel" id="p-plan"></section>
  <section class="panel" id="p-hdc"></section>
@@ -507,6 +508,7 @@ R.docs=()=>{
  const hb=[['แพทย์','MD'],['พยาบาล/Case Manager','Nurse'],['นักกายภาพบำบัด','PT'],['นักกิจกรรมบำบัด/อรรถบำบัด','OT_ST'],['แพทย์แผนไทย','TTM'],['แพทย์แผนจีน/ฝังเข็ม','TCM'],['เภสัชกร','Pharm'],['รพ.สต./อสม./ผู้ดูแล','Community']];
  $('#p-docs').innerHTML=`
  <div class="sec">📚 เอกสารในโครงการ</div>
+ <div class="note blue" style="margin-bottom:10px">📁 คู่มือต้นฉบับ IMC (5 ไฟล์): <a target="_blank" rel="noopener" href="file:///C:/Users/jeerapat.p/OneDrive/2%20%E0%B8%87%E0%B8%B2%E0%B8%99%E0%B9%81%E0%B8%9E%E0%B8%97%E0%B8%A2%E0%B9%8C%E0%B9%81%E0%B8%9C%E0%B8%99%E0%B9%84%E0%B8%97%E0%B8%A2/%E0%B8%87%E0%B8%B2%E0%B8%99%20%E0%B8%9E%E0%B8%9C%E0%B8%97%2070/IMC%2070/Handbook2/">เปิดโฟลเดอร์ Handbook2</a> · ตำแหน่ง OneDrive: <code>C:\\Users\\jeerapat.p\\OneDrive\\2 งานแพทย์แผนไทย\\งาน พผท 70\\IMC 70\\Handbook2</code> (ใช้ได้เฉพาะบนเครื่องที่ซิงก์ OneDrive)</div>
  <div class="card"><div class="chips">${docs.map(d=>`<a class="chip" target="_blank" rel="noopener" href="${d[1]}">${d[0]}</a>`).join('')}</div><h3 style="margin-top:12px">คู่มือแยกรายวิชาชีพ (PDF)</h3><div class="chips">${hb.map(h=>`<a class="chip" target="_blank" rel="noopener" href="${DB}handbooks/IMC_Handbook_${h[1]}.pdf">${h[0]}</a>`).join('')}</div>
  <div class="note" style="margin-top:10px">ลิงก์เอกสารชี้ไปยังโฟลเดอร์ docs ของเว็บนี้ ใช้ได้เมื่อไฟล์ถูกเผยแพร่แล้ว สำเนาอยู่ที่ OneDrive โฟลเดอร์ IMC 70</div></div>
  <div class="sec">🔖 เอกสารอ้างอิงในแผน (${DATA.refs.length} รายการ)</div>
@@ -541,7 +543,7 @@ relabel($('header.hero'));
 /* patch go() to call post */
 const _go=go;go=function(id){_go(id);post(id)};
 $('#tabs').innerHTML=TABS2().map(t=>`<button class="tab" data-id="${t[0]}">${t[1]}${t[2]?'<span class="nw">ใหม่</span>':''}</button>`).join('');
-function TABS2(){return [['exec','🎯 ผู้บริหาร'],['info','💎 Infographic',1],['compare','🌏 ประเทศ→เขต→จังหวัด'],['dist','🗺️ รายอำเภอ'],['unit','🏥 รพ./รพ.สต.'],['deep','🔬 วิเคราะห์เจาะลึก'],['plan','🎮 Planner',1],['hdc','🔗 HDC & ฐานข้อมูล'],['pa','🏅 PA / Flagship'],['docs','📚 เอกสาร & ลิงก์'],['method','⚠️ ที่มา & ข้อจำกัด']]}
+function TABS2(){return [['exec','🎯 ผู้บริหาร'],['info','💎 Infographic',1],['compare','🌏 ประเทศ→เขต→จังหวัด'],['dist','🗺️ รายอำเภอ'],['unit','🏥 รพ./รพ.สต.'],['flow','🧭 Flow ตามอำเภอ/CUP',1],['deep','🔬 วิเคราะห์เจาะลึก'],['plan','🎮 Planner',1],['hdc','🔗 HDC & ฐานข้อมูล'],['pa','🏅 PA / Flagship'],['docs','📚 เอกสาร & ลิงก์'],['method','⚠️ ที่มา & ข้อจำกัด']]}
 
 /* ---------- helpers ---------- */
 const clsCol=p=>p>=T?'#047857':p>=15?'#d97706':p>0?'#e0475f':'#6b0a1f';
@@ -692,6 +694,44 @@ R.deep=()=>{_dp();const p=$('#p-deep');
   const s=UNITS.map(u=>({u,s:w[0]*u.n/mxn+w[1]*u.b/mxb+w[2]*(u.a===0&&u.b>0?1:0)+w[3]*(u.a>0&&u.p<T&&u.n<=1&&u.p>=15?1:0)})).sort((a,b)=>b.s-a.s).slice(0,15);
   $('#prt').innerHTML=`<thead><tr><th class="n">#</th><th>หน่วย</th><th>อำเภอ</th><th class="n">ตัวหาร</th><th class="n">ได้รับ</th><th class="n">ต้องเพิ่ม</th><th class="n">คะแนน</th></tr></thead><tbody>${s.map((x,i)=>`<tr style="cursor:pointer" onclick="unitM('${x.u.code}')"><td class="n">${i+1}</td><td>${esc(x.u.name)}</td><td>${x.u.amp}</td><td class="n">${x.u.b}</td><td class="n">${x.u.a}</td><td class="n">${x.u.n}</td><td class="n"><b>${x.s.toFixed(1)}</b></td></tr>`).join('')}</tbody>`};
  [1,2,3,4].forEach(i=>$('#w'+i).addEventListener('input',pr));pr();countUp(p)};
+
+
+/* ---------- FLOW OPTIONS PER CUP / DISTRICT ---------- */
+const HB_URL='file:///C:/Users/jeerapat.p/OneDrive/2%20%E0%B8%87%E0%B8%B2%E0%B8%99%E0%B9%81%E0%B8%9E%E0%B8%97%E0%B8%A2%E0%B9%8C%E0%B9%81%E0%B8%9C%E0%B8%99%E0%B9%84%E0%B8%97%E0%B8%A2/%E0%B8%87%E0%B8%B2%E0%B8%99%20%E0%B8%9E%E0%B8%9C%E0%B8%97%2070/IMC%2070/Handbook2/';
+const HB_DIR='C:\\Users\\jeerapat.p\\OneDrive\\2 งานแพทย์แผนไทย\\งาน พผท 70\\IMC 70\\Handbook2';
+const FLOWS={
+ A:{n:'A · Hub IPD + ทีม TTM',ic:'🏥',steps:['รับจาก รพ.A/S/M หรือ walk-in (นัด admit ในเวลาราชการ)','Admit intermediate ward/bed ตามเกณฑ์ BI + vital signs','ทีมสหวิชาชีพ + แพทย์แผนไทย/จีน ฟื้นฟู 7/14 วัน (นอน 14–30 วัน)','วางแผนจำหน่าย ส่ง COC ทุกราย','OPD/เยี่ยมบ้านต่อจนครบ 6 เดือน ติดตาม 1/3/6 เดือน'],need:'มี intermediate bed/ward · PT · แพทย์แผนไทยหรือแผนจีน (ฝังเข็ม)',pro:'ความเข้มสูงสุด ทีมครบ จัดโปรแกรมแผนไทย/จีนต่อเนื่องได้',con:'ต้องมีเตียง/คน/ทุนเพิ่ม; ผู้ป่วยนอกอำเภอต้องเดินทาง',basis:'S1 (best practice วัฒนานคร/สว่างแดนดิน), S2 intermediate ward, S7, S4 IPD DRG'},
+ B:{n:'B · OPD ศูนย์กลางวันเดียว',ic:'🩺',steps:['รับส่งต่อจาก รพ. แม่ข่ายพร้อมสรุป BI','ลงทะเบียน Disability Portal นับ 6 เดือน','วันนัดเดียวกัน: PT/OT ≥ 45 นาที + แผนไทย/ฝังเข็ม (1–2 ครั้ง/สัปดาห์)','ประเมิน BI ทุกครั้งที่ฝังเข็มและรายเดือน','ส่ง COC พร้อมติดตาม 1/3/6 เดือน'],need:'PT + แพทย์แผนไทยหรือแผนจีน อยู่คลินิกเดียวกัน · ผู้ป่วยเดินทางมาได้',pro:'ลงทุนต่ำ ใช้ทรัพยากรเดิม นัดรวมวันลดภาระการเดินทาง',con:'ความเข้มข้นต่ำกว่า IPD; ขึ้นกับความร่วมมือของญาติ',basis:'S2 OPD (≥ 45 นาที 1–3 ครั้ง/สัปดาห์ ≥ 20 ครั้ง), S5, S3/S4'},
+ C:{n:'C · เยี่ยมบ้านร่วมกับ รพ.สต.',ic:'🏡',steps:['Case Manager ส่งชื่อให้ รพ.สต. ตามที่อยู่','เยี่ยมบ้านร่วมทีม (PT/พยาบาล/แผนไทย) วางแผนที่บ้าน','นวด ประคบ ฝึกญาติ; ฝังเข็มที่บ้านถ้ามีผู้ให้บริการที่มีคุณสมบัติ','บันทึก BI และส่งข้อมูลกลับ รพ.','เชื่อม LTC/อสม./อปท.'],need:'ทีมเยี่ยมบ้าน · รพ.สต. · ผู้ดูแลหลัก',pro:'เข้าถึงผู้ป่วยเดินทางลำบาก เบิก +200 บาท/ครั้งสำหรับบริการที่บ้าน',con:'ใช้เวลาเดินทางมาก ทำหัตถการจำกัด; ต้องควบคุมคุณภาพรหัส/บันทึก',basis:'S2 Outreach, S3/S4 (+200 บาท), S5 (ฝังเข็มที่บ้านได้)'},
+ D:{n:'D · เครือข่าย Hub-and-spoke †',ic:'🔗',steps:['CUP ที่ขาดศักยภาพลงทะเบียนและส่งต่อไป hub/คลินิกกายภาพ/คลินิกแผนไทย-จีนพันธมิตร','Hub รับส่งต่อ ให้บริการและบันทึก BI','นับจำนวนครั้งรวมกันข้ามหน่วย (PT ≤ 20, ฝังเข็ม ≤ 20)','Hub ส่งข้อมูลกลับ CUP + รพ.สต.','CUP ติดตาม COC 1/3/6 เดือน'],need:'พันธมิตร/hub ที่เดินทางถึงได้ · Case Manager ประสานข้อมูล · ระบบส่งข้อมูลกลับ',pro:'เริ่มได้เร็ว ไม่ต้องรอสร้างศักยภาพ ใช้ข้อเสนอศูนย์ประสานระดับจังหวัด',con:'ข้อมูลกระจาย เสี่ยงข้อมูลหาย/นับซ้ำ; ต้องมีข้อตกลงและแบบฟอร์มกลาง',basis:'S1 ข้อเสนอศูนย์ประสานจังหวัด/อำเภอ, S2 บทที่ 5, S3 (นับ PT รวมข้ามหน่วย), S5 (นับต่อเนื่องหลายหน่วย) — การจัดแบบนี้เป็นข้อเสนอสังเคราะห์'}
+};
+const CAPS=[['ward','มี intermediate bed/ward'],['pt','มี PT/OT'],['acu','มีแพทย์ฝังเข็ม/แผนจีน'],['thai','มีแพทย์แผนไทย'],['hub','มี hub/พันธมิตรเดินทางถึงได้'],['far','ผู้ป่วยเดินทางลำบากมาก']];
+let FC=store.get('flowcap',{}),FO=store.get('flowov',{});
+function flowRec(k){const c=FC[k]||{};const set=Object.keys(c).length>0;if(!set)return{p:null,s:null,why:'ยังไม่ได้กรอกศักยภาพ'};
+ const ttm=c.acu||c.thai;let p,s=null,why=[];
+ if(c.ward&&c.pt&&ttm){p='A';why.push('มีเตียง+PT+แผนไทย/จีน');if(c.far)s='C'}
+ else if(c.pt&&ttm){p='B';why.push('มี PT และ TTM แต่ไม่มีเตียง');if(c.far){s='C';why.push('ผู้ป่วยเดินทางลำบาก → เสริมเยี่ยมบ้าน')}}
+ else if(c.hub){p='D';why.push('ขาด '+[!c.pt&&'PT',!ttm&&'แผนไทย/จีน'].filter(Boolean).join('/')+' → ส่งต่อ hub');s='C'}
+ else if(c.far||c.pt||ttm){p='C';why.push('ศักยภาพจำกัด ไม่มี hub → เยี่ยมบ้านร่วม รพ.สต.');}
+ else{p='D';why.push('ยังไม่มีศักยภาพและยังไม่ระบุ hub → ต้องหา hub ก่อน (แผนพัฒนา)')}
+ return{p,s,why:why.join('; ')}}
+R.flow=()=>{
+ const rows=[...DIST.map(d=>({k:'d:'+d.amp,name:'อำเภอ'+d.amp,b:d.b,a:d.a,p:d.p,units:d.units.length})),...UNITS.filter(u=>u.type==='รพ.').map(u=>({k:'u:'+u.code,name:u.name+' ('+u.amp+')',b:u.b,a:u.a,p:u.p,units:1}))];
+ $('#p-flow').innerHTML=`
+ <div class="sec">🧭 Flow ตามบริบท CUP/อำเภอ <span class="ribbon">ใหม่</span><small>เลือกรูปแบบส่งต่อที่เหมาะกับศักยภาพจริงของแต่ละพื้นที่</small></div>
+ <div class="note blue">📚 คู่มือต้นฉบับ: <a href="${HB_URL}" target="_blank" rel="noopener">เปิดโฟลเดอร์ Handbook2</a> · ตำแหน่ง <code>${esc(HB_DIR)}</code> (ลิงก์นี้ใช้ได้บนเครื่องที่ซิงก์ OneDrive เท่านั้น)</div>
+ <div class="grid g2" style="margin-top:12px">${Object.entries(FLOWS).map(([k,f])=>`<div class="card"><h3>${f.ic} ${f.n}</h3><ol class="steps">${f.steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol><p class="sub"><b>ต้องมี:</b> ${esc(f.need)}</p><p class="sub">✅ ${esc(f.pro)}<br>⚠️ ${esc(f.con)}</p><p class="sub">ที่มา: ${esc(f.basis)}</p></div>`).join('')}</div>
+ <div class="sec">⚙️ เลือกรูปแบบรายพื้นที่ <small>ติ๊กศักยภาพจริง ระบบแนะนำให้ แล้วเลือกรูปแบบที่ใช้</small></div>
+ <div class="note">ระบบยังไม่มีข้อมูลศักยภาพ (เตียง/PT/แพทย์ฝังเข็ม) ของแต่ละอำเภอ — ต้องกรอกโดยกลุ่มงาน/โรงพยาบาลแม่ข่าย ค่าที่กรอกเก็บในเบราว์เซอร์เครื่องนี้ ไม่ส่งขึ้นเซิร์ฟเวอร์ · คำแนะนำเป็นกฎง่ายๆ ประกอบการหารือ ไม่ใช่มติ</div>
+ <div class="card"><div class="tw"><table id="fct"></table></div><div class="ctl"><button class="b" onclick="flowTxt()">📋 คัดลอกสรุป</button><button class="b" onclick="flowCSV()">⬇️ CSV</button><button class="b" onclick="FC={};FO={};store.set('flowcap',FC);store.set('flowov',FO);flowDraw()">ล้างค่า</button></div></div>`;
+ window.FROWS=rows;flowDraw()};
+function flowDraw(){const th=`<thead><tr><th>พื้นที่</th><th class="n">ตัวหาร</th><th class="n">% HDC</th>${CAPS.map(c=>`<th>${c[1]}</th>`).join('')}<th>ระบบแนะนำ</th><th>รูปแบบที่เลือกใช้</th></tr></thead>`;
+ $('#fct').innerHTML=th+'<tbody>'+FROWS.map(r=>{const rc=flowRec(r.k),ov=FO[r.k]||'';return `<tr><td>${esc(r.name)}</td><td class="n">${fmt(r.b)}</td><td class="n">${pc1(r.p)}</td>${CAPS.map(c=>`<td><input type="checkbox" ${(FC[r.k]||{})[c[0]]?'checked':''} onchange="flowSet('${r.k}','${c[0]}',this.checked)"></td>`).join('')}<td>${rc.p?`<b>${FLOWS[rc.p].ic} ${rc.p}</b>${rc.s?' + '+rc.s:''}<div class="sub">${esc(rc.why)}</div>`:'<span class="sub">'+rc.why+'</span>'}</td><td><select onchange="flowOv('${r.k}',this.value)"><option value="">—</option>${Object.keys(FLOWS).map(k=>`<option ${ov==k?'selected':''}>${k}</option>`).join('')}</select></td></tr>`}).join('')+'</tbody>'}
+function flowSet(k,c,v){FC[k]=FC[k]||{};FC[k][c]=v;store.set('flowcap',FC);flowDraw()}
+function flowOv(k,v){if(v)FO[k]=v;else delete FO[k];store.set('flowov',FO)}
+function flowLines(){return FROWS.map(r=>{const rc=flowRec(r.k);return [r.name,rc.p?rc.p+(rc.s?'+'+rc.s:''):'รอข้อมูล',FO[r.k]||'-']})}
+function flowTxt(){copy('Flow ตามพื้นที่ (ร่าง)\n'+flowLines().map(l=>`${l[0]}: แนะนำ ${l[1]}; เลือกใช้ ${l[2]}`).join('\n'))}
+function flowCSV(){dl('imc_flow_by_area.csv','พื้นที่,ระบบแนะนำ,เลือกใช้\n'+flowLines().map(l=>l.join(',')).join('\n'),'text/csv')}
 
 /* init */
 const h=(location.hash||'#exec').slice(1);go(TABS.some(t=>t[0]===h)?h:'exec');
