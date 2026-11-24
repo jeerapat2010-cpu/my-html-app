@@ -310,6 +310,132 @@ function renderAll(){renderOverview();renderNational();renderRegion();renderDist
 document.querySelectorAll('.menu-btn').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.menu-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(btn.dataset.view).classList.add('active');document.getElementById('pageTitle').textContent=titles[btn.dataset.view][0];document.getElementById('pageDesc').textContent=titles[btn.dataset.view][1];window.scrollTo({top:0,behavior:'smooth'});}));
 </script>
 <script>
+/* ===== FYX : เมนูเลือกปีงบ 70/69 + เปรียบเทียบ 69 กับ 70 (ใช้ร่วมทุกรายงานตัวชี้วัด) ===== */
+(function () {
+  'use strict';
+  if (window.FYXUI) return;
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var f0 = function (n) { return n == null || isNaN(n) ? '–' : Number(n).toLocaleString('th-TH'); };
+  var f2 = function (n) { return n == null || isNaN(n) ? '–' : Number(n).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  var short = function (s) { return String(s || '').replace(/^\d{5}:/, '').replace('โรงพยาบาลส่งเสริมสุขภาพตำบล', 'รพ.สต.').replace('โรงพยาบาล', 'รพ.'); };
+  function track(n, p) { try { if (window.gtag) window.gtag('event', n, Object.assign({ app_name: window.__ttmAppName || 'FYX' }, p || {})); } catch (_) {} }
+
+  var CSS = '.fyx-bar{position:fixed;left:14px;bottom:14px;z-index:9000;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font:700 13px Sarabun,"IBM Plex Sans Thai",Prompt,sans-serif}' +
+    '.fyx-grp{display:inline-flex;align-items:center;gap:3px;padding:3px;border-radius:999px;background:#fff;border:1px solid #cbd5e1;color:#0f766e;box-shadow:0 6px 18px rgba(15,23,42,.18);white-space:nowrap}' +
+    '.fyx-grp a,.fyx-grp button{font:inherit;border:0;background:transparent;color:inherit;cursor:pointer;padding:5px 12px;border-radius:999px;text-decoration:none}' +
+    '.fyx-grp a[aria-current=true]{background:#0f766e;color:#fff}.fyx-cmp{background:#0f766e!important;color:#fff!important}' +
+    '.fyx-ov{position:fixed;inset:0;z-index:9500;background:rgba(15,23,42,.55);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:18px 10px;font-family:Sarabun,"IBM Plex Sans Thai",Prompt,sans-serif;color:#0f172a}' +
+    '.fyx-ov.on{display:flex}.fyx-box{background:#fff;border-radius:18px;max-width:1080px;width:100%;box-shadow:0 30px 70px rgba(0,0,0,.35);overflow:hidden}' +
+    '.fyx-h{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;padding:16px 20px;background:linear-gradient(135deg,#0f766e,#14532d);color:#fff}.fyx-h h2{margin:0;font-size:18px;line-height:1.4}.fyx-h small{opacity:.85;display:block;margin-top:2px;font-weight:500}' +
+    '.fyx-x{border:0;background:rgba(255,255,255,.2);color:#fff;width:34px;height:34px;border-radius:50%;font-size:18px;cursor:pointer;flex:none}' +
+    '.fyx-b{padding:16px 20px 22px}.fyx-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:14px}' +
+    '.fyx-t{border:1px solid #e2e8f0;border-radius:14px;padding:10px 14px;background:#f8fafc}.fyx-t b{display:block;font-size:12px;color:#475569;font-weight:700}.fyx-t span{font-size:22px;font-weight:800}.fyx-t i{display:block;font-style:normal;font-size:12px;color:#64748b}' +
+    '.fyx-ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}.fyx-seg{display:inline-flex;border:1px solid #cbd5e1;border-radius:999px;overflow:hidden}' +
+    '.fyx-seg button{border:0;background:#fff;padding:6px 14px;font:700 13px inherit;font-family:inherit;cursor:pointer;color:#334155}.fyx-seg button.on{background:#0f766e;color:#fff}' +
+    '.fyx-ctl input,.fyx-ctl select{border:1px solid #cbd5e1;border-radius:10px;padding:6px 10px;font:inherit;font-size:13px}' +
+    '.fyx-tb{width:100%;border-collapse:collapse;font-size:13.5px}.fyx-tb th{position:sticky;top:0;background:#f1f5f9;text-align:right;padding:8px 10px;font-weight:800;color:#334155;border-bottom:2px solid #e2e8f0;white-space:nowrap}.fyx-tb th:first-child,.fyx-tb td:first-child{text-align:left}' +
+    '.fyx-tb td{padding:7px 10px;border-bottom:1px solid #eef2f7;text-align:right;vertical-align:middle}.fyx-tb tr:hover td{background:#f8fafc}.fyx-w{max-height:56vh;overflow:auto;border:1px solid #e2e8f0;border-radius:12px}' +
+    '.fyx-up{color:#15803d;font-weight:800}.fyx-dn{color:#b91c1c;font-weight:800}.fyx-eq{color:#64748b;font-weight:800}.fyx-bar2{display:inline-block;height:8px;border-radius:4px;vertical-align:middle;min-width:2px}' +
+    '.fyx-n{font-size:12px;color:#64748b;margin-top:10px;line-height:1.6}.fyx-sub{font-size:11.5px;color:#64748b;font-weight:500}@media print{.fyx-bar{display:none}.fyx-ov{position:static;background:#fff;padding:0}.fyx-ov.on .fyx-box{box-shadow:none}}';
+  function css() { if ($('#fyx-css')) return; var s = document.createElement('style'); s.id = 'fyx-css'; s.textContent = CSS; document.head.appendChild(s); }
+
+  /* ---------- ตัวคำนวณ ---------- */
+  function rowsOf(d, lv) { return (d && d.rows && d.rows[lv]) || []; }
+  function key(r) { return short(r[4] || r[0]); }
+  function pct(r) { return r[1] > 0 ? r[2] / r[1] * 100 : null; }
+  function sum(rows) { var b = 0, a = 0; rows.forEach(function (r) { b += r[1] || 0; a += r[2] || 0; }); return [null, b, a]; }
+
+  var ST = { cfg: null, lv: 'dist', base: 'full', q: '', grp: '', sort: 'd' };
+  function ensure() {
+    css(); var ov = $('#fyx-ov'); if (ov) return ov;
+    ov = document.createElement('div'); ov.id = 'fyx-ov'; ov.className = 'fyx-ov no-print'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    document.body.appendChild(ov); return ov;
+  }
+  function close() { var o = $('#fyx-ov'); if (o) o.classList.remove('on'); }
+  async function open(cfg) {
+    var ov = ensure(); ov.classList.add('on');
+    ov.innerHTML = '<div class="fyx-box"><div class="fyx-h"><div><h2>⚖ เปรียบเทียบปีงบ 69 กับ 70</h2><small>กำลังโหลดข้อมูล…</small></div><button class="fyx-x" aria-label="ปิด">✕</button></div><div class="fyx-b" id="fyx-body">กำลังโหลดข้อมูลปีงบ 69 / 70 …</div></div>';
+    $('.fyx-x', ov).onclick = close;
+    try { if (typeof cfg === 'function') cfg = await cfg(); } catch (e) { $('#fyx-body').innerHTML = '<p style="color:#b91c1c">โหลดข้อมูลไม่สำเร็จ: ' + esc(e.message || e) + '</p>'; return; }
+    ST.cfg = cfg; ST.base = cfg.defaultBase || (cfg.d69.q1 ? 'q1' : 'full'); ST.lv = rowsOf(cfg.d70, 'dist').length ? 'dist' : 'prov'; ST.q = ''; ST.grp = ''; ST.sort = 'd';
+    track('fyx_open', { kpi: cfg.kpi }); render();
+  }
+  function levels(cfg) { var L = []; if (rowsOf(cfg.d70, 'prov').length) L.push(['prov', 'เขต 6 / จังหวัด']); if (rowsOf(cfg.d70, 'dist').length) L.push(['dist', 'อำเภอ']); if (rowsOf(cfg.d70, 'unit').length) L.push(['unit', 'หน่วยบริการ']); return L; }
+  function render() {
+    var c = ST.cfg, ov = $('#fyx-ov'), kind = c.kind || 'pct';
+    var d70 = c.d70, d69 = c.d69[ST.base] || c.d69.full || c.d69.q1;
+    var L = levels(c); if (!L.some(function (x) { return x[0] === ST.lv; })) ST.lv = L[0] && L[0][0];
+    var A = rowsOf(d70, ST.lv), B = rowsOf(d69, ST.lv);
+    var mB = {}; B.forEach(function (r) { mB[r[0]] = r; });
+    var m70 = d70.months || 1, m69 = d69.months || 1, perM = kind === 'count' && d70.months && d69.months;
+    var val = function (r, m) { return kind === 'pct' ? pct(r) : (r[2] == null ? null : (perM ? r[2] / m : r[2])); };
+    var rows = A.map(function (r) { var o = mB[r[0]] || null; var p70 = val(r, m70), p69 = o ? val(o, m69) : null;
+      var d = p70 != null && p69 != null ? (kind === 'pct' ? p70 - p69 : (p69 > 0 ? (p70 - p69) / p69 * 100 : null)) : null; return { r: r, o: o, p70: p70, p69: p69, d: d, name: key(r), grp: r[3] || '' }; });
+    var grps = []; if (ST.lv === 'unit') rows.forEach(function (x) { if (x.grp && grps.indexOf(x.grp) < 0) grps.push(x.grp); });
+    if (ST.grp) rows = rows.filter(function (x) { return x.grp === ST.grp; });
+    if (ST.q) rows = rows.filter(function (x) { return x.name.indexOf(ST.q) >= 0; });
+    rows.sort(function (a, b) { if (ST.sort === 'n') return a.name.localeCompare(b.name, 'th'); var da = a.d == null ? -1e9 : a.d, db = b.d == null ? -1e9 : b.d; return ST.sort === 'd' ? db - da : da - db; });
+    var maxAbs = Math.max.apply(null, [1].concat(rows.map(function (x) { return Math.abs(x.d || 0); })));
+    var tot70 = ST.lv === 'unit' ? sum(A) : sum(A), tot69 = sum(B);
+    var T70 = kind === 'pct' ? pct(tot70) : (perM ? tot70[2] / m70 : tot70[2]), T69 = kind === 'pct' ? pct(tot69) : (perM ? tot69[2] / m69 : tot69[2]);
+    var TD = T70 != null && T69 != null ? (kind === 'pct' ? T70 - T69 : (T69 > 0 ? (T70 - T69) / T69 * 100 : null)) : null;
+    var up = rows.filter(function (x) { return x.d != null && x.d > 0.005; }).length, dn = rows.filter(function (x) { return x.d != null && x.d < -0.005; }).length;
+    var fv = function (v) { return kind === 'pct' ? (v == null ? '–' : f2(v) + '%') : (perM ? f0(Math.round(v)) : f0(v)); };
+    var fd = function (v) { if (v == null) return '<span class="fyx-eq">–</span>'; var cl = v > 0.005 ? 'fyx-up' : v < -0.005 ? 'fyx-dn' : 'fyx-eq', ar = v > 0.005 ? '▲ +' : v < -0.005 ? '▼ ' : '● '; return '<span class="' + cl + '">' + ar + (kind === 'pct' ? f2(v) + ' จุด' : f2(v) + '%') + '</span>'; };
+    var baseSeg = c.d69.q1 && c.d69.full ? '<div class="fyx-seg" role="group" aria-label="ฐานเปรียบเทียบ"><button data-b="q1" class="' + (ST.base === 'q1' ? 'on' : '') + '">เทียบไตรมาส 1 ปี 69 (ช่วงใกล้เคียง)</button><button data-b="full" class="' + (ST.base === 'full' ? 'on' : '') + '">เทียบทั้งปี 69</button></div>' : '';
+    var lvSeg = '<div class="fyx-seg" role="group">' + L.map(function (x) { return '<button data-l="' + x[0] + '" class="' + (ST.lv === x[0] ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div>';
+    var head = kind === 'pct' ? ['ร้อยละ', c.lbA, c.lbB] : [c.lbA || 'จำนวน'];
+    var th = '<th data-s="n" style="cursor:pointer">' + (ST.lv === 'unit' ? 'หน่วยบริการ' : ST.lv === 'dist' ? 'อำเภอ' : 'จังหวัด') + '</th>' +
+      '<th>' + esc(d69.label || 'ปี 69') + '<div class="fyx-sub">' + (kind === 'pct' ? 'ร้อยละ (' + esc(c.lbA) + '/' + esc(c.lbB) + ')' : esc(c.lbA || 'จำนวน') + (perM ? ' เฉลี่ย/เดือน' : '')) + '</div></th>' +
+      '<th>' + esc(d70.label || 'ปี 70') + '<div class="fyx-sub">' + (kind === 'pct' ? 'ร้อยละ (' + esc(c.lbA) + '/' + esc(c.lbB) + ')' : esc(c.lbA || 'จำนวน') + (perM ? ' เฉลี่ย/เดือน' : '')) + '</div></th>' +
+      '<th data-s="d" style="cursor:pointer">เปลี่ยนแปลง ' + (kind === 'pct' ? '(จุดร้อยละ)' : '(%)') + (ST.sort === 'd' ? ' ▼' : ST.sort === 'a' ? ' ▲' : '') + '</th>';
+    var cell = function (x, o) { if (!o) return '–'; return kind === 'pct' ? '<b>' + fv(x.p) + '</b><div class="fyx-sub">' + f0(o[2]) + ' / ' + f0(o[1]) + '</div>' : '<b>' + fv(x.p) + '</b>' + (perM ? '<div class="fyx-sub">รวม ' + f0(o[2]) + '</div>' : ''); };
+    var body = rows.map(function (x) {
+      var w = x.d == null ? 0 : Math.min(100, Math.abs(x.d) / maxAbs * 100), col = x.d > 0 ? '#16a34a' : '#dc2626';
+      return '<tr><td>' + esc(x.name) + (x.grp && ST.lv === 'unit' ? '<div class="fyx-sub">' + esc(x.grp) + '</div>' : '') + '</td><td>' + cell({ p: x.p69 }, x.o) + '</td><td>' + cell({ p: x.p70 }, x.r) + '</td><td>' + fd(x.d) + '<div><span class="fyx-bar2" style="width:' + (w * 0.9) + 'px;background:' + col + '"></span></div></td></tr>';
+    }).join('') || '<tr><td colspan="4" style="text-align:center;color:#64748b;padding:24px">ไม่พบข้อมูล</td></tr>';
+    var tiles = '<div class="fyx-tiles"><div class="fyx-t"><b>' + esc(d69.label || 'ปี 69') + '</b><span>' + fv(T69) + '</span><i>' + esc(d69.note || '') + '</i></div>' +
+      '<div class="fyx-t"><b>' + esc(d70.label || 'ปี 70') + '</b><span>' + fv(T70) + '</span><i>' + esc(d70.note || '') + '</i></div>' +
+      '<div class="fyx-t"><b>เปลี่ยนแปลงรวม</b><span>' + fd(TD) + '</span><i>ดีขึ้น ' + up + ' • ลดลง ' + dn + ' (จาก ' + rows.length + ' รายการที่แสดง)</i></div></div>';
+    ov.innerHTML = '<div class="fyx-box"><div class="fyx-h"><div><h2>⚖ เปรียบเทียบปีงบ 69 กับ 70 — ' + esc(c.title) + '</h2><small>' + esc(c.sub || '') + '</small></div><button class="fyx-x" aria-label="ปิด">✕</button></div><div class="fyx-b">' + tiles +
+      '<div class="fyx-ctl">' + lvSeg + baseSeg + (grps.length ? '<select id="fyx-g"><option value="">ทุกอำเภอ</option>' + grps.map(function (g) { return '<option' + (g === ST.grp ? ' selected' : '') + '>' + esc(g) + '</option>'; }).join('') + '</select>' : '') + '<input id="fyx-q" type="search" placeholder="ค้นหาชื่อ…" value="' + esc(ST.q) + '"></div>' +
+      '<div class="fyx-w"><table class="fyx-tb"><thead><tr>' + th + '</tr></thead><tbody>' + body + '</tbody></table></div>' +
+      '<div class="fyx-n">' + (c.notes || []).map(function (n) { return '• ' + esc(n); }).join('<br>') + '</div></div></div>';
+    $('.fyx-x', ov).onclick = close;
+    ov.querySelectorAll('[data-l]').forEach(function (b) { b.onclick = function () { ST.lv = b.getAttribute('data-l'); ST.grp = ''; render(); }; });
+    ov.querySelectorAll('[data-b]').forEach(function (b) { b.onclick = function () { ST.base = b.getAttribute('data-b'); render(); }; });
+    ov.querySelectorAll('[data-s]').forEach(function (h) { h.onclick = function () { var s = h.getAttribute('data-s'); ST.sort = s === 'n' ? 'n' : (ST.sort === 'd' ? 'a' : 'd'); render(); }; });
+    var g = $('#fyx-g', ov); if (g) g.onchange = function () { ST.grp = g.value; render(); };
+    var q = $('#fyx-q', ov); if (q) q.oninput = function () { ST.q = q.value.trim(); var pos = q.selectionStart; render(); var q2 = $('#fyx-q'); q2.focus(); try { q2.setSelectionRange(pos, pos); } catch (_) {} };
+  }
+
+  /* ---------- สวิตช์ปีงบ (ลอยมุมซ้ายล่าง ใช้กับหน้าที่ไม่มีเมนูในหัวรายงาน) ---------- */
+  function mountBar(o) {
+    css(); if ($('#fyx-bar')) return; var b = document.createElement('div'); b.id = 'fyx-bar'; b.className = 'fyx-bar no-print';
+    var h = '<div class="fyx-grp" role="group" aria-label="เลือกปีงบประมาณ"><span style="padding:0 4px 0 9px">📅 ปีงบ</span>' +
+      '<a href="' + esc(o.href70) + '" title="ดูข้อมูลปีงบประมาณ 2570" aria-current="' + (o.cur === 70) + '">70</a><a href="' + esc(o.href69) + '" title="ดูข้อมูลปีงบประมาณ 2569" aria-current="' + (o.cur === 69) + '">69</a></div>' +
+      '<div class="fyx-grp"><button class="fyx-cmp" id="fyx-cmpbtn" title="เปรียบเทียบปีงบ 69 กับ 70">⚖ เปรียบเทียบ 69 / 70</button></div>';
+    b.innerHTML = h; document.body.appendChild(b);
+    $('#fyx-cmpbtn').onclick = function () { open(o.cfg); };
+  }
+  function addButton(host, cfg) {
+    css(); if (!host || $('#fyx-cmpbtn')) return; var b = document.createElement('button'); b.id = 'fyx-cmpbtn'; b.className = 'fyx-cmp no-print'; b.type = 'button'; b.textContent = '⚖ เปรียบเทียบ 69 / 70';
+    b.style.cssText = 'font:800 13px Sarabun,Prompt,sans-serif;border:0;border-radius:999px;padding:6px 14px;margin-left:8px;cursor:pointer;background:#fff;color:#0f766e;box-shadow:0 2px 8px rgba(0,0,0,.2)';
+    b.onclick = function () { open(cfg); }; host.insertAdjacentElement('afterend', b);
+  }
+  function addFloat(getCfg) {
+    css(); if ($('#fyx-cmpbtn')) return; var b = document.createElement('button'); b.id = 'fyx-cmpbtn'; b.className = 'fyx-cmp no-print'; b.type = 'button'; b.textContent = '⚖ เปรียบเทียบ 69 / 70';
+    b.style.cssText = 'position:fixed;left:14px;bottom:14px;z-index:9000;font:800 13px Sarabun,Prompt,sans-serif;border:0;border-radius:999px;padding:10px 16px;cursor:pointer;background:#0f766e;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.28)';
+    b.onclick = function () { var t = b.textContent; b.textContent = '⏳ กำลังโหลดข้อมูล 2 ปี…'; b.disabled = true;
+      Promise.resolve().then(getCfg).then(function (c) { b.textContent = t; b.disabled = false; open(c); }).catch(function (e) { b.textContent = t; b.disabled = false; alert('โหลดข้อมูลเปรียบเทียบไม่สำเร็จ: ' + (e && e.message || e)); }); };
+    document.body.appendChild(b);
+  }
+  window.FYXUI = { open: open, mountBar: mountBar, addButton: addButton, addFloat: addFloat, close: close };
+})();
+
 /* ===== HDC70 : ตัวดึงข้อมูลรายงานกัญชา FY70 จาก HDC (ใช้ร่วม CANNA1 / CANNA2) ===== */
 (function () {
   'use strict';
@@ -379,6 +505,29 @@ document.querySelectorAll('.menu-btn').forEach(btn=>btn.addEventListener('click'
   var BASE = SNAP ? SNAP.year : HDC70.curFY(), FYA = HDC70.pickFY(BASE), FYB = 2564;
   if (SNAP && SNAP.year !== FYA) SNAP = null; /* ปีย้อนหลัง: ดึงสดจาก HDC */
   HDC70.mountSwitch(document.querySelector('.pill'), 'afterend', 'light', BASE, FYA);
+
+/* ===== FYX-CAN : เมนูเปรียบเทียบปีงบ 69 / 70 (โหลดข้อมูลสองปีเมื่อกดปุ่ม) ===== */
+  function canCfgBuild(KEY, cA, cB, kind, me) {
+    var cur = HDC70.curFY(), prev = cur - 1;
+    function getY(y) { if (SNAP && SNAP.year === y && SNAP.slots && SNAP.slots.province) return Promise.resolve(SNAP); return HDC70.load(KEY, y); }
+    return Promise.all([getY(cur), getY(prev)]).then(function (R) {
+      function rows(S) {
+        var ci = function (n) { return ((S.slots.province && S.slots.province.cols) || []).indexOf(n) + 2; }, ib = cB ? ci(cB) : -1, ia = ci(cA);
+        var nn = function (v) { return v == null || !isFinite(v) ? null : Math.round(+v); };
+        var mk = function (r, g) { var nm = String(r[1] || r[0]).replace(/^\d+\s*:\s*/, ''); var id = /^\d{5}$/.test(String(r[0])) ? String(r[0]) : nm; return [id, ib >= 0 ? nn(r[ib]) : null, nn(r[ia]), g || '', nm]; };
+        var o = { prov: [], dist: [], unit: [] };
+        if (S.slots.region) o.prov = S.slots.region.rows.map(function (r) { return mk(r); });
+        if (S.slots.province) o.dist = S.slots.province.rows.map(function (r) { return mk(r); });
+        Object.keys(HDC70.DC).forEach(function (d) { var s = S.slots[d]; if (s) s.rows.forEach(function (r) { if (/^\d{5}$/.test(String(r[0]))) o.unit.push(mk(r, d)); }); });
+        return o;
+      }
+      var s70 = R[0], s69 = R[1];
+      return { kpi: KEY, title: me.title, kind: kind, lbA: me.lbA, lbB: me.lbB, sub: 'ปีงบ ' + cur + ' สะสมถึง ' + (s70.date || '') + ' • ปีงบ ' + prev + ' ข้อมูลปิดปี',
+        d70: { label: 'ปี ' + String(cur).slice(2), note: 'สะสมถึง ' + (s70.date || ''), rows: rows(s70), months: kind === 'pct' ? 12 : 1 }, d69: { full: { label: 'ปี ' + String(prev).slice(2) + ' ทั้งปี', note: 'ทั้งปีงบ ' + prev, rows: rows(s69), months: kind === 'pct' ? 12 : 1 } }, defaultBase: 'full',
+        notes: [kind === 'pct' ? 'ร้อยละคำนวณจากข้อมูล HDC ในแต่ละปีงบ (ปี 70 สะสมตั้งแต่ 1 ต.ค. 69 จึงอาจต่ำกว่าปี 69 ที่เป็นข้อมูลทั้งปี)' : 'แสดงจำนวนผู้ได้รับบริการสะสมตามปีงบ (ปี 70 สะสมตั้งแต่ 1 ต.ค. 69 ยังไม่ครบปี จึงอาจต่ำกว่าปี 69 ที่ปิดปีแล้ว)', 'จับคู่รายหน่วยด้วยรหัสหน่วยบริการ • ▲ ดีขึ้น ▼ ลดลง คำนวณจาก ปี 70 ลบ ปี 69'] };
+    });
+  }
+  FYXUI.addFloat(function () { return canCfgBuild('CAN2', 'result2', null, 'count', {title:'7. ผู้ได้รับกัญชาทางการแพทย์ (คน)',lbA:'ผู้ได้รับบริการสะสม (คน)',lbB:''}); });
   var round2 = function (v) { return Math.round(v * 100) / 100; };
   var gv = function (r, cols, c) { var i = cols.indexOf(c); if (i < 0) return null; var v = r[2 + i]; return v == null ? null : Number(v); };
   var pc = function (a, b) { return b > 0 && a != null ? round2((a - b) / b * 100) : null; };
