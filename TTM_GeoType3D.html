@@ -118,6 +118,7 @@ footer .ramp{width:90px;height:9px;border-radius:5px;background:linear-gradient(
 .mp table{width:100%;border-collapse:collapse;font-size:12.5px}
 .mp td{padding:4px 0;border-top:1px solid #edf2ef;vertical-align:top}.mp td:last-child{text-align:right;white-space:nowrap;padding-left:8px}
 .mp .need{margin-top:6px;font-size:11.5px;color:#b91c1c}
+.vh{filter:drop-shadow(0 1px 2px rgba(0,0,0,.45));transform:scale(var(--vs,1));pointer-events:none}.vh.pl{z-index:9}.vh.ps{opacity:.8}
 .tip{pointer-events:none}.tip .maplibregl-popup-content{padding:6px 10px;font-size:12px;border-radius:9px}
 .seg{flex-wrap:wrap;max-width:560px}.seg button{white-space:nowrap}
 .mk{cursor:pointer;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35));transition:transform .15s;animation:mkin .55s cubic-bezier(.2,1.5,.4,1) both}
@@ -158,7 +159,7 @@ footer .ramp{width:90px;height:9px;border-radius:5px;background:linear-gradient(
   <div id="map">
     <button class="reopen" id="showA">☰ ตัวกรอง</button>
     <div class="banner" id="banner"></div>
-    <div class="tools"><button id="b3d" class="on">🏙️ 3 มิติ</button><button id="bsat">🛰️ ดาวเทียม</button><button id="btour">🎬 เที่ยวชม</button><button id="borb">🔄 หมุนรอบเมือง</button><button id="bbld" class="on">🏢 ตึกรอบข้าง</button><button id="bpng">📷 บันทึกภาพ</button></div>
+    <div class="tools"><button id="b3d" class="on">🏙️ 3 มิติ</button><button id="bsat">🛰️ ดาวเทียม</button><button id="btour">🎬 เที่ยวชม</button><button id="borb">🔄 หมุนรอบเมือง</button><button id="bbld" class="on">🏢 ตึกรอบข้าง</button><button id="bveh" class="on">🚦 พาหนะ</button><button id="bpng">📷 บันทึกภาพ</button></div>
     <div class="nowebgl" id="nogl"><div><h3>อุปกรณ์นี้เปิดแผนที่ 3 มิติไม่ได้</h3><p>ต้องเปิดใช้งาน WebGL ในเบราว์เซอร์ และต่ออินเทอร์เน็ต</p></div></div>
   </div>
 </div>
@@ -369,6 +370,8 @@ function addLayers(){
   /* ตึกรอบข้างจริง (OpenStreetMap) เป็น 3 มิติ — เฉพาะแผนที่เวกเตอร์ */
   try{ if(map.getSource('openmaptiles')){ (map.getStyle().layers||[]).forEach(function(l){ if(l.type==='fill-extrusion') map.setLayoutProperty(l.id,'visibility','none'); });
       map.addLayer({id:'bld3d',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',minzoom:13,layout:{visibility:S.bld?'visible':'none'},paint:{'fill-extrusion-color':['interpolate',['linear'],['coalesce',['get','render_height'],6],0,'#e8edf2',30,'#cfd8e3',80,'#b4c0cf'],'fill-extrusion-height':['coalesce',['get','render_height'],6],'fill-extrusion-base':['coalesce',['get','render_min_height'],0],'fill-extrusion-opacity':.78}}); } }catch(e){}
+  map.addSource('routes',{type:'geojson',data:{type:'FeatureCollection',features:[['green','#16a34a',4],['yellow','#eab308',4]].map(function(x){return{type:'Feature',properties:{c:x[1],w:x[2]},geometry:{type:'LineString',coordinates:RT[x[0]].p.map(function(q){return [q[1],q[0]]})}}}).concat(['r1','r2','r3'].map(function(r){return{type:'Feature',properties:{c:'#64748b',w:3},geometry:{type:'LineString',coordinates:RWY[r].map(function(q){return [q[1],q[0]]})}}}))}});
+  map.addLayer({id:'routes',type:'line',source:'routes',layout:{visibility:VEH.on?'visible':'none'},paint:{'line-color':['get','c'],'line-width':['get','w'],'line-opacity':.55,'line-dasharray':[2,1.2]}});
   map.addLayer({id:'heat',type:'heatmap',source:'dots',layout:{visibility:'none'},paint:{'heatmap-weight':['get','w'],'heatmap-intensity':['interpolate',['linear'],['zoom'],9,1,14,2.2],'heatmap-radius':['interpolate',['linear'],['zoom'],9,28,14,90],'heatmap-opacity':.85}});
   map.addLayer({id:'pulse',type:'circle',source:'pulse',paint:{'circle-color':['get','c'],'circle-radius':8,'circle-opacity':0,'circle-pitch-alignment':'map','circle-pitch-scale':'map','circle-stroke-width':0}});
   map.addLayer({id:'dist',type:'fill-extrusion',source:'dist',layout:{visibility:'none'},paint:{'fill-extrusion-color':['get','c'],'fill-extrusion-height':['get','h'],'fill-extrusion-base':0,'fill-extrusion-opacity':.85,'fill-extrusion-vertical-gradient':true}});
@@ -404,10 +407,54 @@ function initMap(){
   if(!glOK()){document.getElementById('nogl').style.display='grid';updateUI();return}
   map=new maplibregl.Map({container:'map',style:STYLE_VEC,center:[100.6,13.6],zoom:10,pitch:55,bearing:-12,maxPitch:75,preserveDrawingBuffer:true,attributionControl:{compact:true}});
   map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right'); map.addControl(new maplibregl.ScaleControl({unit:'metric'}),'bottom-left');
-  map.on('load',function(){addLayers();fit(DATA);requestAnimationFrame(pulseLoop)});
+  map.on('load',function(){addLayers();fit(DATA);requestAnimationFrame(pulseLoop);initVeh()});
   ['mousedown','touchstart','wheel'].forEach(function(ev){map.getCanvas().addEventListener(ev,function(){if(orbitOn)orbit(false)},{passive:true})});
 }
 function setStyle(){ ready=false; map.setStyle(S.sat?STYLE_SAT:STYLE_VEC); map.once('style.load',function(){addLayers()}); }
+/* ---- พาหนะเคลื่อนที่ (จำลองเพื่อความสวยงาม ไม่ใช่ข้อมูลจริง): เครื่องบิน สุวรรณภูมิ · BTS สายสีเขียว · MRT สายสีเหลือง · รถเมล์ · รถยนต์ ---- */
+var VEH={on:true,items:[],raf:0,routes:{}};
+var RT={
+ green:{c:'#16a34a',p:[[13.6616,100.6047],[13.6463,100.5962],[13.6336,100.5953],[13.6086,100.5921],[13.5947,100.5911],[13.5868,100.5890],[13.5775,100.5896],[13.5627,100.5964],[13.5496,100.6006],[13.5350,100.6070]]},
+ yellow:{c:'#eab308',p:[[13.6463,100.5962],[13.6560,100.6082],[13.6676,100.6269],[13.6780,100.6340],[13.6849,100.6417],[13.6916,100.6469]]},
+ sukh:{c:'#94a3b8',p:[[13.6700,100.6040],[13.6463,100.5970],[13.6336,100.5960],[13.6086,100.5930],[13.5947,100.5920],[13.5868,100.5898],[13.5700,100.5930],[13.5496,100.6010]]},
+ bangna:{c:'#94a3b8',p:[[13.6682,100.6085],[13.6620,100.6300],[13.6560,100.6560],[13.6527,100.6790],[13.6470,100.7000],[13.6400,100.7250]]},
+ thep:{c:'#94a3b8',p:[[13.6463,100.5962],[13.6540,100.6110],[13.6640,100.6250],[13.6760,100.6330]]}
+};
+var RWY={r1:[[13.6567,100.7518],[13.6917,100.7611]],r2:[[13.6713,100.7347],[13.7036,100.7432]],r3:[[13.7013,100.7387],[13.6642,100.7290]]};
+function mDist(a,b){var dy=(b[0]-a[0])*110574,dx=(b[1]-a[1])*111320*Math.cos(a[0]*Math.PI/180);return Math.sqrt(dx*dx+dy*dy)}
+function prep(p){var c=[0];for(var i=1;i<p.length;i++)c.push(c[i-1]+mDist(p[i-1],p[i]));return {p:p,c:c,len:c[c.length-1]}}
+function at(R,s){s=Math.max(0,Math.min(R.len,s));var i=1;while(i<R.c.length-1&&R.c[i]<s)i++;var a=R.p[i-1],b=R.p[i],t=(s-R.c[i-1])/Math.max(1e-6,R.c[i]-R.c[i-1]);
+  var la=a[0]+(b[0]-a[0])*t,lo=a[1]+(b[1]-a[1])*t,dy=(b[0]-a[0])*110574,dx=(b[1]-a[1])*111320*Math.cos(la*Math.PI/180);return [la,lo,(Math.atan2(dx,dy)*180/Math.PI+360)%360]}
+var SVG={plane:'<svg width="30" height="30" viewBox="0 0 28 28"><path d="M14 1l3 10 9 6v3l-9-2.5-1 6.5 3 2v2l-5-1-5 1v-2l3-2-1-6.5-9 2.5v-3l9-6z" fill="#fff" stroke="#1e293b" stroke-width="1.2" stroke-linejoin="round"/></svg>',
+ shadow:'<svg width="30" height="30" viewBox="0 0 28 28"><path d="M14 1l3 10 9 6v3l-9-2.5-1 6.5 3 2v2l-5-1-5 1v-2l3-2-1-6.5-9 2.5v-3l9-6z" fill="#000" fill-opacity=".35"/></svg>',
+ train:function(c){return '<svg width="14" height="40" viewBox="0 0 14 40"><rect x="1" y="1" width="12" height="38" rx="5" fill="'+c+'" stroke="#fff" stroke-width="1.4"/><g fill="#fff" fill-opacity=".85"><rect x="3.5" y="5" width="7" height="5" rx="1.5"/><rect x="3.5" y="14" width="7" height="5" rx="1.5"/><rect x="3.5" y="23" width="7" height="5" rx="1.5"/><rect x="3.5" y="32" width="7" height="4" rx="1.5"/></g></svg>'},
+ bus:'<svg width="12" height="26" viewBox="0 0 12 26"><rect x="1" y="1" width="10" height="24" rx="3" fill="#f97316" stroke="#fff" stroke-width="1.2"/><rect x="2.5" y="3" width="7" height="4" rx="1" fill="#fff" fill-opacity=".85"/><rect x="2.5" y="9" width="7" height="12" rx="1" fill="#fff" fill-opacity=".35"/></svg>',
+ car:function(c){return '<svg width="9" height="16" viewBox="0 0 9 16"><rect x="1" y="1" width="7" height="14" rx="3" fill="'+c+'" stroke="#fff" stroke-width="1"/><rect x="2.2" y="4" width="4.6" height="3.5" rx="1" fill="#fff" fill-opacity=".8"/></svg>'}};
+function vmk(svg,cls,rot){var o=document.createElement('div'),i=document.createElement('div');i.className='vh '+(cls||'');i.innerHTML=svg;o.appendChild(i);return new maplibregl.Marker({element:o,rotation:0,rotationAlignment:'map',pitchAlignment:'map'}).setLngLat([100.6,13.6]).addTo(map)}
+function initVeh(){ if(!map||VEH.items.length) return;
+  var gr=prep(RT.green.p),yr=prep(RT.yellow.p),sk=prep(RT.sukh.p),bn=prep(RT.bangna.p),tp=prep(RT.thep.p);
+  [[gr,'#16a34a',0,52,3],[gr,'#16a34a',.5,52,3],[yr,'#eab308',0.2,40,2],[yr,'#eab308',.7,40,2]].forEach(function(x,j){ x.push; VEH.items.push({k:'train',R:x[0],per:x[3],ph:x[2],pp:true,m:vmk(SVG.train(x[1]),'tr')}); });
+  [[sk,70,0,'#f97316'],[sk,64,.4,'#f97316'],[bn,80,.1,'#f97316'],[tp,50,.6,'#f97316']].forEach(function(x){VEH.items.push({k:'bus',R:x[0],per:x[1],ph:x[2],dir:1,m:vmk(SVG.bus,'bs')})});
+  var cc=['#ef4444','#3b82f6','#f8fafc','#14b8a6','#a855f7','#facc15','#fb7185','#22c55e'];
+  [[sk,38],[sk,44],[bn,46],[bn,52],[bn,41],[tp,36],[sk,57],[bn,63]].forEach(function(x,j){VEH.items.push({k:'car',R:x[0],per:x[1],ph:(j*.137)%1,dir:j%2?-1:1,m:vmk(SVG.car(cc[j%cc.length]),'cr')})});
+  /* เครื่องบิน สุวรรณภูมิ: ขึ้น/ลง สลับกัน */
+  var pl=[['r2',0,'dep',26,0],['r2',0,'dep',26,.5],['r3',1,'arr',26,.15],['r3',1,'arr',26,.65],['r1',0,'dep',34,.3],['r1',0,'arr',34,.8]];
+  pl.forEach(function(x){ var w=RWY[x[0]].slice(); if(x[1]) w=[w[0],w[1]]; var a=w[0],b=w[1],dy=(b[0]-a[0])*110574,dx=(b[1]-a[1])*111320*Math.cos(a[0]*Math.PI/180),L=Math.sqrt(dx*dx+dy*dy),ux=dx/L,uy=dy/L,ext=7000;
+    var far=function(p,sg){return [p[0]+sg*uy*ext/110574,p[1]+sg*ux*ext/(111320*Math.cos(p[0]*Math.PI/180))]};
+    var R=x[2]==='dep'?prep([a,b,far(b,1)]):prep([far(a,-1),a,b]);
+    VEH.items.push({k:'plane',R:R,L:L,mode:x[2],per:x[3],ph:x[4],m:vmk(SVG.plane,'pl'),sh:vmk(SVG.shadow,'ps')}); });
+  VEH.zoom=function(){var z=map.getZoom(),sc=Math.max(.55,Math.min(1.7,(z-9)/3.2));document.getElementById('map').style.setProperty('--vs',sc.toFixed(2))};
+  map.on('zoom',VEH.zoom);VEH.zoom();
+  (function loop(now){ vehTick(now); VEH.raf=requestAnimationFrame(loop); })(performance.now()); }
+function vehTick(now){ if(!VEH.on) return; var t=now/1000;
+  VEH.items.forEach(function(v){ var f=((t/v.per)+v.ph)%1,p;
+    if(v.k==='train'){ var q=f<.5?f*2:(1-f)*2,e=q<.12?q/.12*.5:(q>.88?1-(1-q)/.12*.5:.5); q=Math.max(0,Math.min(1,q)); p=at(v.R,q*v.R.len); var h=f<.5?p[2]:(p[2]+180)%360; v.m.setLngLat([p[1],p[0]]).setRotation(h); }
+    else if(v.k==='bus'||v.k==='car'){ var g=v.dir>0?f:1-f; p=at(v.R,g*v.R.len); v.m.setLngLat([p[1],p[0]]).setRotation(v.dir>0?p[2]:(p[2]+180)%360); }
+    else{ var s,alt; if(v.mode==='dep'){ /* วิ่งขึ้น แล้วไต่ระดับ */ var roll=v.L/v.R.len; var g=f<.38?Math.pow(f/.38,2)*roll:roll+(f-.38)/.62*(1-roll); s=g*v.R.len; alt=f<.38?0:Math.pow((f-.38)/.62,1.6); }
+      else{ /* ร่อนลง แตะพื้น วิ่งชะลอ */ var ap=v.R.c[1]/v.R.len; var g2=f<.6?f/.6*(ap+.02):(ap+.02)+(1-Math.pow(1-(f-.6)/.4,2))*(1-ap-.02); s=g2*v.R.len; alt=f<.6?Math.pow(1-f/.6,1.4):0; }
+      p=at(v.R,s); var sc=1+alt*.9; v.m.setLngLat([p[1],p[0]]).setRotation(p[2]).setOffset([0,-alt*26]); v.m.getElement().firstChild.style.transform='scale('+sc.toFixed(2)+')';
+      v.sh.setLngLat([p[1],p[0]]).setRotation(p[2]); v.sh.getElement().firstChild.style.opacity=(.9-alt*.5).toFixed(2); } }); }
+function vehShow(on){ VEH.on=on; VEH.items.forEach(function(v){v.m.getElement().style.display=on?'':'none'; if(v.sh) v.sh.getElement().style.display=on?'':'none'}); if(map&&map.getLayer('routes')) map.setLayoutProperty('routes','visibility',on?'visible':'none'); }
 /* ---- events ---- */
 document.getElementById('pills').addEventListener('click',function(e){var b=e.target.closest('.pill');if(!b)return;S.ind=b.dataset.k;updateUI()});
 document.getElementById('seg').addEventListener('click',function(e){var b=e.target.closest('[data-m]');if(!b)return;S.mode=b.dataset.m;updateUI()});
@@ -421,6 +468,7 @@ document.getElementById('hideA').onclick=function(){side(false)};document.getEle
 document.getElementById('b3d').onclick=function(){S.d3=!S.d3;this.classList.toggle('on',S.d3);this.textContent=S.d3?'🏙️ 3 มิติ':'🗺️ 2 มิติ';if(map)map.easeTo({pitch:S.d3?55:0,bearing:S.d3?-12:0,duration:700})};
 document.getElementById('bsat').onclick=function(){S.sat=!S.sat;this.classList.toggle('on',S.sat);if(map)setStyle()};
 document.getElementById('bpng').onclick=exportPNG;
+document.getElementById('bveh').onclick=function(){this.classList.toggle('on');vehShow(this.classList.contains('on'))};
 document.getElementById('borb').onclick=function(){if(tour.on)stopTour();orbit(!orbitOn)};
 document.getElementById('btour').onclick=function(){tour.on?stopTour():startTour()};
 document.getElementById('bbld').onclick=function(){S.bld=!S.bld;this.classList.toggle('on',S.bld);if(map&&map.getLayer('bld3d'))map.setLayoutProperty('bld3d','visibility',S.bld?'visible':'none')};
