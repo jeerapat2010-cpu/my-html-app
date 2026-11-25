@@ -216,7 +216,8 @@ var IND=[
  {k:'OPD',btn:'🩺 PA ผู้ป่วยนอก',name:'PA ผู้ป่วยนอก (OPDTTM)',crit:function(u){return u.t==='H'?15:(u.t==='C'?null:50)}},
  {k:'IMC',btn:'🧠 ตชว.26 IMC 🏅',name:'ตชว.26 IMC (PA+Flagship)',crit:function(u){return 25}},
  {k:'PP',btn:'🤱 หลังคลอด',name:'มารดาหลังคลอดทันเวลา (เกณฑ์ภายใน)',crit:function(u){return 50}},
- {k:'ONTOP',btn:'💰 เงินชดเชย สปสช.',name:'เงินชดเชย OP On-top'}
+ {k:'ONTOP',btn:'💰 เงินชดเชย สปสช.',name:'เงินชดเชย OP On-top'},
+ {k:'UC',btn:'💊 มูลค่าสมุนไพร UC',name:'มูลค่ายาสมุนไพร สิทธิ UC'}
 ];
 var IMAP={};IND.forEach(function(i){IMAP[i.k]=i});
 var COL={g:'#16a34a',y:'#eab308',r:'#dc2626',x:'#94a3b8'};
@@ -228,6 +229,8 @@ function sn(s){return String(s||'').replace('โรงพยาบาลส่�
 function stOf(v,c){if(v==null||c==null)return 'x';return v>=c?'g':v>=c*0.8?'y':'r'}
 /* ---- คำนวณรายหน่วย ---- */
 var MAXAMT=1;
+function MNY(k){return k==='ONTOP'||k==='UC'}
+function setAmt(k){MAXAMT=1;DATA.forEach(function(u){var a=k==='UC'?(u.UC?u.UC[0]:null):(u.ONTOP?u.ONTOP[0]:null);u.amt=a;if(a!=null)MAXAMT=Math.max(MAXAMT,a)})}
 DATA.forEach(function(u){
   u.n=sn(u.name); u.e={}; var att=[],oks=[];
   ['PRIM','OPD','IMC','PP'].forEach(function(k){
@@ -243,7 +246,7 @@ DATA.forEach(function(u){
 /* ---- ค่าของตัวชี้วัดที่เลือก ---- */
 function val(u,k){ // -> {v,s,label,h(0..1)}
   if(k==='ALL') return u.score==null?{s:'x',h:0}:{v:u.score,s:u.os,label:u.score+' คะแนน',h:u.score/100};
-  if(k==='ONTOP') return u.amt==null?{s:'x',h:0}:{v:u.amt,s:'b',label:N(u.amt)+' บาท',h:Math.sqrt(u.amt/MAXAMT)};
+  if(MNY(k)) return u.amt==null?{s:'x',h:0}:{v:u.amt,s:'b',label:N(u.amt)+' บาท',h:Math.sqrt(u.amt/MAXAMT)};
   var e=u.e[k]; return e?{v:e.v,s:e.s,label:P(e.v)+' ('+N(e.a)+'/'+N(e.b)+')',h:Math.min(1.2,e.v/e.c)/1.2}:{s:'x',h:0};
 }
 function blue(h){var t=Math.max(0,Math.min(1,h));var a=[191,219,254],b=[37,99,235],c=[30,58,138];var m=t<.5?[a,b,t*2]:[b,c,(t-.5)*2];return 'rgb('+[0,1,2].map(function(i){return Math.round(m[0][i]+(m[1][i]-m[0][i])*m[2])}).join(',')+')'}
@@ -251,11 +254,11 @@ function blue(h){var t=Math.max(0,Math.min(1,h));var a=[191,219,254],b=[37,99,23
 var S={exc:0,ind:'ALL',mode:'bar',dist:'',types:{H:1,P:1,C:1},st:{g:1,y:1,r:1,x:1},q:'',d3:true,sat:false,bld:true};
 var map=null,popup=null,tip=null,ready=false;
 function colorOf(u,v){return v.s==='b'?blue(v.h):COL[v.s]}
-function isExc(u,k){ if(k==='ONTOP') return false; var ks=k==='ALL'?Object.keys(u.e):(u.e[k]?[k]:[]); return ks.length>0&&ks.every(function(i){return u.e[i].v>=u.e[i].c*1.2}); }
+function isExc(u,k){ if(MNY(k)) return false; var ks=k==='ALL'?Object.keys(u.e):(u.e[k]?[k]:[]); return ks.length>0&&ks.every(function(i){return u.e[i].v>=u.e[i].c*1.2}); }
 function filtered(){var q=S.q.trim().toLowerCase();return DATA.filter(function(u){
   if(S.dist&&u.dist!==S.dist) return false; if(!S.types[u.t]) return false;
   var v=val(u,S.ind); if(v.s!=='b'&&!S.st[v.s]) return false; if(v.s==='b'&&!S.st.g&&!S.st.y&&!S.st.r&&!S.st.x) return false;
-  if(S.exc&&S.ind!=='ONTOP'&&!isExc(u,S.ind)) return false;
+  if(S.exc&&!MNY(S.ind)&&!isExc(u,S.ind)) return false;
   if(q&&(u.name+u.n+u.code).toLowerCase().indexOf(q)<0) return false; return true;});}
 /* ---- UI ---- */
 function buildUI(){
@@ -277,13 +280,13 @@ function updateUI(){
   var h='';
   function card(t,n,s,dot,hl){return '<div class="kpi'+(hl?' hl':'')+'"><div class="t">'+(dot?'<span class="dot" style="background:'+dot+'"></span>':'')+t+'</div><div class="n">'+n+'</div><div class="s">'+s+'</div></div>'}
   h+=card('หน่วยบริการที่แสดง',N(F.length),'บนแผนที่ '+N(withLL)+' แห่ง (ที่เหลือยังไม่มีพิกัด)','',false);
-  if(k==='ONTOP'){
+  if(MNY(k)){
     var tot=withData.reduce(function(a,u){return a+u.amt},0);
-    h+=card('เงินชดเชย OP On-top รวม',N(tot),'บาท · สะสมปีงบ 70','#2563eb',true);
-    h+=card('หน่วยที่มีรายการชดเชย',N(withData.length),'จาก '+N(F.length)+' หน่วย','#2563eb');
+    h+=card(k==='UC'?'มูลค่ายาสมุนไพร UC รวม':'เงินชดเชย OP On-top รวม',N(tot),'บาท · สะสมปีงบ 70','#2563eb',true);
+    h+=card(k==='UC'?'หน่วยที่มีข้อมูล UC':'หน่วยที่มีรายการชดเชย',N(withData.length),'จาก '+N(F.length)+' หน่วย','#2563eb');
     h+=card('เฉลี่ยต่อหน่วย',withData.length?N(tot/withData.length):'–','บาท','#2563eb');
     h+=card('สูงสุด',withData.length?N(Math.max.apply(null,withData.map(function(u){return u.amt}))):'–','บาท','#1e3a8a');
-    h+=card('ไม่มีรายการ',N(F.length-withData.length),'ยังไม่พบรายการชดเชย','#94a3b8');
+    h+=card(k==='UC'?'รอข้อมูล':'ไม่มีรายการ',N(F.length-withData.length),k==='UC'?'ยังไม่มีข้อมูลมูลค่า UC ปี 70':'ยังไม่พบรายการชดเชย','#94a3b8');
   }else{
     var sa=0,sb=0,crit=null;
     if(k!=='ALL'){withData.forEach(function(u){sa+=u.e[k].a;sb+=u.e[k].b});}
@@ -297,16 +300,16 @@ function updateUI(){
   document.getElementById('kpis').innerHTML=h;
   document.querySelectorAll('.kpi .n').forEach(function(el){var m=el.textContent.replace(/,/g,'');if(!/^\d+$/.test(m)||+m<2)return;var to=+m,t0=performance.now();(function s(now){var x=Math.min(1,(now-t0)/700);el.textContent=Math.round(to*(1-Math.pow(1-x,3))).toLocaleString('th-TH');if(x<1)requestAnimationFrame(s)})(t0)});
   /* list */
-  var L=F.slice().sort(function(a,b){var x=val(a,k),y=val(b,k);if(k==='ONTOP')return (y.v||-1)-(x.v||-1);var d=(y.v==null?-1:(k==='ALL'?y.v:y.v/(I.crit?I.crit(b):1)))-(x.v==null?-1:(k==='ALL'?x.v:x.v/(I.crit?I.crit(a):1))); if(d||k!=='ALL') return d; var rt=function(u){var ks=Object.keys(u.e);return ks.length?ks.reduce(function(s,i){return s+u.e[i].v/u.e[i].c},0)/ks.length:-1}; return rt(b)-rt(a);});
-  document.getElementById('lh').textContent='รายชื่อหน่วย '+L.length+' แห่ง · '+(k==='ONTOP'?'เรียงจากเงินมากไปน้อย':'เรียงคะแนนมากไปน้อย');
-  document.getElementById('list').innerHTML=L.map(function(u){var v=val(u,k);var txt=v.v==null?'–':(k==='ALL'?v.v:(k==='ONTOP'?(u.amt>=1000?(u.amt/1000).toFixed(1)+'k':N(u.amt)):v.v.toFixed(1)+'%'));
+  var L=F.slice().sort(function(a,b){var x=val(a,k),y=val(b,k);if(MNY(k))return (y.v||-1)-(x.v||-1);var d=(y.v==null?-1:(k==='ALL'?y.v:y.v/(I.crit?I.crit(b):1)))-(x.v==null?-1:(k==='ALL'?x.v:x.v/(I.crit?I.crit(a):1))); if(d||k!=='ALL') return d; var rt=function(u){var ks=Object.keys(u.e);return ks.length?ks.reduce(function(s,i){return s+u.e[i].v/u.e[i].c},0)/ks.length:-1}; return rt(b)-rt(a);});
+  document.getElementById('lh').textContent='รายชื่อหน่วย '+L.length+' แห่ง · '+(MNY(k)?'เรียงจากเงินมากไปน้อย':'เรียงคะแนนมากไปน้อย');
+  document.getElementById('list').innerHTML=L.map(function(u){var v=val(u,k);var txt=v.v==null?'–':(k==='ALL'?v.v:(MNY(k)?(u.amt>=1000?(u.amt/1000).toFixed(1)+'k':N(u.amt)):v.v.toFixed(1)+'%'));
     return '<div class="row" data-c="'+u.code+'"><span class="v" style="background:'+colorOf(u,v)+'">'+txt+'</span><span><b>'+(isExc(u,k)?'⭐ ':'')+E(u.n)+'</b><small>'+E(DNAME[u.dist]||u.dist)+' · '+TLAB[u.t]+(u.ll?'':' · ยังไม่มีพิกัด')+'</small></span></div>'}).join('')||'<div class="lh">ไม่มีหน่วยตามเงื่อนไข</div>';
   /* legend */
   var lg='<b>'+E(I.name)+'</b>';
-  if(k==='ONTOP') lg+='<span class="i"><span class="ramp"></span> น้อย → มาก (ความสูง/สี = เงินชดเชย)</span>';
+  if(MNY(k)) lg+='<span class="i"><span class="ramp"></span> น้อย → มาก (ความสูง/สี = '+(k==='UC'?'มูลค่ายาสมุนไพร UC':'เงินชดเชย')+')</span>';
   else if(S.mode==='bar') lg+='<span class="i">🏢 ตึกสีขาว · <b>ป้ายเครื่องหมายบนผนัง</b> = สถานะ:</span>'+[['g','✓'],['y','!'],['r','✕'],['x','–']].map(function(x){return '<span class="i"><span class="dot" style="background:'+COL[x[0]]+';color:#fff;font:700 9px/12px sans-serif;text-align:center">'+x[1]+'</span>'+STN[x[0]]+'</span>'}).join('')+'<span class="i"><span style="color:#dc2626;font-weight:800">✚</span> กากบาทแดงบนหลังคา</span>';
   else lg+=['g','y','r','x'].map(function(s){return '<span class="i"><span class="dot" style="background:'+COL[s]+'"></span>'+STN[s]+'</span>'}).join('');
-  var MX={bar:'ตึก = หน่วยบริการ · ความสูง = '+(k==='ALL'?'คะแนนรวม':'ผลงาน ÷ เกณฑ์')+'',dot:'ขนาดวง = ตัวหาร (จำนวนผู้รับบริการ)',heat:'ยิ่งแดง = ยิ่งห่างจากเกณฑ์ (จุดอ่อนของจังหวัด)',donut:'วงแหวน = สถานะแต่ละตัวชี้วัด (ตชว.14 · PA · IMC · หลังคลอด) · เลขกลาง = '+(k==='ALL'?'คะแนนรวม':k==='ONTOP'?'เงินชดเชย':'ผลงาน %'),radar:'เรดาร์ 4 แกน ป=ปฐมภูมิ ผ=PA OPD I=IMC ห=หลังคลอด · วงประ = เกณฑ์ 100%',gauge:'เกจครึ่งวง = ผลงาน ÷ เกณฑ์ · ขีดดำ = จุดผ่านเกณฑ์',dist:'แท่งใหญ่ = ค่าเฉลี่ยรายอำเภอ · แถบสี = สัดส่วนผ่าน/ใกล้/ต่ำ/ไม่มีข้อมูล · คลิกเพื่อดูรายหน่วย'};
+  var MX={bar:'ตึก = หน่วยบริการ · ความสูง = '+(k==='ALL'?'คะแนนรวม':'ผลงาน ÷ เกณฑ์')+'',dot:'ขนาดวง = ตัวหาร (จำนวนผู้รับบริการ)',heat:'ยิ่งแดง = ยิ่งห่างจากเกณฑ์ (จุดอ่อนของจังหวัด)',donut:'วงแหวน = สถานะแต่ละตัวชี้วัด (ตชว.14 · PA · IMC · หลังคลอด) · เลขกลาง = '+(k==='ALL'?'คะแนนรวม':MNY(k)?'เงินชดเชย':'ผลงาน %'),radar:'เรดาร์ 4 แกน ป=ปฐมภูมิ ผ=PA OPD I=IMC ห=หลังคลอด · วงประ = เกณฑ์ 100%',gauge:'เกจครึ่งวง = ผลงาน ÷ เกณฑ์ · ขีดดำ = จุดผ่านเกณฑ์',dist:'แท่งใหญ่ = ค่าเฉลี่ยรายอำเภอ · แถบสี = สัดส่วนผ่าน/ใกล้/ต่ำ/ไม่มีข้อมูล · คลิกเพื่อดูรายหน่วย'};
   lg+='<span class="i">'+(MX[S.mode]||'')+'</span><span class="i">ซูมเข้าเพื่อดู: 🏬 ห้าง · 🛒 ตลาด/ซูเปอร์ · 🏥 รพ. · ⚕️ คลินิก (ข้อมูล OSM)</span>';
   lg+='<span class="i">สีจางบนพื้นแผนที่ = อำเภอ:</span>'+Object.keys(DCOL).map(function(d){return '<span class="i"><span class="dot" style="background:'+DCOL[d]+'"></span>'+E(DNAME[d]||d)+'</span>'}).join('')+(S.mode==='bar'&&k==='ALL'?'<span class="i">แท่งซ้อน = ปฐมภูมิ·OPD·IMC·PP (ป้ายบนผนังตามสถานะแต่ละตัว)</span>':'');
   lg+='<span class="i" style="margin-left:auto;color:#74867f">ตชว.14 ≥50% · PA OPD รพ. ≥15% / สสอ.(รพ.สต.) ≥50% · IMC ≥25% · กัญชาเป็นการติดตาม ไม่รวมคะแนน</span>';
@@ -323,7 +326,7 @@ function popHTML(u){
   var rows=['PRIM','OPD','IMC','PP'].map(function(k){var e=u.e[k];var nm=IMAP[k].name;
     if(!e) return '<tr><td>'+E(nm)+'</td><td style="color:#94a3b8">ไม่มีข้อมูล</td></tr>';
     return '<tr><td>'+E(nm)+' <small>(เกณฑ์ ≥'+e.c+'%)</small></td><td><b>'+P(e.v)+'</b> '+(e.s==='g'?'✅':e.s==='y'?'⚠️':'❌')+'<br><small>'+N(e.a)+' / '+N(e.b)+'</small></td></tr>'}).join('');
-  rows+='<tr><td>💰 เงินชดเชย On-top</td><td>'+(u.amt!=null?'<b>'+N(u.amt)+'</b> บาท<br><small>'+N(u.items)+' รายการ</small>':'<span style="color:#94a3b8">ไม่พบรายการ</span>')+'</td></tr>';
+  rows+='<tr><td>💰 เงินชดเชย On-top</td><td>'+(u.ONTOP?'<b>'+N(u.ONTOP[0])+'</b> บาท<br><small>'+N(u.items)+' รายการ</small>':'<span style="color:#94a3b8">ไม่พบรายการ</span>')+'</td></tr>';
   rows+='<tr><td>💊 มูลค่ายาสมุนไพร UC</td><td>'+(u.UC?'<b>'+N(u.UC[0])+'</b> บาท'+(u.UC[1]?'<br><small>'+N(u.UC[1])+' คอร์ส</small>':''):'<span style="color:#94a3b8">รอข้อมูล</span>')+'</td></tr>';
   var need=['PRIM','OPD','IMC','PP'].filter(function(k){return u.e[k]&&u.e[k].s!=='g'}).map(function(k){var e=u.e[k];return E(k)+' ขาดอีก '+N(Math.max(0,Math.ceil(e.b*e.c/100-e.a)))+' ครั้ง/ราย'});
   return '<div class="mp"><h4>'+E(u.n)+'</h4><small>'+E(DNAME[u.dist]||u.dist)+' · '+TLAB[u.t]+' · รหัส '+u.code+'</small>'
@@ -346,7 +349,7 @@ var CAPC={g:'#86efac',y:'#fde68a',r:'#fca5a5',x:'#e2e8f0',b:'#bfdbfe'};
 function box(u,d,base,top,col,s,extra){var la=u.ll[0],lo=u.ll[1],p={code:u.code,n:u.n,c:col,s:s,b:base,h:top};
   return{type:'Feature',properties:p,geometry:{type:'Polygon',coordinates:[[[lo-d,la-d],[lo+d,la-d],[lo+d,la+d],[lo-d,la+d],[lo-d,la-d]]]}}}
 function pt(u,col,sz,lab,w,p){return{type:'Feature',properties:{code:u.code,n:u.n,c:col,sz:sz,lab:lab,w:w,p:p||0},geometry:{type:'Point',coordinates:[u.ll[1],u.ll[0]]}}}
-function weightOf(u,v,k){ if(v.s==='x') return 0; if(k==='ALL') return clamp(1-u.score/100); if(k==='ONTOP') return v.h; var e=u.e[k]; return e?clamp(1-e.v/e.c)+(e.s==='r'?.1:0):0; }
+function weightOf(u,v,k){ if(v.s==='x') return 0; if(k==='ALL') return clamp(1-u.score/100); if(MNY(k)) return v.h; var e=u.e[k]; return e?clamp(1-e.v/e.c)+(e.s==='r'?.1:0):0; }
 var DCOL={'เมืองสมุทรปราการ':'#2563eb','บางบ่อ':'#db2777','บางพลี':'#ea580c','พระประแดง':'#7c3aed','พระสมุทรเจดีย์':'#0891b2','บางเสาธง':'#65a30d'};
 function cyl(u,r,base,top,col,s,n){ n=n||20; var la=u.ll[0],lo=u.ll[1],k=Math.cos(la*Math.PI/180),ring=[];
   for(var i=0;i<=n;i++){var a=i/n*2*Math.PI; ring.push([lo+r*Math.cos(a)/k,la+r*Math.sin(a)]);}
@@ -373,18 +376,18 @@ function wallMark(R,u,d,z0,hh,s){ if(hh<=8) return; var cm=Math.min(hh*.12,34),c
   sym.forEach(function(row,r){ for(var c=0;c<5;c++){ if(row[c]==='1'){ var zz=zc+(2-r)*cm; R.push(bx(u,(c-2)*cd,yf-.12*d,cd*.5,.03*d,zz-cm/2,zz+cm/2,fg,s)); } } }); }
 function setBars(t){ if(!map||!ready) return; var B=barFeatures(CUR,t); ['pad','tw','cap'].forEach(function(n){var s=map.getSource(n==='tw'?'bars':n==='pad'?'pad':'cap'); if(s) s.setData({type:'FeatureCollection',features:B[n]})}); }
 function distAgg(F){ var k=S.ind,G={}; F.forEach(function(u){ if(!u.ll) return; var g=G[u.dist]||(G[u.dist]={d:u.dist,n:0,la:0,lo:0,att:[],c:{g:0,y:0,r:0,x:0},amt:0}); g.n++;g.la+=u.ll[0];g.lo+=u.ll[1];
-    var v=val(u,k); if(k==='ONTOP'){ g.amt+=u.amt||0; g.c[u.amt!=null?'g':'x']++; } else { g.c[v.s]++; if(v.s!=='x'){ g.att.push(k==='ALL'?u.score/100:Math.min(1.2,u.e[k].v/u.e[k].c)); } } });
+    var v=val(u,k); if(MNY(k)){ g.amt+=u.amt||0; g.c[u.amt!=null?'g':'x']++; } else { g.c[v.s]++; if(v.s!=='x'){ g.att.push(k==='ALL'?u.score/100:Math.min(1.2,u.e[k].v/u.e[k].c)); } } });
   return Object.keys(G).map(function(d){var g=G[d]; g.la/=g.n; g.lo/=g.n; g.v=g.att.length?g.att.reduce(function(a,b){return a+b},0)/g.att.length:null;
-    g.s=k==='ONTOP'?'b':(g.v==null?'x':(g.v>=1?'g':g.v>=.8?'y':'r')); return g; }); }
+    g.s=MNY(k)?'b':(g.v==null?'x':(g.v>=1?'g':g.v>=.8?'y':'r')); return g; }); }
 function distFeatures(G,t){ var mx=Math.max.apply(null,G.map(function(g){return g.amt}).concat([1]));
-  return G.map(function(g,i){ var f=ease((t-i*120)/900),h=S.ind==='ONTOP'?Math.sqrt(g.amt/mx):(g.v==null?.05:Math.min(1.2,g.v)/1.2),col=S.ind==='ONTOP'?blue(h):COL[g.s],d=.015;
+  return G.map(function(g,i){ var f=ease((t-i*120)/900),h=MNY(S.ind)?Math.sqrt(g.amt/mx):(g.v==null?.05:Math.min(1.2,g.v)/1.2),col=MNY(S.ind)?blue(h):COL[g.s],d=.015;
     return{type:'Feature',properties:{n:g.d,c:col,b:0,h:(300+h*4200)*f,dist:g.d},geometry:{type:'Polygon',coordinates:[[[g.lo-d,g.la-d],[g.lo+d,g.la-d],[g.lo+d,g.la+d],[g.lo-d,g.la+d],[g.lo-d,g.la-d]]]}}; }); }
 function arc(cx,cy,r,a0,a1){var x0=cx+r*Math.cos(a0),y0=cy+r*Math.sin(a0),x1=cx+r*Math.cos(a1),y1=cy+r*Math.sin(a1);return 'M'+x0.toFixed(2)+' '+y0.toFixed(2)+'A'+r+' '+r+' 0 '+((a1-a0)>Math.PI?1:0)+' 1 '+x1.toFixed(2)+' '+y1.toFixed(2)}
 var IK=['PRIM','OPD','IMC','PP'],IL=['ป','ผ','I','ห'];
 function svgDonut(u,k){ var W=50,c=25,r=19,segs=IK.filter(function(i){return u.e[i]}),h='<svg width="'+W+'" height="'+W+'" viewBox="0 0 '+W+' '+W+'"><circle cx="25" cy="25" r="23" fill="#fff" fill-opacity=".92"/>';
   if(!segs.length) h+='<circle cx="25" cy="25" r="'+r+'" fill="none" stroke="#cbd5e1" stroke-width="7"/>';
   else{ var n=segs.length,gap=n>1?.14:0,st=-Math.PI/2; segs.forEach(function(i,j){var a0=st+j*2*Math.PI/n+gap/2,a1=st+(j+1)*2*Math.PI/n-gap/2; if(n===1)a1=a0+2*Math.PI-.001; h+='<path d="'+arc(c,c,r,a0,a1)+'" fill="none" stroke="'+COL[u.e[i].s]+'" stroke-width="7" stroke-linecap="butt"/>';}); }
-  var v=val(u,k),tx=k==='ALL'?(u.score==null?'–':u.score):(k==='ONTOP'?(u.amt==null?'–':(u.amt>=1000?Math.round(u.amt/1000)+'k':u.amt)):(v.v==null?'–':Math.round(v.v)));
+  var v=val(u,k),tx=k==='ALL'?(u.score==null?'–':u.score):(MNY(k)?(u.amt==null?'–':(u.amt>=1000?Math.round(u.amt/1000)+'k':u.amt)):(v.v==null?'–':Math.round(v.v)));
   return h+'<text x="25" y="29" text-anchor="middle" font-size="12" font-weight="700" font-family="Mitr,sans-serif" fill="#0f2a24">'+tx+'</text></svg>'; }
 function svgRadar(u){ var W=60,c=30,R=22,h='<svg width="'+W+'" height="'+W+'" viewBox="0 0 '+W+' '+W+'"><circle cx="30" cy="30" r="29" fill="#fff" fill-opacity=".93"/><circle cx="30" cy="30" r="'+(R/1.25).toFixed(1)+'" fill="none" stroke="#94a3b8" stroke-dasharray="2 2" stroke-width=".9"/>',pts=[];
   IK.forEach(function(i,j){var a=-Math.PI/2+j*Math.PI/2; h+='<line x1="30" y1="30" x2="'+(c+R*Math.cos(a)).toFixed(1)+'" y2="'+(c+R*Math.sin(a)).toFixed(1)+'" stroke="#d6e0dc" stroke-width=".8"/>';
@@ -392,20 +395,20 @@ function svgRadar(u){ var W=60,c=30,R=22,h='<svg width="'+W+'" height="'+W+'" vi
     h+='<text x="'+(c+(R+3)*Math.cos(a)).toFixed(1)+'" y="'+(c+(R+3)*Math.sin(a)+3).toFixed(1)+'" text-anchor="middle" font-size="6.5" fill="#74867f">'+IL[j]+'</text>'; });
   var any=IK.some(function(i){return u.e[i]});
   return h+'<polygon points="'+pts.join(' ')+'" fill="'+(any?COL[u.os]:'#cbd5e1')+'" fill-opacity=".5" stroke="'+(any?COL[u.os]:'#94a3b8')+'" stroke-width="1.6" stroke-linejoin="round"/></svg>'; }
-function svgGauge(u,k){ var v=val(u,k),f=v.s==='x'?0:(k==='ALL'?u.score/100:(k==='ONTOP'?v.h:Math.min(1.2,v.v/u.e[k].c)/1.2)),col=v.s==='b'?blue(Math.max(.35,v.h)):(COL[v.s]||COL.x);
+function svgGauge(u,k){ var v=val(u,k),f=v.s==='x'?0:(k==='ALL'?u.score/100:(MNY(k)?v.h:Math.min(1.2,v.v/u.e[k].c)/1.2)),col=v.s==='b'?blue(Math.max(.35,v.h)):(COL[v.s]||COL.x);
   var h='<svg width="58" height="44" viewBox="0 0 58 44"><rect x="1" y="2" width="56" height="41" rx="11" fill="#fff" fill-opacity=".93"/><path d="'+arc(29,30,19,Math.PI,2*Math.PI)+'" fill="none" stroke="#e2e8f0" stroke-width="7"/>';
   if(f>0) h+='<path d="'+arc(29,30,19,Math.PI,Math.PI+Math.PI*f-.001)+'" fill="none" stroke="'+col+'" stroke-width="7"/>';
-  if(k!=='ONTOP'&&k!=='ALL'&&u.e[k]){ var a=Math.PI+Math.PI*(1/1.2); h+='<line x1="'+(29+14*Math.cos(a)).toFixed(1)+'" y1="'+(30+14*Math.sin(a)).toFixed(1)+'" x2="'+(29+24*Math.cos(a)).toFixed(1)+'" y2="'+(30+24*Math.sin(a)).toFixed(1)+'" stroke="#0f2a24" stroke-width="1.6"/>'; }
-  var tx=v.s==='x'?'–':(k==='ALL'?u.score:(k==='ONTOP'?(u.amt>=1000?Math.round(u.amt/1000)+'k':u.amt):Math.round(v.v)+'%'));
+  if(!MNY(k)&&k!=='ALL'&&u.e[k]){ var a=Math.PI+Math.PI*(1/1.2); h+='<line x1="'+(29+14*Math.cos(a)).toFixed(1)+'" y1="'+(30+14*Math.sin(a)).toFixed(1)+'" x2="'+(29+24*Math.cos(a)).toFixed(1)+'" y2="'+(30+24*Math.sin(a)).toFixed(1)+'" stroke="#0f2a24" stroke-width="1.6"/>'; }
+  var tx=v.s==='x'?'–':(k==='ALL'?u.score:(MNY(k)?(u.amt>=1000?Math.round(u.amt/1000)+'k':u.amt):Math.round(v.v)+'%'));
   return h+'<text x="29" y="40" text-anchor="middle" font-size="11" font-weight="700" font-family="Mitr,sans-serif" fill="#0f2a24">'+tx+'</text></svg>'; }
 function clearMK(){ MK.forEach(function(m){m.m.remove()}); MK=[]; DL.forEach(function(m){m.remove()}); DL=[]; }
 function addMK(u,svg,w,h,delay){ var o=document.createElement('div'),i=document.createElement('div'); i.className='mk'; i.style.animationDelay=delay+'ms'; i.innerHTML=svg; o.appendChild(i);
   o.addEventListener('click',function(e){e.stopPropagation();openUnit(u,false)}); o.title=u.n;
   var m=new maplibregl.Marker({element:o,anchor:'center'}).setLngLat([u.ll[1],u.ll[0]]).addTo(map); MK.push({m:m,svg:svg,w:w,h:h,ll:u.ll}); }
 function pushMap(F){ if(!ready) return; CUR=F; var k=S.ind,m=S.mode,dots=[],pul=[],maxb=1;
-  F.forEach(function(u){maxb=Math.max(maxb,(k==='ALL'||k==='ONTOP')?1:(u.e[k]?u.e[k].b:1))});
+  F.forEach(function(u){maxb=Math.max(maxb,(k==='ALL'||MNY(k))?1:(u.e[k]?u.e[k].b:1))});
   F.forEach(function(u,i){ if(!u.ll) return; var v=val(u,k),col=colorOf(u,v);
-    var sz=(k==='ALL'||k==='ONTOP')?(v.s==='x'?.5:.6+v.h*.9):(u.e[k]?.5+Math.sqrt(u.e[k].b/maxb)*1.1:.5);
+    var sz=(k==='ALL'||MNY(k))?(v.s==='x'?.5:.6+v.h*.9):(u.e[k]?.5+Math.sqrt(u.e[k].b/maxb)*1.1:.5);
     dots.push(pt(u,col,sz,v.label||'ไม่มีข้อมูล',weightOf(u,v,k)));
     if(v.s==='r'||v.s==='y') pul.push(pt(u,col,1,'',0,v.s==='r'?1:.5)); });
   map.getSource('dots').setData({type:'FeatureCollection',features:dots});
@@ -413,14 +416,14 @@ function pushMap(F){ if(!ready) return; CUR=F; var k=S.ind,m=S.mode,dots=[],pul=
   var vis=function(id,on){ if(map.getLayer(id)) map.setLayoutProperty(id,'visibility',on?'visible':'none'); };
   ['pad','bars','cap'].forEach(function(l){vis(l,m==='bar')}); vis('dots',m==='dot'||m==='heat'); vis('heat',m==='heat'); vis('dist',m==='dist'); vis('pulse',false);
   if(m==='heat'){ map.setPaintProperty('dots','circle-radius',['interpolate',['linear'],['zoom'],9,3,14,7]); map.setPaintProperty('dots','circle-opacity',.95);
-    map.setPaintProperty('heat','heatmap-color',k==='ONTOP'?['interpolate',['linear'],['heatmap-density'],0,'rgba(37,99,235,0)',.25,'#bfdbfe',.55,'#3b82f6',1,'#1e3a8a']:['interpolate',['linear'],['heatmap-density'],0,'rgba(22,163,74,0)',.2,'#86efac',.45,'#fde047',.7,'#fb923c',1,'#dc2626']); }
+    map.setPaintProperty('heat','heatmap-color',MNY(k)?['interpolate',['linear'],['heatmap-density'],0,'rgba(37,99,235,0)',.25,'#bfdbfe',.55,'#3b82f6',1,'#1e3a8a']:['interpolate',['linear'],['heatmap-density'],0,'rgba(22,163,74,0)',.2,'#86efac',.45,'#fde047',.7,'#fb923c',1,'#dc2626']); }
   else{ map.setPaintProperty('dots','circle-radius',['interpolate',['linear'],['zoom'],9,['*',['get','sz'],5],14,['*',['get','sz'],20]]); map.setPaintProperty('dots','circle-opacity',.78); }
   clearMK();
   if(m==='donut'||m==='radar'||m==='gauge'){ F.forEach(function(u,i){ if(!u.ll) return; var s=m==='donut'?svgDonut(u,k):m==='radar'?svgRadar(u):svgGauge(u,k); addMK(u,s,m==='gauge'?58:(m==='radar'?60:50),m==='gauge'?44:(m==='radar'?60:50),Math.min(900,i*12)); }); }
   var sig=m+'|'+k+'|'+S.dist, fresh=sig!==growSig; growSig=sig;
   if(m==='bar'||m==='dist'){ if(fresh){ startGrow(); } else drawGrow(1e9); }
   if(m==='dist'){ var G=distAgg(F); G.forEach(function(g){ var el=document.createElement('div'),ib=document.createElement('div'); ib.className='dlab'; el.appendChild(ib); var tot=g.n||1;
-      ib.innerHTML='<b>'+E(DNAME[g.d]||g.d)+'</b> <span class="dv" style="color:'+(g.s==='b'?'#1e3a8a':COL[g.s])+'">'+(k==='ONTOP'?(g.amt>=1e6?(g.amt/1e6).toFixed(2)+' ล้าน':N(g.amt)):(g.v==null?'–':Math.round(g.v*100)+'%'))+'</span><div class="sb"><i style="width:'+(g.c.g/tot*100)+'%;background:'+COL.g+'"></i><i style="width:'+(g.c.y/tot*100)+'%;background:'+COL.y+'"></i><i style="width:'+(g.c.r/tot*100)+'%;background:'+COL.r+'"></i><i style="width:'+(g.c.x/tot*100)+'%;background:'+COL.x+'"></i></div><small>ผ่าน '+g.c.g+' · ใกล้ '+g.c.y+' · ต่ำ '+g.c.r+' · ไม่มี '+g.c.x+'</small>';
+      ib.innerHTML='<b>'+E(DNAME[g.d]||g.d)+'</b> <span class="dv" style="color:'+(g.s==='b'?'#1e3a8a':COL[g.s])+'">'+(MNY(k)?(g.amt>=1e6?(g.amt/1e6).toFixed(2)+' ล้าน':N(g.amt)):(g.v==null?'–':Math.round(g.v*100)+'%'))+'</span><div class="sb"><i style="width:'+(g.c.g/tot*100)+'%;background:'+COL.g+'"></i><i style="width:'+(g.c.y/tot*100)+'%;background:'+COL.y+'"></i><i style="width:'+(g.c.r/tot*100)+'%;background:'+COL.r+'"></i><i style="width:'+(g.c.x/tot*100)+'%;background:'+COL.x+'"></i></div><small>ผ่าน '+g.c.g+' · ใกล้ '+g.c.y+' · ต่ำ '+g.c.r+' · ไม่มี '+g.c.x+'</small>';
       ib.addEventListener('click',function(e){e.stopPropagation();S.dist=g.d;S.mode='bar';document.getElementById('fDist').value=g.d;updateUI();fit(filtered())});
       var mk=new maplibregl.Marker({element:el,anchor:'bottom',offset:[0,-70]}).setLngLat([g.lo,g.la]).addTo(map); mk._g=g; DL.push(mk); }); }
 }
@@ -476,7 +479,7 @@ function orbit(on){ orbitOn=on; document.getElementById('borb').classList.toggle
 var TOUR_BEST=false;
 function stopTour(){ tour.on=false; tour.t.forEach(clearTimeout); tour.t=[]; var b=document.getElementById('btour'); b.classList.remove('on'); b.textContent='🎬 เที่ยวชม'; if(popup){popup.remove();popup=null}; }
 function startTour(){ if(!map) return; orbit(false); var F=filtered().filter(function(u){return u.ll&&val(u,S.ind).s!=='x'});
-  var rk=function(u){ var v=val(u,S.ind); if(S.ind==='ONTOP') return u.amt||0; if(S.ind==='ALL'){ var ks=Object.keys(u.e),r=ks.length?ks.reduce(function(s,i){return s+u.e[i].v/u.e[i].c},0)/ks.length:0; return (v.v||0)*1000+r; } return v.v/IMAP[S.ind].crit(u); };
+  var rk=function(u){ var v=val(u,S.ind); if(MNY(S.ind)) return u.amt||0; if(S.ind==='ALL'){ var ks=Object.keys(u.e),r=ks.length?ks.reduce(function(s,i){return s+u.e[i].v/u.e[i].c},0)/ks.length:0; return (v.v||0)*1000+r; } return v.v/IMAP[S.ind].crit(u); };
   F.sort(function(a,b){return TOUR_BEST?rk(b)-rk(a):rk(a)-rk(b)});
   tour.list=F.slice(0,8); if(!tour.list.length) return; tour.on=true; var b=document.getElementById('btour'); b.classList.add('on'); b.textContent='⏹ หยุดเที่ยวชม'; if(S.mode!=='bar'&&S.mode!=='donut'&&S.mode!=='radar'&&S.mode!=='gauge'){S.mode='bar';updateUI();}
   var i=0; (function go(){ if(!tour.on) return; if(i>=tour.list.length){ stopTour(); fit(filtered()); return; } var u=tour.list[i++];
@@ -485,7 +488,7 @@ function startTour(){ if(!map) return; orbit(false); var F=filtered().filter(fun
 /* ---- บันทึกภาพ PNG (รวมสัญลักษณ์ที่วางทับแผนที่) ---- */
 function exportPNG(){ if(!map) return; map.once('idle',function(){ var cv=map.getCanvas(),W=cv.width,H=cv.height,r=W/cv.clientWidth,o=document.createElement('canvas'); o.width=W;o.height=H; var g=o.getContext('2d'); g.drawImage(cv,0,0);
     var jobs=MK.map(function(m){return new Promise(function(res){var p=map.project([m.ll[1],m.ll[0]]),im=new Image();im.onload=function(){g.drawImage(im,(p.x-m.w/2)*r,(p.y-m.h/2)*r,m.w*r,m.h*r);res()};im.onerror=res;im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(m.svg.replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" '))})});
-    DL.forEach(function(m){var p=map.project(m._g?[m._g.lo,m._g.la]:[0,0]),gg=m._g; if(!gg) return; var t=(DNAME[gg.d]||gg.d)+' '+(S.ind==='ONTOP'?N(gg.amt):(gg.v==null?'–':Math.round(gg.v*100)+'%')); g.font=(13*r)+'px sans-serif'; var w=g.measureText(t).width+14*r; g.fillStyle='rgba(255,255,255,.93)'; g.fillRect(p.x*r-w/2,(p.y-52)*r,w,22*r); g.fillStyle='#0f2a24'; g.fillText(t,p.x*r-w/2+7*r,(p.y-36)*r)});
+    DL.forEach(function(m){var p=map.project(m._g?[m._g.lo,m._g.la]:[0,0]),gg=m._g; if(!gg) return; var t=(DNAME[gg.d]||gg.d)+' '+(MNY(S.ind)?N(gg.amt):(gg.v==null?'–':Math.round(gg.v*100)+'%')); g.font=(13*r)+'px sans-serif'; var w=g.measureText(t).width+14*r; g.fillStyle='rgba(255,255,255,.93)'; g.fillRect(p.x*r-w/2,(p.y-52)*r,w,22*r); g.fillStyle='#0f2a24'; g.fillText(t,p.x*r-w/2+7*r,(p.y-36)*r)});
     Promise.all(jobs).then(function(){o.toBlob(function(b){var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='TTM_GeoType3D_'+S.mode+'.png';a.click()})})});map.triggerRepaint(); }
 function initMap(){
   if(!glOK()){document.getElementById('nogl').style.display='grid';updateUI();return}
@@ -892,7 +895,7 @@ document.getElementById('estp').addEventListener('toggle',function(e){ var d=e.t
 document.getElementById('best').onclick=function(ev){ ev.stopPropagation(); var p=document.getElementById('estp'); p.classList.toggle('open'); if(p.classList.contains('open')) esPanel(); };
 document.getElementById('estp').addEventListener('change',function(e){ if(e.target.id==='estf'&&e.target.files[0]){ var fr=new FileReader(); fr.onload=function(){esImport(String(fr.result))}; fr.readAsText(e.target.files[0],'utf-8'); e.target.value=''; } });
 /* ---- events ---- */
-document.getElementById('pills').addEventListener('click',function(e){var b=e.target.closest('.pill');if(!b)return;S.ind=b.dataset.k;updateUI()});
+document.getElementById('pills').addEventListener('click',function(e){var b=e.target.closest('.pill');if(!b)return;S.ind=b.dataset.k;setAmt(S.ind);updateUI()});
 document.getElementById('seg').addEventListener('click',function(e){var b=e.target.closest('[data-m]');if(!b)return;S.mode=b.dataset.m;updateUI()});
 document.getElementById('fDist').addEventListener('change',function(e){S.dist=e.target.value;updateUI();fit(filtered())});
 document.getElementById('fType').addEventListener('click',function(e){var b=e.target.closest('[data-t]');if(!b)return;var t=b.dataset.t;S.types[t]=S.types[t]?0:1;b.classList.toggle('on',!!S.types[t]);updateUI()});
