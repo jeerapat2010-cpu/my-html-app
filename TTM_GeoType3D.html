@@ -197,6 +197,8 @@ footer .ramp{width:90px;height:9px;border-radius:5px;background:linear-gradient(
 .pill.on{box-shadow:0 4px 14px rgba(20,163,127,.45)}@keyframes glow{50%{box-shadow:0 4px 22px rgba(20,163,127,.8)}}
 .dlab{cursor:pointer;font-family:"IBM Plex Sans Thai",sans-serif;background:rgba(255,255,255,.95);border-radius:12px;padding:5px 9px 6px;box-shadow:0 3px 14px rgba(0,0,0,.3);min-width:128px;animation:mkin .6s cubic-bezier(.2,1.5,.4,1) both;font-size:12px}
 .dlab b{font:500 13px Mitr,sans-serif}.dlab .dv{font:600 15px Mitr,sans-serif;margin-left:4px}.dlab small{display:block;font-size:10px;color:var(--muted);margin-top:2px}
+.dlab .cb2{height:5px;border-radius:3px;background:#e2e8f0;margin-top:3px;overflow:hidden}.dlab .cb2 i{display:block;height:100%;border-radius:3px}
+#cmpd{display:none;position:fixed;left:184px;bottom:38px;z-index:6;width:350px;background:rgba(255,255,255,.96);border-radius:14px;padding:9px 11px 8px;box-shadow:0 6px 22px rgba(0,0,0,.28);font-family:"IBM Plex Sans Thai",sans-serif;font-size:12px}#cmpd b{font:500 13px Mitr,sans-serif}#cmpd .cn{font-size:10.5px;color:#64748b;margin:2px 0}
 .dlab .sb{display:flex;height:6px;border-radius:4px;overflow:hidden;background:#e2e8f0;margin-top:3px}.dlab .sb i{display:block;height:100%}
 @media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}aside{position:absolute;z-index:6;height:100%}.asof{display:none}}
 
@@ -222,7 +224,7 @@ footer .ramp{width:90px;height:9px;border-radius:5px;background:linear-gradient(
       <details class="mg" open><summary>📅 ปีงบประมาณ</summary><div class="gb"><button id="fy70" class="on">📘 ปี 70 (ล่าสุด)</button><button id="fy69">📗 ปี 69 (ทั้งปี)</button><button id="fycmp">⚖ เปรียบเทียบ 69/70</button></div><div style="font-size:10px;color:#64748b;padding:2px 6px">ปี 69: ตชว.14 / PA / IMC เท่านั้น • เกณฑ์ใช้ชุดปี 70</div></details><details class="mg" open><summary>🗺️ มุมมองแผนที่</summary><div class="gb"><button id="b3d" class="on">🏙️ 3 มิติ</button><button id="bsat">🛰️ ดาวเทียม</button><button id="bbld" class="on">🏢 ตึกรอบข้าง</button><button id="blm" class="on">🏬 สถานที่ใกล้เคียง</button><button id="bspm" class="on">🏛️ สถานที่สำคัญ จ.สมุทรปราการ</button></div></details>
       <details class="mg" open><summary>🎬 นำชม &amp; แอนิเมชัน</summary><div class="gb"><button id="btour">🎬 เที่ยวชม</button><button id="borb">🔄 หมุนรอบเมือง</button><button id="btord" title="เลือกลำดับการเที่ยวชม" class="wide">⚠️ แย่สุดก่อน</button><button id="bveh" class="on wide">🚦 พาหนะ</button></div></details>
       <details class="mg" open><summary>🏪 สถานประกอบการ &amp; ร้านกัญชา</summary><div class="gb"><button id="bcan" class="wide">🍃 ร้านกัญชา</button><button id="best" class="wide">🏪 สถานประกอบการ ▾</button><div class="estp" id="estp"></div></div></details>
-      <details class="mg" open><summary>📤 ส่งออก</summary><div class="gb"><button id="bpng" class="wide">📷 บันทึกภาพ</button></div></details>
+      <details class="mg" open><summary>📤 ส่งออก</summary><div class="gb"><button id="bpng" class="wide">📷 บันทึกภาพ (PNG)</button><button id="bcopy">📋 คัดลอกภาพ</button><button id="bshare">📤 แชร์</button></div></details>
     </div>
     <div class="tabp" id="tabF">
     <div class="fs">
@@ -254,12 +256,14 @@ var META={"fy": 2570, "period": "ไตรมาส 1 (ต.ค.–พ.ย. 69)",
 var DNAME={'เมืองสมุทรปราการ':'เมืองฯ','พระสมุทรเจดีย์':'พระสมุทรฯ'};
 var TLAB={H:'โรงพยาบาล',P:'รพ.สต./สอน.',C:'ศสช.'};
 /* ---- ตัวชี้วัด + เกณฑ์ (ตาม Changelog FY70) ---- */
+/* เกณฑ์ตามปีงบ: ปี 70 = ปฐมภูมิ 50 / OPD รพ.15 สสอ.50 / IMC 25 / PP 50 ; ปี 69 = OPD 20.5 (ระดับเดียว) / IMC 30 (ตาม Changelog) */
+function CR(k,u,yr){ if(k==='PRIM') return u.t==='H'?null:50; if(k==='OPD'){ if(yr==='69') return u.t==='C'?null:20.5; return u.t==='H'?15:(u.t==='C'?null:50);} if(k==='IMC') return yr==='69'?30:25; if(k==='PP') return yr==='69'?null:50; return null }
 var IND=[
  {k:'ALL',btn:'🏅 คะแนนรวม',name:'คะแนนรวม'},
- {k:'PRIM',btn:'🏥 ตชว.14 ปฐมภูมิ',name:'ตชว.14 ปฐมภูมิ',crit:function(u){return u.t==='H'?null:50}},
- {k:'OPD',btn:'🩺 ผู้ป่วยนอก<span class="bdg">PA</span>',name:'PA ผู้ป่วยนอก (OPDTTM)',crit:function(u){return u.t==='H'?15:(u.t==='C'?null:50)}},
- {k:'IMC',btn:'🧠 ตชว.26 IMC<span class="bdg">PA</span><span class="bdg">⭐ Flagship</span>',name:'ตชว.26 IMC (PA+Flagship)',crit:function(u){return 25}},
- {k:'PP',btn:'🤱 หลังคลอด',name:'มารดาหลังคลอดทันเวลา (เกณฑ์ภายใน)',crit:function(u){return 50}},
+ {k:'PRIM',btn:'🏥 ตชว.14 ปฐมภูมิ',name:'ตชว.14 ปฐมภูมิ',crit:function(u){return CR('PRIM',u,FYM)}},
+ {k:'OPD',btn:'🩺 ผู้ป่วยนอก<span class="bdg">PA</span>',name:'PA ผู้ป่วยนอก (OPDTTM)',crit:function(u){return CR('OPD',u,FYM)}},
+ {k:'IMC',btn:'🧠 ตชว.26 IMC<span class="bdg">PA</span><span class="bdg">⭐ Flagship</span>',name:'ตชว.26 IMC (PA+Flagship)',crit:function(u){return CR('IMC',u,FYM)}},
+ {k:'PP',btn:'🤱 หลังคลอด',name:'มารดาหลังคลอดทันเวลา (เกณฑ์ภายใน)',crit:function(u){return CR('PP',u,FYM)}},
  {k:'ONTOP',btn:'💰 เงินชดเชย สปสช.',name:'เงินชดเชย OP On-top'},
  {k:'UC',btn:'💊 มูลค่าสมุนไพร UC',name:'มูลค่ายาสมุนไพร สิทธิ UC'}
 ];
@@ -357,10 +361,11 @@ function updateUI(){
   if(MNY(k)) lg+='<span class="i"><span class="ramp"></span> น้อย → มาก (ความสูง/สี = '+(k==='UC'?'มูลค่ายาสมุนไพร UC':'เงินชดเชย')+')</span>';
   else if(S.mode==='bar') lg+='<span class="i">🏢 ตึกสีขาว · <b>ป้ายเครื่องหมายบนผนัง</b> = สถานะ:</span>'+[['g','✓'],['y','!'],['r','✕'],['x','–']].map(function(x){return '<span class="i"><span class="dot" style="background:'+COL[x[0]]+';color:#fff;font:700 9px/12px sans-serif;text-align:center">'+x[1]+'</span>'+STN[x[0]]+'</span>'}).join('')+'<span class="i"><span style="color:#dc2626;font-weight:800">✚</span> กากบาทแดงบนหลังคา</span>';
   else lg+=['g','y','r','x'].map(function(s){return '<span class="i"><span class="dot" style="background:'+COL[s]+'"></span>'+STN[s]+'</span>'}).join('');
-  var MX={bar:'ตึก = หน่วยบริการ · ความสูง = '+(k==='ALL'?'คะแนนรวม':'ผลงาน ÷ เกณฑ์')+'',dot:'ขนาดวง = ตัวหาร (จำนวนผู้รับบริการ)',heat:'ยิ่งแดง = ยิ่งห่างจากเกณฑ์ (จุดอ่อนของจังหวัด)',donut:'วงแหวน = สถานะแต่ละตัวชี้วัด (ตชว.14 · PA · IMC · หลังคลอด) · เลขกลาง = '+(k==='ALL'?'คะแนนรวม':MNY(k)?'เงินชดเชย':'ผลงาน %'),radar:'เรดาร์ 4 แกน ป=ปฐมภูมิ ผ=PA OPD I=IMC ห=หลังคลอด · วงประ = เกณฑ์ 100%',gauge:'เกจครึ่งวง = ผลงาน ÷ เกณฑ์ · ขีดดำ = จุดผ่านเกณฑ์',dist:'แท่งใหญ่ = ค่าเฉลี่ยรายอำเภอ · แถบสี = สัดส่วนผ่าน/ใกล้/ต่ำ/ไม่มีข้อมูล · คลิกเพื่อดูรายหน่วย'};
+  var MX={pyr:'ปิรามิด = ความสูงตามอันดับผลงานรายอำเภอ (สูงสุด = อันดับ 1) · สีตามเกณฑ์',cmp:'แท่งรายอำเภอ: สีเขียว = ดีขึ้นจากปี 69 · แดง = ลดลง · เทา = ไม่มีข้อมูลปี 69 (ปี 69 เทียบไตรมาส 1 / IMC ทั้งปี)',bar:'ตึก = หน่วยบริการ · ความสูง = '+(k==='ALL'?'คะแนนรวม':'ผลงาน ÷ เกณฑ์')+'',dot:'ขนาดวง = ตัวหาร (จำนวนผู้รับบริการ)',heat:'ยิ่งแดง = ยิ่งห่างจากเกณฑ์ (จุดอ่อนของจังหวัด)',donut:'วงแหวน = สถานะแต่ละตัวชี้วัด (ตชว.14 · PA · IMC · หลังคลอด) · เลขกลาง = '+(k==='ALL'?'คะแนนรวม':MNY(k)?'เงินชดเชย':'ผลงาน %'),radar:'เรดาร์ 4 แกน ป=ปฐมภูมิ ผ=PA OPD I=IMC ห=หลังคลอด · วงประ = เกณฑ์ 100%',gauge:'เกจครึ่งวง = ผลงาน ÷ เกณฑ์ · ขีดดำ = จุดผ่านเกณฑ์',dist:'แท่งใหญ่ = ค่าเฉลี่ยรายอำเภอ · แถบสี = สัดส่วนผ่าน/ใกล้/ต่ำ/ไม่มีข้อมูล · คลิกเพื่อดูรายหน่วย'};
   lg+='<span class="i">'+(MX[S.mode]||'')+'</span><span class="i">ซูมเข้าเพื่อดู: 🏬 ห้าง · 🛒 ตลาด/ซูเปอร์ · 🏥 รพ. · ⚕️ คลินิก (ข้อมูล OSM)</span>';
   lg+='<span class="i">สีจางบนพื้นแผนที่ = อำเภอ:</span>'+Object.keys(DCOL).map(function(d){return '<span class="i"><span class="dot" style="background:'+DCOL[d]+'"></span>'+E(DNAME[d]||d)+'</span>'}).join('')+(S.mode==='bar'&&k==='ALL'?'<span class="i">แท่งซ้อน = ปฐมภูมิ·OPD·IMC·PP (ป้ายบนผนังตามสถานะแต่ละตัว)</span>':'');
   lg+='<span class="i" style="margin-left:auto;color:#74867f">ตชว.14 ≥50% · PA OPD รพ. ≥15% / สสอ.(รพ.สต.) ≥50% · IMC ≥25% · กัญชาเป็นการติดตาม ไม่รวมคะแนน</span>';
+  if(FYM==='69') lg=lg.replace(/<span class="i" style="margin-left:auto[^]*?<\/span>$/,'<span class="i" style="margin-left:auto;color:#74867f">เกณฑ์ปี 69: ตชว.14 ≥50% · PA OPD ≥20.5% · IMC ≥30%</span>');
   document.getElementById('legend').innerHTML=lg;
   document.getElementById('banner').textContent=(S.dist?(DNAME[S.dist]||S.dist):'จ.สมุทรปราการ')+' · '+I.name+' · '+F.length+' หน่วย';
   if(typeof CS!=='undefined'&&CS.on&&CS.lastD!==S.dist){CS.lastD=S.dist;canRender();}
@@ -386,7 +391,7 @@ function openUnit(u,fly){ if(!map||!u||!u.ll) return; var c=[u.ll[1],u.ll[0]];
   if(popup) popup.remove(); popup=new maplibregl.Popup({maxWidth:'340px',offset:12}).setLngLat(c).setHTML(popHTML(u)).addTo(map); }
 /* ---- map ---- */
 /* ---- map ---- */
-var MODES={bar:'▮ อาคาร 3D',dot:'⁘ การกระจาย',heat:'🔥 ฮีทแมป',donut:'🍩 โดนัท',radar:'🕸️ เรดาร์',gauge:'🎯 เกจ',num:'🔢 ตัวเลข %',rank:'🏆 อันดับ',bullet:'📏 เทียบเป้า',mbar:'📊 แท่ง 4 ตัวชี้วัด',dist:'🏙️ รายอำเภอ'};
+var MODES={bar:'▮ อาคาร 3D',dot:'⁘ การกระจาย',heat:'🔥 ฮีทแมป',donut:'🍩 โดนัท',radar:'🕸️ เรดาร์',gauge:'🎯 เกจ',num:'🔢 ตัวเลข %',rank:'🏆 อันดับ',bullet:'📏 เทียบเป้า',mbar:'📊 แท่ง 4 ตัวชี้วัด',dist:'🏙️ รายอำเภอ',pyr:'🔺 ปิรามิดอันดับ',cmp:'⚖ เทียบ 69/70 รายอำเภอ'};
 var CUR=[],MK=[],DL=[],growT0=0,growSig='',growRAF=0,orbitOn=false,orbitRAF=0,tour={on:false,t:[],list:[]};
 function clamp(x){return Math.max(0,Math.min(1,x))}
 function ease(x){x=clamp(x);var c=1.5;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)}
@@ -427,8 +432,49 @@ function distAgg(F){ var k=S.ind,G={}; F.forEach(function(u){ if(!u.ll) return; 
     var v=val(u,k); if(MNY(k)){ g.amt+=u.amt||0; g.c[u.amt!=null?'g':'x']++; } else { g.c[v.s]++; if(v.s!=='x'){ g.att.push(k==='ALL'?u.score/100:Math.min(1.2,u.e[k].v/u.e[k].c)); } } });
   return Object.keys(G).map(function(d){var g=G[d]; g.la/=g.n; g.lo/=g.n; g.v=g.att.length?g.att.reduce(function(a,b){return a+b},0)/g.att.length:null;
     g.s=MNY(k)?'b':(g.v==null?'x':(g.v>=1?'g':g.v>=.8?'y':'r')); return g; }); }
-function distFeatures(G,t){ var mx=Math.max.apply(null,G.map(function(g){return g.amt}).concat([1]));
-  return G.map(function(g,i){ var f=ease((t-i*120)/900),h=MNY(S.ind)?Math.sqrt(g.amt/mx):(g.v==null?.05:Math.min(1.2,g.v)/1.2),col=MNY(S.ind)?blue(h):COL[g.s],d=.015;
+
+/* ---- ข้อมูลรายอำเภอ 2 ปี ---- */
+function distYr(k){ var out={}; if(MNY(k)) return out; var ks=k==='ALL'?['PRIM','OPD','IMC']:[k];
+  ['70','69'].forEach(function(yr){ var A={};
+    DATA.forEach(function(u){ ks.forEach(function(ik){ var x=yr==='70'?u.R70[ik]:(FY69[ik]?FY69[ik][ik==='IMC'?'full':'q1'][u.code]:null),c=CR(ik,u,yr); if(!x||!(x[1]>0)||c==null) return;
+      var o=A[u.dist]||(A[u.dist]={}),t=o[ik]||(o[ik]={a:0,b:0,cb:0}); t.a+=x[0];t.b+=x[1];t.cb+=x[1]*c; }); });
+    Object.keys(A).forEach(function(d){ var o=A[d],atts=[],ik=Object.keys(o); if(!ik.length) return; ik.forEach(function(i){var t=o[i];atts.push(Math.min(1.2,(t.a/t.b*100)/(t.cb/t.b)))});
+      var r=out[d]||(out[d]={}); if(k==='ALL'){ var m=atts.reduce(function(a,b){return a+b},0)/atts.length; r['v'+yr]=Math.min(1,m)*100; r['c'+yr]=100; r['a'+yr]=m; }
+      else{ var t=o[k]; r['v'+yr]=t.a/t.b*100; r['c'+yr]=t.cb/t.b; r['a'+yr]=r['v'+yr]/r['c'+yr]; }
+      r['s'+yr]=stOf(r['v'+yr],r['c'+yr]); }); });
+  Object.keys(out).forEach(function(d){ var r=out[d]; r.dl=(r.v70!=null&&r.v69!=null)?r.v70-r.v69:null; }); return out; }
+function distRank(G,Y){ var R={},k=S.ind; G.slice().sort(function(a,b){ return MNY(k)?(b.amt-a.amt):(((Y[b.d]||{}).a70||-1)-((Y[a.d]||{}).a70||-1)) }).forEach(function(g,i){R[g.d]=i+1}); return R; }
+function fv(k,v){ return v==null?'–':(k==='ALL'?Math.round(v):v.toFixed(1)+'%') }
+function distTxt(g,m,Y,R){ var k=S.ind,y=Y[g.d]||{},n=DNAME[g.d]||g.d;
+  if(m==='pyr') return '#'+R[g.d]+' '+n+' '+(MNY(k)?N(g.amt):fv(k,y.v70));
+  if(m==='cmp') return n+' '+fv(k,y.v69)+' → '+fv(k,y.v70)+(y.dl!=null?(y.dl>=0?' ▲+':' ▼')+y.dl.toFixed(1):'');
+  return n+' '+(MNY(k)?N(g.amt):(g.v==null?'–':Math.round(g.v*100)+'%')); }
+function distHTML(g,m,Y,R){ var k=S.ind,y=Y[g.d]||{},tot=g.n||1,n=E(DNAME[g.d]||g.d),
+  sb='<div class="sb"><i style="width:'+(g.c.g/tot*100)+'%;background:'+COL.g+'"></i><i style="width:'+(g.c.y/tot*100)+'%;background:'+COL.y+'"></i><i style="width:'+(g.c.r/tot*100)+'%;background:'+COL.r+'"></i><i style="width:'+(g.c.x/tot*100)+'%;background:'+COL.x+'"></i></div>',
+  cn='<small>ผ่าน '+g.c.g+' · ใกล้ '+g.c.y+' · ต่ำ '+g.c.r+' · ไม่มี '+g.c.x+'</small>';
+  if(m==='pyr'){ var r=R[g.d],md=['🥇','🥈','🥉'][r-1]||('#'+r); return '<b>'+md+' '+n+'</b> <span class="dv" style="color:'+(MNY(k)?'#1e3a8a':COL[y.s70||'x'])+'">'+(MNY(k)?(g.amt>=1e6?(g.amt/1e6).toFixed(2)+' ล้าน':N(g.amt)):fv(k,y.v70))+'</span>'+sb+'<small>อันดับ '+r+' จาก '+Object.keys(R).length+' อำเภอ</small>'; }
+  if(m==='cmp'){ if(y.v70==null) return '<b>'+n+'</b> <span class="dv">–</span>'+sb+cn;
+    var mx=Math.max(y.v69||0,y.v70,y.c70||0)*1.05||1,w=function(v){return Math.max(2,(v||0)/mx*100)};
+    var dc=y.dl==null?'#64748b':(y.dl>=0?'#16a34a':'#dc2626');
+    return '<b>'+n+'</b> <span class="dv" style="color:'+dc+'">'+(y.dl==null?'–':(y.dl>=0?'▲ +':'▼ ')+y.dl.toFixed(1))+'</span><div class="cb2"><i style="width:'+(y.v69==null?0:w(y.v69))+'%;background:#94a3b8"></i></div><div class="cb2"><i style="width:'+w(y.v70)+'%;background:'+COL[y.s70]+'"></i></div><small>ปี 69: '+fv(k,y.v69)+' · ปี 70: '+fv(k,y.v70)+'</small>'; }
+  return '<b>'+n+'</b> <span class="dv" style="color:'+(g.s==='b'?'#1e3a8a':COL[g.s])+'">'+(MNY(k)?(g.amt>=1e6?(g.amt/1e6).toFixed(2)+' ล้าน':N(g.amt)):(g.v==null?'–':Math.round(g.v*100)+'%'))+'</span>'+sb+cn; }
+function cmpPanel(m,k){ var p=document.getElementById('cmpd'); if(!p){ p=document.createElement('div'); p.id='cmpd'; document.body.appendChild(p); } if(m!=='cmp'){ p.style.display='none'; return; }
+  var Y=distYr(k),ds=Object.keys(Y).sort(function(a,b){return (Y[b].a70||0)-(Y[a].a70||0)}),I=IMAP[k]||{name:'คะแนนรวม'}; p.style.display='block';
+  if(!ds.length){ p.innerHTML='<b>⚖ เทียบ 69/70 รายอำเภอ</b><div class="cn">ตัวชี้วัดนี้ไม่มีข้อมูลปี 69 สำหรับเทียบ — เลือก คะแนนรวม / ปฐมภูมิ / OPD / IMC</div>'; return; }
+  var mx=0; ds.forEach(function(d){ mx=Math.max(mx,Y[d].v70||0,Y[d].v69||0,Y[d].c70||0) }); mx*=1.12; var W=330,L=64,B=W-L-70,h='<svg width="'+W+'" height="'+(ds.length*34+22)+'">';
+  ds.forEach(function(d,i){ var y=Y[d],t=8+i*34,w=function(v){return v==null?0:Math.max(1,v/mx*B)};
+    h+='<text x="0" y="'+(t+16)+'" font-size="11.5" font-weight="600" fill="#0f2a24">'+E(DNAME[d]||d)+'</text>'
+      +'<rect x="'+L+'" y="'+t+'" width="'+w(y.v69)+'" height="10" rx="3" fill="#94a3b8"/><text x="'+(L+w(y.v69)+4)+'" y="'+(t+9)+'" font-size="9.5" fill="#64748b">'+fv(k,y.v69)+'</text>'
+      +'<rect x="'+L+'" y="'+(t+13)+'" width="'+w(y.v70)+'" height="10" rx="3" fill="'+COL[y.s70||'x']+'"/><text x="'+(L+w(y.v70)+4)+'" y="'+(t+22)+'" font-size="9.5" font-weight="700" fill="#0f2a24">'+fv(k,y.v70)+'</text>'
+      +(y.dl!=null?'<text x="'+(W-2)+'" y="'+(t+17)+'" text-anchor="end" font-size="11" font-weight="700" fill="'+(y.dl>=0?'#16a34a':'#dc2626')+'">'+(y.dl>=0?'▲ +':'▼ ')+y.dl.toFixed(1)+'</text>':'')
+      +(y.c70?'<line x1="'+(L+y.c70/mx*B)+'" y1="'+(t-2)+'" x2="'+(L+y.c70/mx*B)+'" y2="'+(t+25)+'" stroke="#0f2a24" stroke-dasharray="2 2" stroke-width=".9"/>':''); });
+  p.innerHTML='<b>⚖ เทียบรายอำเภอ ปี 69 / ปี 70</b><div class="cn">'+E(I.name)+(k==='ALL'?' (คะแนนรวม 0–100)':'')+'</div>'+h+'</svg><div class="cn"><span style="color:#94a3b8">■</span> ปี 69 ('+(k==='IMC'?'ทั้งปี':k==='ALL'?'ไตรมาส 1/ทั้งปีรวม':'ไตรมาส 1')+') &nbsp;<span style="color:#16a34a">■</span><span style="color:#eab308">■</span><span style="color:#dc2626">■</span> ปี 70 สีตามเกณฑ์ &nbsp;┆ = เกณฑ์ปี 70</div>'; }
+function distFeatures(G,t){ var k=S.ind,m=S.mode,mx=Math.max.apply(null,G.map(function(g){return g.amt}).concat([1])),Y=(m==='pyr'||m==='cmp')?distYr(k):{},R=m==='pyr'?distRank(G,Y):{};
+  return G.map(function(g,i){ var f=ease((t-i*120)/900),y=Y[g.d]||{},h,col,d=.015;
+    if(m==='pyr'){ h=(G.length-(R[g.d]||G.length)+1)/G.length*1.2; col=MNY(k)?blue(Math.sqrt(g.amt/mx)):COL[y.s70||'x']; }
+    else if(m==='cmp'){ h=MNY(k)?Math.sqrt(g.amt/mx):(y.a70==null?.05:Math.min(1.2,y.a70)); col=y.dl==null?(y.s70?COL[y.s70]:COL.x):(y.dl>=0?'#16a34a':'#dc2626'); }
+    else{ h=MNY(k)?Math.sqrt(g.amt/mx):(g.v==null?.05:Math.min(1.2,g.v)/1.2); col=MNY(k)?blue(h):COL[g.s]; }
+    if(m!=='dist') h=Math.min(1.2,h)/1.2;
     return{type:'Feature',properties:{n:g.d,c:col,b:0,h:(300+h*4200)*f,dist:g.d},geometry:{type:'Polygon',coordinates:[[[g.lo-d,g.la-d],[g.lo+d,g.la-d],[g.lo+d,g.la+d],[g.lo-d,g.la+d],[g.lo-d,g.la-d]]]}}; }); }
 function arc(cx,cy,r,a0,a1){var x0=cx+r*Math.cos(a0),y0=cy+r*Math.sin(a0),x1=cx+r*Math.cos(a1),y1=cy+r*Math.sin(a1);return 'M'+x0.toFixed(2)+' '+y0.toFixed(2)+'A'+r+' '+r+' 0 '+((a1-a0)>Math.PI?1:0)+' 1 '+x1.toFixed(2)+' '+y1.toFixed(2)}
 var IK=['PRIM','OPD','IMC','PP'],IL=['ป','ผ','I','ห'];
@@ -479,22 +525,22 @@ function pushMap(F){ if(!ready) return; CUR=F; var k=S.ind,m=S.mode,dots=[],pul=
   map.getSource('dots').setData({type:'FeatureCollection',features:dots});
   map.getSource('pulse').setData({type:'FeatureCollection',features:pul});
   var vis=function(id,on){ if(map.getLayer(id)) map.setLayoutProperty(id,'visibility',on?'visible':'none'); };
-  ['pad','bars','cap'].forEach(function(l){vis(l,m==='bar')}); vis('dots',m==='dot'||m==='heat'); vis('heat',m==='heat'); vis('dist',m==='dist'); vis('pulse',false);
+  ['pad','bars','cap'].forEach(function(l){vis(l,m==='bar')}); vis('dots',m==='dot'||m==='heat'); vis('heat',m==='heat'); vis('dist',m==='dist'||m==='pyr'||m==='cmp'); vis('pulse',false);
   if(m==='heat'){ map.setPaintProperty('dots','circle-radius',['interpolate',['linear'],['zoom'],9,3,14,7]); map.setPaintProperty('dots','circle-opacity',.95);
     map.setPaintProperty('heat','heatmap-color',MNY(k)?['interpolate',['linear'],['heatmap-density'],0,'rgba(37,99,235,0)',.25,'#bfdbfe',.55,'#3b82f6',1,'#1e3a8a']:['interpolate',['linear'],['heatmap-density'],0,'rgba(22,163,74,0)',.2,'#86efac',.45,'#fde047',.7,'#fb923c',1,'#dc2626']); }
   else{ map.setPaintProperty('dots','circle-radius',['interpolate',['linear'],['zoom'],9,['*',['get','sz'],5],14,['*',['get','sz'],20]]); map.setPaintProperty('dots','circle-opacity',.78); }
-  clearMK();
+  clearMK(); cmpPanel(m,k);
   var MKM={donut:[svgDonut,50,50],radar:[svgRadar,60,60],gauge:[svgGauge,58,44],num:[svgNum,42,42],rank:[svgRank,40,46],bullet:[svgBullet,70,32],mbar:[svgMBar,56,50]};
   if(MKM[m]){ if(m==='rank') mkRank(F,k); F.forEach(function(u,i){ if(!u.ll) return; addMK(u,MKM[m][0](u,k),MKM[m][1],MKM[m][2],Math.min(900,i*12)); }); }
   var sig=m+'|'+k+'|'+S.dist, fresh=sig!==growSig; growSig=sig;
-  if(m==='bar'||m==='dist'){ if(fresh){ startGrow(); } else drawGrow(1e9); }
-  if(m==='dist'){ var G=distAgg(F); G.forEach(function(g){ var el=document.createElement('div'),ib=document.createElement('div'); ib.className='dlab'; el.appendChild(ib); var tot=g.n||1;
-      ib.innerHTML='<b>'+E(DNAME[g.d]||g.d)+'</b> <span class="dv" style="color:'+(g.s==='b'?'#1e3a8a':COL[g.s])+'">'+(MNY(k)?(g.amt>=1e6?(g.amt/1e6).toFixed(2)+' ล้าน':N(g.amt)):(g.v==null?'–':Math.round(g.v*100)+'%'))+'</span><div class="sb"><i style="width:'+(g.c.g/tot*100)+'%;background:'+COL.g+'"></i><i style="width:'+(g.c.y/tot*100)+'%;background:'+COL.y+'"></i><i style="width:'+(g.c.r/tot*100)+'%;background:'+COL.r+'"></i><i style="width:'+(g.c.x/tot*100)+'%;background:'+COL.x+'"></i></div><small>ผ่าน '+g.c.g+' · ใกล้ '+g.c.y+' · ต่ำ '+g.c.r+' · ไม่มี '+g.c.x+'</small>';
+  if(m==='bar'||m==='dist'||m==='pyr'||m==='cmp'){ if(fresh){ startGrow(); } else drawGrow(1e9); }
+  if(m==='dist'||m==='pyr'||m==='cmp'){ var G=distAgg(F),Y=distYr(k),R=distRank(G,Y); G.forEach(function(g){ var el=document.createElement('div'),ib=document.createElement('div'); ib.className='dlab'; el.appendChild(ib); var tot=g.n||1;
+      ib.innerHTML=distHTML(g,m,Y,R);
       ib.addEventListener('click',function(e){e.stopPropagation();S.dist=g.d;S.mode='bar';document.getElementById('fDist').value=g.d;updateUI();fit(filtered())});
-      var mk=new maplibregl.Marker({element:el,anchor:'bottom',offset:[0,-70]}).setLngLat([g.lo,g.la]).addTo(map); mk._g=g; DL.push(mk); }); }
+      var mk=new maplibregl.Marker({element:el,anchor:'bottom',offset:[0,-70]}).setLngLat([g.lo,g.la]).addTo(map); mk._g=g; mk._t=distTxt(g,m,Y,R); DL.push(mk); }); }
 }
 function startGrow(){ growT0=performance.now(); cancelAnimationFrame(growRAF); (function step(now){ var t=now-growT0; drawGrow(t); if(t<2600) growRAF=requestAnimationFrame(step); })(growT0); }
-function drawGrow(t){ if(!ready) return; if(S.mode==='bar') setBars(t); if(S.mode==='dist'){ var s=map.getSource('dist'); if(s) s.setData({type:'FeatureCollection',features:distFeatures(distAgg(CUR),t)}); } }
+function drawGrow(t){ if(!ready) return; if(S.mode==='bar') setBars(t); if(S.mode==='dist'||S.mode==='pyr'||S.mode==='cmp'){ var s=map.getSource('dist'); if(s) s.setData({type:'FeatureCollection',features:distFeatures(distAgg(CUR),t)}); } }
 function pulseLoop(now){ if(ready&&map&&map.getLayer('pulse')&&S.mode!=='dist'){ var ph=(now%2000)/2000; try{ map.setPaintProperty('pulse','circle-radius',['interpolate',['linear'],['zoom'],9,4+ph*16,14,12+ph*52]); map.setPaintProperty('pulse','circle-opacity',['*',['get','p'],.6*(1-ph)]); }catch(e){} } requestAnimationFrame(pulseLoop); }
 function fit(F){ var pts=(F||DATA).filter(function(u){return u.ll}); if(!pts.length||!map) return; var b=new maplibregl.LngLatBounds();pts.forEach(function(u){b.extend([u.ll[1],u.ll[0]])});
   map.fitBounds(b,{padding:{top:60,bottom:50,left:50,right:50},maxZoom:14,pitch:S.d3?55:0,bearing:S.d3?-12:0,duration:900}); }
@@ -554,10 +600,19 @@ function startTour(){ if(!map) return; orbit(false); var F=filtered().filter(fun
     map.flyTo({center:[u.ll[1],u.ll[0]],zoom:15.4,pitch:64,bearing:map.getBearing()+50,duration:2800,essential:true});
     tour.t.push(setTimeout(function(){ if(tour.on) openUnit(u,false) },2900)); tour.t.push(setTimeout(go,7600)); })(); }
 /* ---- บันทึกภาพ PNG (รวมสัญลักษณ์ที่วางทับแผนที่) ---- */
-function exportPNG(){ if(!map) return; map.once('idle',function(){ var cv=map.getCanvas(),W=cv.width,H=cv.height,r=W/cv.clientWidth,o=document.createElement('canvas'); o.width=W;o.height=H; var g=o.getContext('2d'); g.drawImage(cv,0,0);
+function exportPNG(how){ if(!map) return; how=typeof how==='string'?how:'dl'; map.once('idle',function(){ var cv=map.getCanvas(),W=cv.width,H=cv.height,r=W/cv.clientWidth,hd=Math.round(58*r),ft=Math.round(30*r),o=document.createElement('canvas'); o.width=W;o.height=H+hd+ft; var g=o.getContext('2d');
+    var I=IMAP[S.ind],nm=I?I.name:'คะแนนรวม',fy=FYM==='69'?'ปีงบประมาณ 2569 (ทั้งปี)':'ปีงบประมาณ '+(META.fy||'2570')+' · ข้อมูลสะสม '+(META.period||'')+' · ข้อมูล ณ '+(META.asof||'');
+    g.fillStyle='#0f2a24'; g.fillRect(0,0,W,hd); g.fillStyle='#fff'; g.font='600 '+(20*r)+'px Mitr,sans-serif'; g.fillText('TTM GeoType 3D · ผลงานแพทย์แผนไทยรายหน่วยบริการ จ.สมุทรปราการ',14*r,24*r); g.font=(13*r)+'px "IBM Plex Sans Thai",sans-serif'; g.fillStyle='#a7f3d0'; g.fillText(nm+'  ·  '+fy+'  ·  รูปแบบ: '+(MODES[S.mode]||S.mode),14*r,46*r);
+    g.drawImage(cv,0,hd); g.translate(0,hd);
+    g.fillStyle='#0f2a24'; g.fillRect(0,H,W,ft); var x=14*r; [['g','ผ่านเกณฑ์'],['y','ใกล้เกณฑ์'],['r','ต่ำกว่าเกณฑ์'],['x','ไม่มีข้อมูล']].forEach(function(z){ g.fillStyle=COL[z[0]]; g.beginPath(); g.arc(x+6*r,H+15*r,6*r,0,7); g.fill(); g.fillStyle='#fff'; g.font=(12*r)+'px "IBM Plex Sans Thai",sans-serif'; g.fillText(z[1],x+16*r,H+19*r); x+=g.measureText(z[1]).width+40*r; });
+    g.fillStyle='#a7f3d0'; g.textAlign='right'; g.fillText('สสจ.สมุทรปราการ · กลุ่มงานการแพทย์แผนไทยฯ · พื้นที่ © OpenStreetMap',W-14*r,H+19*r); g.textAlign='left';
     var jobs=MK.map(function(m){return new Promise(function(res){var p=map.project([m.ll[1],m.ll[0]]),im=new Image();im.onload=function(){g.drawImage(im,(p.x-m.w/2)*r,(p.y-m.h/2)*r,m.w*r,m.h*r);res()};im.onerror=res;im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(m.svg.replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" '))})});
-    DL.forEach(function(m){var p=map.project(m._g?[m._g.lo,m._g.la]:[0,0]),gg=m._g; if(!gg) return; var t=(DNAME[gg.d]||gg.d)+' '+(MNY(S.ind)?N(gg.amt):(gg.v==null?'–':Math.round(gg.v*100)+'%')); g.font=(13*r)+'px sans-serif'; var w=g.measureText(t).width+14*r; g.fillStyle='rgba(255,255,255,.93)'; g.fillRect(p.x*r-w/2,(p.y-52)*r,w,22*r); g.fillStyle='#0f2a24'; g.fillText(t,p.x*r-w/2+7*r,(p.y-36)*r)});
-    Promise.all(jobs).then(function(){o.toBlob(function(b){var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='TTM_GeoType3D_'+S.mode+'.png';a.click()})})});map.triggerRepaint(); }
+    DL.forEach(function(m){var gg=m._g; if(!gg) return; var p=map.project([gg.lo,gg.la]),t=m._t||((DNAME[gg.d]||gg.d)+' '+(MNY(S.ind)?N(gg.amt):(gg.v==null?'–':Math.round(gg.v*100)+'%'))); g.font='600 '+(13*r)+'px "IBM Plex Sans Thai",sans-serif'; var w=g.measureText(t).width+14*r; g.fillStyle='rgba(255,255,255,.93)'; g.fillRect(p.x*r-w/2,(p.y-52)*r,w,22*r); g.fillStyle='#0f2a24'; g.fillText(t,p.x*r-w/2+7*r,(p.y-36)*r)});
+    Promise.all(jobs).then(function(){o.toBlob(function(b){ var fn='TTM_GeoType3D_'+nm.replace(/\s+/g,'')+'_'+S.mode+'.png',f=function(){var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=fn;a.click()};
+      if(how==='copy'&&navigator.clipboard&&window.ClipboardItem){ navigator.clipboard.write([new ClipboardItem({'image/png':b})]).then(function(){toastX('📋 คัดลอกภาพแล้ว — วางลง Word/PowerPoint ได้เลย (Ctrl+V)')},function(){f();toastX('คัดลอกไม่ได้ จึงบันทึกเป็นไฟล์แทน')}); }
+      else if(how==='share'&&navigator.canShare&&navigator.canShare({files:[new File([b],fn,{type:'image/png'})]})){ navigator.share({files:[new File([b],fn,{type:'image/png'})],title:'TTM GeoType 3D'}).catch(function(){}); }
+      else f(); })})});map.triggerRepaint(); }
+function toastX(t){ var d=document.getElementById('toastX'); if(!d){ d=document.createElement('div'); d.id='toastX'; d.style.cssText='position:fixed;left:50%;bottom:60px;transform:translateX(-50%);background:#0f2a24;color:#fff;padding:9px 16px;border-radius:12px;font:500 13px "IBM Plex Sans Thai",sans-serif;z-index:99;box-shadow:0 4px 16px rgba(0,0,0,.35);transition:opacity .4s'; document.body.appendChild(d); } d.textContent=t; d.style.opacity=1; clearTimeout(d._t); d._t=setTimeout(function(){d.style.opacity=0},3200); }
 function initMap(){
   if(!glOK()){document.getElementById('nogl').style.display='grid';updateUI();return}
   map=new maplibregl.Map({container:'map',style:STYLE_VEC,center:[100.6,13.6],zoom:10,pitch:55,bearing:-12,maxPitch:75,preserveDrawingBuffer:true,attributionControl:{compact:true}});
@@ -597,7 +652,7 @@ function prep(p){var c=[0];for(var i=1;i<p.length;i++)c.push(c[i-1]+mDist(p[i-1]
 function at(R,s){s=Math.max(0,Math.min(R.len,s));var i=1;while(i<R.c.length-1&&R.c[i]<s)i++;var a=R.p[i-1],b=R.p[i],t=(s-R.c[i-1])/Math.max(1e-6,R.c[i]-R.c[i-1]);
   var la=a[0]+(b[0]-a[0])*t,lo=a[1]+(b[1]-a[1])*t,dy=(b[0]-a[0])*110574,dx=(b[1]-a[1])*111320*Math.cos(la*Math.PI/180);return [la,lo,(Math.atan2(dx,dy)*180/Math.PI+360)%360]}
 /* ===== พาหนะ 3 มิติจริง (fill-extrusion): ขนาดคงที่เป็นพิกเซลตามการซูม ===== */
-var PX={ship:70,heli:54,boat:70,car:30,bus:46,train:26,plane:110}, CARC=['#ff4d6d','#4cc9f0','#f9c74f','#90be6d','#b388ff','#ff9f1c','#f1f5f9','#2ec4b6','#f472b6','#60a5fa'], TAILC=['#7c3aed','#f97316','#ef4444','#2563eb','#16a34a','#eab308'];
+var PX={ship:70,heli:54,boat:70,car:30,bus:46,train:26,plane:110}, CARC=['#e8788a','#6fb8d6','#e6c76a','#8fb27a','#a592d6','#e0a057','#e2e8f0','#5fb3a8','#d98bb4','#7fa4d9'], TAILC=['#7c3aed','#f97316','#ef4444','#2563eb','#16a34a','#eab308'];
 function mpp(la){return 78271.52*Math.cos(la*Math.PI/180)/Math.pow(2,map.getZoom())}
 function place(la,lo,hd,pts,L){ /* pts = [[x,y]] หน่วยความยาวรถ=1, x ขวา y หน้า → [lon,lat] */
   var h=hd*Math.PI/180,sn=Math.sin(h),cs=Math.cos(h),kx=111320*Math.cos(la*Math.PI/180);
@@ -613,7 +668,7 @@ function modelBoat(F,la,lo,hd,L,col,big){ var w=big?.22:.16;
   part(F,la,lo,hd,L,rect(-w*.8,w*.8,-.35,.2),.1,big?.26:.2,'#f8fafc'); part(F,la,lo,hd,L,rect(-w*.85,w*.85,-.3,.15),big?.2:.15,big?.215:.165,'#1e3a5f');
   if(big) part(F,la,lo,hd,L,rect(-w*.7,w*.7,-.3,.1),.26,.3,'#e2e8f0'); else part(F,la,lo,hd,L,rect(-w*.8,w*.8,-.35,.2),.2,.23,col) }
 
-var SSJ={la:13.5978,lo:100.604}, HPAD={A:[13.6925,100.7440],B:[13.5978,100.6049]};
+var SSJ={la:13.5994157,lo:100.6075198}, HPAD={A:[13.6925,100.7440],B:[13.5994157,100.6084198]};
 function modelShip(F,la,lo,hd,L,col){ var w=.075; var CC=['#ef4444','#3b82f6','#f59e0b','#22c55e','#a855f7','#f1f5f9','#0ea5e9','#f97316'];
   part(F,la,lo,hd,L,[[-w,-.5],[w,-.5],[w,.32],[0,.5],[-w,.32],[-w,-.5]],0,.05,col);
   part(F,la,lo,hd,L,[[-w*.92,-.5],[w*.92,-.5],[w*.92,.3],[0,.46],[-w*.92,.3],[-w*.92,-.5]],.05,.062,'#1f2937');
@@ -649,7 +704,7 @@ var VEH={on:true,items:[],raf:0,last:0};
 function initVeh(){ if(!map||VEH.items.length) return;
   var gr=prep(RT.green.p),yr=prep(RT.yellow.p),svr=prep(RT.silver.p),pur=prep(RT.purple.p),sk=prep(RT.sukh.p),bn=prep(RT.bangna.p),tp=prep(RT.thep.p);
   [[gr,'#22c55e',0,60],[gr,'#22c55e',.5,60],[yr,'#facc15',.2,46],[yr,'#facc15',.7,46],[svr,'#e5e7eb',.1,70],[svr,'#e5e7eb',.6,70],[pur,'#a78bfa',.3,80]].forEach(function(x){VEH.items.push({k:'train',R:x[0],col:x[1],ph:x[2],per:x[3],n:4})});
-  var bc=['#f97316','#ef4444','#3b82f6','#a855f7','#14b8a6','#eab308'];
+  var bc=['#e08a4e','#d96b6b','#6a95d6','#9a78c4','#4fa89b','#d9b74e'];
   [[sk,70,0],[sk,64,.4],[bn,80,.1],[tp,50,.6],[bn,72,.55],[sk,58,.8]].forEach(function(x,j){VEH.items.push({k:'bus',R:x[0],per:x[1],ph:x[2],dir:j%2?-1:1,col:bc[j%bc.length]})});
   [[sk,38],[sk,44],[bn,46],[bn,52],[bn,41],[tp,36],[sk,57],[bn,63],[tp,48],[sk,33],[bn,37],[tp,55]].forEach(function(x,j){VEH.items.push({k:'car',R:x[0],per:x[1],ph:(j*.137)%1,dir:j%2?-1:1,col:CARC[j%CARC.length]})});
   var s2=prep(RT.sk2.p),rv=prep(RT.river.p),f1=prep(RT.fer1.p),f2=prep(RT.fer2.p);
@@ -864,7 +919,7 @@ document.getElementById('fy70').onclick=function(){setFY('70')}; document.getEle
 var CMP={k:'PRIM',b:'q1',s:'d',q:''};
 function cmpRows(){ var k=CMP.k,bk=(k==='IMC'?'full':CMP.b),rows=[],dsum={},psum=[0,0,0,0];
   DATA.forEach(function(u){ if(S.dist&&u.dist!==S.dist) return; var x=u.R70[k],y=FY69[k][bk][u.code]; if(!(x&&x[1]>0)&&!(y&&y[1]>0)) return;
-    var c=IMAP[k].crit(u); if(c==null) return; var v7=x&&x[1]>0?x[0]/x[1]*100:null,v6=y&&y[1]>0?y[0]/y[1]*100:null;
+    var c=CR(k,u,'70'); if(c==null) return; var v7=x&&x[1]>0?x[0]/x[1]*100:null,v6=y&&y[1]>0?y[0]/y[1]*100:null;
     rows.push({n:u.n,d:DNAME[u.dist]||u.dist,a6:y,v6:v6,a7:x,v7:v7,dl:(v7!=null&&v6!=null)?v7-v6:null,c:c});
     var g=dsum[u.dist]||(dsum[u.dist]=[0,0,0,0]); [g,psum].forEach(function(t){ if(y){t[0]+=y[0];t[1]+=y[1]} if(x){t[2]+=x[0];t[3]+=x[1]} }); });
   return {rows:rows,dsum:dsum,psum:psum,bk:bk}; }
@@ -1281,7 +1336,7 @@ document.querySelectorAll('.atabs .tb').forEach(function(b){b.onclick=function()
 try{var _t=localStorage.getItem('ttm-tab');if(_t==='F')aTab('F');if(localStorage.getItem('ttm-side')==='0')side(false)}catch(e){}
 document.getElementById('b3d').onclick=function(){S.d3=!S.d3;this.classList.toggle('on',S.d3);this.textContent=S.d3?'🏙️ 3 มิติ':'🗺️ 2 มิติ';if(map)map.easeTo({pitch:S.d3?55:0,bearing:S.d3?-12:0,duration:700})};
 document.getElementById('bsat').onclick=function(){S.sat=!S.sat;this.classList.toggle('on',S.sat);if(map)setStyle()};
-document.getElementById('bpng').onclick=exportPNG;
+document.getElementById('bpng').onclick=function(){exportPNG('dl')};document.getElementById('bcopy').onclick=function(){exportPNG('copy')};document.getElementById('bshare').onclick=function(){exportPNG('share')};
 document.getElementById('blm').onclick=function(){this.classList.toggle('on');LM.on=this.classList.contains('on');lmRender();if(LM.on)lmScan()};
 document.getElementById('bveh').onclick=function(){this.classList.toggle('on');vehShow(this.classList.contains('on'))};
 document.getElementById('borb').onclick=function(){if(tour.on)stopTour();orbit(!orbitOn)};
