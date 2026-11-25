@@ -592,7 +592,7 @@ function leafSVG(col){ var L=[[0,22],[34,18],[-34,18],[68,14],[-68,14],[100,8.5]
   return '<svg viewBox="-26 -26 52 46" xmlns="http://www.w3.org/2000/svg"><g fill="'+col+'" stroke="#fff" stroke-width="1.1" stroke-linejoin="round">'+h+'<rect x="-1" y="0" width="2" height="12" rx="1" stroke="none"/></g></svg>'; }
 function canVis(c){ if(S.dist&&c[5]!==S.dist) return false; if(!CS.st[canSt(c)]) return false; if(CS.ty[CAN_TY(c)]===0) return false; if(CS.yr[canYr(c)]===0) return false; return true; }
 function canRender(){ if(!map) return; CS.mk.forEach(function(m){m.remove()}); CS.mk=[]; if(CS.pop){CS.pop.remove();CS.pop=null}
-  var n=0; if(CS.on){ CAN.forEach(function(c,i){ if(c[3]==null||!canVis(c)) return; n++; var e=document.createElement('div'),d=document.createElement('div'); d.className='cleaf'; d.innerHTML=leafSVG(CANS[canSt(c)].c); e.appendChild(d); e.title=c[2];
+  var n=0; if(CS.on){ CAN.forEach(function(c,i){ if(c[3]==null||!canVis(c)) return; n++; var e=document.createElement('div'),d=document.createElement('div'); d.className='cleaf'; d.innerHTML=leafSVG(CANS[canSt(c)].c); e.appendChild(d); e.title=c[2]+' · หมดอายุ '+(c[9]?esTh(c[9]):'ไม่ระบุ');
       e.addEventListener('click',function(ev){ev.stopPropagation();canOpen(i)}); CS.mk.push(new maplibregl.Marker({element:e,anchor:'bottom'}).setLngLat([c[4],c[3]]).addTo(map)); }); }
   var tot=CAN.length,wc=CAN.filter(function(c){return c[3]!=null}).length,i0=document.getElementById('canInfo'); if(i0) i0.innerHTML=CS.on?('แสดง <b>'+n+'</b> จุดบนแผนที่ · ทะเบียนทั้งหมด '+tot+' ราย (มีพิกัด '+wc+', ไม่มีพิกัด '+(tot-wc)+') · ตัวกรองอำเภอด้านบนใช้ร่วมกัน'):'กดเปิดเพื่อแสดงร้านกัญชาบนแผนที่';
   canSize(); if(typeof esSum==='function') esSum(); }
@@ -600,7 +600,7 @@ function canSize(){ if(!map) return; var z=map.getZoom(),s=Math.max(20,Math.min(
 function canOpen(i){ var c=CAN[i]; if(c[3]==null) return; if(CS.pop) CS.pop.remove(); var st=canSt(c);
   CS.pop=new maplibregl.Popup({maxWidth:'340px',offset:[0,-26]}).setLngLat([c[4],c[3]]).setHTML('<div class="cpop"><div class="ch"><span class="cl">🍃</span><b>'+E(c[2])+'</b></div>'
    +'<div class="cr"><span>เลขที่ใบอนุญาต</span><b>'+E(c[1])+'</b></div>'
-   +'<div class="cr"><span>วันที่ใบอนุญาตหมดอายุ</span><b>'+(c[9]?esTh(c[9]):'–')+'</b></div>'
+   +'<div class="cr"><span>วันที่ใบอนุญาตหมดอายุ</span><b>'+(c[9]?esTh(c[9])+(c[9]<ES_TODAY?' <span style="color:#b91c1c;font-weight:600">(เลยกำหนดแล้ว)</span>':''):'<span style="color:#74867f">ไม่ระบุในทะเบียน</span>')+'</b></div>'
    +'<div class="cr"><span>สถานะร้าน/ฟาร์ม</span><b>'+E(c[7]||'ไม่ระบุ')+'</b></div>'
    +'<div class="cr"><span>สถานะ 2</span><b style="color:'+CANS[st].c+'">'+CANS[st].ic+' '+CANS[st].t+'</b></div>'
    +'<div class="cr"><span>หมายเหตุ</span><b>'+(c[10]?E(c[10]):'–')+'</b></div>'
@@ -710,7 +710,7 @@ function esList(full){ var el=document.getElementById('elist'),sel=esSelTypes();
   var c=ES_SO.col,d=ES_SO.dir; rows.sort(function(a,b){ var x,y; if(c==='t'){x=esTI(a.t).n;y=esTI(b.t).n} else if(c==='d'){x=a.d;y=b.d} else if(c==='s'){x=ES_STL[a.s];y=ES_STL[b.s]} else if(c==='e'){x=a.e||'9999';y=b.e||'9999'} else {x=a.n;y=b.n} var r=String(x).localeCompare(String(y),'th'); return (r||String(a.n).localeCompare(String(b.n),'th'))*d; });
   var th=function(k,l,cl){ return '<th class="'+(cl||'')+'" data-esc="'+k+'">'+l+(ES_SO.col===k?(ES_SO.dir>0?' ▲':' ▼'):'')+'</th>'; };
   var b='<table><thead><tr>'+th('n','ชื่อสถานประกอบการ','l')+th('t','ประเภท','l')+th('d','อำเภอ','l')+th('s','สถานะใบอนุญาต','l')+th('e','วันหมดอายุ','l')+'</tr></thead><tbody>';
-  rows.slice(0,600).forEach(function(r){ var ti=esTI(r.t); b+='<tr data-esk="'+r.k+'" data-esi="'+r.i+'"><td class="l">'+E(r.n)+(r.t==='can'&&r.la==null?' <small title="ไม่มีพิกัดในทะเบียน" style="color:#b45309">📍✕ ไม่มีพิกัด</small>':'')+(r.f&&r.t!=='can'?' <span title="ติ๊กว่าจำหน่ายช่อดอกกัญชา">🍃</span>':'')+'</td><td class="l"><span class="dot" style="background:'+ti.c+'"></span>'+ti.n+(r.ty?' · '+E(r.ty):'')+'</td><td class="l">'+E(r.d)+'</td><td class="l">'+ES_STL[r.s]+'</td><td class="l">'+(r.e?esTh(r.e):'')+'</td></tr>'; });
+  rows.slice(0,600).forEach(function(r){ var ti=esTI(r.t); b+='<tr data-esk="'+r.k+'" data-esi="'+r.i+'"><td class="l">'+E(r.n)+(r.t==='can'&&r.la==null?' <small title="ไม่มีพิกัดในทะเบียน" style="color:#b45309">📍✕ ไม่มีพิกัด</small>':'')+(r.f&&r.t!=='can'?' <span title="ติ๊กว่าจำหน่ายช่อดอกกัญชา">🍃</span>':'')+'</td><td class="l"><span class="dot" style="background:'+ti.c+'"></span>'+ti.n+(r.ty?' · '+E(r.ty):'')+'</td><td class="l">'+E(r.d)+'</td><td class="l">'+ES_STL[r.s]+'</td><td class="l">'+(r.e?esTh(r.e)+(r.t==='can'&&r.e<ES_TODAY?' <small style="color:#b91c1c">เลยกำหนด</small>':''):(r.t==='can'?'<span style="color:#94a3b8">ไม่ระบุ</span>':''))+'</td></tr>'; });
   b+='</tbody></table>'; document.getElementById('elb').innerHTML=b;
   document.getElementById('elf').textContent='พบ '+rows.length+' แห่ง'+(rows.length>600?' (แสดง 600 แรก — ใช้ช่องค้นหา/ตัวกรองเพื่อจำกัด)':'')+' · คลิกหัวตารางเพื่อเรียง · คลิกแถวเพื่อดูบนแผนที่'; }
 function esLocate(k,i){ var la,lo; if(k==='c'){var c=CAN[i];la=c[3];lo=c[4]; if(la==null){ document.getElementById('elf').textContent='⚠️ ร้านนี้ไม่มีพิกัดในทะเบียน จึงแสดงบนแผนที่ไม่ได้'; return; }} else {var r=EST[i];la=r[3];lo=r[4];}
