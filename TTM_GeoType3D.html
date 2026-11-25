@@ -210,12 +210,14 @@ function val(u,k){ // -> {v,s,label,h(0..1)}
 }
 function blue(h){var t=Math.max(0,Math.min(1,h));var a=[191,219,254],b=[37,99,235],c=[30,58,138];var m=t<.5?[a,b,t*2]:[b,c,(t-.5)*2];return 'rgb('+[0,1,2].map(function(i){return Math.round(m[0][i]+(m[1][i]-m[0][i])*m[2])}).join(',')+')'}
 /* ---- state ---- */
-var S={ind:'ALL',mode:'bar',dist:'',types:{H:1,P:1,C:1},st:{g:1,y:1,r:1,x:1},q:'',d3:true,sat:false,bld:true};
+var S={exc:0,ind:'ALL',mode:'bar',dist:'',types:{H:1,P:1,C:1},st:{g:1,y:1,r:1,x:1},q:'',d3:true,sat:false,bld:true};
 var map=null,popup=null,tip=null,ready=false;
 function colorOf(u,v){return v.s==='b'?blue(v.h):COL[v.s]}
+function isExc(u,k){ if(k==='ONTOP') return false; var ks=k==='ALL'?Object.keys(u.e):(u.e[k]?[k]:[]); return ks.length>0&&ks.every(function(i){return u.e[i].v>=u.e[i].c*1.2}); }
 function filtered(){var q=S.q.trim().toLowerCase();return DATA.filter(function(u){
   if(S.dist&&u.dist!==S.dist) return false; if(!S.types[u.t]) return false;
   var v=val(u,S.ind); if(v.s!=='b'&&!S.st[v.s]) return false; if(v.s==='b'&&!S.st.g&&!S.st.y&&!S.st.r&&!S.st.x) return false;
+  if(S.exc&&S.ind!=='ONTOP'&&!isExc(u,S.ind)) return false;
   if(q&&(u.name+u.n+u.code).toLowerCase().indexOf(q)<0) return false; return true;});}
 /* ---- UI ---- */
 function buildUI(){
@@ -225,7 +227,7 @@ function buildUI(){
   Object.keys(seen).forEach(function(d){ds.push('<option value="'+E(d)+'">'+E(DNAME[d]||d)+' ('+seen[d]+')</option>')});
   document.getElementById('fDist').innerHTML=ds.join('');
   document.getElementById('fType').innerHTML=['H','P','C'].map(function(t){return '<button class="chip on" data-t="'+t+'">'+TLAB[t]+' '+DATA.filter(function(u){return u.t===t}).length+'</button>'}).join('');
-  document.getElementById('fSt').innerHTML=['g','y','r','x'].map(function(s){return '<button class="chip on" data-s="'+s+'"><span class="dot" style="background:'+COL[s]+'"></span>'+STN[s]+'</button>'}).join('');
+  document.getElementById('fSt').innerHTML=['g','y','r','x'].map(function(s){return '<button class="chip on" data-s="'+s+'"><span class="dot" style="background:'+COL[s]+'"></span>'+STN[s]+'</button>'}).join('')+'<button class="chip'+(S.exc?' on':'')+'" data-x="1" title="ผ่านเกณฑ์ทุกตัวชี้วัด และผลงาน ≥120% ของเกณฑ์">⭐ Excellent (≥120% ของเกณฑ์)</button>';
 }
 function updateUI(){
   var F=filtered(),k=S.ind,I=IMAP[k];
@@ -257,10 +259,10 @@ function updateUI(){
   document.getElementById('kpis').innerHTML=h;
   document.querySelectorAll('.kpi .n').forEach(function(el){var m=el.textContent.replace(/,/g,'');if(!/^\d+$/.test(m)||+m<2)return;var to=+m,t0=performance.now();(function s(now){var x=Math.min(1,(now-t0)/700);el.textContent=Math.round(to*(1-Math.pow(1-x,3))).toLocaleString('th-TH');if(x<1)requestAnimationFrame(s)})(t0)});
   /* list */
-  var L=F.slice().sort(function(a,b){var x=val(a,k),y=val(b,k);if(k==='ONTOP')return (y.v||-1)-(x.v||-1);return (x.v==null?999:(k==='ALL'?x.v:x.v/(I.crit?I.crit(a):1)))-(y.v==null?999:(k==='ALL'?y.v:y.v/(I.crit?I.crit(b):1)))});
-  document.getElementById('lh').textContent='รายชื่อหน่วย '+L.length+' แห่ง · '+(k==='ONTOP'?'เรียงจากเงินมากไปน้อย':'เรียงจากต่ำกว่าเกณฑ์ก่อน');
+  var L=F.slice().sort(function(a,b){var x=val(a,k),y=val(b,k);if(k==='ONTOP')return (y.v||-1)-(x.v||-1);return (y.v==null?-1:(k==='ALL'?y.v:y.v/(I.crit?I.crit(b):1)))-(x.v==null?-1:(k==='ALL'?x.v:x.v/(I.crit?I.crit(a):1)))});
+  document.getElementById('lh').textContent='รายชื่อหน่วย '+L.length+' แห่ง · '+(k==='ONTOP'?'เรียงจากเงินมากไปน้อย':'เรียงคะแนนมากไปน้อย');
   document.getElementById('list').innerHTML=L.map(function(u){var v=val(u,k);var txt=v.v==null?'–':(k==='ALL'?v.v:(k==='ONTOP'?(u.amt>=1000?(u.amt/1000).toFixed(1)+'k':N(u.amt)):v.v.toFixed(1)+'%'));
-    return '<div class="row" data-c="'+u.code+'"><span class="v" style="background:'+colorOf(u,v)+'">'+txt+'</span><span><b>'+E(u.n)+'</b><small>'+E(DNAME[u.dist]||u.dist)+' · '+TLAB[u.t]+(u.ll?'':' · ยังไม่มีพิกัด')+'</small></span></div>'}).join('')||'<div class="lh">ไม่มีหน่วยตามเงื่อนไข</div>';
+    return '<div class="row" data-c="'+u.code+'"><span class="v" style="background:'+colorOf(u,v)+'">'+txt+'</span><span><b>'+(isExc(u,k)?'⭐ ':'')+E(u.n)+'</b><small>'+E(DNAME[u.dist]||u.dist)+' · '+TLAB[u.t]+(u.ll?'':' · ยังไม่มีพิกัด')+'</small></span></div>'}).join('')||'<div class="lh">ไม่มีหน่วยตามเงื่อนไข</div>';
   /* legend */
   var lg='<b>'+E(I.name)+'</b>';
   if(k==='ONTOP') lg+='<span class="i"><span class="ramp"></span> น้อย → มาก (ความสูง/สี = เงินชดเชย)</span>';
@@ -496,7 +498,7 @@ document.getElementById('pills').addEventListener('click',function(e){var b=e.ta
 document.getElementById('seg').addEventListener('click',function(e){var b=e.target.closest('[data-m]');if(!b)return;S.mode=b.dataset.m;updateUI()});
 document.getElementById('fDist').addEventListener('change',function(e){S.dist=e.target.value;updateUI();fit(filtered())});
 document.getElementById('fType').addEventListener('click',function(e){var b=e.target.closest('[data-t]');if(!b)return;var t=b.dataset.t;S.types[t]=S.types[t]?0:1;b.classList.toggle('on',!!S.types[t]);updateUI()});
-document.getElementById('fSt').addEventListener('click',function(e){var b=e.target.closest('[data-s]');if(!b)return;var s=b.dataset.s;S.st[s]=S.st[s]?0:1;b.classList.toggle('on',!!S.st[s]);updateUI()});
+document.getElementById('fSt').addEventListener('click',function(e){var xb=e.target.closest('[data-x]'); if(xb){S.exc=S.exc?0:1;xb.classList.toggle('on',!!S.exc);updateUI();return;} var b=e.target.closest('[data-s]');if(!b)return;var s=b.dataset.s;S.st[s]=S.st[s]?0:1;b.classList.toggle('on',!!S.st[s]);updateUI()});
 document.getElementById('fQ').addEventListener('input',function(e){S.q=e.target.value;updateUI()});
 document.getElementById('list').addEventListener('click',function(e){var r=e.target.closest('.row');if(!r)return;var u=DATA.filter(function(x){return x.code===r.dataset.c})[0];if(u&&u.ll)openUnit(u,true)});
 function side(open){document.getElementById('aside').classList.toggle('hide',!open);document.getElementById('main').classList.toggle('closed',!open);if(map)setTimeout(function(){map.resize()},250)}
