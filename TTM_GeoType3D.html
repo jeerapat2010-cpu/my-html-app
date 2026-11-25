@@ -306,14 +306,20 @@ var DCOL={'เมืองสมุทรปราการ':'#2563eb','บา�
 function cyl(u,r,base,top,col,s,n){ n=n||20; var la=u.ll[0],lo=u.ll[1],k=Math.cos(la*Math.PI/180),ring=[];
   for(var i=0;i<=n;i++){var a=i/n*2*Math.PI; ring.push([lo+r*Math.cos(a)/k,la+r*Math.sin(a)]);}
   return{type:'Feature',properties:{code:u.code,n:u.n,c:col,s:s,b:base,h:top},geometry:{type:'Polygon',coordinates:[ring]}}}
+function bx(u,cx,cy,hx,hy,b,h,c,s){ var la=u.ll[0],lo=u.ll[1],k=Math.cos(la*Math.PI/180),x0=lo+(cx-hx)/k,x1=lo+(cx+hx)/k,y0=la+cy-hy,y1=la+cy+hy;
+  return{type:'Feature',properties:{code:u.code,n:u.n,c:c,s:s,b:b,h:h},geometry:{type:'Polygon',coordinates:[[[x0,y0],[x1,y0],[x1,y1],[x0,y1],[x0,y0]]]}}}
+function floorSeg(R,u,d,base,h,col,s){ if(h<=0) return; var sl=h*.15; R.push(bx(u,0,0,1.4*d,.85*d,base,base+sl,col,s)); R.push(bx(u,0,0,1.4*d,.85*d,base+sl,base+h-sl,'#cfe6ff',s)); R.push(bx(u,0,0,1.4*d,.85*d,base+h-sl,base+h,col,s)); }
+/* อาคาร รพ.สต.: ชั้นๆ ซ้อนกัน มีระเบียงทางเข้า หลังคายื่น ป้าย+กากบาทสีตามสถานะ; ความสูง/จำนวนชั้นตามผลงาน */
 function barFeatures(F,t){ var pad=[],tw=[],cap=[],k=S.ind;
   F.forEach(function(u,i){ if(!u.ll) return; var v=val(u,k),col=colorOf(u,v),f=ease((t-i*14)/750);
-    var d={H:.0012,P:.0009,C:.0007}[u.t]||.0009, cc=CAPC[v.s]||CAPC.b, dc='#dbe6e1', top=16;
-    pad.push(cyl(u,d*2.1,0,16*Math.min(1,f*1.5),dc,v.s,24));
-    if(k==='ALL'&&v.s!=='x'){ /* แท่งซ้อนตามตัวชี้วัดย่อย: ปฐมภูมิ→OPD→IMC→PP สีตามสถานะของแต่ละตัว */
-      IK.forEach(function(ik){ var e=u.e[ik]; if(!e) return; var h=(40+Math.min(1.2,e.v/e.c)/1.2*535)*f; tw.push(cyl(u,d*(ik==='PRIM'||ik==='IMC'?1:.92),top,top+h,COL[e.s],e.s)); top+=h; });
-    } else { var th=(v.s==='x'?40:90+v.h*2300)*f; tw.push(cyl(u,d,16,16+th,col,v.s)); top=16+th; }
-    cap.push(cyl(u,d*.55,top,top+60*f,cc,v.s,16)); });
+    var d={H:.0012,P:.0009,C:.0007}[u.t]||.0009, cc=CAPC[v.s]||CAPC.b, top=16, f1=0;
+    pad.push(bx(u,0,.25*d,1.9*d,1.6*d,0,16*Math.min(1,f*1.5),'#dbe6e1',v.s));
+    if(k==='ALL'&&v.s!=='x'){ IK.forEach(function(ik){ var e=u.e[ik]; if(!e) return; var h=(40+Math.min(1.2,e.v/e.c)/1.2*535)*f; if(!f1) f1=h; floorSeg(tw,u,d,top,h,COL[e.s],e.s); top+=h; }); }
+    else { var th=(v.s==='x'?40:90+v.h*2300)*f, n=Math.max(1,Math.round(th/330)),fh=th/n; f1=fh; for(var j=0;j<n;j++){ floorSeg(tw,u,d,top,fh,col,v.s); top+=fh; } }
+    tw.push(bx(u,0,1.1*d,.6*d,.28*d,16,16+Math.max(30,f1*.8),'#e2e8f0',v.s)); /* ระเบียงทางเข้า */
+    var rf=45*f; cap.push(bx(u,0,0,1.55*d,.98*d,top,top+rf,'#475569',v.s)); /* หลังคายื่น */
+    cap.push(bx(u,0,.3*d,.5*d,.07*d,top+rf,top+rf+110*f,'#ffffff',v.s)); /* ป้ายหน้าอาคาร */
+    cap.push(bx(u,0,.3*d,.07*d,.1*d,top+rf+110*f,top+rf+250*f,cc,v.s)); cap.push(bx(u,0,.3*d,.2*d,.07*d,top+rf+150*f,top+rf+210*f,cc,v.s)); /* กากบาทสีสถานะ */ });
   return {pad:pad,tw:tw,cap:cap}; }
 function setBars(t){ if(!map||!ready) return; var B=barFeatures(CUR,t); ['pad','tw','cap'].forEach(function(n){var s=map.getSource(n==='tw'?'bars':n==='pad'?'pad':'cap'); if(s) s.setData({type:'FeatureCollection',features:B[n]})}); }
 function distAgg(F){ var k=S.ind,G={}; F.forEach(function(u){ if(!u.ll) return; var g=G[u.dist]||(G[u.dist]={d:u.dist,n:0,la:0,lo:0,att:[],c:{g:0,y:0,r:0,x:0},amt:0}); g.n++;g.la+=u.ll[0];g.lo+=u.ll[1];
