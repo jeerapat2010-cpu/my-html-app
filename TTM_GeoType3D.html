@@ -772,7 +772,7 @@ function initVeh(){ if(!map||VEH.items.length) return;
     VEH.items.push({k:'plane',R:R,L:L,mode:x[2],per:x[3],ph:x[4],tail:TAILC[j%TAILC.length]}); });
   (function loop(now){ vehTick(now); VEH.raf=requestAnimationFrame(loop); })(performance.now()); }
 function ngon(r,n){ var a=[]; for(var i=0;i<=n;i++){ var q=i/n*Math.PI*2; a.push([Math.cos(q)*r,Math.sin(q)*r]) } return a }
-function modelUfo(F,S2,la,lo,hd,L,B,t){ var G='#cbd5e1';
+function modelUfoSaucer(F,S2,la,lo,hd,L,B,t){ var G='#cbd5e1';
   part(S2,la,lo,hd,L,ngon(.5,14),0,.002,'#000');
   part(F,la,lo,hd,L,ngon(.2,12),B,B+.06,'#64748b');
   part(F,la,lo,hd,L,ngon(.5,16),B+.06,B+.12,G);
@@ -783,6 +783,27 @@ function modelUfo(F,S2,la,lo,hd,L,B,t){ var G='#cbd5e1';
   var CL=['#ef4444','#facc15','#22c55e','#ffffff'],ph=Math.floor(t*3.5);
   for(var i=0;i<8;i++){ var q=i/8*Math.PI*2+t*.8,x=Math.cos(q)*.45,y=Math.sin(q)*.45,on=((ph+i)%2===0);
     part(F,la,lo,hd,L,rect(x-.04,x+.04,y-.04,y+.04),B+.12,B+.17,on?CL[i%4]:'#334155') } }
+function ell(rx,ry,n){ var a=[]; for(var i=0;i<=n;i++){ var q=i/n*Math.PI*2; a.push([Math.cos(q)*rx,Math.sin(q)*ry]) } return a }
+function ufoShape(i){ var h=function(k){return (Math.imul(k+7,2654435761)>>>0)%7},a=h(i),b=h(i-1); return a===b?(a+1)%7:a }
+function modelUfo(F,S2,la,lo,hd,L,B,t,sh){ var CL=['#ef4444','#facc15','#22c55e','#ffffff'],ph=Math.floor(t*3.5),i,q,x,y,on;
+  if(sh===0) return modelUfoSaucer(F,S2,la,lo,hd,L,B,t);
+  part(S2,la,lo,hd,L,ell(.5,sh===1?.8:.5,14),0,.002,'#000');
+  if(sh===1){ part(F,la,lo,hd,L,ell(.26,.7,18),B,B+.1,'#a5b4c8'); part(F,la,lo,hd,L,ell(.2,.56,18),B+.1,B+.2,'#e2e8f0'); part(F,la,lo,hd,L,ell(.1,.3,14),B+.2,B+.26,'#67e8f9');
+    for(i=0;i<6;i++){ y=-.55+i*.22; on=((ph+i)%2===0); part(F,la,lo,hd,L,rect(-.04,.04,y-.04,y+.04),B+.2,B+.26,on?CL[i%4]:'#334155') } }
+  else if(sh===2){ var D=['#111827','#1f2937','#374151','#0f172a','#27303f'];
+    for(i=0;i<7;i++){ q=i/7*Math.PI*2+t*.5; x=Math.cos(q)*.28*(1+.15*Math.sin(t*1.3+i)); y=Math.sin(q)*.28*(1+.15*Math.cos(t*1.1+i)); part(F,la,lo,hd,L,ngon(.2+.05*Math.sin(t+i*2),10).map(function(p){return [p[0]+x,p[1]+y]}),B+.03*(i%3),B+.17+.05*(i%3),D[i%5]) }
+    part(F,la,lo,hd,L,ngon(.3,12),B+.17,B+.27,'#1f2937'); part(F,la,lo,hd,L,ngon(.18,10),B+.27,B+.34,'#374151');
+    if(Math.sin(t*9)>.55) part(F,la,lo,hd,L,ngon(.08,6),B+.3,B+.37,'#fde047');
+    if(Math.sin(t*7+2)>.7) part(F,la,lo,hd,L,rect(-.3,.3,-.04,.04),B+.02,B+.06,'#fef08a') }
+  else if(sh===3){ part(F,la,lo,hd,L,[[0,.55],[.5,-.38],[-.5,-.38],[0,.55]],B,B+.08,'#0b0f19'); part(F,la,lo,hd,L,[[0,.3],[.26,-.2],[-.26,-.2],[0,.3]],B+.08,B+.13,'#1e293b');
+    [[0,.5],[.44,-.34],[-.44,-.34]].forEach(function(c,j){ on=((ph+j)%2===0); part(F,la,lo,hd,L,rect(c[0]-.05,c[0]+.05,c[1]-.05,c[1]+.05),B+.02,B+.1,on?CL[j%4]:'#334155') });
+    part(F,la,lo,hd,L,ngon(.07,8),B-.03,B,(ph%2?'#fca5a5':'#fff')) }
+  else if(sh===4){ var oc=['#fb923c','#22d3ee','#a78bfa','#4ade80'][Math.floor(t/2)%4],R=[.1,.2,.27,.31,.27,.2,.1];
+    R.forEach(function(r,j){ part(F,la,lo,hd,L,ngon(r,14),B+j*.06,B+j*.06+.06,j===3?'#ffffff':oc) }); part(F,la,lo,hd,L,ngon(.12,8),B-.05,B,CL[ph%4]) }
+  else if(sh===5){ for(i=0;i<12;i++){ q=i/12*Math.PI*2+t*.6; x=Math.cos(q)*.4; y=Math.sin(q)*.4; on=((ph+i)%2===0); part(F,la,lo,hd,L,rect(x-.1,x+.1,y-.1,y+.1),B,B+.09,on?CL[i%4]:'#64748b') }
+    part(F,la,lo,hd,L,ngon(.3,16),B+.02,B+.05,'#7dd3fc'); part(F,la,lo,hd,L,ngon(.06,8),B+.05,B+.2,'#fde047') }
+  else { [.5,.42,.32,.2,.1].forEach(function(r,j){ var a=[[0,r],[r,0],[0,-r],[-r,0],[0,r]]; part(F,la,lo,hd,L,a,B+j*.05,B+j*.05+.05,j%2?'#e879f9':'#a78bfa') });
+    [.5,.42].forEach(function(r,j){ on=((ph+j)%2===0); part(F,la,lo,hd,L,rect(r-.04,r+.04,-.04,.04),B,B+.08,on?'#ef4444':'#334155'); part(F,la,lo,hd,L,rect(-r-.04,-r+.04,-.04,.04),B,B+.08,on?'#334155':'#22c55e') }) } }
 function vehTick(now){ var s1=map&&map.getSource('veh3d'),s2=map&&map.getSource('vehsh'); if(!s1||!s2) return;
   if(!VEH.on){ if(VEH.last){s1.setData({type:'FeatureCollection',features:[]});s2.setData({type:'FeatureCollection',features:[]});VEH.last=0} return; }
   if(now-VEH.last<33) return; VEH.last=now; var t=now/1000,F=[],S2=[],m=mpp(13.62)*Math.max(.18,Math.min(1.5,Math.pow(2,(map.getZoom()-12)*.5)*.5));
@@ -798,7 +819,7 @@ function vehTick(now){ var s1=map&&map.getSource('veh3d'),s2=map&&map.getSource(
       if(v.kind==='sub') modelSub(F,p[0],p[1],hd,Lm*1.8); else modelFrigate(F,p[0],p[1],hd,Lm*2.2) }
     else if(v.k==='ufo'){ var sm2=function(x){x=Math.max(0,Math.min(1,x));return x*x*(3-2*x)},n=v.wp.length,tt=(t+v.off)%(n*9),i0=Math.floor(tt/9),u=tt-i0*9,A0=v.wp[i0],B0=v.wp[(i0+1)%n],k=u<5?0:sm2((u-5)/4);
       var ula=A0[0]+(B0[0]-A0[0])*k+Math.sin(t*1.7+v.off)*.0006*(1-k*.6),ulo=A0[1]+(B0[1]-A0[1])*k+Math.cos(t*1.3+v.off)*.0006*(1-k*.6);
-      modelUfo(F,S2,ula,ulo,(t*70)%360,Lm*1.6,1.7+.35*Math.sin(t*1.1+v.off)+(k>0&&k<1?.3:0),t) }
+      var tc=(t+v.off)/12,ci=Math.floor(tc),cu=(tc-ci)*12,ts=Math.max(.06,Math.min(1,cu/.7,(12-cu)/.7)),tsm=ts*ts*(3-2*ts); modelUfo(F,S2,ula,ulo,(t*70)%360,Lm*1.2*tsm,1.7+.35*Math.sin(t*1.1+v.off)+(k>0&&k<1?.3:0),t,ufoShape(ci)) }
     else if(v.k==='heli'){ var A=HPAD.A,Bp=HPAD.B,sm=function(x){x=Math.max(0,Math.min(1,x));return x*x*(3-2*x)},pos,al,hh,fo;
       var hAB=(Math.atan2((Bp[1]-A[1])*Math.cos(13.65*Math.PI/180),(Bp[0]-A[0]))*180/Math.PI+360)%360,hBA=(hAB+180)%360;
       if(f<.05){pos=0;al=0;hh=hBA} else if(f<.12){pos=0;al=sm((f-.05)/.07);hh=hBA} else if(f<.45){pos=sm((f-.12)/.33);al=1;hh=hAB} else if(f<.52){pos=1;al=1-sm((f-.45)/.07);hh=hAB}
