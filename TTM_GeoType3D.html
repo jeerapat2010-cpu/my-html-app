@@ -159,7 +159,7 @@ footer .ramp{width:90px;height:9px;border-radius:5px;background:linear-gradient(
   <div id="map">
     <button class="reopen" id="showA">☰ ตัวกรอง</button>
     <div class="banner" id="banner"></div>
-    <div class="tools"><button id="b3d" class="on">🏙️ 3 มิติ</button><button id="bsat">🛰️ ดาวเทียม</button><button id="btour">🎬 เที่ยวชม</button><button id="borb">🔄 หมุนรอบเมือง</button><button id="bbld" class="on">🏢 ตึกรอบข้าง</button><button id="bveh" class="on">🚦 พาหนะ</button><button id="bpng">📷 บันทึกภาพ</button></div>
+    <div class="tools"><button id="b3d" class="on">🏙️ 3 มิติ</button><button id="bsat">🛰️ ดาวเทียม</button><button id="btour">🎬 เที่ยวชม</button><button id="btord" title="เลือกลำดับการเที่ยวชม">⚠️ แย่สุดก่อน</button><button id="borb">🔄 หมุนรอบเมือง</button><button id="bbld" class="on">🏢 ตึกรอบข้าง</button><button id="bveh" class="on">🚦 พาหนะ</button><button id="bpng">📷 บันทึกภาพ</button></div>
     <div class="nowebgl" id="nogl"><div><h3>อุปกรณ์นี้เปิดแผนที่ 3 มิติไม่ได้</h3><p>ต้องเปิดใช้งาน WebGL ในเบราว์เซอร์ และต่ออินเทอร์เน็ต</p></div></div>
   </div>
 </div>
@@ -408,10 +408,12 @@ function addLayers(){ themeBase();
 /* ---- ลูกเล่นเคลื่อนไหว: หมุนรอบเมือง / เที่ยวชมอัตโนมัติ ---- */
 function orbit(on){ orbitOn=on; document.getElementById('borb').classList.toggle('on',on); cancelAnimationFrame(orbitRAF); if(!on||!map) return; var last=performance.now();
   (function step(now){ if(!orbitOn) return; map.setBearing(map.getBearing()+(now-last)*0.012); last=now; orbitRAF=requestAnimationFrame(step); })(last); }
+var TOUR_BEST=false;
 function stopTour(){ tour.on=false; tour.t.forEach(clearTimeout); tour.t=[]; var b=document.getElementById('btour'); b.classList.remove('on'); b.textContent='🎬 เที่ยวชม'; if(popup){popup.remove();popup=null}; }
 function startTour(){ if(!map) return; orbit(false); var F=filtered().filter(function(u){return u.ll&&val(u,S.ind).s!=='x'});
-  if(S.ind==='ONTOP') F.sort(function(a,b){return (b.amt||0)-(a.amt||0)}); else F.sort(function(a,b){var x=val(a,S.ind),y=val(b,S.ind);return (S.ind==='ALL'?x.v-y.v:x.v/IMAP[S.ind].crit(a)-y.v/IMAP[S.ind].crit(b))});
-  tour.list=F.slice(0,6).concat(F.length>6?[F[F.length-1]]:[]); if(!tour.list.length) return; tour.on=true; var b=document.getElementById('btour'); b.classList.add('on'); b.textContent='⏹ หยุดเที่ยวชม'; if(S.mode!=='bar'&&S.mode!=='donut'&&S.mode!=='radar'&&S.mode!=='gauge'){S.mode='bar';updateUI();}
+  var rk=function(u){ var v=val(u,S.ind); if(S.ind==='ONTOP') return u.amt||0; if(S.ind==='ALL'){ var ks=Object.keys(u.e),r=ks.length?ks.reduce(function(s,i){return s+u.e[i].v/u.e[i].c},0)/ks.length:0; return (v.v||0)*1000+r; } return v.v/IMAP[S.ind].crit(u); };
+  F.sort(function(a,b){return TOUR_BEST?rk(b)-rk(a):rk(a)-rk(b)});
+  tour.list=F.slice(0,8); if(!tour.list.length) return; tour.on=true; var b=document.getElementById('btour'); b.classList.add('on'); b.textContent='⏹ หยุดเที่ยวชม'; if(S.mode!=='bar'&&S.mode!=='donut'&&S.mode!=='radar'&&S.mode!=='gauge'){S.mode='bar';updateUI();}
   var i=0; (function go(){ if(!tour.on) return; if(i>=tour.list.length){ stopTour(); fit(filtered()); return; } var u=tour.list[i++];
     map.flyTo({center:[u.ll[1],u.ll[0]],zoom:15.4,pitch:64,bearing:map.getBearing()+50,duration:2800,essential:true});
     tour.t.push(setTimeout(function(){ if(tour.on) openUnit(u,false) },2900)); tour.t.push(setTimeout(go,7600)); })(); }
@@ -508,6 +510,7 @@ document.getElementById('bsat').onclick=function(){S.sat=!S.sat;this.classList.t
 document.getElementById('bpng').onclick=exportPNG;
 document.getElementById('bveh').onclick=function(){this.classList.toggle('on');vehShow(this.classList.contains('on'))};
 document.getElementById('borb').onclick=function(){if(tour.on)stopTour();orbit(!orbitOn)};
+document.getElementById('btord').onclick=function(){TOUR_BEST=!TOUR_BEST;this.textContent=TOUR_BEST?'🏆 ดีสุดก่อน':'⚠️ แย่สุดก่อน';if(tour.on){stopTour();startTour()}};
 document.getElementById('btour').onclick=function(){tour.on?stopTour():startTour()};
 document.getElementById('bbld').onclick=function(){S.bld=!S.bld;this.classList.toggle('on',S.bld);if(map&&map.getLayer('bld3d'))map.setLayoutProperty('bld3d','visibility',S.bld?'visible':'none')};
 buildUI();initMap();if(!map)updateUI();
