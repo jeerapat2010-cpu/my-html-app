@@ -299,6 +299,7 @@ function updateUI(){
   /* legend */
   var lg='<b>'+E(I.name)+'</b>';
   if(k==='ONTOP') lg+='<span class="i"><span class="ramp"></span> น้อย → มาก (ความสูง/สี = เงินชดเชย)</span>';
+  else if(S.mode==='bar') lg+='<span class="i">ต่ำกว่าเกณฑ์ <span class="ramp" style="width:130px;background:linear-gradient(90deg,#dc2626,#f97316,#facc15,#22c55e,#047857)"></span> ผ่าน/เกินเกณฑ์ (สีตึกไล่เฉดตามสัดส่วนผลงาน ÷ เกณฑ์)</span><span class="i"><span class="dot" style="background:'+COL.x+'"></span>'+STN.x+'</span>';
   else lg+=['g','y','r','x'].map(function(s){return '<span class="i"><span class="dot" style="background:'+COL[s]+'"></span>'+STN[s]+'</span>'}).join('');
   var MX={bar:'ตึก = หน่วยบริการ · ความสูง = '+(k==='ALL'?'คะแนนรวม':'ผลงาน ÷ เกณฑ์')+'',dot:'ขนาดวง = ตัวหาร (จำนวนผู้รับบริการ)',heat:'ยิ่งแดง = ยิ่งห่างจากเกณฑ์ (จุดอ่อนของจังหวัด)',donut:'วงแหวน = สถานะแต่ละตัวชี้วัด (ตชว.14 · PA · IMC · หลังคลอด) · เลขกลาง = '+(k==='ALL'?'คะแนนรวม':k==='ONTOP'?'เงินชดเชย':'ผลงาน %'),radar:'เรดาร์ 4 แกน ป=ปฐมภูมิ ผ=PA OPD I=IMC ห=หลังคลอด · วงประ = เกณฑ์ 100%',gauge:'เกจครึ่งวง = ผลงาน ÷ เกณฑ์ · ขีดดำ = จุดผ่านเกณฑ์',dist:'แท่งใหญ่ = ค่าเฉลี่ยรายอำเภอ · แถบสี = สัดส่วนผ่าน/ใกล้/ต่ำ/ไม่มีข้อมูล · คลิกเพื่อดูรายหน่วย'};
   lg+='<span class="i">'+(MX[S.mode]||'')+'</span><span class="i">ซูมเข้าเพื่อดู: 🏬 ห้าง · 🛒 ตลาด/ซูเปอร์ · 🏥 รพ. · ⚕️ คลินิก (ข้อมูล OSM)</span>';
@@ -331,6 +332,9 @@ var MODES={bar:'▮ อาคาร 3D',dot:'⁘ การกระจาย',he
 var CUR=[],MK=[],DL=[],growT0=0,growSig='',growRAF=0,orbitOn=false,orbitRAF=0,tour={on:false,t:[],list:[]};
 function clamp(x){return Math.max(0,Math.min(1,x))}
 function ease(x){x=clamp(x);var c=1.5;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)}
+var GST=[[0,[220,38,38]],[.5,[249,115,22]],[.8,[250,204,21]],[1,[34,197,94]],[1.2,[4,120,87]]];
+function gcol(t){ t=Math.max(0,Math.min(1.2,t)); for(var i=1;i<GST.length;i++){ if(t<=GST[i][0]){ var a=GST[i-1],b=GST[i],w=(t-a[0])/(b[0]-a[0]); return '#'+[0,1,2].map(function(j){return ('0'+Math.round(a[1][j]+(b[1][j]-a[1][j])*w).toString(16)).slice(-2)}).join(''); } } return '#047857'; }
+function attT(u,v,k){ return k==='ALL'?(u.score||0)/100:(u.e[k]?u.e[k].v/u.e[k].c:0); }
 var CAPC={g:'#86efac',y:'#fde68a',r:'#fca5a5',x:'#e2e8f0',b:'#bfdbfe'};
 function box(u,d,base,top,col,s,extra){var la=u.ll[0],lo=u.ll[1],p={code:u.code,n:u.n,c:col,s:s,b:base,h:top};
   return{type:'Feature',properties:p,geometry:{type:'Polygon',coordinates:[[[lo-d,la-d],[lo+d,la-d],[lo+d,la+d],[lo-d,la+d],[lo-d,la-d]]]}}}
@@ -346,10 +350,10 @@ function mixc(c,w){ var n=parseInt(c.slice(1),16),r=n>>16,g=n>>8&255,b=n&255; re
 function floorSeg(R,u,d,base,h,col,s){ if(h<=0) return; var sl=h*.27,wc=mixc(col,.62); R.push(bx(u,0,0,1.4*d,.85*d,base,base+sl,col,s)); R.push(bx(u,0,0,1.4*d,.85*d,base+sl,base+h-sl*.6,wc,s)); R.push(bx(u,0,0,1.4*d,.85*d,base+h-sl*.6,base+h,col,s)); }
 /* อาคาร รพ.สต.: ชั้นๆ ซ้อนกัน มีระเบียงทางเข้า หลังคายื่น ป้าย+กากบาทสีตามสถานะ; ความสูง/จำนวนชั้นตามผลงาน */
 function barFeatures(F,t){ var pad=[],tw=[],cap=[],k=S.ind,zf=Math.max(.35,Math.min(1.6,Math.pow(2,(13.5-map.getZoom())*.5)*.8));
-  F.forEach(function(u,i){ if(!u.ll) return; var v=val(u,k),col=colorOf(u,v),f=ease((t-i*14)/750)*zf;
-    var d=({H:.0012,P:.0009,C:.0007}[u.t]||.0009)*zf, cc=CAPC[v.s]||CAPC.b, top=16, f1=0;
+  F.forEach(function(u,i){ if(!u.ll) return; var v=val(u,k),grd=(v.s!=='x'&&v.s!=='b'),col=grd?gcol(attT(u,v,k)):colorOf(u,v),f=ease((t-i*14)/750)*zf;
+    var d=({H:.0012,P:.0009,C:.0007}[u.t]||.0009)*zf, cc=grd?mixc(col,.45):(CAPC[v.s]||CAPC.b), top=16, f1=0;
     pad.push(bx(u,0,.25*d,1.9*d,1.6*d,0,16*Math.min(1,f*1.5),'#dbe6e1',v.s));
-    if(k==='ALL'&&v.s!=='x'){ IK.forEach(function(ik){ var e=u.e[ik]; if(!e) return; var h=(40+Math.min(1.2,e.v/e.c)/1.2*535)*f; if(!f1) f1=h; floorSeg(tw,u,d,top,h,COL[e.s],e.s); top+=h; }); }
+    if(k==='ALL'&&v.s!=='x'){ IK.forEach(function(ik){ var e=u.e[ik]; if(!e) return; var h=(40+Math.min(1.2,e.v/e.c)/1.2*535)*f; if(!f1) f1=h; floorSeg(tw,u,d,top,h,e.s==='x'?COL.x:gcol(e.v/e.c),e.s); top+=h; }); }
     else { var th=(v.s==='x'?40:90+v.h*2300)*f, n=Math.max(1,Math.round(th/330)),fh=th/n; f1=fh; for(var j=0;j<n;j++){ floorSeg(tw,u,d,top,fh,col,v.s); top+=fh; } }
     tw.push(bx(u,0,1.1*d,.6*d,.28*d,16,16+Math.max(30,f1*.8),'#e2e8f0',v.s)); /* ระเบียงทางเข้า */
     var rf=45*f; cap.push(bx(u,0,0,1.55*d,.98*d,top,top+rf,'#475569',v.s)); /* หลังคายื่น */
