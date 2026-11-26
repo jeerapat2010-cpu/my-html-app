@@ -285,7 +285,7 @@ function render(){
   H+=secRate(S,'k14','PRIM','🏥','ตัวชี้วัดที่ 14 — ร้อยละประชาชนที่มารับบริการในระดับปฐมภูมิได้รับการรักษาด้วยการแพทย์แผนไทยและการแพทย์ทางเลือก','ครั้ง');
   H+=secPA(S,R,PA,paMe);
   H+=secRate(S,'imc','IMC','🧠','ตัวชี้วัดที่ 26 — ร้อยละผู้ป่วย Stroke ระยะกลาง (IMC) ได้รับการดูแลด้วยการแพทย์แผนไทยและการแพทย์ทางเลือก '+PAT,'ราย');
-  if(K.CAN1) H+=secRate(S,'can1','CAN1','🌿','ตัวชี้วัดงานกัญชา (SP กัญชา ข้อ 4) — ร้อยละผู้ป่วยระยะประคับประคอง (PC) ได้รับกัญชาทางการแพทย์ • ติดตามจาก HDC (ไม่ใช่ตัวชี้วัด PA ปี 70)','คน');
+  if(K.CAN1) H+=secRate(S,'can1','CAN1','🌿','ตัวชี้วัดงานกัญชา (SP กัญชา ข้อ 4) — ร้อยละผู้ป่วยระยะประคับประคอง (PC) ได้รับกัญชาทางการแพทย์ • ติดตามจาก HDC (ไม่ใช่ตัวชี้วัดปี 70)','คน');
   if(K.CAN2) H+=secCan2(S);
   H+=secPP(S,PPm);
   H+=secUC(S,UCm);
@@ -303,7 +303,7 @@ function gr(a,b){ return b>0?(a-b)/b*100:null; }
 function can2Model(){ var S=scope(), x=K.CAN2; if(!x) return null; var me=S.lvl('CAN2'); if(!me) return null; return {a:me.a,b:me.b,g:gr(me.a,me.b),crit:x.crit}; }
 function secCan2(S){
   var x=K.CAN2; if(!x) return '';
-  var h=secHead('can2','🍃','ตัวชี้วัดงานกัญชา (SP กัญชา ข้อ 3) — ผู้ป่วยที่ได้รับยากัญชาทางการแพทย์ เทียบปีฐาน 2564 • ติดตามจาก HDC (ไม่ใช่ตัวชี้วัด PA ปี 70)','เกณฑ์ HDC: เพิ่มขึ้น ≥ '+x.crit+'% จากปีฐาน • '+E(S.meLabel)+' เทียบ '+(S.f?'6 อำเภอ':'8 จังหวัดในเขต 6'));
+  var h=secHead('can2','🍃','ตัวชี้วัดงานกัญชา (SP กัญชา ข้อ 3) — ผู้ป่วยที่ได้รับยากัญชาทางการแพทย์ เทียบปีฐาน 2564 • ติดตามจาก HDC (ไม่ใช่ตัวชี้วัดปี 70)','เกณฑ์ HDC: เพิ่มขึ้น ≥ '+x.crit+'% จากปีฐาน • '+E(S.meLabel)+' เทียบ '+(S.f?'6 อำเภอ':'8 จังหวัดในเขต 6'));
   var me=S.lvl('CAN2')||{a:0,b:0}; var g=gr(me.a,me.b); var U=S.units('CAN2'); var act=U.filter(function(u){return u.a>0;});
   var peers=(S.f?x.dists:x.provs).map(function(d){return {name:d.name,a:d.a,b:d.b,g:gr(d.a,d.b)};}).filter(function(d){return d.g!=null;}).sort(function(a,b){return b.g-a.g;});
   var top3=act.slice().sort(function(a,b){return b.a-a.a;}).slice(0,3); var share=me.a?sum(top3,'a')/me.a*100:null;
@@ -327,15 +327,15 @@ function secExec(S,R,PA,paMe,PPm,UCm){
   var r14=R.PRIM, ro=R.OPD, ri=R.IMC;
   function cmp(v,ref,lab){ if(v==null||ref==null) return ''; var d=v-ref; return (d>=0?'สูงกว่า':'ต่ำกว่า')+lab+' '+Math.abs(d).toFixed(2)+' จุด'; }
   if(r14&&r14.v!=null){ var rk=rankOf(r14.peers,f||PROV); var line='ตชว.14 ปฐมภูมิ '+P(r14.v)+' ('+cmp(r14.v,r14.crit,'เกณฑ์')+')'+(rk?' อันดับ '+rk+'/'+r14.peers.length+(f?' ของจังหวัด':' ของเขต 6'):''); (r14.v>=r14.crit?Sx:Wx).push(line+(r14.v<r14.crit?' — ต้องเพิ่มบริการอีก '+N(need(r14.me.a,r14.me.b,r14.crit))+' ครั้ง'+(LEFT?' (เฉลี่ย '+N(need(r14.me.a,r14.me.b,r14.crit)/Math.max(1,LEFT))+' ครั้ง/เดือน)':''):'')); if(r14.prov!=null&&f) (r14.v>=r14.prov?Sx:Wx).push('ตชว.14 '+cmp(r14.v,r14.prov,'ค่าจังหวัด')); }
-  if(ro&&paMe){ (paMe.hp!=null&&paMe.hp>=15?Sx:Wx).push('PA ระดับ รพ. '+P(paMe.hp)+' ได้ '+(paMe.hs||'–')+' คะแนน'+(paMe.hp!=null&&paMe.hp<15?' — ต้องเพิ่มอีก '+N(paMe.hneed)+' ครั้ง':''));
-    (paMe.pp!=null&&paMe.pp>=50?Sx:Wx).push('PA ระดับ สสอ. (รวม รพ.สต.) '+P(paMe.pp)+' ได้ '+(paMe.ps||'–')+' คะแนน'+(paMe.pp!=null&&paMe.pp<50?' — ต้องเพิ่มอีก '+N(paMe.pneed)+' ครั้ง':'')); }
+  if(ro&&paMe){ (paMe.hp!=null&&paMe.hp>=15?Sx:Wx).push('OPD ระดับ รพ. '+P(paMe.hp)+' ได้ '+(paMe.hs||'–')+' คะแนน'+(paMe.hp!=null&&paMe.hp<15?' — ต้องเพิ่มอีก '+N(paMe.hneed)+' ครั้ง':''));
+    (paMe.pp!=null&&paMe.pp>=50?Sx:Wx).push('OPD ระดับ สสอ. (รวม รพ.สต.) '+P(paMe.pp)+' ได้ '+(paMe.ps||'–')+' คะแนน'+(paMe.pp!=null&&paMe.pp<50?' — ต้องเพิ่มอีก '+N(paMe.pneed)+' ครั้ง':'')); }
   if(ri&&ri.v!=null){ (ri.v>=ri.crit?Sx:Wx).push('Stroke IMC [PA จังหวัด] '+P(ri.v)+' ('+N(ri.me.a)+'/'+N(ri.me.b)+' ราย) '+(ri.v>=ri.crit?'ผ่านเกณฑ์ '+ri.crit+'%':'ต่ำกว่าเกณฑ์ '+ri.crit+'% ต้องดูแลเพิ่มอีก '+N(need(ri.me.a,ri.me.b,ri.crit))+' ราย')); }
   if(PPm&&PPm.svc!=null){ (PPm.timely>=70?Sx:Wx).push('มารดาหลังคลอดได้รับบริการ '+N(PPm.svc)+' ราย เฉลี่ย '+(PPm.avg?PPm.avg.toFixed(1):'–')+' ครั้ง/ราย บริการทันเวลา '+P(PPm.timely,1)+(PPm.hist!=null?' ประวัติคลอดตรง '+P(PPm.hist,1):'')); }
   if(UCm){ (UCm.pNow>=100?Sx:Wx).push('มูลค่ายาสมุนไพร UC '+B(UCm.value)+' บาท = '+P(UCm.pNow)+' ของเป้าสะสม'+(UCm.pNow<100?' ขาดอีก '+B(UCm.tNow-UCm.value)+' บาท':'')); }
   // opportunities: near-crit units
   var near=[]; if(K.PRIM) S.units('PRIM').forEach(function(u){ if(u.t==='H') return; var p=pc(u.a,u.b); if(p!=null&&p<R.PRIM.crit&&p>=R.PRIM.crit-8&&u.b>=50) near.push({n:sn(u.name),p:p,need:need(u.a,u.b,R.PRIM.crit)}); });
   near.sort(function(a,b){return a.need-b.need;}); if(near.length) Ox.push('Quick win ตชว.14: '+near.slice(0,5).map(function(x){return x.n+' ('+P(x.p,1)+' ขาด '+N(x.need)+' ครั้ง)';}).join(', '));
-  if(K.OPD){ var pn=[]; S.units('OPD').forEach(function(u){ if(u.t!=='P') return; var p=pc(u.a,u.b); if(p!=null&&p>=40&&p<50) pn.push(sn(u.name)+' '+P(p,1)); }); if(pn.length) Ox.push('รพ.สต. ที่ใกล้ 50% (PA): '+pn.slice(0,6).join(', ')); }
+  if(K.OPD){ var pn=[]; S.units('OPD').forEach(function(u){ if(u.t!=='P') return; var p=pc(u.a,u.b); if(p!=null&&p>=40&&p<50) pn.push(sn(u.name)+' '+P(p,1)); }); if(pn.length) Ox.push('รพ.สต. ที่ใกล้ 50% (OPD): '+pn.slice(0,6).join(', ')); }
   if(K.IMC){ var ib=S.units('IMC').filter(function(u){return u.b>0&&u.a===0;}).sort(function(a,b){return b.b-a.b;}); if(ib.length) Ox.push('ผู้ป่วย Stroke IMC ที่ยังไม่ได้รับแผนไทยกระจุกที่ '+ib.slice(0,4).map(function(u){return sn(u.name)+' ('+u.b+' ราย)';}).join(', ')+' — ทำ registry ติดตามรายคน'); }
   if(LEFT) Ox.push('เหลือเวลาอีก '+LEFT+' เดือนในปีงบ '+META.fy+' — กำหนดเป้ารายเดือนของแต่ละหน่วยจากช่องว่างข้างต้น');
   var pass=Sx.length, lead='<b>'+E(S.meLabel)+'</b> ณ '+E(META.date)+' (ปีงบ '+META.fy+' เดือนที่ '+META.fm+') มีประเด็นที่ทำได้ดี '+pass+' ประเด็น และประเด็นที่ต้องเร่งรัด '+Wx.length+' ประเด็น. ';
@@ -352,7 +352,7 @@ function secBench(S,R,PA,PPm){
   h+='<div class="grid g12"><div class="card"><h3>📈 เทียบระดับ (ร้อยละ)</h3><div class="chart"><canvas id="cBench"></canvas></div><p class="note">เส้นประแต่ละกลุ่มคือเกณฑ์ของตัวชี้วัดนั้น</p></div>';
   // heatmap districts
   var cols=[['PRIM','ตชว.14',function(d){var r=(K.PRIM.dists||[]).filter(function(x){return x.name===d;})[0]; return r?pc(r.a,r.b):null;},K.PRIM?K.PRIM.crit:null],
-    ['PAH','PA รพ.',function(d){return PA&&PA[d]?PA[d].hp:null;},15],['PAP','PA สสอ.',function(d){return PA&&PA[d]?PA[d].pp:null;},50],
+    ['PAH','OPD รพ.',function(d){return PA&&PA[d]?PA[d].hp:null;},15],['PAP','OPD สสอ.',function(d){return PA&&PA[d]?PA[d].pp:null;},50],
     ['IMC','IMC '+PAT,function(d){var r=K.IMC?(K.IMC.dists||[]).filter(function(x){return x.name===d;})[0]:null; return r?pc(r.a,r.b):null;},K.IMC?K.IMC.crit:null],
     ['PPT','หลังคลอดทันเวลา',function(d){var r=K.PP?(K.PP.dists||[]).filter(function(x){return x.name===d;})[0]:null; var m=ppModel(r); return m?m.timely:null;},70]];
   if(K.UC) cols.push(['UC','UC % เป้าสะสม',function(d){var r=K.UC.dists.filter(function(x){return x.name===d;})[0]; return r?pc(r.value,r.tNow):null;},100]);
@@ -389,7 +389,7 @@ function secRate(S,id,k,ic,title,unit){
 function secPA(S,R,PA,paMe){
   var x=K.OPD; if(!x) return secHead('pa','🩺','ตัวชี้วัด ผู้ป่วยนอกแผนไทย','')+'<div class="pending"><div class="ic">⏳</div><div>ยังไม่มีข้อมูล</div></div></section>';
   var r=R.OPD; var prev=x.prev||{}; var pv=null; if(S.f&&prev.dists&&prev.dists[S.f]) pv=pc(prev.dists[S.f][1],prev.dists[S.f][0]); if(!S.f&&prev.provs&&prev.provs[PROV]) pv=pc(prev.provs[PROV][1],prev.provs[PROV][0]);
-  var h=secHead('pa','🩺','ตัวชี้วัด สป. ปี 2570 — ร้อยละผู้ป่วยนอกได้รับบริการด้วยการแพทย์แผนไทยและการแพทย์ทางเลือก (รวมแผนจีน)','เกณฑ์ PA: ระดับ รพ. ≥15% (คะแนน 9/11/13/15%) • ระดับ สสอ. รวม รพ.สต. ≥50% (35/40/45/50%) • นับ U78x–U79x ไม่นับ U77x');
+  var h=secHead('pa','🩺','ตัวชี้วัด สป. ปี 2570 — ร้อยละผู้ป่วยนอกได้รับบริการด้วยการแพทย์แผนไทยและการแพทย์ทางเลือก (รวมแผนจีน)','เกณฑ์: ระดับ รพ. ≥15% (คะแนน 9/11/13/15%) • ระดับ สสอ. รวม รพ.สต. ≥50% (35/40/45/50%) • นับ U78x–U79x ไม่นับ U77x');
   h+='<div class="grid g4"><div class="stat"><div class="l">ภาพรวม '+E(S.meLabel)+'</div><div class="n">'+P(r.v)+'</div><div class="d">'+(pv!=null?'ปีงบ 2569 ทั้งปี '+P(pv)+' '+(r.v>=pv?'▲':'▼'):'')+'</div></div>'+
     '<div class="stat"><div class="l">ระดับ รพ. (เกณฑ์ 15%)</div><div class="n">'+P(paMe.hp)+'</div><div class="d">'+dots(paMe.hs)+(paMe.hneed?' • ขาด '+N(paMe.hneed)+' ครั้ง':'')+'</div></div>'+
     '<div class="stat"><div class="l">ระดับ สสอ. รวม รพ.สต. (เกณฑ์ 50%)</div><div class="n">'+P(paMe.pp)+'</div><div class="d">'+dots(paMe.ps)+(paMe.pneed?' • ขาด '+N(paMe.pneed)+' ครั้ง':'')+'</div></div>'+
@@ -467,8 +467,8 @@ function secPlan(S,R,PA,paMe,PPm,UCm){
   var A=[]; var f=S.f;
   function topNeed(k,crit,filt){ return S.units(k).filter(filt||function(){return true;}).map(function(u){return {n:sn(u.name),d:u.dist,need:need(u.a,u.b,crit),p:pc(u.a,u.b)};}).filter(function(u){return u.need>0;}).sort(function(a,b){return b.need-a.need;}); }
   if(R.PRIM&&R.PRIM.v!=null&&R.PRIM.v<R.PRIM.crit){ var t=topNeed('PRIM',R.PRIM.crit,function(u){return u.t!=='H';}); var tot=need(R.PRIM.me.a,R.PRIM.me.b,R.PRIM.crit); A.push(['ตชว.14 ปฐมภูมิ: เพิ่มบริการแผนไทยอีก '+N(tot)+' ครั้ง'+(LEFT?' (≈'+N(tot/LEFT)+' ครั้ง/เดือน)':''),'มุ่งเป้า '+t.slice(0,4).map(function(u){return u.n+(f?'':' ('+dname(u.d)+')')+' +'+N(u.need);}).join(', ')+' — คัดกรองผู้ป่วยปวดกล้ามเนื้อ/ข้อ, ใช้ระบบ one-stop ส่งต่อจาก OPD แผนปัจจุบัน','ผู้รับผิดชอบ: '+(f?'สสอ./ผอ.รพ.สต.':'สสอ. ทุกอำเภอ')]); }
-  if(paMe&&paMe.hp!=null&&paMe.hp<15) A.push(['PA ระดับ รพ.: เพิ่มบริการแผนไทยใน OPD อีก '+N(paMe.hneed)+' ครั้ง','ตั้งจุดคัดกรอง/ส่งต่อแผนไทยใน OPD ทั่วไป ER และคลินิกโรคเรื้อรัง • ส่งเสริมการสั่งยาสมุนไพรโดยแพทย์แผนปัจจุบัน (นับ U78x–U79x) • ตรวจรหัสบริการก่อนส่ง 43 แฟ้ม','ผู้รับผิดชอบ: ผอ.รพ./หัวหน้างานแผนไทย']);
-  if(paMe&&paMe.pp!=null&&paMe.pp<50){ var tp=topNeed('OPD',50,function(u){return u.t==='P';}); A.push(['PA ระดับ สสอ.: เพิ่มบริการใน รพ.สต. อีก '+N(paMe.pneed)+' ครั้ง','หน่วยที่ต้องเร่ง: '+tp.slice(0,5).map(function(u){return u.n+' '+P(u.p,1)+' (+'+N(u.need)+')';}).join(', '),'ผู้รับผิดชอบ: สสอ.']); }
+  if(paMe&&paMe.hp!=null&&paMe.hp<15) A.push(['OPD ระดับ รพ.: เพิ่มบริการแผนไทยใน OPD อีก '+N(paMe.hneed)+' ครั้ง','ตั้งจุดคัดกรอง/ส่งต่อแผนไทยใน OPD ทั่วไป ER และคลินิกโรคเรื้อรัง • ส่งเสริมการสั่งยาสมุนไพรโดยแพทย์แผนปัจจุบัน (นับ U78x–U79x) • ตรวจรหัสบริการก่อนส่ง 43 แฟ้ม','ผู้รับผิดชอบ: ผอ.รพ./หัวหน้างานแผนไทย']);
+  if(paMe&&paMe.pp!=null&&paMe.pp<50){ var tp=topNeed('OPD',50,function(u){return u.t==='P';}); A.push(['OPD ระดับ สสอ.: เพิ่มบริการใน รพ.สต. อีก '+N(paMe.pneed)+' ครั้ง','หน่วยที่ต้องเร่ง: '+tp.slice(0,5).map(function(u){return u.n+' '+P(u.p,1)+' (+'+N(u.need)+')';}).join(', '),'ผู้รับผิดชอบ: สสอ.']); }
   if(R.IMC&&R.IMC.v!=null&&R.IMC.v<R.IMC.crit){ var ti=topNeed('IMC',R.IMC.crit); A.push(['Stroke IMC [PA จังหวัด]: ดูแลด้วยแผนไทยเพิ่มอีก '+N(need(R.IMC.me.a,R.IMC.me.b,R.IMC.crit))+' ราย','ทำ IMC registry จากทะเบียนผู้ป่วย stroke หลังจำหน่าย, เยี่ยมบ้านร่วมทีมกายภาพ • หน่วยที่มีผู้ป่วยรอดูแล: '+ti.slice(0,5).map(function(u){return u.n+' +'+u.need;}).join(', '),'ผู้รับผิดชอบ: ทีม IMC/COC']); }
   if(PPm&&PPm.timely!=null&&PPm.timely<70) A.push(['หลังคลอด: ยกระดับบริการทันเวลาจาก '+P(PPm.timely,1)+' ให้ ≥70%','เชื่อมข้อมูลคลอดจาก LR สู่ รพ.สต. รายสัปดาห์ นัดบริการภายใน 7–14 วัน','ผู้รับผิดชอบ: งานแม่และเด็ก/แผนไทย']);
   if(PPm&&PPm.hist!=null&&PPm.hist<80) A.push(['หลังคลอด: แก้ข้อมูลประวัติคลอดให้ตรง (ปัจจุบัน '+P(PPm.hist,1)+')','ตรวจสอบแฟ้ม LABOR/POSTNATAL ให้ครบก่อนส่งข้อมูล','ผู้รับผิดชอบ: เจ้าหน้าที่เวชสถิติ/IT']);
@@ -480,7 +480,7 @@ function secPlan(S,R,PA,paMe,PPm,UCm){
 function secMeth(){
   return secHead('meth','📚','แหล่งข้อมูลและวิธีคิด','')+'<div class="grid g2"><div class="card"><h3>ตัวชี้วัดและเกณฑ์</h3><ul>'+
    '<li><b>ตชว.14</b> ร้อยละประชาชนที่มารับบริการระดับปฐมภูมิได้รับบริการแพทย์แผนไทยฯ — เกณฑ์ ≥'+(K.PRIM?K.PRIM.crit:50)+'% (HDC)</li>'+
-   '<li><b>PA สป. ปี 2570</b> ร้อยละผู้ป่วยนอกได้รับบริการแพทย์แผนไทยฯ รวมแผนจีน (U78x–U79x ไม่นับ U77x) — รพ. ≥15% / สสอ. ≥50% (HDC)</li>'+
+   '<li><b>ตัวชี้วัด สป. ปี 2570</b> ร้อยละผู้ป่วยนอกได้รับบริการแพทย์แผนไทยฯ รวมแผนจีน (U78x–U79x ไม่นับ U77x) — รพ. ≥15% / สสอ. ≥50% (HDC)</li>'+
    '<li><b>ตชว.26</b> '+PAT+' ร้อยละผู้ป่วย Stroke IMC ได้รับการดูแลด้วยแพทย์แผนไทย — เกณฑ์ ≥'+(K.IMC?K.IMC.crit:25)+'% (HDC) — ตัวชี้วัด PA หลักของจังหวัดสมุทรปราการ ปี 2570 (เป้าหมาย ≥ 25%)</li>'+
    '<li><b>หลังคลอด</b> มารดาหลังคลอดได้รับบริการแพทย์แผนไทย (HDC)</li><li><b>มูลค่ายาสมุนไพร UC</b> เทียบเป้าสะสมตามเดือนของปีงบ (thaipadi) • <b>เงินชดเชย</b> OP On-top (MIS HOS สปสช.)</li></ul></div>'+
    '<div class="card"><h3>หมายเหตุข้อมูล</h3><ul><li>ข้อมูลสะสมตั้งแต่ 1 ต.ค. ถึงวันที่ประมวลผล ('+E(META.date)+')'+(META.opdAsOf?' • ผู้ป่วยนอก ณ '+E(META.opdAsOf):'')+'</li><li>สถานะ: ผ่าน = ถึงเกณฑ์ • ใกล้เกณฑ์ = ≥80% ของเกณฑ์ • ต่ำกว่าเกณฑ์ = <80%</li><li>“ต้องเพิ่ม” = จำนวนบริการ/รายที่ต้องเพิ่มเพื่อให้ถึงเกณฑ์ ณ ฐานปัจจุบัน</li>'+
